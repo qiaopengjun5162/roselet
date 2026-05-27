@@ -11,8 +11,7 @@ pub async fn create_rose(
     State(pool): State<PgPool>,
     Json(input): Json<CreateRose>,
 ) -> Result<Json<Rose>, AppError> {
-    // 验证输入
-    input.validate().map_err(|e| anyhow::anyhow!(e))?;
+    input.validate().map_err(AppError::BadRequest)?;
 
     let rose = sqlx::query_as::<_, Rose>(
         "INSERT INTO roses (color, gratitude, anxiety, hope) VALUES ($1, $2, $3, $4) RETURNING *",
@@ -36,7 +35,7 @@ pub async fn get_rose(
         .bind(id)
         .fetch_optional(&pool)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("Rose not found"))?;
+        .ok_or(AppError::NotFound)?;
 
     Ok(Json(rose))
 }

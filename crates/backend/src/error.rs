@@ -2,36 +2,32 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde_json::json;
+use thiserror::Error;
 
 /// 应用错误类型
-pub struct AppError(pub anyhow::Error);
+#[derive(Debug, Error)]
+pub enum AppError {
+    #[error("资源不存在")]
+    NotFound,
+
+    #[error("{0}")]
+    BadRequest(String),
+
+    #[error("数据库错误: {0}")]
+    Database(#[from] sqlx::Error),
+}
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let error_msg = self.0.to_string();
-
-        // 区分验证错误和服务器错误
-        if error_msg.starts_with("Invalid") || error_msg.starts_with("At least") {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": error_msg })),
-            )
-                .into_response()
-        } else {
-            (
+        let (status, message) = match &self {
+            AppError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
+            AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            AppError::Database(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "Internal server error" })),
-            )
-                .into_response()
-        }
-    }
-}
+                "服务器内部错误".to_string(),
+            ),
+        };
 
-impl<E> From<E> for AppError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
+        (status, Json(json!({ "error": message }))).into_response()
     }
 }
