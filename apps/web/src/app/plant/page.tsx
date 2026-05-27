@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { createRose } from "@/lib/api";
 
 const COLORS = [
@@ -21,15 +20,29 @@ export default function PlantPage() {
   const [anxiety, setAnxiety] = useState("");
   const [hope, setHope] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const hasContent = gratitude.trim() || anxiety.trim() || hope.trim();
 
   async function handleSubmit() {
+    if (!hasContent) {
+      setError("请至少填写一项内容");
+      return;
+    }
+
     setSubmitting(true);
+    setError("");
+
     try {
-      await createRose({ color, gratitude, anxiety, hope });
+      await createRose({
+        color,
+        gratitude: gratitude.trim() || undefined,
+        anxiety: anxiety.trim() || undefined,
+        hope: hope.trim() || undefined,
+      });
       router.push("/garden");
     } catch {
-      alert("提交失败，请重试");
-    } finally {
+      setError("提交失败，请重试");
       setSubmitting(false);
     }
   }
@@ -75,11 +88,15 @@ export default function PlantPage() {
               玫瑰 — 一件让你感恩的事
             </label>
             <textarea
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-500"
               placeholder="这周让你感到幸福或感恩的事情是..."
               value={gratitude}
               onChange={(e) => setGratitude(e.target.value)}
+              maxLength={500}
             />
+            <p className="text-xs text-muted-foreground text-right">
+              {gratitude.length}/500
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -87,11 +104,15 @@ export default function PlantPage() {
               尖刺 — 让你焦虑的事
             </label>
             <textarea
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="现在有什么让你感到焦虑或需要帮助的..."
               value={anxiety}
               onChange={(e) => setAnxiety(e.target.value)}
+              maxLength={500}
             />
+            <p className="text-xs text-muted-foreground text-right">
+              {anxiety.length}/500
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -99,12 +120,20 @@ export default function PlantPage() {
               花苞 — 你的期待
             </label>
             <textarea
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
               placeholder="你现在期待的事情或新灵感..."
               value={hope}
               onChange={(e) => setHope(e.target.value)}
+              maxLength={500}
             />
+            <p className="text-xs text-muted-foreground text-right">
+              {hope.length}/500
+            </p>
           </div>
+
+          {error && (
+            <p className="text-sm text-red-500 text-center">{error}</p>
+          )}
 
           <div className="flex gap-3 justify-end">
             <Button variant="outline" onClick={() => setStep("color")}>
@@ -113,7 +142,7 @@ export default function PlantPage() {
             <Button
               className="bg-rose-500 hover:bg-rose-600"
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || !hasContent}
             >
               {submitting ? "种下中..." : "种下玫瑰吧"}
             </Button>
