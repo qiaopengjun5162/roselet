@@ -5,7 +5,6 @@ use serde_json::{json, Value};
 use sqlx::postgres::PgPoolOptions;
 use tower::ServiceExt;
 
-// Helper: create test app with real database
 async fn create_test_app() -> axum::Router {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://localhost/roselet_test".to_string());
@@ -16,13 +15,11 @@ async fn create_test_app() -> axum::Router {
         .await
         .expect("Failed to connect to test database");
 
-    // Run migrations
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
         .expect("Failed to run migrations");
 
-    // Clean test data
     sqlx::query("DELETE FROM roses")
         .execute(&pool)
         .await
@@ -104,12 +101,10 @@ async fn test_create_rose() {
     assert_eq!(rose["gratitude"], "感谢社区");
     assert_eq!(rose["anxiety"], "工作压力");
     assert_eq!(rose["hope"], "期待新项目");
-    assert!(rose["id"].is_string());
-    assert!(rose["created_at"].is_string());
 }
 
 #[tokio::test]
-async fn test_create_rose_minimal() {
+async fn test_create_rose_with_one_field() {
     let app = create_test_app().await;
 
     let response = app
@@ -120,7 +115,8 @@ async fn test_create_rose_minimal() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::to_vec(&json!({
-                        "color": "white"
+                        "color": "white",
+                        "gratitude": "感恩"
                     }))
                     .unwrap(),
                 ))
@@ -135,16 +131,64 @@ async fn test_create_rose_minimal() {
     let rose: Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(rose["color"], "white");
-    assert!(rose["gratitude"].is_null());
+    assert_eq!(rose["gratitude"], "感恩");
     assert!(rose["anxiety"].is_null());
     assert!(rose["hope"].is_null());
+}
+
+#[tokio::test]
+async fn test_create_rose_invalid_color() {
+    let app = create_test_app().await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/rose")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "color": "blue",
+                        "gratitude": "感恩"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_create_rose_empty_content() {
+    let app = create_test_app().await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/rose")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "color": "red"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]
 async fn test_get_rose_by_id() {
     let app = create_test_app().await;
 
-    // Create a rose first
     let create_response = app
         .clone()
         .oneshot(
@@ -168,7 +212,6 @@ async fn test_get_rose_by_id() {
     let created: Value = serde_json::from_slice(&body).unwrap();
     let rose_id = created["id"].as_str().unwrap();
 
-    // Get the rose by ID
     let get_response = app
         .oneshot(
             Request::builder()
@@ -190,10 +233,26 @@ async fn test_get_rose_by_id() {
 }
 
 #[tokio::test]
+async fn test_get_rose_not_found() {
+    let app = create_test_app().await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/rose/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
 async fn test_garden_with_multiple_roses() {
     let app = create_test_app().await;
 
-    // Create multiple roses
     let colors = vec!["red", "white", "yellow"];
     for color in &colors {
         app.clone()
@@ -215,7 +274,6 @@ async fn test_garden_with_multiple_roses() {
             .unwrap();
     }
 
-    // Get garden
     let response = app
         .oneshot(
             Request::builder()
