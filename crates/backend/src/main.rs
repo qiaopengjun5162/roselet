@@ -1,19 +1,14 @@
-mod config;
-mod db;
-mod error;
-mod models;
-mod routes;
-
 use axum::routing::{get, post};
 use axum::Router;
 use tower_http::cors::{Any, CorsLayer};
 
-use config::Config;
+use roselet_backend::config::Config;
+use roselet_backend::routes;
 
 #[tokio::main]
 async fn main() {
     let config = Config::from_env();
-    let pool = db::create_pool(&config.database_url)
+    let pool = roselet_backend::db::create_pool(&config.database_url)
         .await
         .expect("Failed to connect to database");
 
