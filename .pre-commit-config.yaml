@@ -1,0 +1,35 @@
+repos:
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --all -- --check
+        language: system
+        files: \.rs$
+        pass_filenames: false
+
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --all-features -- -D warnings
+        language: system
+        files: \.rs$
+        pass_filenames: false
+
+      - id: taplo-fmt
+        name: taplo fmt
+        entry: taplo fmt --check
+        language: system
+        files: \.toml$
+        pass_filenames: false
+
+      - id: typos
+        name: typos
+        entry: typos
+        language: system
+        pass_filenames: false
+
+      - id: cargo-deny
+        name: cargo deny check
+        entry: cargo deny check
+        language: system
+        pass_filenames: false

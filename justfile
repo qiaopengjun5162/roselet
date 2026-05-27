@@ -62,3 +62,27 @@ changelog:
 # 依赖审计
 audit:
     cargo deny check
+
+# 数据库初始化（创建 + 迁移）
+db-init:
+    createdb roselet 2>/dev/null || true
+    cd crates/backend && sqlx migrate run
+
+# 数据库重置
+db-reset:
+    dropdb roselet 2>/dev/null || true
+    createdb roselet
+    cd crates/backend && sqlx migrate run
+
+# 完整检查（格式 + lint + 审计 + 测试）
+check-all:
+    cargo fmt --all -- --check
+    cargo clippy --all-features -- -D warnings
+    cargo deny check
+    cargo nextest run --all-features -- --test-threads=1
+
+# 提交前检查
+pre-commit:
+    cargo fmt --all
+    cargo clippy --all-features -- -D warnings
+    cargo nextest run --all-features -- --test-threads=1
