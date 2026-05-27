@@ -26,8 +26,15 @@ export async function createRose(data: CreateRose): Promise<Rose> {
   return res.json();
 }
 
-export async function getGarden(): Promise<Rose[]> {
-  const res = await fetch(`${API_BASE}/api/garden`);
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export async function getGarden(page = 1, perPage = 20): Promise<PaginatedResponse<Rose>> {
+  const res = await fetch(`${API_BASE}/api/garden?page=${page}&per_page=${perPage}`);
   if (!res.ok) throw new Error("Failed to fetch garden");
   return res.json();
 }

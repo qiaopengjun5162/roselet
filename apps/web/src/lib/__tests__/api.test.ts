@@ -53,22 +53,42 @@ describe("API Client", () => {
   });
 
   describe("getGarden", () => {
-    it("should return list of roses", async () => {
-      const mockRoses = [
-        { id: "1", color: "red", created_at: "2026-05-27T00:00:00Z" },
-        { id: "2", color: "white", created_at: "2026-05-27T00:00:00Z" },
-      ];
+    it("should return paginated roses", async () => {
+      const mockResponse = {
+        data: [
+          { id: "1", color: "red", created_at: "2026-05-27T00:00:00Z" },
+          { id: "2", color: "white", created_at: "2026-05-27T00:00:00Z" },
+        ],
+        total: 5,
+        page: 1,
+        per_page: 20,
+      };
 
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
-        json: async () => mockRoses,
+        json: async () => mockResponse,
       });
 
       const result = await getGarden();
 
-      expect(result).toEqual(mockRoses);
+      expect(result).toEqual(mockResponse);
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:3001/api/garden"
+        "http://localhost:3001/api/garden?page=1&per_page=20"
+      );
+    });
+
+    it("should accept page and perPage params", async () => {
+      const mockResponse = { data: [], total: 0, page: 2, per_page: 10 };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      await getGarden(2, 10);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/garden?page=2&per_page=10"
       );
     });
 

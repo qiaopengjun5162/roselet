@@ -1,5 +1,5 @@
-use axum::routing::{get, post};
 use axum::Router;
+use axum::routing::{get, post};
 use tower_http::cors::{Any, CorsLayer};
 
 use roselet_backend::config::Config;
@@ -17,10 +17,7 @@ async fn main() {
         .await
         .expect("Failed to run migrations");
 
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
 
     let app = Router::new()
         .route("/api/garden", get(routes::garden::get_garden))

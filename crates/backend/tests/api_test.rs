@@ -1,7 +1,7 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sqlx::postgres::PgPoolOptions;
 use tower::ServiceExt;
 
@@ -52,12 +52,7 @@ async fn test_garden_empty() {
     let app = create_test_app().await;
 
     let response = app
-        .oneshot(
-            Request::builder()
-                .uri("/api/garden")
-                .body(Body::empty())
-                .unwrap(),
-        )
+        .oneshot(Request::builder().uri("/api/garden").body(Body::empty()).unwrap())
         .await
         .unwrap();
 
@@ -65,7 +60,8 @@ async fn test_garden_empty() {
 
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let roses: Value = serde_json::from_slice(&body).unwrap();
-    assert!(roses.as_array().unwrap().is_empty());
+    assert!(roses["data"].as_array().unwrap().is_empty());
+    assert_eq!(roses["total"], 0);
 }
 
 #[tokio::test]
@@ -275,12 +271,7 @@ async fn test_garden_with_multiple_roses() {
     }
 
     let response = app
-        .oneshot(
-            Request::builder()
-                .uri("/api/garden")
-                .body(Body::empty())
-                .unwrap(),
-        )
+        .oneshot(Request::builder().uri("/api/garden").body(Body::empty()).unwrap())
         .await
         .unwrap();
 
@@ -288,7 +279,71 @@ async fn test_garden_with_multiple_roses() {
 
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let roses: Value = serde_json::from_slice(&body).unwrap();
-    let arr = roses.as_array().unwrap();
+    let arr = roses["data"].as_array().unwrap();
 
     assert_eq!(arr.len(), 3);
+    assert_eq!(roses["total"], 3);
+}
+
+#[tokio::test]
+async fn test_garden_pagination() {
+    let app = create_test_app().await;
+
+    for i in 0..5 {
+        app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/rose")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "color": "red",
+                            "gratitude": format!("感恩{}", i)
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+    }
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/garden?page=1&per_page=2")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let page1: Value = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(page1["data"].as_array().unwrap().len(), 2);
+    assert_eq!(page1["total"], 5);
+    assert_eq!(page1["page"], 1);
+    assert_eq!(page1["per_page"], 2);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/garden?page=3&per_page=2")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let page3: Value = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(page3["data"].as_array().unwrap().len(), 1);
+    assert_eq!(page3["total"], 5);
+    assert_eq!(page3["page"], 3);
 }
