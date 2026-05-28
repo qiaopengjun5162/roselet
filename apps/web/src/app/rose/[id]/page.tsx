@@ -216,6 +216,12 @@ export default function RoseDetailPage() {
                     <p className="text-lg leading-relaxed bg-green-50 p-4 rounded-lg">{rose.hope}</p>
                   </div>
                 )}
+                {rose.ai_reply && (
+                  <div className="space-y-2 pt-4 border-t">
+                    <h3 className="font-medium text-purple-600">AI 回复</h3>
+                    <p className="text-lg leading-relaxed bg-purple-50 p-4 rounded-lg italic">{rose.ai_reply}</p>
+                  </div>
+                )}
                 <div className="pt-4 border-t">
                   <Button
                     variant="outline"

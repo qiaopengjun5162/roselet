@@ -38,7 +38,7 @@ just changelog        # 生成 CHANGELOG
 ## API
 ```
 POST   /api/auth/register  # 用户注册（JWT）
-POST   /api/rose           # 种一朵玫瑰
+POST   /api/rose           # 种一朵玫瑰（后台异步生成 AI 回复）
 PUT    /api/rose/:id       # 编辑玫瑰（仅 owner）
 DELETE /api/rose/:id       # 删除玫瑰（仅 owner）
 GET    /api/garden         # 获取花圃（分页，可选 ?color=red/white/yellow）

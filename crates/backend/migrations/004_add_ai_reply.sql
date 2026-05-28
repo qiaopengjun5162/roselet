@@ -1,0 +1,1 @@
+ALTER TABLE roses ADD COLUMN ai_reply TEXT;

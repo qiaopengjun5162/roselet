@@ -54,6 +54,7 @@ export interface Rose {
   user_id: string | null;
   nickname: string | null;
   like_count: number;
+  ai_reply: string | null;
   created_at: string;
 }
 

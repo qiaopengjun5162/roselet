@@ -53,6 +53,30 @@ pub async fn create_rose(
 
     let _ = state.rose_tx.send(response.clone());
 
+    // Generate AI reply in background
+    let pool = state.pool.clone();
+    let rose_id = rose.id;
+    let color = input.color.clone();
+    let gratitude = input.gratitude.clone();
+    let anxiety = input.anxiety.clone();
+    let hope = input.hope.clone();
+    tokio::spawn(async move {
+        if let Some(reply) = crate::ai::generate_reply(
+            &color,
+            gratitude.as_deref(),
+            anxiety.as_deref(),
+            hope.as_deref(),
+        )
+        .await
+        {
+            let _ = sqlx::query("UPDATE roses SET ai_reply = $1 WHERE id = $2")
+                .bind(&reply)
+                .bind(rose_id)
+                .execute(&pool)
+                .await;
+        }
+    });
+
     Ok(Json(response))
 }
 

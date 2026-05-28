@@ -10,6 +10,7 @@ pub struct Rose {
     pub anxiety: Option<String>,
     pub hope: Option<String>,
     pub user_id: Option<Uuid>,
+    pub ai_reply: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -23,6 +24,7 @@ pub struct RoseResponse {
     pub user_id: Option<Uuid>,
     pub nickname: Option<String>,
     pub like_count: i64,
+    pub ai_reply: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -37,6 +39,7 @@ impl RoseResponse {
             user_id: rose.user_id,
             nickname,
             like_count,
+            ai_reply: rose.ai_reply,
             created_at: rose.created_at,
         }
     }
