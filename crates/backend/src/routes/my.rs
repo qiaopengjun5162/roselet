@@ -1,0 +1,50 @@
+use axum::Json;
+use axum::extract::{Query, State};
+use axum::http::HeaderMap;
+
+use crate::auth;
+use crate::error::AppError;
+use crate::models::pagination::{PaginatedResponse, Pagination};
+use crate::models::rose::Rose;
+use crate::state::AppState;
+
+fn require_user_id(headers: &HeaderMap) -> Result<uuid::Uuid, AppError> {
+    headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|token| token.strip_prefix("Bearer "))
+        .and_then(auth::verify_token)
+        .map(|claims| claims.sub)
+        .ok_or(AppError::Forbidden)
+}
+
+pub async fn get_my_roses(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(pagination): Query<Pagination>,
+) -> Result<Json<PaginatedResponse<Rose>>, AppError> {
+    let user_id = require_user_id(&headers)?;
+
+    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE user_id = $1")
+        .bind(user_id)
+        .fetch_one(&state.pool)
+        .await?;
+
+    let roses = sqlx::query_as::<_, Rose>(
+        "SELECT * FROM roses WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3",
+    )
+    .bind(user_id)
+    .bind(pagination.per_page())
+    .bind(pagination.offset())
+    .fetch_all(&state.pool)
+    .await?;
+
+    let page = pagination.page.unwrap_or(1).max(1);
+
+    Ok(Json(PaginatedResponse {
+        data: roses,
+        total,
+        page,
+        per_page: pagination.per_page(),
+    }))
+}

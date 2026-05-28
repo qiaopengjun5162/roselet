@@ -121,3 +121,11 @@ export async function getRose(id: string): Promise<Rose> {
   if (!res.ok) throw new Error("Failed to fetch rose");
   return res.json();
 }
+
+export async function getMyRoses(page = 1, perPage = 20): Promise<PaginatedResponse<Rose>> {
+  const res = await fetch(`${API_BASE}/api/my/roses?page=${page}&per_page=${perPage}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch my roses");
+  return res.json();
+}

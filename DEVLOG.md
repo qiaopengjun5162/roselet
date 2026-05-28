@@ -236,3 +236,39 @@ CI/CD 修复 + 前端登录页 + 文档规范化
 - [ ] Web3 功能（未来）
 
 <!-- 下次会话在此处继续记录 -->
+
+## 2026-05-28 会话 #7
+
+### 会话目标
+实现用户个人花圃 + 消除 unwrap()
+
+### 完成的工作
+
+#### 后端：个人花圃 API
+- 新增 `routes/my.rs`：`GET /api/my/roses`（需 JWT 认证，按 user_id 过滤，分页）
+- `routes/mod.rs` 注册 my 模块
+- `main.rs` 注册 `/api/my/roses` 路由
+- 4 个新集成测试：未认证被拒、只显示自己的玫瑰、空花圃、分页
+
+#### 消除 unwrap()
+- `auth.rs`：`create_token` 返回 `Result<String, AppError>`（不再 expect）
+- `error.rs`：新增 `AppError::Auth(String)` 变体
+- `routes/auth.rs`：`create_token` 调用添加 `?` 传播错误
+- `main.rs`：`main()` 返回 `Result<(), Box<dyn Error>>`，所有 unwrap/expect 替换为 `?`
+
+#### 前端：个人花圃
+- `api.ts`：新增 `getMyRoses()` 函数
+- 新增 `/my` 页面：展示当前用户玫瑰列表（分页 + 空状态 + 未登录跳转）
+- `nav.tsx`：登录状态下显示"我的花圃"链接
+
+### 当前状态
+- 28 个后端测试 + 12 个前端测试全过
+- clippy + fmt 干净
+- 后端源码无 unwrap()（仅保留安全的 unwrap_or）
+
+### 待办事项
+- [ ] 小程序适配（未来）
+- [ ] WASM AI 模块（未来）
+- [ ] Web3 功能（未来）
+
+<!-- 下次会话在此处继续记录 -->

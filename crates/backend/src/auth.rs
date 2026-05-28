@@ -3,6 +3,8 @@ use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode}
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::error::AppError;
+
 const JWT_SECRET: &[u8] = b"roselet-secret-key";
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -12,7 +14,7 @@ pub struct Claims {
     pub exp: usize,
 }
 
-pub fn create_token(user_id: Uuid, nickname: &str) -> String {
+pub fn create_token(user_id: Uuid, nickname: &str) -> Result<String, AppError> {
     let exp = (Utc::now() + Duration::days(30)).timestamp() as usize;
     let claims = Claims {
         sub: user_id,
@@ -24,7 +26,7 @@ pub fn create_token(user_id: Uuid, nickname: &str) -> String {
         &claims,
         &EncodingKey::from_secret(JWT_SECRET),
     )
-    .expect("Failed to create token")
+    .map_err(|e| AppError::Auth(e.to_string()))
 }
 
 pub fn verify_token(token: &str) -> Option<Claims> {

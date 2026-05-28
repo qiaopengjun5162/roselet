@@ -58,6 +58,10 @@ async fn create_test_app() -> axum::Router {
                 .delete(roselet_backend::routes::rose::delete_rose),
         )
         .route(
+            "/api/my/roses",
+            axum::routing::get(roselet_backend::routes::my::get_my_roses),
+        )
+        .route(
             "/api/ws",
             axum::routing::get(roselet_backend::routes::ws::ws_handler),
         )
@@ -700,4 +704,129 @@ async fn test_delete_rose_not_found() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_my_roses_requires_auth() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let res = client.get(format!("{}/api/my/roses", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_my_roses_only_own() {
+    let base = spawn_test_server().await;
+    let auth1 = register_user(&base, "owner").await;
+    let auth2 = register_user(&base, "other").await;
+    let client = reqwest::Client::new();
+
+    for i in 0..2 {
+        client
+            .post(format!("{}/api/rose", base))
+            .header(
+                "Authorization",
+                format!("Bearer {}", auth1["token"].as_str().unwrap()),
+            )
+            .json(&json!({ "color": "red", "gratitude": format!("owner rose {}", i) }))
+            .send()
+            .await
+            .unwrap();
+    }
+
+    client
+        .post(format!("{}/api/rose", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth2["token"].as_str().unwrap()),
+        )
+        .json(&json!({ "color": "white", "gratitude": "other rose" }))
+        .send()
+        .await
+        .unwrap();
+
+    let res = client
+        .get(format!("{}/api/my/roses", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth1["token"].as_str().unwrap()),
+        )
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["total"], 2);
+    assert_eq!(body["data"].as_array().unwrap().len(), 2);
+
+    let res = client
+        .get(format!("{}/api/my/roses", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth2["token"].as_str().unwrap()),
+        )
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["total"], 1);
+    assert_eq!(body["data"].as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn test_my_roses_empty() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "lonely").await;
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("{}/api/my/roses", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth["token"].as_str().unwrap()),
+        )
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["total"], 0);
+    assert!(body["data"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn test_my_roses_pagination() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "gardener").await;
+    let client = reqwest::Client::new();
+
+    for i in 0..5 {
+        client
+            .post(format!("{}/api/rose", base))
+            .header(
+                "Authorization",
+                format!("Bearer {}", auth["token"].as_str().unwrap()),
+            )
+            .json(&json!({ "color": "red", "gratitude": format!("rose {}", i) }))
+            .send()
+            .await
+            .unwrap();
+    }
+
+    let res = client
+        .get(format!("{}/api/my/roses?page=1&per_page=2", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth["token"].as_str().unwrap()),
+        )
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["total"], 5);
+    assert_eq!(body["data"].as_array().unwrap().len(), 2);
+    assert_eq!(body["page"], 1);
+    assert_eq!(body["per_page"], 2);
 }

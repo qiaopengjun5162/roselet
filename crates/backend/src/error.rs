@@ -18,6 +18,9 @@ pub enum AppError {
 
     #[error("数据库错误: {0}")]
     Database(#[from] sqlx::Error),
+
+    #[error("认证错误: {0}")]
+    Auth(String),
 }
 
 impl IntoResponse for AppError {
@@ -30,6 +33,7 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "服务器内部错误".to_string(),
             ),
+            AppError::Auth(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
         (status, Json(json!({ "error": message }))).into_response()

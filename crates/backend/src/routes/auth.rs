@@ -21,7 +21,7 @@ pub async fn register(
     .fetch_one(&state.pool)
     .await?;
 
-    let token = auth::create_token(user.id, &user.nickname);
+    let token = auth::create_token(user.id, &user.nickname)?;
 
     Ok(Json(AuthResponse { token, user }))
 }

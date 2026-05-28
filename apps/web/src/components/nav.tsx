@@ -35,6 +35,9 @@ export function Nav() {
       </Link>
       {user ? (
         <>
+          <Link href="/my" className="text-sm text-muted-foreground hover:text-rose-600">
+            我的花圃
+          </Link>
           <span className="text-sm text-muted-foreground">{user.nickname}</span>
           <button
             onClick={handleLogout}
