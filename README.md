@@ -1,5 +1,8 @@
 # Roselet
 
+![Rust](https://img.shields.io/badge/Rust-1.88.0-orange?logo=rust)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
 A community icebreaker web app: plant roses (gratitude), buds (hope), and thorns (anxiety) to grow a shared garden.
 
 [中文文档](README_zh.md)

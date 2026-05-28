@@ -1,5 +1,8 @@
 # Roselet
 
+![Rust](https://img.shields.io/badge/Rust-1.88.0-orange?logo=rust)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
 社区破冰互动 Web 应用：种下玫瑰（感恩）、花苞（期待）、尖刺（焦虑），形成社区花圃。
 
 [English](README.md)
