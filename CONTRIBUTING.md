@@ -1,72 +1,76 @@
-# 贡献指南
+# Contributing to Roselet
 
-感谢你对 Roselet 项目的关注！
+Thank you for your interest in contributing to Roselet!
 
-## 开发环境
+## Getting Started
 
-1. 安装依赖
-   - Rust (stable)
-   - Node.js 20+
-   - pnpm
-   - PostgreSQL 16+
-   - cargo-nextest, sqlx-cli
+### Prerequisites
 
-2. 克隆项目
+- Rust (stable)
+- Node.js 22+
+- pnpm
+- PostgreSQL 16+
+- cargo-nextest, sqlx-cli
+
+### Setup
+
+1. Clone the repository
    ```bash
    git clone https://github.com/qiaopengjun5162/roselet.git
    cd roselet
    ```
 
-3. 初始化数据库
+2. Initialize the database
    ```bash
    createdb roselet
    just migrate
    ```
 
-4. 启动开发环境
+3. Start the development environment
    ```bash
    just dev
    ```
 
-## 开发流程
+## Development Workflow
 
-1. 创建分支
+1. Create a feature branch
    ```bash
    git checkout -b feat/your-feature
    ```
 
-2. 开发 + 测试
+2. Develop and test
    ```bash
-   just check-all  # 格式化 + lint + 测试
+   just check-all  # format + lint + test
    ```
 
-3. 提交（Conventional Commits）
+3. Commit (Conventional Commits)
    ```bash
    git commit -m "feat: add new feature"
    ```
 
-4. 推送 + PR
+4. Push and open a Pull Request
    ```bash
    git push origin feat/your-feature
    ```
 
-## Commit 规范
+## Commit Convention
 
-使用 Conventional Commits：
-- `feat:` 新功能
-- `fix:` 修复
-- `docs:` 文档
-- `refactor:` 重构
-- `test:` 测试
-- `chore:` 工具/配置
+We use [Conventional Commits](https://www.conventionalcommits.org/):
 
-## 代码规范
+- `feat:` — new feature
+- `fix:` — bug fix
+- `docs:` — documentation
+- `refactor:` — code refactoring
+- `test:` — adding or updating tests
+- `chore:` — tooling / config changes
+
+## Code Standards
 
 - Rust: `cargo fmt` + `cargo clippy`
 - TypeScript: ESLint + Prettier
-- 测试覆盖率尽可能 100%
-- 代码附必要注释
+- Aim for 100% test coverage
+- Write meaningful comments only when the "why" is non-obvious
 
-## 问题反馈
+## Reporting Issues
 
-请使用 GitHub Issues 反馈问题。
+Please use [GitHub Issues](https://github.com/qiaopengjun5162/roselet/issues) to report bugs or request features.
