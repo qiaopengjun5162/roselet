@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getUser, logout, type User } from "@/lib/api";
+import { isMuted, toggleMute, startBgMusic, stopBgMusic } from "@/lib/sound";
 
 export function Nav() {
   const [user, setUser] = useState<User | null>(null);
+  const [muted, setMuted] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,6 +29,18 @@ export function Nav() {
 
   return (
     <nav className="flex gap-4 items-center">
+      <button
+        onClick={() => {
+          const nowMuted = toggleMute();
+          setMuted(nowMuted);
+          if (nowMuted) stopBgMusic();
+          else startBgMusic();
+        }}
+        className="text-sm text-muted-foreground hover:text-rose-600"
+        title={muted ? "开启声音" : "关闭声音"}
+      >
+        {muted ? "🔇" : "🔊"}
+      </button>
       <Link href="/plant" className="text-sm text-muted-foreground hover:text-rose-600">
         种玫瑰
       </Link>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getGarden, type Rose } from "@/lib/api";
 import { connectGardenWs } from "@/lib/ws";
+import { playNotify } from "@/lib/sound";
 
 const COLOR_MAP: Record<string, { emoji: string; label: string }> = {
   red: { emoji: "🌹", label: "红玫瑰" },
@@ -47,6 +48,7 @@ export default function GardenPage() {
     const disconnect = connectGardenWs((rose) => {
       setRoses((prev) => [rose as Rose, ...prev]);
       setTotal((t) => t + 1);
+      playNotify();
     });
     return disconnect;
   }, []);

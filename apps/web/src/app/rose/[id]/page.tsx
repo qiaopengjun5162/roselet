@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRose, updateRose, deleteRose, getUser, toggleLike, type Rose, type UpdateRose } from "@/lib/api";
+import { playClick, playPlant, playLike } from "@/lib/sound";
 
 const COLOR_MAP: Record<string, { emoji: string; label: string; bg: string }> = {
   red: { emoji: "🌹", label: "红玫瑰", bg: "from-red-50 to-white" },
@@ -40,6 +41,7 @@ export default function RoseDetailPage() {
 
   function startEdit() {
     if (!rose) return;
+    playClick();
     setEditData({
       color: rose.color,
       gratitude: rose.gratitude ?? undefined,
@@ -56,6 +58,7 @@ export default function RoseDetailPage() {
       const updated = await updateRose(rose.id, editData);
       setRose(updated);
       setEditing(false);
+      playPlant();
     } catch {
       setError("保存失败");
     } finally {
@@ -80,6 +83,7 @@ export default function RoseDetailPage() {
     try {
       const res = await toggleLike(rose.id);
       setRose({ ...rose, like_count: res.like_count });
+      playLike();
     } catch {
       // ignore
     }
