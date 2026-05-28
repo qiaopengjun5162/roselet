@@ -13,9 +13,11 @@
 - [x] POST /api/rose - 创建玫瑰
 - [x] GET /api/garden - 获取花圃（分页）
 - [x] GET /api/rose/:id - 获取单朵玫瑰
+- [x] POST /api/auth/register - 用户注册（JWT）
 - [x] 输入验证（颜色、字段长度、至少一个字段）
 - [x] thiserror 错误处理（404/400/500 区分）
 - [x] CORS 配置
+- [x] JWT 认证（jsonwebtoken v9）
 
 ### 前端功能
 - [x] 首页：规则介绍 + "种一朵玫瑰"按钮
@@ -34,7 +36,7 @@
 - [x] .pre-commit-config.yaml
 
 ### 测试
-- [x] 9 个后端集成测试
+- [x] 11 个后端集成测试
 - [x] 7 个前端单元测试
 
 ### 实时功能
@@ -42,8 +44,7 @@
 
 ## 待办
 
-- [ ] 用户认证
-- [ ] 用户认证
+- [ ] 前端登录/注册页面
 - [ ] 小程序适配
 - [ ] WASM AI 模块
 - [ ] Web3 功能

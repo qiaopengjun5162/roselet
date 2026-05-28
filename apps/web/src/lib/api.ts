@@ -1,5 +1,49 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+export interface User {
+  id: string;
+  nickname: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+}
+
+export function setToken(token: string) {
+  localStorage.setItem("token", token);
+}
+
+export function getUser(): User | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem("user");
+  return raw ? JSON.parse(raw) : null;
+}
+
+export function setUser(user: User) {
+  localStorage.setItem("user", JSON.stringify(user));
+}
+
+export function logout() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+}
+
+export async function register(nickname: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nickname }),
+  });
+  if (!res.ok) throw new Error("Failed to register");
+  return res.json();
+}
+
 export interface Rose {
   id: string;
   color: string;
@@ -17,9 +61,13 @@ export interface CreateRose {
 }
 
 export async function createRose(data: CreateRose): Promise<Rose> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}/api/rose`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to create rose");

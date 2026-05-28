@@ -34,12 +34,15 @@ export default function RootLayout({
             <Link href="/" className="text-xl font-bold text-rose-700">
               🌹 Roselet
             </Link>
-            <nav className="flex gap-4">
+            <nav className="flex gap-4 items-center">
               <Link href="/plant" className="text-sm text-muted-foreground hover:text-rose-600">
                 种玫瑰
               </Link>
               <Link href="/garden" className="text-sm text-muted-foreground hover:text-rose-600">
                 花圃
+              </Link>
+              <Link href="/login" className="text-sm text-rose-600 font-medium hover:text-rose-700">
+                登录
               </Link>
             </nav>
           </div>

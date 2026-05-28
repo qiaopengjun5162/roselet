@@ -147,4 +147,38 @@
 
 ---
 
+---
+
+## 2026-05-28 会话 #4
+
+### 会话目标
+修复 CI/CD 失败 + 实现后端用户认证
+
+### 完成的工作
+
+#### CI/CD 修复
+- 后端 workflow 添加 `cargo install cargo-nextest --locked` 步骤
+- 测试命令从 `-- --test-threads=1` 改为 `-j1`
+- 根 `package.json` 添加 `packageManager: "pnpm@11.3.0"` 解决 pnpm 版本未指定问题
+
+#### 后端：用户认证
+- 新增 `auth.rs`：JWT token 创建/验证（jsonwebtoken v9）
+- 新增 `models/user.rs`：User 模型 + RegisterRequest + AuthResponse
+- 新增 `routes/auth.rs`：`POST /api/auth/register`（nickname 唯一，ON CONFLICT upsert）
+- 新增 `migrations/002_create_user.sql`：users 表 + roses 表添加 user_id 外键
+- `routes/rose.rs`：创建玫瑰时提取可选 user_id（Bearer token）
+- 11 个后端集成测试全部通过
+
+### 当前状态
+- 已提交并推送到 main
+- 后端认证完整，前端认证页面待实现
+
+### 待办事项
+- [ ] 前端登录/注册页面
+- [ ] 小程序适配（未来）
+- [ ] WASM AI 模块（未来）
+- [ ] Web3 功能（未来）
+
+---
+
 <!-- 下次会话在此处继续记录 -->
