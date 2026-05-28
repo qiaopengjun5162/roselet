@@ -893,3 +893,32 @@ async fn test_garden_includes_nickname() {
     let anon = roses.iter().find(|r| r["nickname"].is_null()).unwrap();
     assert_eq!(anon["gratitude"], "anonymous");
 }
+
+#[tokio::test]
+async fn test_garden_filter_by_color() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    client.post(format!("{}/api/rose", base)).json(&json!({ "color": "red", "gratitude": "r1" })).send().await.unwrap();
+    client.post(format!("{}/api/rose", base)).json(&json!({ "color": "red", "gratitude": "r2" })).send().await.unwrap();
+    client.post(format!("{}/api/rose", base)).json(&json!({ "color": "white", "gratitude": "w1" })).send().await.unwrap();
+
+    let res = client.get(format!("{}/api/garden?color=red", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["total"], 2);
+    assert_eq!(body["data"].as_array().unwrap().len(), 2);
+
+    let res = client.get(format!("{}/api/garden?color=white", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["total"], 1);
+
+    let res = client.get(format!("{}/api/garden?color=yellow", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["total"], 0);
+
+    let res = client.get(format!("{}/api/garden?color=blue", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}

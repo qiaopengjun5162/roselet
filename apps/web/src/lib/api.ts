@@ -111,8 +111,10 @@ export interface PaginatedResponse<T> {
   per_page: number;
 }
 
-export async function getGarden(page = 1, perPage = 20): Promise<PaginatedResponse<Rose>> {
-  const res = await fetch(`${API_BASE}/api/garden?page=${page}&per_page=${perPage}`);
+export async function getGarden(page = 1, perPage = 20, color?: string): Promise<PaginatedResponse<Rose>> {
+  let url = `${API_BASE}/api/garden?page=${page}&per_page=${perPage}`;
+  if (color) url += `&color=${color}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch garden");
   return res.json();
 }

@@ -20,12 +20,13 @@ export default function GardenPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const [colorFilter, setColorFilter] = useState<string>("");
 
-  const loadRoses = (p: number) => {
+  const loadRoses = (p: number, color?: string) => {
     if (p === 1) setLoading(true);
     else setLoadingMore(true);
 
-    getGarden(p)
+    getGarden(p, 20, color)
       .then((res) => {
         setRoses((prev) => (p === 1 ? res.data : [...prev, ...res.data]));
         setTotal(res.total);
@@ -39,8 +40,8 @@ export default function GardenPage() {
   };
 
   useEffect(() => {
-    loadRoses(1);
-  }, []);
+    loadRoses(1, colorFilter || undefined);
+  }, [colorFilter]);
 
   useEffect(() => {
     const disconnect = connectGardenWs((rose) => {
@@ -58,6 +59,20 @@ export default function GardenPage() {
           <Link href="/plant">
             <Button className="bg-rose-500 hover:bg-rose-600">种一朵玫瑰</Button>
           </Link>
+        </div>
+
+        <div className="flex gap-2">
+          {[{ value: "", label: "全部" }, { value: "red", label: "红玫瑰" }, { value: "white", label: "白玫瑰" }, { value: "yellow", label: "黄玫瑰" }].map((opt) => (
+            <Button
+              key={opt.value}
+              variant={colorFilter === opt.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setColorFilter(opt.value)}
+              className={colorFilter === opt.value ? "bg-rose-500 hover:bg-rose-600" : ""}
+            >
+              {opt.label}
+            </Button>
+          ))}
         </div>
 
         {loading ? (
@@ -123,7 +138,7 @@ export default function GardenPage() {
               <div className="text-center pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => loadRoses(page + 1)}
+                  onClick={() => loadRoses(page + 1, colorFilter || undefined)}
                   disabled={loadingMore}
                 >
                   {loadingMore ? "加载中..." : "加载更多"}

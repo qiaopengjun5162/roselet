@@ -41,7 +41,7 @@ POST   /api/auth/register  # 用户注册（JWT）
 POST   /api/rose           # 种一朵玫瑰
 PUT    /api/rose/:id       # 编辑玫瑰（仅 owner）
 DELETE /api/rose/:id       # 删除玫瑰（仅 owner）
-GET    /api/garden         # 获取花圃（分页）
+GET    /api/garden         # 获取花圃（分页，可选 ?color=red/white/yellow）
 GET    /api/rose/:id       # 获取单朵玫瑰
 GET    /api/my/roses       # 获取个人花圃（需 JWT，分页）
 GET    /api/ws             # WebSocket 实时推送
