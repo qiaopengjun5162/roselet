@@ -1,4 +1,5 @@
 use axum::Router;
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use tower_http::cors::{Any, CorsLayer};
 
@@ -34,12 +35,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/api/openapi.json",
             get(|| async {
-                axum::response::Json(
-                    serde_json::from_str::<serde_json::Value>(include_str!(
-                        "routes/openapi.json"
-                    ))
-                    .unwrap(),
-                )
+                match serde_json::from_str::<serde_json::Value>(include_str!("routes/openapi.json"))
+                {
+                    Ok(json) => axum::response::Json(json).into_response(),
+                    Err(e) => (
+                        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to parse openapi.json: {}", e),
+                    )
+                        .into_response(),
+                }
             }),
         )
         .layer(cors)

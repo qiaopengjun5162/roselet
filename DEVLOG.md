@@ -400,3 +400,69 @@ CI/CD 修复 + 前端登录页 + 文档规范化
 - [ ] Web3 功能（未来）
 
 <!-- 下次会话在此处继续记录 -->
+
+## 2026-05-28 会话 #11
+
+### 会话目标
+Tone.js 音效升级 + AI 个性化回复 + 交互式种花页面 + Docker 部署 + Swagger 文档
+
+### 完成的工作
+
+#### 音效系统（Web Audio API → Tone.js）
+- `apps/web/src/lib/sound.ts`：用 Tone.js 重写音效系统
+- 包含：playClick、playPlant、playComplete、playLike、playNotify
+- 背景音乐：startBgMusic / stopBgMusic / toggleMute
+- 种花页面、花圃页面、详情页集成音效
+
+#### AI 个性化回复
+- `crates/backend/src/ai.rs`：通过 OpenAI 兼容 API 生成回复
+- 环境变量：OPENAI_API_KEY、OPENAI_BASE_URL、OPENAI_MODEL
+- 种花后后台异步生成（tokio::spawn），不阻塞响应
+- `migrations/004_add_ai_reply.sql`：roses 表添加 ai_reply 字段
+- 无 API Key 时优雅跳过（返回 None）
+- 前端详情页紫色区域展示 AI 回复
+
+#### 交互式种花页面重设计
+- `apps/web/src/app/plant/page.tsx`：完全重写
+- 3 个可点击热点（感恩/焦虑/期待），对话框弹出输入
+- 视觉反馈：脉冲动画（未填写）→ 实心（已填写）
+- 种植成功页面带动画
+
+#### Docker 一键部署
+- `Dockerfile.backend`：Rust 多阶段构建（builder + runtime）
+- `Dockerfile.frontend`：Node.js 多阶段构建
+- `docker-compose.yml`：PostgreSQL + 后端 + 前端三服务编排
+- `.dockerignore`：排除不必要文件
+
+#### Swagger API 文档
+- `crates/backend/src/routes/docs.rs`：Swagger UI 处理器
+- `crates/backend/src/routes/swagger.html`：Swagger UI HTML
+- `crates/backend/src/routes/openapi.json`：完整 OpenAPI 3.0 规范
+- 访问 `/swagger` 查看交互式文档，支持 JWT 认证测试
+
+#### 消除最后的 unwrap()
+- `main.rs`：openapi.json 解析改为 match + 错误响应
+
+### 遇到的问题及解决
+
+1. **sed 命令破坏 rose.rs**：sed 修改 Rust 结构体时插入了字面量 `\n` 而非换行。解决：用 Write 工具完全重写文件。
+2. **reqwest 找不到**：ai.rs 使用 reqwest 但它在 dev-dependencies。解决：移到 [dependencies]。
+3. **test_like_and_unlike 失败（500）**：likes 表迁移未应用到测试数据库。解决：对 roselet_test 数据库运行 `sqlx migrate run`。
+4. **TypeScript 类型错误**：User 接口缺少 created_at 字段导致 CI 构建失败。解决：api.ts 中添加 `created_at: string`。
+5. **Uuid 未导入**：测试文件使用 `Uuid::nil()` 但未导入。解决：添加 `use uuid::Uuid;`。
+6. **from_rose 参数不匹配**：添加 like_count 参数后部分调用点未更新。解决：逐一修复调用点。
+7. **main.rs 残留 unwrap()**：openapi.json 解析处的 unwrap 未被注意到。解决：改为 match + 错误响应。
+
+### 当前状态
+- 36 个后端测试 + 12 个前端测试全过
+- 后端源码无 unwrap() / expect()
+- Docker 一键部署就绪
+- Swagger API 文档就绪
+- 已提交并推送到 main
+
+### 待办事项
+- [ ] 小程序适配（未来）
+- [ ] WASM AI 模块（未来）
+- [ ] Web3 功能（未来）
+
+<!-- 下次会话在此处继续记录 -->

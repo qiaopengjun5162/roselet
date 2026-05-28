@@ -10,32 +10,43 @@
 - [x] GitHub Actions CI/CD
 
 ### 后端功能
-- [x] POST /api/rose - 创建玫瑰
-- [x] GET /api/garden - 获取花圃（分页）
+- [x] POST /api/rose - 创建玫瑰（后台异步生成 AI 回复）
+- [x] GET /api/garden - 获取花圃（分页 + 颜色筛选）
 - [x] GET /api/rose/:id - 获取单朵玫瑰
 - [x] PUT /api/rose/:id - 编辑玫瑰（仅创建者）
 - [x] DELETE /api/rose/:id - 删除玫瑰（仅创建者）
 - [x] POST /api/auth/register - 用户注册（JWT）
 - [x] GET /api/my/roses - 获取个人花圃（需 JWT，分页）
+- [x] GET /api/user/profile - 用户资料 + 种花统计（需 JWT）
+- [x] POST /api/rose/:id/like - 点赞/取消点赞（需 JWT）
 - [x] GET /api/ws - WebSocket 实时推送
+- [x] GET /api/openapi.json - OpenAPI 3.0 规范
+- [x] AI 个性化回复（OpenAI 兼容 API，后台异步）
 - [x] 输入验证（颜色、字段长度、至少一个字段）
 - [x] thiserror 错误处理（404/400/403/500 区分）
 - [x] CORS 配置
 - [x] JWT 认证（jsonwebtoken v9）
+- [x] Swagger API 文档（/swagger）
 
 ### 前端功能
 - [x] 首页：规则介绍 + "种一朵玫瑰"按钮
-- [x] 种花页：选颜色 + 表单 + 验证
+- [x] 种花页：交互式玫瑰（3 个可点击热点）+ 对话框输入 + 种植成功动画
 - [x] 花圃页：分页加载 + 卡片展示 + WebSocket 实时更新 + 颜色筛选
-- [x] 玫瑰详情页：/rose/[id] + 编辑/删除（owner）+ 点赞
+- [x] 玫瑰详情页：/rose/[id] + 编辑/删除（owner）+ 点赞 + AI 回复展示
 - [x] 登录页：昵称注册 + JWT 存储
 - [x] 导航栏：登录状态 + 昵称显示 + 登出 + 我的花圃 + 资料链接
 - [x] 个人花圃页：/my + 只显示自己的玫瑰
+- [x] 用户资料页：/profile + 种花统计
+- [x] 音效系统（Tone.js）：种植/点赞/通知/背景音乐 + 静音切换
 - [x] 响应式布局
 
 ### 测试
 - [x] 36 个后端集成测试
 - [x] 12 个前端单元测试
+
+### 部署
+- [x] Docker 一键部署（docker-compose：PostgreSQL + 后端 + 前端）
+- [x] Swagger API 文档（/swagger，OpenAPI 3.0）
 
 ### 文档
 - [x] README.md（英文）+ README_zh.md（中文）
