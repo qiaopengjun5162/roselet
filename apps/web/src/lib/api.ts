@@ -50,6 +50,7 @@ export interface Rose {
   gratitude: string | null;
   anxiety: string | null;
   hope: string | null;
+  user_id: string | null;
   created_at: string;
 }
 
@@ -60,18 +61,46 @@ export interface CreateRose {
   hope?: string;
 }
 
-export async function createRose(data: CreateRose): Promise<Rose> {
+export interface UpdateRose {
+  color?: string;
+  gratitude?: string | null;
+  anxiety?: string | null;
+  hope?: string | null;
+}
+
+function authHeaders(): Record<string, string> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
 
+export async function createRose(data: CreateRose): Promise<Rose> {
   const res = await fetch(`${API_BASE}/api/rose`, {
     method: "POST",
-    headers,
+    headers: authHeaders(),
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to create rose");
   return res.json();
+}
+
+export async function updateRose(id: string, data: UpdateRose): Promise<Rose> {
+  const res = await fetch(`${API_BASE}/api/rose/${id}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update rose");
+  return res.json();
+}
+
+export async function deleteRose(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/rose/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to delete rose");
 }
 
 export interface PaginatedResponse<T> {

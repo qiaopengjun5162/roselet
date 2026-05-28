@@ -53,7 +53,9 @@ async fn create_test_app() -> axum::Router {
         )
         .route(
             "/api/rose/{id}",
-            axum::routing::get(roselet_backend::routes::rose::get_rose),
+            axum::routing::get(roselet_backend::routes::rose::get_rose)
+                .put(roselet_backend::routes::rose::update_rose)
+                .delete(roselet_backend::routes::rose::delete_rose),
         )
         .route(
             "/api/ws",
@@ -525,4 +527,177 @@ async fn test_websocket_receives_new_rose() {
     assert_eq!(rose["gratitude"], "ws测试");
 
     ws_stream.close(None).await.ok();
+}
+
+#[tokio::test]
+async fn test_update_rose_by_owner() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "dave").await;
+    let token = auth["token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "原始" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "yellow", "gratitude": "已修改" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let updated: Value = res.json().await.unwrap();
+    assert_eq!(updated["color"], "yellow");
+    assert_eq!(updated["gratitude"], "已修改");
+}
+
+#[tokio::test]
+async fn test_update_rose_forbidden() {
+    let base = spawn_test_server().await;
+    let auth1 = register_user(&base, "eve").await;
+    let auth2 = register_user(&base, "frank").await;
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth1["token"].as_str().unwrap()),
+        )
+        .json(&json!({ "color": "red", "gratitude": "eve的玫瑰" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth2["token"].as_str().unwrap()),
+        )
+        .json(&json!({ "gratitude": "尝试修改" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_update_rose_no_auth() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "greg").await;
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth["token"].as_str().unwrap()),
+        )
+        .json(&json!({ "color": "red", "gratitude": "greg的玫瑰" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .json(&json!({ "gratitude": "未认证修改" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_delete_rose_by_owner() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "helen").await;
+    let token = auth["token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "white", "gratitude": "待删除" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .delete(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get(format!("{}/api/rose/{}", base, rose_id)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_delete_rose_forbidden() {
+    let base = spawn_test_server().await;
+    let auth1 = register_user(&base, "ivan").await;
+    let auth2 = register_user(&base, "judy").await;
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth1["token"].as_str().unwrap()),
+        )
+        .json(&json!({ "color": "red", "gratitude": "ivan的玫瑰" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .delete(format!("{}/api/rose/{}", base, rose_id))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth2["token"].as_str().unwrap()),
+        )
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_delete_rose_not_found() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "kate").await;
+    let client = reqwest::Client::new();
+
+    let res = client
+        .delete(format!(
+            "{}/api/rose/00000000-0000-0000-0000-000000000000",
+            base
+        ))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth["token"].as_str().unwrap()),
+        )
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }

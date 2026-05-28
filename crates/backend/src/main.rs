@@ -25,7 +25,12 @@ async fn main() {
         .route("/api/auth/register", post(routes::auth::register))
         .route("/api/garden", get(routes::garden::get_garden))
         .route("/api/rose", post(routes::rose::create_rose))
-        .route("/api/rose/{id}", get(routes::rose::get_rose))
+        .route(
+            "/api/rose/{id}",
+            get(routes::rose::get_rose)
+                .put(routes::rose::update_rose)
+                .delete(routes::rose::delete_rose),
+        )
         .route("/api/ws", get(routes::ws::ws_handler))
         .layer(cors)
         .with_state(state);

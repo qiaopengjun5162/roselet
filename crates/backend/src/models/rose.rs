@@ -59,3 +59,42 @@ impl CreateRose {
         Ok(())
     }
 }
+
+/// 编辑玫瑰请求
+#[derive(Debug, Deserialize)]
+pub struct UpdateRose {
+    pub color: Option<String>,
+    pub gratitude: Option<Option<String>>,
+    pub anxiety: Option<Option<String>>,
+    pub hope: Option<Option<String>>,
+}
+
+impl UpdateRose {
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(ref color) = self.color {
+            let valid_colors = ["red", "white", "yellow"];
+            if !valid_colors.contains(&color.as_str()) {
+                return Err(format!(
+                    "Invalid color '{}'. Must be one of: {:?}",
+                    color, valid_colors
+                ));
+            }
+        }
+        if let Some(Some(ref text)) = self.gratitude {
+            if text.len() > 500 {
+                return Err("Gratitude text too long (max 500 chars)".to_string());
+            }
+        }
+        if let Some(Some(ref text)) = self.anxiety {
+            if text.len() > 500 {
+                return Err("Anxiety text too long (max 500 chars)".to_string());
+            }
+        }
+        if let Some(Some(ref text)) = self.hope {
+            if text.len() > 500 {
+                return Err("Hope text too long (max 500 chars)".to_string());
+            }
+        }
+        Ok(())
+    }
+}
