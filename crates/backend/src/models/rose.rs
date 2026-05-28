@@ -10,6 +10,7 @@ pub struct Rose {
     pub gratitude: Option<String>,
     pub anxiety: Option<String>,
     pub hope: Option<String>,
+    pub user_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
 }
 

@@ -25,6 +25,11 @@ async fn create_test_app() -> axum::Router {
         .await
         .expect("Failed to clean test data");
 
+    sqlx::query("DELETE FROM users")
+        .execute(&pool)
+        .await
+        .expect("Failed to clean users");
+
     let state = roselet_backend::state::AppState::new(pool);
     let cors = tower_http::cors::CorsLayer::new()
         .allow_origin(tower_http::cors::Any)
@@ -32,6 +37,10 @@ async fn create_test_app() -> axum::Router {
         .allow_headers(tower_http::cors::Any);
 
     axum::Router::new()
+        .route(
+            "/api/auth/register",
+            axum::routing::post(roselet_backend::routes::auth::register),
+        )
         .route(
             "/api/garden",
             axum::routing::get(roselet_backend::routes::garden::get_garden),
@@ -351,4 +360,52 @@ async fn test_garden_pagination() {
     assert_eq!(page3["data"].as_array().unwrap().len(), 1);
     assert_eq!(page3["total"], 5);
     assert_eq!(page3["page"], 3);
+}
+
+#[tokio::test]
+async fn test_register_user() {
+    let app = create_test_app().await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/auth/register")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({ "nickname": "alice" })).unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let result: Value = serde_json::from_slice(&body).unwrap();
+
+    assert!(result["token"].as_str().is_some());
+    assert_eq!(result["user"]["nickname"], "alice");
+}
+
+#[tokio::test]
+async fn test_register_empty_nickname() {
+    let app = create_test_app().await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/auth/register")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({ "nickname": "" })).unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }

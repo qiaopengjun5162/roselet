@@ -22,6 +22,7 @@ async fn main() {
     let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
 
     let app = Router::new()
+        .route("/api/auth/register", post(routes::auth::register))
         .route("/api/garden", get(routes::garden::get_garden))
         .route("/api/rose", post(routes::rose::create_rose))
         .route("/api/rose/{id}", get(routes::rose::get_rose))
