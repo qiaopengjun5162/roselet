@@ -182,3 +182,75 @@
 ---
 
 <!-- 下次会话在此处继续记录 -->
+
+---
+
+## 2026-05-28 会话 #5
+
+### 会话目标
+CI/CD 修复 + 前端登录页 + 文档规范化
+
+### 完成的工作
+
+#### CI/CD 修复
+- workflow 添加 cargo-nextest 安装步骤
+- pnpm 降级到 9.15.4 兼容 Node 20
+- lockfile 从 apps/web 移到 workspace 根目录
+- 根 package.json 添加 test 脚本
+
+#### 前端认证
+- 登录页（/login）：昵称输入 + JWT 存储
+- api.ts 增加 auth 辅助函数（getToken/setToken/getUser/setUser/logout）
+- createRose 自动携带 Authorization 头
+- 导航栏 Nav 客户端组件：登录状态 + 昵称 + 登出
+
+#### 文档
+- README.md（英文）+ README_zh.md（中文）
+- CONTRIBUTING.md 改为英文
+
+### 当前状态
+- 18 个后端测试通过
+- CI/CD 全部通过
+
+---
+
+## 2026-05-28 会话 #6
+
+### 会话目标
+补测试 + 实现玫瑰编辑/删除
+
+### 完成的工作
+
+#### 测试补充（18 → 24）
+- WebSocket 实时推送验证
+- JWT 认证流程（带 token / 不带 token）
+- 重复昵称注册
+- 分页边界值（page=0, per_page=0/200）
+- 非法 UUID / 畸形 JSON
+
+#### 玫瑰编辑/删除
+- PUT /api/rose/:id（仅 owner）
+- DELETE /api/rose/:id（仅 owner）
+- Forbidden (403) 错误类型
+- 前端详情页：编辑按钮（内联表单）+ 删除按钮（确认对话框）
+- 6 个新测试：owner 编辑、他人被拒、未认证被拒、owner 删除、他人删除被拒、删除后 404
+
+#### 前端测试补充（7 → 12）
+- updateRose / deleteRose 测试
+- createRose auth header 测试
+- Rose 接口增加 user_id 字段
+
+### 当前状态
+- 24 个后端测试 + 12 个前端测试全过
+- clippy + fmt 干净
+- 已提交并推送到 main
+
+### 待办事项
+- [ ] 用户个人花圃
+- [ ] 小程序适配（未来）
+- [ ] WASM AI 模块（未来）
+- [ ] Web3 功能（未来）
+
+---
+
+<!-- 下次会话在此处继续记录 -->
