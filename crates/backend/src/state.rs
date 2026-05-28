@@ -1,12 +1,12 @@
 use sqlx::PgPool;
 use tokio::sync::broadcast;
 
-use crate::models::rose::Rose;
+use crate::models::rose::RoseResponse;
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
-    pub rose_tx: broadcast::Sender<Rose>,
+    pub rose_tx: broadcast::Sender<RoseResponse>,
 }
 
 impl AppState {

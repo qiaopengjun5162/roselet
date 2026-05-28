@@ -124,6 +124,7 @@ export default function RoseDetailPage() {
               <div>
                 <h1 className="text-2xl">{meta.label}</h1>
                 <p className="text-sm text-muted-foreground font-normal">
+                  {rose.nickname && <span className="mr-2">{rose.nickname}</span>}
                   {new Date(rose.created_at).toLocaleString("zh-CN")}
                 </p>
               </div>

@@ -3,14 +3,15 @@ use axum::extract::{Query, State};
 
 use crate::error::AppError;
 use crate::models::pagination::{PaginatedResponse, Pagination};
-use crate::models::rose::Rose;
+use crate::models::rose::{Rose, RoseResponse};
 use crate::state::AppState;
 
-/// 获取花圃中所有玫瑰（分页）
+use super::resolve_nicknames;
+
 pub async fn get_garden(
     State(state): State<AppState>,
     Query(pagination): Query<Pagination>,
-) -> Result<Json<PaginatedResponse<Rose>>, AppError> {
+) -> Result<Json<PaginatedResponse<RoseResponse>>, AppError> {
     let total: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM roses").fetch_one(&state.pool).await?;
 
@@ -23,9 +24,10 @@ pub async fn get_garden(
     .await?;
 
     let page = pagination.page.unwrap_or(1).max(1);
+    let data = resolve_nicknames(&state.pool, roses).await;
 
     Ok(Json(PaginatedResponse {
-        data: roses,
+        data,
         total,
         page,
         per_page: pagination.per_page(),

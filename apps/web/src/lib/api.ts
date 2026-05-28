@@ -51,6 +51,7 @@ export interface Rose {
   anxiety: string | null;
   hope: string | null;
   user_id: string | null;
+  nickname: string | null;
   created_at: string;
 }
 

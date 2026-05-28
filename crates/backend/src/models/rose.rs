@@ -14,6 +14,34 @@ pub struct Rose {
     pub created_at: DateTime<Utc>,
 }
 
+/// 玫瑰 API 响应（包含种植者昵称）
+#[derive(Clone, Debug, Serialize)]
+pub struct RoseResponse {
+    pub id: Uuid,
+    pub color: String,
+    pub gratitude: Option<String>,
+    pub anxiety: Option<String>,
+    pub hope: Option<String>,
+    pub user_id: Option<Uuid>,
+    pub nickname: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl RoseResponse {
+    pub fn from_rose(rose: Rose, nickname: Option<String>) -> Self {
+        Self {
+            id: rose.id,
+            color: rose.color,
+            gratitude: rose.gratitude,
+            anxiety: rose.anxiety,
+            hope: rose.hope,
+            user_id: rose.user_id,
+            nickname,
+            created_at: rose.created_at,
+        }
+    }
+}
+
 /// 创建玫瑰请求
 #[derive(Debug, Deserialize)]
 pub struct CreateRose {

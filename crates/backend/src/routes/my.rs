@@ -5,8 +5,10 @@ use axum::http::HeaderMap;
 use crate::auth;
 use crate::error::AppError;
 use crate::models::pagination::{PaginatedResponse, Pagination};
-use crate::models::rose::Rose;
+use crate::models::rose::{Rose, RoseResponse};
 use crate::state::AppState;
+
+use super::resolve_nicknames;
 
 fn require_user_id(headers: &HeaderMap) -> Result<uuid::Uuid, AppError> {
     headers
@@ -22,7 +24,7 @@ pub async fn get_my_roses(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(pagination): Query<Pagination>,
-) -> Result<Json<PaginatedResponse<Rose>>, AppError> {
+) -> Result<Json<PaginatedResponse<RoseResponse>>, AppError> {
     let user_id = require_user_id(&headers)?;
 
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE user_id = $1")
@@ -40,9 +42,10 @@ pub async fn get_my_roses(
     .await?;
 
     let page = pagination.page.unwrap_or(1).max(1);
+    let data = resolve_nicknames(&state.pool, roses).await;
 
     Ok(Json(PaginatedResponse {
-        data: roses,
+        data,
         total,
         page,
         per_page: pagination.per_page(),

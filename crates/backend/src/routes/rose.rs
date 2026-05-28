@@ -1,11 +1,12 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::auth;
 use crate::error::AppError;
-use crate::models::rose::{CreateRose, Rose, UpdateRose};
+use crate::models::rose::{CreateRose, Rose, RoseResponse, UpdateRose};
 use crate::state::AppState;
 
 fn extract_user_id(headers: &HeaderMap) -> Option<Uuid> {
@@ -17,11 +18,21 @@ fn extract_user_id(headers: &HeaderMap) -> Option<Uuid> {
         .map(|claims| claims.sub)
 }
 
+async fn lookup_nickname(pool: &PgPool, user_id: Option<Uuid>) -> Option<String> {
+    let uid = user_id?;
+    sqlx::query_scalar("SELECT nickname FROM users WHERE id = $1")
+        .bind(uid)
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten()
+}
+
 pub async fn create_rose(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(input): Json<CreateRose>,
-) -> Result<Json<Rose>, AppError> {
+) -> Result<Json<RoseResponse>, AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
     let user_id = extract_user_id(&headers);
@@ -37,22 +48,26 @@ pub async fn create_rose(
     .fetch_one(&state.pool)
     .await?;
 
-    let _ = state.rose_tx.send(rose.clone());
+    let nickname = lookup_nickname(&state.pool, rose.user_id).await;
+    let response = RoseResponse::from_rose(rose.clone(), nickname);
 
-    Ok(Json(rose))
+    let _ = state.rose_tx.send(response.clone());
+
+    Ok(Json(response))
 }
 
 pub async fn get_rose(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-) -> Result<Json<Rose>, AppError> {
+) -> Result<Json<RoseResponse>, AppError> {
     let rose = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
         .bind(id)
         .fetch_optional(&state.pool)
         .await?
         .ok_or(AppError::NotFound)?;
 
-    Ok(Json(rose))
+    let nickname = lookup_nickname(&state.pool, rose.user_id).await;
+    Ok(Json(RoseResponse::from_rose(rose, nickname)))
 }
 
 pub async fn update_rose(
@@ -60,7 +75,7 @@ pub async fn update_rose(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
     Json(input): Json<UpdateRose>,
-) -> Result<Json<Rose>, AppError> {
+) -> Result<Json<RoseResponse>, AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
     let user_id = extract_user_id(&headers).ok_or(AppError::Forbidden)?;
@@ -100,7 +115,8 @@ pub async fn update_rose(
     .fetch_one(&state.pool)
     .await?;
 
-    Ok(Json(rose))
+    let nickname = lookup_nickname(&state.pool, rose.user_id).await;
+    Ok(Json(RoseResponse::from_rose(rose, nickname)))
 }
 
 pub async fn delete_rose(

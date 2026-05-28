@@ -830,3 +830,66 @@ async fn test_my_roses_pagination() {
     assert_eq!(body["page"], 1);
     assert_eq!(body["per_page"], 2);
 }
+
+#[tokio::test]
+async fn test_rose_includes_nickname() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "planter").await;
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth["token"].as_str().unwrap()),
+        )
+        .json(&json!({ "color": "red", "gratitude": "test nickname" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rose: Value = res.json().await.unwrap();
+    assert_eq!(rose["nickname"], "planter");
+
+    let rose_id = rose["id"].as_str().unwrap();
+    let res = client.get(format!("{}/api/rose/{}", base, rose_id)).send().await.unwrap();
+    let rose: Value = res.json().await.unwrap();
+    assert_eq!(rose["nickname"], "planter");
+}
+
+#[tokio::test]
+async fn test_garden_includes_nickname() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "gardener").await;
+    let client = reqwest::Client::new();
+
+    client
+        .post(format!("{}/api/rose", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth["token"].as_str().unwrap()),
+        )
+        .json(&json!({ "color": "yellow", "gratitude": "garden test" }))
+        .send()
+        .await
+        .unwrap();
+
+    client
+        .post(format!("{}/api/rose", base))
+        .json(&json!({ "color": "white", "gratitude": "anonymous" }))
+        .send()
+        .await
+        .unwrap();
+
+    let res = client.get(format!("{}/api/garden", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    let roses = body["data"].as_array().unwrap();
+    assert_eq!(roses.len(), 2);
+
+    let named = roses.iter().find(|r| r["nickname"] == "gardener").unwrap();
+    assert_eq!(named["gratitude"], "garden test");
+
+    let anon = roses.iter().find(|r| r["nickname"].is_null()).unwrap();
+    assert_eq!(anon["gratitude"], "anonymous");
+}
