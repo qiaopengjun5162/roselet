@@ -37,9 +37,13 @@ just changelog        # 生成 CHANGELOG
 
 ## API
 ```
-POST   /api/rose         # 种一朵玫瑰
-GET    /api/garden       # 获取花圃所有玫瑰
-GET    /api/rose/:id     # 获取单朵玫瑰
+POST   /api/auth/register  # 用户注册（JWT）
+POST   /api/rose           # 种一朵玫瑰
+PUT    /api/rose/:id       # 编辑玫瑰（仅 owner）
+DELETE /api/rose/:id       # 删除玫瑰（仅 owner）
+GET    /api/garden         # 获取花圃（分页）
+GET    /api/rose/:id       # 获取单朵玫瑰
+GET    /api/ws             # WebSocket 实时推送
 ```
 
 ## 开发工具链
