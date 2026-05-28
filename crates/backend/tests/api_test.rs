@@ -1,8 +1,10 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use futures_util::StreamExt;
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
 use sqlx::postgres::PgPoolOptions;
+use tokio::net::TcpListener;
 use tower::ServiceExt;
 
 async fn create_test_app() -> axum::Router {
@@ -61,17 +63,38 @@ async fn create_test_app() -> axum::Router {
         .with_state(state)
 }
 
+async fn spawn_test_server() -> String {
+    let app = create_test_app().await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+    format!("http://{}", addr)
+}
+
+async fn register_user(base: &str, nickname: &str) -> Value {
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{}/api/auth/register", base))
+        .json(&json!({ "nickname": nickname }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    res.json().await.unwrap()
+}
+
+// ==================== 原有测试 ====================
+
 #[tokio::test]
 async fn test_garden_empty() {
     let app = create_test_app().await;
-
     let response = app
         .oneshot(Request::builder().uri("/api/garden").body(Body::empty()).unwrap())
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::OK);
-
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let roses: Value = serde_json::from_slice(&body).unwrap();
     assert!(roses["data"].as_array().unwrap().is_empty());
@@ -81,7 +104,6 @@ async fn test_garden_empty() {
 #[tokio::test]
 async fn test_create_rose() {
     let app = create_test_app().await;
-
     let response = app
         .oneshot(
             Request::builder()
@@ -101,12 +123,9 @@ async fn test_create_rose() {
         )
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::OK);
-
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let rose: Value = serde_json::from_slice(&body).unwrap();
-
     assert_eq!(rose["color"], "red");
     assert_eq!(rose["gratitude"], "感谢社区");
     assert_eq!(rose["anxiety"], "工作压力");
@@ -116,7 +135,6 @@ async fn test_create_rose() {
 #[tokio::test]
 async fn test_create_rose_with_one_field() {
     let app = create_test_app().await;
-
     let response = app
         .oneshot(
             Request::builder()
@@ -124,22 +142,15 @@ async fn test_create_rose_with_one_field() {
                 .uri("/api/rose")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    serde_json::to_vec(&json!({
-                        "color": "white",
-                        "gratitude": "感恩"
-                    }))
-                    .unwrap(),
+                    serde_json::to_vec(&json!({ "color": "white", "gratitude": "感恩" })).unwrap(),
                 ))
                 .unwrap(),
         )
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::OK);
-
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let rose: Value = serde_json::from_slice(&body).unwrap();
-
     assert_eq!(rose["color"], "white");
     assert_eq!(rose["gratitude"], "感恩");
     assert!(rose["anxiety"].is_null());
@@ -149,7 +160,6 @@ async fn test_create_rose_with_one_field() {
 #[tokio::test]
 async fn test_create_rose_invalid_color() {
     let app = create_test_app().await;
-
     let response = app
         .oneshot(
             Request::builder()
@@ -157,24 +167,18 @@ async fn test_create_rose_invalid_color() {
                 .uri("/api/rose")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    serde_json::to_vec(&json!({
-                        "color": "blue",
-                        "gratitude": "感恩"
-                    }))
-                    .unwrap(),
+                    serde_json::to_vec(&json!({ "color": "blue", "gratitude": "感恩" })).unwrap(),
                 ))
                 .unwrap(),
         )
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]
 async fn test_create_rose_empty_content() {
     let app = create_test_app().await;
-
     let response = app
         .oneshot(
             Request::builder()
@@ -182,23 +186,18 @@ async fn test_create_rose_empty_content() {
                 .uri("/api/rose")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    serde_json::to_vec(&json!({
-                        "color": "red"
-                    }))
-                    .unwrap(),
+                    serde_json::to_vec(&json!({ "color": "red" })).unwrap(),
                 ))
                 .unwrap(),
         )
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]
 async fn test_get_rose_by_id() {
     let app = create_test_app().await;
-
     let create_response = app
         .clone()
         .oneshot(
@@ -207,17 +206,13 @@ async fn test_get_rose_by_id() {
                 .uri("/api/rose")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    serde_json::to_vec(&json!({
-                        "color": "yellow",
-                        "gratitude": "感恩测试"
-                    }))
-                    .unwrap(),
+                    serde_json::to_vec(&json!({ "color": "yellow", "gratitude": "感恩测试" }))
+                        .unwrap(),
                 ))
                 .unwrap(),
         )
         .await
         .unwrap();
-
     let body = create_response.into_body().collect().await.unwrap().to_bytes();
     let created: Value = serde_json::from_slice(&body).unwrap();
     let rose_id = created["id"].as_str().unwrap();
@@ -231,12 +226,9 @@ async fn test_get_rose_by_id() {
         )
         .await
         .unwrap();
-
     assert_eq!(get_response.status(), StatusCode::OK);
-
     let body = get_response.into_body().collect().await.unwrap().to_bytes();
     let rose: Value = serde_json::from_slice(&body).unwrap();
-
     assert_eq!(rose["id"], rose_id);
     assert_eq!(rose["color"], "yellow");
     assert_eq!(rose["gratitude"], "感恩测试");
@@ -245,7 +237,6 @@ async fn test_get_rose_by_id() {
 #[tokio::test]
 async fn test_get_rose_not_found() {
     let app = create_test_app().await;
-
     let response = app
         .oneshot(
             Request::builder()
@@ -255,16 +246,13 @@ async fn test_get_rose_not_found() {
         )
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
 async fn test_garden_with_multiple_roses() {
     let app = create_test_app().await;
-
-    let colors = vec!["red", "white", "yellow"];
-    for color in &colors {
+    for color in &["red", "white", "yellow"] {
         app.clone()
             .oneshot(
                 Request::builder()
@@ -272,10 +260,9 @@ async fn test_garden_with_multiple_roses() {
                     .uri("/api/rose")
                     .header("content-type", "application/json")
                     .body(Body::from(
-                        serde_json::to_vec(&json!({
-                            "color": color,
-                            "gratitude": format!("感恩{}", color)
-                        }))
+                        serde_json::to_vec(
+                            &json!({ "color": color, "gratitude": format!("感恩{}", color) }),
+                        )
                         .unwrap(),
                     ))
                     .unwrap(),
@@ -283,26 +270,20 @@ async fn test_garden_with_multiple_roses() {
             .await
             .unwrap();
     }
-
     let response = app
         .oneshot(Request::builder().uri("/api/garden").body(Body::empty()).unwrap())
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::OK);
-
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let roses: Value = serde_json::from_slice(&body).unwrap();
-    let arr = roses["data"].as_array().unwrap();
-
-    assert_eq!(arr.len(), 3);
+    assert_eq!(roses["data"].as_array().unwrap().len(), 3);
     assert_eq!(roses["total"], 3);
 }
 
 #[tokio::test]
 async fn test_garden_pagination() {
     let app = create_test_app().await;
-
     for i in 0..5 {
         app.clone()
             .oneshot(
@@ -311,10 +292,9 @@ async fn test_garden_pagination() {
                     .uri("/api/rose")
                     .header("content-type", "application/json")
                     .body(Body::from(
-                        serde_json::to_vec(&json!({
-                            "color": "red",
-                            "gratitude": format!("感恩{}", i)
-                        }))
+                        serde_json::to_vec(
+                            &json!({ "color": "red", "gratitude": format!("感恩{}", i) }),
+                        )
                         .unwrap(),
                     ))
                     .unwrap(),
@@ -322,7 +302,6 @@ async fn test_garden_pagination() {
             .await
             .unwrap();
     }
-
     let response = app
         .clone()
         .oneshot(
@@ -333,11 +312,9 @@ async fn test_garden_pagination() {
         )
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::OK);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let page1: Value = serde_json::from_slice(&body).unwrap();
-
     assert_eq!(page1["data"].as_array().unwrap().len(), 2);
     assert_eq!(page1["total"], 5);
     assert_eq!(page1["page"], 1);
@@ -352,11 +329,9 @@ async fn test_garden_pagination() {
         )
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::OK);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let page3: Value = serde_json::from_slice(&body).unwrap();
-
     assert_eq!(page3["data"].as_array().unwrap().len(), 1);
     assert_eq!(page3["total"], 5);
     assert_eq!(page3["page"], 3);
@@ -365,7 +340,6 @@ async fn test_garden_pagination() {
 #[tokio::test]
 async fn test_register_user() {
     let app = create_test_app().await;
-
     let response = app
         .oneshot(
             Request::builder()
@@ -379,12 +353,9 @@ async fn test_register_user() {
         )
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::OK);
-
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let result: Value = serde_json::from_slice(&body).unwrap();
-
     assert!(result["token"].as_str().is_some());
     assert_eq!(result["user"]["nickname"], "alice");
 }
@@ -392,7 +363,6 @@ async fn test_register_user() {
 #[tokio::test]
 async fn test_register_empty_nickname() {
     let app = create_test_app().await;
-
     let response = app
         .oneshot(
             Request::builder()
@@ -406,6 +376,153 @@ async fn test_register_empty_nickname() {
         )
         .await
         .unwrap();
-
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+// ==================== 新增测试 ====================
+
+#[tokio::test]
+async fn test_register_duplicate_nickname() {
+    let base = spawn_test_server().await;
+    let res1 = register_user(&base, "bob").await;
+    assert!(res1["token"].as_str().is_some());
+    let res2 = register_user(&base, "bob").await;
+    assert!(res2["token"].as_str().is_some());
+    assert_eq!(res1["user"]["id"], res2["user"]["id"]);
+}
+
+#[tokio::test]
+async fn test_create_rose_with_jwt() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "carol").await;
+    let token = auth["token"].as_str().unwrap();
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "感恩测试" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rose: Value = res.json().await.unwrap();
+    assert_eq!(rose["color"], "red");
+    assert_eq!(rose["gratitude"], "感恩测试");
+    assert!(rose["user_id"].as_str().is_some());
+    assert_eq!(rose["user_id"], auth["user"]["id"]);
+}
+
+#[tokio::test]
+async fn test_create_rose_without_jwt() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .json(&json!({ "color": "white", "gratitude": "匿名感恩" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rose: Value = res.json().await.unwrap();
+    assert!(rose["user_id"].is_null());
+}
+
+#[tokio::test]
+async fn test_garden_pagination_boundary() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    for i in 0..3 {
+        client
+            .post(format!("{}/api/rose", base))
+            .json(&json!({ "color": "red", "gratitude": format!("r{}", i) }))
+            .send()
+            .await
+            .unwrap();
+    }
+
+    // page=0, per_page=0 → clamped to page=1, per_page=1
+    let res = client
+        .get(format!("{}/api/garden?page=0&per_page=0", base))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["page"], 1);
+    assert_eq!(body["per_page"], 1);
+
+    // per_page=200 → clamped to 100
+    let res = client
+        .get(format!("{}/api/garden?page=1&per_page=200", base))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["per_page"], 100);
+
+    // page far beyond data → empty
+    let res = client
+        .get(format!("{}/api/garden?page=99&per_page=10", base))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert!(body["data"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn test_get_rose_invalid_uuid() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let res = client.get(format!("{}/api/rose/not-a-uuid", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_create_rose_malformed_json() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Content-Type", "application/json")
+        .body("not json")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_websocket_receives_new_rose() {
+    let base = spawn_test_server().await;
+    let ws_url = base.replace("http://", "ws://") + "/api/ws";
+
+    let (mut ws_stream, _) = tokio_tungstenite::connect_async(&ws_url)
+        .await
+        .expect("Failed to connect WebSocket");
+
+    let client = reqwest::Client::new();
+    client
+        .post(format!("{}/api/rose", base))
+        .json(&json!({ "color": "red", "gratitude": "ws测试" }))
+        .send()
+        .await
+        .unwrap();
+
+    let msg = tokio::time::timeout(std::time::Duration::from_secs(2), ws_stream.next())
+        .await
+        .expect("Timeout waiting for WS message")
+        .expect("WS stream ended")
+        .expect("WS read error");
+
+    let text = msg.to_text().unwrap();
+    let rose: Value = serde_json::from_str(text).unwrap();
+    assert_eq!(rose["color"], "red");
+    assert_eq!(rose["gratitude"], "ws测试");
+
+    ws_stream.close(None).await.ok();
 }
