@@ -132,3 +132,19 @@ export async function getMyRoses(page = 1, perPage = 20): Promise<PaginatedRespo
   if (!res.ok) throw new Error("Failed to fetch my roses");
   return res.json();
 }
+
+export interface UserProfile {
+  user: User;
+  total_roses: number;
+  red_count: number;
+  white_count: number;
+  yellow_count: number;
+}
+
+export async function getUserProfile(): Promise<UserProfile> {
+  const res = await fetch(`${API_BASE}/api/user/profile`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch profile");
+  return res.json();
+}

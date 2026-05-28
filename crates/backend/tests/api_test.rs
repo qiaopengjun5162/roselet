@@ -62,6 +62,10 @@ async fn create_test_app() -> axum::Router {
             axum::routing::get(roselet_backend::routes::my::get_my_roses),
         )
         .route(
+            "/api/user/profile",
+            axum::routing::get(roselet_backend::routes::auth::profile),
+        )
+        .route(
             "/api/ws",
             axum::routing::get(roselet_backend::routes::ws::ws_handler),
         )
@@ -899,9 +903,24 @@ async fn test_garden_filter_by_color() {
     let base = spawn_test_server().await;
     let client = reqwest::Client::new();
 
-    client.post(format!("{}/api/rose", base)).json(&json!({ "color": "red", "gratitude": "r1" })).send().await.unwrap();
-    client.post(format!("{}/api/rose", base)).json(&json!({ "color": "red", "gratitude": "r2" })).send().await.unwrap();
-    client.post(format!("{}/api/rose", base)).json(&json!({ "color": "white", "gratitude": "w1" })).send().await.unwrap();
+    client
+        .post(format!("{}/api/rose", base))
+        .json(&json!({ "color": "red", "gratitude": "r1" }))
+        .send()
+        .await
+        .unwrap();
+    client
+        .post(format!("{}/api/rose", base))
+        .json(&json!({ "color": "red", "gratitude": "r2" }))
+        .send()
+        .await
+        .unwrap();
+    client
+        .post(format!("{}/api/rose", base))
+        .json(&json!({ "color": "white", "gratitude": "w1" }))
+        .send()
+        .await
+        .unwrap();
 
     let res = client.get(format!("{}/api/garden?color=red", base)).send().await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
@@ -921,4 +940,56 @@ async fn test_garden_filter_by_color() {
 
     let res = client.get(format!("{}/api/garden?color=blue", base)).send().await.unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_user_profile() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "profiler").await;
+    let token = auth["token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "r1" }))
+        .send()
+        .await
+        .unwrap();
+    client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "r2" }))
+        .send()
+        .await
+        .unwrap();
+    client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "white", "gratitude": "w1" }))
+        .send()
+        .await
+        .unwrap();
+
+    let res = client
+        .get(format!("{}/api/user/profile", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["user"]["nickname"], "profiler");
+    assert_eq!(body["total_roses"], 3);
+    assert_eq!(body["red_count"], 2);
+    assert_eq!(body["white_count"], 1);
+    assert_eq!(body["yellow_count"], 0);
+}
+
+#[tokio::test]
+async fn test_user_profile_no_auth() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let res = client.get(format!("{}/api/user/profile", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
