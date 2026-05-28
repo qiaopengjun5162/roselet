@@ -111,4 +111,40 @@
 
 ---
 
+## 2026-05-28 会话 #3
+
+### 会话目标
+实现 WebSocket 实时更新
+
+### 完成的工作
+
+#### 后端：WebSocket 实时广播
+- 新增 `state.rs`：`AppState` 持有 PgPool + `broadcast::Sender<Rose>`
+- 新增 `routes/ws.rs`：`GET /api/ws` WebSocket 端点，订阅广播频道
+- `routes/rose.rs`：创建玫瑰后通过 `rose_tx.send()` 广播
+- `Rose` 模型添加 `Clone` derive 支持广播
+- 所有路由从 `State<PgPool>` 迁移到 `State<AppState>`
+
+#### 前端：实时接收新玫瑰
+- 新增 `lib/ws.ts`：WebSocket 客户端工具函数
+- 花圃页连接 WebSocket，新玫瑰自动插入列表顶部
+
+#### 依赖更新
+- axum 添加 `ws` feature 启用 WebSocket
+- 添加 `futures-util` 依赖（SinkExt + StreamExt）
+- `cargo update` 更新 Cargo.lock
+
+### 当前状态
+- 后端 9 个测试通过，前端 7 个测试通过
+- clippy + fmt 检查干净
+- 已提交并推送到 main
+
+### 待办事项
+- [ ] 用户认证
+- [ ] 小程序适配（未来）
+- [ ] WASM AI 模块（未来）
+- [ ] Web3 功能（未来）
+
+---
+
 <!-- 下次会话在此处继续记录 -->
