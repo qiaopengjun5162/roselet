@@ -25,6 +25,7 @@ async fn create_test_app() -> axum::Router {
         .await
         .expect("Failed to clean test data");
 
+    let state = roselet_backend::state::AppState::new(pool);
     let cors = tower_http::cors::CorsLayer::new()
         .allow_origin(tower_http::cors::Any)
         .allow_methods(tower_http::cors::Any)
@@ -43,8 +44,12 @@ async fn create_test_app() -> axum::Router {
             "/api/rose/{id}",
             axum::routing::get(roselet_backend::routes::rose::get_rose),
         )
+        .route(
+            "/api/ws",
+            axum::routing::get(roselet_backend::routes::ws::ws_handler),
+        )
         .layer(cors)
-        .with_state(pool)
+        .with_state(state)
 }
 
 #[tokio::test]

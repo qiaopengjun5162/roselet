@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getGarden, type Rose } from "@/lib/api";
+import { connectGardenWs } from "@/lib/ws";
 
 const COLOR_MAP: Record<string, { emoji: string; label: string }> = {
   red: { emoji: "🌹", label: "红玫瑰" },
@@ -39,6 +40,14 @@ export default function GardenPage() {
 
   useEffect(() => {
     loadRoses(1);
+  }, []);
+
+  useEffect(() => {
+    const disconnect = connectGardenWs((rose) => {
+      setRoses((prev) => [rose as Rose, ...prev]);
+      setTotal((t) => t + 1);
+    });
+    return disconnect;
   }, []);
 
   return (

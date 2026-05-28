@@ -4,6 +4,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 use roselet_backend::config::Config;
 use roselet_backend::routes;
+use roselet_backend::state::AppState;
 
 #[tokio::main]
 async fn main() {
@@ -17,14 +18,16 @@ async fn main() {
         .await
         .expect("Failed to run migrations");
 
+    let state = AppState::new(pool);
     let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
 
     let app = Router::new()
         .route("/api/garden", get(routes::garden::get_garden))
         .route("/api/rose", post(routes::rose::create_rose))
         .route("/api/rose/{id}", get(routes::rose::get_rose))
+        .route("/api/ws", get(routes::ws::ws_handler))
         .layer(cors)
-        .with_state(pool);
+        .with_state(state);
 
     let addr = format!("0.0.0.0:{}", config.port);
     println!("Roselet backend listening on {}", addr);
