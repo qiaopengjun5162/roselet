@@ -1,6 +1,7 @@
 {
   "name": "roselet",
   "private": true,
+  "packageManager": "pnpm@11.3.0",
   "scripts": {
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build"

@@ -47,10 +47,13 @@ jobs:
           cargo install sqlx-cli --no-default-features --features postgres
           sqlx migrate run --source crates/backend/migrations
 
+      - name: Install cargo-nextest
+        run: cargo install cargo-nextest --locked
+
       - name: Run tests
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost/roselet_test
-        run: cargo nextest run --all-features -- --test-threads=1
+        run: cargo nextest run --all-features -j1
 
   frontend:
     name: Frontend Tests
