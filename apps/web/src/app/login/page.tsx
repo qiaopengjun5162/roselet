@@ -21,6 +21,7 @@ export default function LoginPage() {
       const res = await register(nickname.trim());
       setToken(res.token);
       setUser(res.user);
+      window.dispatchEvent(new Event("auth-change"));
       router.push("/garden");
     } catch {
       setError("注册失败，请重试");
