@@ -6,7 +6,7 @@
 
 ## 技术栈
 
-- 后端：Rust + Axum + SQLx + PostgreSQL
+- 后端：Rust 1.85+ / Axum / SQLx / PostgreSQL
 - 前端：Next.js 15 + shadcn UI + Tailwind CSS
 - 实时推送：WebSocket（tokio broadcast）
 - 用户认证：JWT（jsonwebtoken）
@@ -15,7 +15,7 @@
 
 ### 环境要求
 
-- Rust（stable）
+- Rust 1.85+（stable）
 - Node.js 22+
 - pnpm
 - PostgreSQL 16+
@@ -44,10 +44,15 @@ just db-reset      # 重置数据库
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/auth/register` | 用户注册（昵称 → 令牌） |
+| GET | `/api/user/profile` | 获取用户资料 + 统计（需令牌） |
 | POST | `/api/rose` | 种一朵玫瑰 |
-| GET | `/api/garden?page=&per_page=` | 获取花圃（分页） |
+| PUT | `/api/rose/:id` | 编辑玫瑰（仅创建者） |
+| DELETE | `/api/rose/:id` | 删除玫瑰（仅创建者） |
 | GET | `/api/rose/:id` | 获取单朵玫瑰 |
-| GET | `/api/ws` | 实时推送 |
+| POST | `/api/rose/:id/like` | 点赞 / 取消点赞（需令牌） |
+| GET | `/api/garden?color=&page=&per_page=` | 获取花圃（分页，可筛选颜色） |
+| GET | `/api/my/roses?page=&per_page=` | 获取我的花圃（需令牌） |
+| GET | `/api/ws` | WebSocket 实时推送 |
 
 ## 项目结构
 
@@ -57,8 +62,10 @@ roselet/
 │   └── src/app/
 │       ├── page.tsx       # 首页
 │       ├── plant/         # 种花页
-│       ├── garden/        # 花圃页
-│       ├── rose/[id]/     # 玫瑰详情
+│       ├── garden/        # 花圃页（支持颜色筛选）
+│       ├── rose/[id]/     # 玫瑰详情 + 点赞
+│       ├── my/            # 我的花圃
+│       ├── profile/       # 个人资料 + 统计
 │       └── login/         # 登录页
 ├── crates/backend/        # 后端
 │   ├── src/

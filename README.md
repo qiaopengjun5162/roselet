@@ -6,7 +6,7 @@ A community icebreaker web app: plant roses (gratitude), buds (hope), and thorns
 
 ## Tech Stack
 
-- **Backend**: Rust + Axum + SQLx + PostgreSQL
+- **Backend**: Rust 1.85+ / Axum / SQLx / PostgreSQL
 - **Frontend**: Next.js 15 + shadcn UI + Tailwind CSS
 - **Real-time**: WebSocket (tokio broadcast)
 - **Auth**: JWT (jsonwebtoken)
@@ -15,7 +15,7 @@ A community icebreaker web app: plant roses (gratitude), buds (hope), and thorns
 
 ### Prerequisites
 
-- Rust (stable)
+- Rust 1.85+ (stable)
 - Node.js 22+
 - pnpm
 - PostgreSQL 16+
@@ -43,10 +43,15 @@ just db-reset      # reset database
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/auth/register` | Register user (nickname → JWT) |
+| POST | `/api/auth/register` | Register (nickname → JWT) |
+| GET | `/api/user/profile` | Get profile + stats (JWT) |
 | POST | `/api/rose` | Plant a rose |
-| GET | `/api/garden?page=&per_page=` | Get garden (paginated) |
+| PUT | `/api/rose/:id` | Edit rose (owner only) |
+| DELETE | `/api/rose/:id` | Delete rose (owner only) |
 | GET | `/api/rose/:id` | Get a single rose |
+| POST | `/api/rose/:id/like` | Like / unlike (JWT) |
+| GET | `/api/garden?color=&page=&per_page=` | Get garden (paginated, filterable) |
+| GET | `/api/my/roses?page=&per_page=` | Get my roses (JWT) |
 | GET | `/api/ws` | WebSocket real-time feed |
 
 ## Project Structure
@@ -57,8 +62,10 @@ roselet/
 │   └── src/app/
 │       ├── page.tsx       # Home page
 │       ├── plant/         # Plant a rose
-│       ├── garden/        # Garden view
-│       ├── rose/[id]/     # Rose detail
+│       ├── garden/        # Garden view (with color filter)
+│       ├── rose/[id]/     # Rose detail + like
+│       ├── my/            # My garden
+│       ├── profile/       # User profile + stats
 │       └── login/         # Login page
 ├── crates/backend/        # Rust Axum backend
 │   ├── src/
