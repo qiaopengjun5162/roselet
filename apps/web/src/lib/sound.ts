@@ -1,11 +1,13 @@
-let audioCtx: AudioContext | null = null;
-let muted = false;
+import * as Tone from "tone";
 
-function getCtx(): AudioContext {
-  if (!audioCtx) {
-    audioCtx = new AudioContext();
+let started = false;
+let muted = true;
+
+async function ensureStarted() {
+  if (!started) {
+    await Tone.start();
+    started = true;
   }
-  return audioCtx;
 }
 
 export function isMuted(): boolean {
@@ -14,109 +16,134 @@ export function isMuted(): boolean {
 
 export function toggleMute(): boolean {
   muted = !muted;
+  Tone.getDestination().mute = muted;
   return muted;
 }
 
-function playTone(
-  frequency: number,
-  duration: number,
-  type: OscillatorType = "sine",
-  volume = 0.15,
-  delay = 0,
-) {
+/** 轻点音效 — 清脆的钢琴音 */
+export async function playClick() {
   if (muted) return;
-  const ctx = getCtx();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(frequency, ctx.currentTime + delay);
-  gain.gain.setValueAtTime(volume, ctx.currentTime + delay);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(ctx.currentTime + delay);
-  osc.stop(ctx.currentTime + delay + duration);
+  await ensureStarted();
+  const synth = new Tone.Synth({
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 },
+  }).toDestination();
+  synth.volume.value = -12;
+  synth.triggerAttackRelease("C5", "16n");
+  setTimeout(() => synth.dispose(), 500);
 }
 
-/** 轻点音效 — 清脆的点击 */
-export function playClick() {
-  playTone(800, 0.08, "sine", 0.1);
-  playTone(1200, 0.06, "sine", 0.06, 0.03);
+/** 种植音效 — 温暖的和弦 */
+export async function playPlant() {
+  if (muted) return;
+  await ensureStarted();
+  const synth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: "triangle" },
+    envelope: { attack: 0.05, decay: 0.3, sustain: 0.1, release: 0.5 },
+  }).toDestination();
+  synth.volume.value = -15;
+  synth.triggerAttackRelease(["C4", "E4", "G4"], "4n");
+  setTimeout(() => synth.dispose(), 1000);
 }
 
-/** 种植音效 — 低沉的泥土声 */
-export function playPlant() {
-  playTone(200, 0.3, "triangle", 0.15);
-  playTone(150, 0.4, "triangle", 0.1, 0.15);
-  playTone(250, 0.2, "sine", 0.08, 0.35);
+/** 完成音效 — 上升琶音 */
+export async function playComplete() {
+  if (muted) return;
+  await ensureStarted();
+  const synth = new Tone.Synth({
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.02, decay: 0.2, sustain: 0.1, release: 0.4 },
+  }).toDestination();
+  synth.volume.value = -10;
+  const notes = ["C5", "E5", "G5", "C6"];
+  const now = Tone.now();
+  notes.forEach((note, i) => {
+    synth.triggerAttackRelease(note, "8n", now + i * 0.15);
+  });
+  setTimeout(() => synth.dispose(), 1500);
 }
 
-/** 完成音效 — 温暖的上升和弦 */
-export function playComplete() {
-  playTone(523, 0.4, "sine", 0.12);
-  playTone(659, 0.4, "sine", 0.12, 0.15);
-  playTone(784, 0.5, "sine", 0.12, 0.3);
-}
-
-/** 点赞音效 — 短促心跳 */
-export function playLike() {
-  playTone(400, 0.1, "sine", 0.15);
-  playTone(500, 0.15, "sine", 0.12, 0.12);
+/** 点赞音效 — 心跳声 */
+export async function playLike() {
+  if (muted) return;
+  await ensureStarted();
+  const synth = new Tone.MembraneSynth({
+    pitchDecay: 0.05,
+    octaves: 4,
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 },
+  }).toDestination();
+  synth.volume.value = -8;
+  synth.triggerAttackRelease("C3", "16n");
+  setTimeout(() => {
+    synth.triggerAttackRelease("E3", "16n");
+  }, 120);
+  setTimeout(() => synth.dispose(), 600);
 }
 
 /** 通知音效 — 叮咚 */
-export function playNotify() {
-  playTone(880, 0.15, "sine", 0.1);
-  playTone(1100, 0.2, "sine", 0.08, 0.1);
+export async function playNotify() {
+  if (muted) return;
+  await ensureStarted();
+  const synth = new Tone.Synth({
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.3 },
+  }).toDestination();
+  synth.volume.value = -10;
+  const now = Tone.now();
+  synth.triggerAttackRelease("E5", "8n", now);
+  synth.triggerAttackRelease("B5", "8n", now + 0.12);
+  setTimeout(() => synth.dispose(), 800);
 }
 
-/** 背景音乐 — 循环播放的轻柔旋律 */
-let bgOscillators: OscillatorNode[] = [];
+/** 背景音乐 — 轻柔钢琴循环 */
+let bgLoop: Tone.Loop | null = null;
+let bgSynth: Tone.PolySynth | null = null;
 let bgPlaying = false;
 
 export function isBgPlaying(): boolean {
   return bgPlaying;
 }
 
-export function startBgMusic() {
+export async function startBgMusic() {
   if (muted || bgPlaying) return;
-  const ctx = getCtx();
+  await ensureStarted();
 
-  const notes = [261, 293, 329, 349, 392, 349, 329, 293];
-  const duration = 0.6;
-  const totalLoop = notes.length * duration;
+  bgSynth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.3, decay: 0.5, sustain: 0.3, release: 1 },
+  }).toDestination();
+  bgSynth.volume.value = -22;
 
-  function playLoop() {
-    if (!bgPlaying) return;
-    notes.forEach((freq, i) => {
-      if (!bgPlaying) return;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * duration);
-      gain.gain.setValueAtTime(0.03, ctx.currentTime + i * duration);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * duration + duration * 0.9);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + i * duration);
-      osc.stop(ctx.currentTime + i * duration + duration);
-      bgOscillators.push(osc);
-    });
-    setTimeout(playLoop, totalLoop * 1000);
-  }
+  const melody = [
+    { note: "C4", dur: "2n" },
+    { note: "E4", dur: "2n" },
+    { note: "G4", dur: "2n" },
+    { note: "A4", dur: "2n" },
+    { note: "G4", dur: "2n" },
+    { note: "E4", dur: "2n" },
+    { note: "D4", dur: "2n" },
+    { note: "C4", dur: "2n" },
+  ];
 
+  let index = 0;
+  bgLoop = new Tone.Loop((time) => {
+    const { note, dur } = melody[index % melody.length];
+    bgSynth?.triggerAttackRelease(note, dur, time);
+    index++;
+  }, "2n");
+
+  Tone.getTransport().start();
+  bgLoop.start(0);
   bgPlaying = true;
-  playLoop();
 }
 
 export function stopBgMusic() {
   bgPlaying = false;
-  bgOscillators.forEach((osc) => {
-    try {
-      osc.stop();
-    } catch {
-      // already stopped
-    }
-  });
-  bgOscillators = [];
+  bgLoop?.stop();
+  bgLoop?.dispose();
+  bgLoop = null;
+  bgSynth?.dispose();
+  bgSynth = null;
+  Tone.getTransport().stop();
 }
