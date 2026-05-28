@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tower::ServiceExt;
+use uuid::Uuid;
 
 async fn create_test_app() -> axum::Router {
     let database_url = std::env::var("DATABASE_URL")
@@ -64,6 +65,10 @@ async fn create_test_app() -> axum::Router {
         .route(
             "/api/user/profile",
             axum::routing::get(roselet_backend::routes::auth::profile),
+        )
+        .route(
+            "/api/rose/{id}/like",
+            axum::routing::post(roselet_backend::routes::like::toggle_like),
         )
         .route(
             "/api/ws",
@@ -992,4 +997,85 @@ async fn test_user_profile_no_auth() {
     let client = reqwest::Client::new();
     let res = client.get(format!("{}/api/user/profile", base)).send().await.unwrap();
     assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_like_and_unlike() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "liker").await;
+    let token = auth["token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .json(&json!({ "color": "red", "gratitude": "likeable" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .post(format!("{}/api/rose/{}/like", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["liked"], true);
+    assert_eq!(body["like_count"], 1);
+
+    let res = client
+        .post(format!("{}/api/rose/{}/like", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["liked"], false);
+    assert_eq!(body["like_count"], 0);
+}
+
+#[tokio::test]
+async fn test_like_no_auth() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose/{}/like", base, Uuid::nil()))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_garden_includes_like_count() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "fan").await;
+    let token = auth["token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .json(&json!({ "color": "yellow", "gratitude": "popular" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    client
+        .post(format!("{}/api/rose/{}/like", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .unwrap();
+
+    let res = client.get(format!("{}/api/garden", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["data"][0]["like_count"], 1);
 }

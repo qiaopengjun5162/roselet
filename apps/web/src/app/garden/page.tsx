@@ -126,6 +126,7 @@ export default function GardenPage() {
                         )}
                         <p className="text-xs text-muted-foreground pt-2">
                           {rose.nickname && <span className="mr-2">{rose.nickname}</span>}
+                          {rose.like_count > 0 && <span className="mr-2">{rose.like_count} likes</span>}
                           {new Date(rose.created_at).toLocaleDateString("zh-CN")}
                         </p>
                       </CardContent>

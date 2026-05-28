@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getRose, updateRose, deleteRose, getUser, type Rose, type UpdateRose } from "@/lib/api";
+import { getRose, updateRose, deleteRose, getUser, toggleLike, type Rose, type UpdateRose } from "@/lib/api";
 
 const COLOR_MAP: Record<string, { emoji: string; label: string; bg: string }> = {
   red: { emoji: "🌹", label: "红玫瑰", bg: "from-red-50 to-white" },
@@ -72,6 +72,16 @@ export default function RoseDetailPage() {
     } catch {
       setError("删除失败");
       setDeleting(false);
+    }
+  }
+
+  async function handleLike() {
+    if (!rose) return;
+    try {
+      const res = await toggleLike(rose.id);
+      setRose({ ...rose, like_count: res.like_count });
+    } catch {
+      // ignore
     }
   }
 
@@ -202,6 +212,16 @@ export default function RoseDetailPage() {
                     <p className="text-lg leading-relaxed bg-green-50 p-4 rounded-lg">{rose.hope}</p>
                   </div>
                 )}
+                <div className="pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLike}
+                    disabled={!user}
+                  >
+                    {rose.like_count > 0 ? `${rose.like_count} likes` : "like"}
+                  </Button>
+                </div>
               </>
             )}
           </CardContent>

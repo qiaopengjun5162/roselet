@@ -49,7 +49,7 @@ pub async fn create_rose(
     .await?;
 
     let nickname = lookup_nickname(&state.pool, rose.user_id).await;
-    let response = RoseResponse::from_rose(rose.clone(), nickname);
+    let response = RoseResponse::from_rose(rose.clone(), nickname, 0);
 
     let _ = state.rose_tx.send(response.clone());
 
@@ -67,7 +67,7 @@ pub async fn get_rose(
         .ok_or(AppError::NotFound)?;
 
     let nickname = lookup_nickname(&state.pool, rose.user_id).await;
-    Ok(Json(RoseResponse::from_rose(rose, nickname)))
+    Ok(Json(RoseResponse::from_rose(rose, nickname, 0)))
 }
 
 pub async fn update_rose(
@@ -116,7 +116,7 @@ pub async fn update_rose(
     .await?;
 
     let nickname = lookup_nickname(&state.pool, rose.user_id).await;
-    Ok(Json(RoseResponse::from_rose(rose, nickname)))
+    Ok(Json(RoseResponse::from_rose(rose, nickname, 0)))
 }
 
 pub async fn delete_rose(

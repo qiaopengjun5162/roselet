@@ -28,6 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route("/api/my/roses", get(routes::my::get_my_roses))
         .route("/api/user/profile", get(routes::auth::profile))
+        .route("/api/rose/{id}/like", post(routes::like::toggle_like))
         .route("/api/ws", get(routes::ws::ws_handler))
         .layer(cors)
         .with_state(state);

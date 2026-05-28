@@ -3,6 +3,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 export interface User {
   id: string;
   nickname: string;
+  created_at: string;
 }
 
 export interface AuthResponse {
@@ -52,6 +53,7 @@ export interface Rose {
   hope: string | null;
   user_id: string | null;
   nickname: string | null;
+  like_count: number;
   created_at: string;
 }
 
@@ -146,5 +148,19 @@ export async function getUserProfile(): Promise<UserProfile> {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch profile");
+  return res.json();
+}
+
+export interface LikeResponse {
+  liked: boolean;
+  like_count: number;
+}
+
+export async function toggleLike(roseId: string): Promise<LikeResponse> {
+  const res = await fetch(`${API_BASE}/api/rose/${roseId}/like`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to toggle like");
   return res.json();
 }
