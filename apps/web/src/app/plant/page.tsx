@@ -3,19 +3,46 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createRose } from "@/lib/api";
+import { playClick, playPlant, playComplete } from "@/lib/sound";
 
 const COLORS = [
-  { id: "red", label: "红玫瑰", emoji: "🌹", bg: "bg-red-100", border: "border-red-300" },
-  { id: "white", label: "白玫瑰", emoji: "🤍", bg: "bg-gray-100", border: "border-gray-300" },
-  { id: "yellow", label: "黄玫瑰", emoji: "💛", bg: "bg-yellow-100", border: "border-yellow-300" },
+  { id: "red", label: "红玫瑰", emoji: "🌹", gradient: "from-red-100 to-red-50", accent: "text-red-600" },
+  { id: "white", label: "白玫瑰", emoji: "🤍", gradient: "from-gray-100 to-gray-50", accent: "text-gray-600" },
+  { id: "yellow", label: "黄玫瑰", emoji: "💛", gradient: "from-amber-100 to-amber-50", accent: "text-amber-600" },
 ] as const;
+
+type Field = "gratitude" | "anxiety" | "hope";
+
+const FIELD_CONFIG: Record<Field, { label: string; placeholder: string; hint: string; color: string; icon: string }> = {
+  gratitude: {
+    label: "玫瑰",
+    placeholder: "这周让你感到幸福或感恩的事情是...",
+    hint: "一件让你感恩的事",
+    color: "text-rose-600",
+    icon: "🌹",
+  },
+  anxiety: {
+    label: "尖刺",
+    placeholder: "现在有什么让你感到焦虑或需要帮助的...",
+    hint: "有什么让你焦虑",
+    color: "text-amber-600",
+    icon: "🌵",
+  },
+  hope: {
+    label: "花苞",
+    placeholder: "你现在期待的事情或新灵感...",
+    hint: "你现在有什么期待",
+    color: "text-green-600",
+    icon: "🌱",
+  },
+};
 
 export default function PlantPage() {
   const router = useRouter();
-  const [step, setStep] = useState<"color" | "form">("color");
+  const [step, setStep] = useState<"color" | "interactive" | "success">("color");
   const [color, setColor] = useState<string>("");
+  const [activeField, setActiveField] = useState<Field | null>(null);
   const [gratitude, setGratitude] = useState("");
   const [anxiety, setAnxiety] = useState("");
   const [hope, setHope] = useState("");
@@ -23,15 +50,29 @@ export default function PlantPage() {
   const [error, setError] = useState("");
 
   const hasContent = gratitude.trim() || anxiety.trim() || hope.trim();
+  const colorMeta = COLORS.find((c) => c.id === color);
+
+  function getFieldValue(field: Field): string {
+    if (field === "gratitude") return gratitude;
+    if (field === "anxiety") return anxiety;
+    return hope;
+  }
+
+  function setFieldValue(field: Field, value: string) {
+    if (field === "gratitude") setGratitude(value);
+    else if (field === "anxiety") setAnxiety(value);
+    else setHope(value);
+  }
+
+  function isFieldFilled(field: Field): boolean {
+    return getFieldValue(field).trim().length > 0;
+  }
 
   async function handleSubmit() {
-    if (!hasContent) {
-      setError("请至少填写一项内容");
-      return;
-    }
-
+    if (!hasContent) return;
     setSubmitting(true);
     setError("");
+    playPlant();
 
     try {
       await createRose({
@@ -40,7 +81,8 @@ export default function PlantPage() {
         anxiety: anxiety.trim() || undefined,
         hope: hope.trim() || undefined,
       });
-      router.push("/garden");
+      playComplete();
+      setStep("success");
     } catch {
       setError("提交失败，请重试");
       setSubmitting(false);
@@ -50,22 +92,24 @@ export default function PlantPage() {
   if (step === "color") {
     return (
       <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-rose-50 to-white p-4">
-        <div className="max-w-lg w-full space-y-6">
-          <h2 className="text-2xl font-bold text-center text-rose-800">
-            选择玫瑰的颜色
-          </h2>
-          <div className="grid grid-cols-3 gap-4">
+        <div className="max-w-lg w-full space-y-8">
+          <div className="text-center space-y-2">
+            <h2 className="text-3xl font-bold text-rose-800">选择玫瑰的颜色</h2>
+            <p className="text-muted-foreground">每种颜色代表不同的心情</p>
+          </div>
+          <div className="grid grid-cols-3 gap-6">
             {COLORS.map((c) => (
               <button
                 key={c.id}
                 onClick={() => {
+                  playClick();
                   setColor(c.id);
-                  setStep("form");
+                  setStep("interactive");
                 }}
-                className={`p-6 rounded-xl border-2 ${c.border} ${c.bg} hover:scale-105 transition-transform cursor-pointer`}
+                className={`p-8 rounded-2xl bg-gradient-to-b ${c.gradient} border-2 border-transparent hover:border-rose-300 hover:scale-105 transition-all cursor-pointer shadow-sm hover:shadow-md`}
               >
-                <div className="text-4xl">{c.emoji}</div>
-                <div className="mt-2 font-medium">{c.label}</div>
+                <div className="text-5xl">{c.emoji}</div>
+                <div className="mt-3 font-medium text-lg">{c.label}</div>
               </button>
             ))}
           </div>
@@ -74,81 +118,160 @@ export default function PlantPage() {
     );
   }
 
-  return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-rose-50 to-white p-4">
-      <Card className="max-w-lg w-full">
-        <CardHeader>
-          <CardTitle className="text-center text-rose-800">
-            {COLORS.find((c) => c.id === color)?.emoji} 种下你的玫瑰
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-rose-700">
-              玫瑰 — 一件让你感恩的事
-            </label>
-            <textarea
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-500"
-              placeholder="这周让你感到幸福或感恩的事情是..."
-              value={gratitude}
-              onChange={(e) => setGratitude(e.target.value)}
-              maxLength={500}
-            />
-            <p className="text-xs text-muted-foreground text-right">
-              {gratitude.length}/500
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-amber-700">
-              尖刺 — 让你焦虑的事
-            </label>
-            <textarea
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
-              placeholder="现在有什么让你感到焦虑或需要帮助的..."
-              value={anxiety}
-              onChange={(e) => setAnxiety(e.target.value)}
-              maxLength={500}
-            />
-            <p className="text-xs text-muted-foreground text-right">
-              {anxiety.length}/500
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-green-700">
-              花苞 — 你的期待
-            </label>
-            <textarea
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="你现在期待的事情或新灵感..."
-              value={hope}
-              onChange={(e) => setHope(e.target.value)}
-              maxLength={500}
-            />
-            <p className="text-xs text-muted-foreground text-right">
-              {hope.length}/500
-            </p>
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-500 text-center">{error}</p>
-          )}
-
-          <div className="flex gap-3 justify-end">
-            <Button variant="outline" onClick={() => setStep("color")}>
-              换颜色
+  if (step === "success") {
+    return (
+      <main className={`min-h-screen flex items-center justify-center bg-gradient-to-b ${colorMeta?.gradient ?? "from-rose-50 to-white"} p-4`}>
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="text-8xl animate-bounce">{colorMeta?.emoji}</div>
+          <h2 className="text-2xl font-bold text-rose-800">谢谢你在社区种下的玫瑰</h2>
+          <p className="text-muted-foreground">你的分享已经出现在花圃中了</p>
+          <div className="flex gap-3 justify-center">
+            <Button variant="outline" onClick={() => router.push("/garden")}>
+              查看花圃
             </Button>
             <Button
               className="bg-rose-500 hover:bg-rose-600"
-              onClick={handleSubmit}
-              disabled={submitting || !hasContent}
+              onClick={() => {
+                setGratitude("");
+                setAnxiety("");
+                setHope("");
+                setStep("color");
+              }}
             >
-              {submitting ? "种下中..." : "种下玫瑰吧"}
+              再种一朵
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className={`min-h-screen flex items-center justify-center bg-gradient-to-b ${colorMeta?.gradient ?? "from-rose-50 to-white"} p-4`}>
+      <div className="max-w-lg w-full space-y-8">
+        <div className="text-center space-y-2">
+          <h2 className="text-3xl font-bold text-rose-800">
+            {colorMeta?.emoji} 种下你的玫瑰
+          </h2>
+          <p className="text-muted-foreground">点击玫瑰上的光点，分享你的故事</p>
+        </div>
+
+        {/* Interactive Rose */}
+        <div className="relative flex items-center justify-center py-8">
+          <div className="relative w-64 h-64">
+            {/* Center rose */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-8xl">{colorMeta?.emoji}</span>
+            </div>
+
+            {/* Gratitude hotspot - top */}
+            <button
+              onClick={() => { playClick(); setActiveField("gratitude"); }}
+              className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                isFieldFilled("gratitude")
+                  ? "bg-rose-200 shadow-lg shadow-rose-300"
+                  : "bg-rose-100 animate-pulse shadow-md shadow-rose-200"
+              } hover:scale-110 cursor-pointer`}
+            >
+              <span className="text-2xl">🌹</span>
+            </button>
+
+            {/* Anxiety hotspot - bottom left */}
+            <button
+              onClick={() => { playClick(); setActiveField("anxiety"); }}
+              className={`absolute bottom-4 left-0 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                isFieldFilled("anxiety")
+                  ? "bg-amber-200 shadow-lg shadow-amber-300"
+                  : "bg-amber-100 animate-pulse shadow-md shadow-amber-200"
+              } hover:scale-110 cursor-pointer`}
+            >
+              <span className="text-2xl">🌵</span>
+            </button>
+
+            {/* Hope hotspot - bottom right */}
+            <button
+              onClick={() => { playClick(); setActiveField("hope"); }}
+              className={`absolute bottom-4 right-0 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                isFieldFilled("hope")
+                  ? "bg-green-200 shadow-lg shadow-green-300"
+                  : "bg-green-100 animate-pulse shadow-md shadow-green-200"
+              } hover:scale-110 cursor-pointer`}
+            >
+              <span className="text-2xl">🌱</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Status indicators */}
+        <div className="flex justify-center gap-6 text-sm">
+          {(["gratitude", "anxiety", "hope"] as Field[]).map((field) => (
+            <div key={field} className={`flex items-center gap-1 ${isFieldFilled(field) ? FIELD_CONFIG[field].color : "text-muted-foreground"}`}>
+              <span>{FIELD_CONFIG[field].icon}</span>
+              <span>{isFieldFilled(field) ? "已填写" : FIELD_CONFIG[field].hint}</span>
+            </div>
+          ))}
+        </div>
+
+        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+
+        {/* Submit button */}
+        <div className="flex justify-center">
+          <Button
+            className="bg-rose-500 hover:bg-rose-600 px-8 py-6 text-lg rounded-full shadow-lg disabled:opacity-50"
+            onClick={handleSubmit}
+            disabled={submitting || !hasContent}
+          >
+            {submitting ? "种下中..." : "种下玫瑰吧"}
+          </Button>
+        </div>
+
+        {/* Back button */}
+        <div className="text-center">
+          <Button variant="ghost" size="sm" onClick={() => setStep("color")}>
+            换颜色
+          </Button>
+        </div>
+      </div>
+
+      {/* Dialog overlay */}
+      {activeField && (
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50"
+          onClick={() => setActiveField(null)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{FIELD_CONFIG[activeField].icon}</span>
+              <h3 className={`text-xl font-bold ${FIELD_CONFIG[activeField].color}`}>
+                {FIELD_CONFIG[activeField].label}
+              </h3>
+            </div>
+            <p className="text-sm text-muted-foreground">{FIELD_CONFIG[activeField].hint}</p>
+            <textarea
+              className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm min-h-[120px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
+              placeholder={FIELD_CONFIG[activeField].placeholder}
+              value={getFieldValue(activeField)}
+              onChange={(e) => setFieldValue(activeField, e.target.value)}
+              maxLength={500}
+              autoFocus
+            />
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {getFieldValue(activeField).length}/500
+              </p>
+              <Button
+                className="bg-rose-500 hover:bg-rose-600 rounded-full px-6"
+                onClick={() => setActiveField(null)}
+              >
+                确定
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
