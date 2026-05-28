@@ -30,6 +30,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/user/profile", get(routes::auth::profile))
         .route("/api/rose/{id}/like", post(routes::like::toggle_like))
         .route("/api/ws", get(routes::ws::ws_handler))
+        .route("/swagger", get(routes::docs::swagger_ui))
+        .route(
+            "/api/openapi.json",
+            get(|| async {
+                axum::response::Json(
+                    serde_json::from_str::<serde_json::Value>(include_str!(
+                        "routes/openapi.json"
+                    ))
+                    .unwrap(),
+                )
+            }),
+        )
         .layer(cors)
         .with_state(state);
 

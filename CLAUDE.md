@@ -47,6 +47,7 @@ GET    /api/my/roses       # 获取个人花圃（需 JWT，分页）
 GET    /api/user/profile   # 获取用户资料 + 种花统计（需 JWT）
 POST   /api/rose/:id/like  # 点赞/取消点赞（需 JWT）
 GET    /api/ws             # WebSocket 实时推送
+GET    /swagger            # Swagger API 文档
 ```
 
 ## 开发工具链

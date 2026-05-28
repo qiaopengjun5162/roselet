@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod docs;
 pub mod garden;
 pub mod like;
 pub mod my;
