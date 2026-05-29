@@ -1,0 +1,139 @@
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import "@testing-library/jest-dom";
+
+const mockPush = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
+jest.mock("@/lib/api", () => ({
+  createRose: jest.fn(),
+  getMyRoses: jest.fn().mockResolvedValue({ data: [], total: 0 }),
+}));
+
+jest.mock("@/lib/sound", () => ({
+  playClick: jest.fn(),
+  playPlant: jest.fn(),
+  playComplete: jest.fn(),
+}));
+
+jest.mock("@/lib/recommend", () => ({
+  getRecommendation: jest.fn().mockResolvedValue(null),
+}));
+
+const { createRose } = require("@/lib/api") as { createRose: jest.Mock };
+
+import PlantPage from "../page";
+
+describe("PlantPage", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("should render color selection step", () => {
+    render(<PlantPage />);
+    expect(screen.getByText("选择玫瑰的颜色")).toBeInTheDocument();
+    expect(screen.getByText("红玫瑰")).toBeInTheDocument();
+    expect(screen.getByText("白玫瑰")).toBeInTheDocument();
+    expect(screen.getByText("黄玫瑰")).toBeInTheDocument();
+  });
+
+  it("should navigate to interactive step on color click", () => {
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    expect(screen.getByText(/种下你的玫瑰/)).toBeInTheDocument();
+  });
+
+  it("should show hotspot buttons", () => {
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    // Hotspot buttons are accessible by role
+    expect(screen.getByRole("button", { name: "🌹" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "🌵" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "🌱" })).toBeInTheDocument();
+  });
+
+  it("should open dialog on gratitude hotspot click", () => {
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    // Dialog should appear with textarea
+    const textarea = screen.getByRole("textbox");
+    expect(textarea).toBeInTheDocument();
+    expect(screen.getByText("玫瑰")).toBeInTheDocument(); // dialog title
+  });
+
+  it("should fill and close dialog", () => {
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "感恩测试" } });
+    fireEvent.click(screen.getByText("确定"));
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("should submit rose with content", async () => {
+    createRose.mockResolvedValue({ id: "r1", color: "red" });
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "感恩测试" } });
+    fireEvent.click(screen.getByText("确定"));
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
+    await waitFor(() => {
+      expect(createRose).toHaveBeenCalledWith({
+        color: "red",
+        gratitude: "感恩测试",
+        anxiety: undefined,
+        hope: undefined,
+      });
+      expect(screen.getByText("谢谢你在社区种下的玫瑰")).toBeInTheDocument();
+    });
+  });
+
+  it("should show error on submit failure", async () => {
+    createRose.mockRejectedValue(new Error("fail"));
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "感恩" } });
+    fireEvent.click(screen.getByText("确定"));
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
+    await waitFor(() => {
+      expect(screen.getByText("提交失败，请重试")).toBeInTheDocument();
+    });
+  });
+
+  it("should go back to color step", () => {
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByText("换颜色"));
+    expect(screen.getByText("选择玫瑰的颜色")).toBeInTheDocument();
+  });
+
+  it("should allow planting another rose after success", async () => {
+    createRose.mockResolvedValue({ id: "r1", color: "red" });
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "感恩" } });
+    fireEvent.click(screen.getByText("确定"));
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
+    await waitFor(() => {
+      expect(screen.getByText("再种一朵")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("再种一朵"));
+    expect(screen.getByText("选择玫瑰的颜色")).toBeInTheDocument();
+  });
+
+  it("should view garden after success", async () => {
+    createRose.mockResolvedValue({ id: "r1", color: "red" });
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "感恩" } });
+    fireEvent.click(screen.getByText("确定"));
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
+    await waitFor(() => {
+      expect(screen.getByText("查看花圃")).toBeInTheDocument();
+    });
+  });
+});
