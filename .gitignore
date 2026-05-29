@@ -16,3 +16,4 @@ out/
 .idea/
 apps/web/public/pkg/
 apps/web/pnpm-lock.yaml
+apps/web/pnpm-workspace.yaml
