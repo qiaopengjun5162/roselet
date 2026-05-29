@@ -62,7 +62,7 @@
 
 ## 待办
 
-- [ ] 优化 profile SQL（4 次查询 → 1 次聚合）
-- [ ] 提取公共 auth token 函数
+- [x] 优化 profile SQL（4 次查询 → 1 次聚合）
+- [x] 提取公共 auth token 函数
 - [ ] 小程序适配
 - [ ] Web3 功能
