@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { createRose } from "@/lib/api";
 import { playClick, playPlant, playComplete } from "@/lib/sound";
+import { getMyRoses } from "@/lib/api";
+import { getRecommendation, type Recommendation } from "@/lib/recommend";
 
 const COLORS = [
   { id: "red", label: "红玫瑰", emoji: "🌹", gradient: "from-red-100 to-red-50", accent: "text-red-600" },
@@ -48,8 +50,32 @@ export default function PlantPage() {
   const [hope, setHope] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [rec, setRec] = useState<Recommendation | null>(null);
+  const [recLoading, setRecLoading] = useState(false);
 
   const hasContent = gratitude.trim() || anxiety.trim() || hope.trim();
+
+  // Load recommendation on mount
+  useState(() => {
+    const user = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!user) return;
+    setRecLoading(true);
+    getMyRoses(1, 10)
+      .then((res) => {
+        if (res.data.length > 0) {
+          const roses = res.data.map((r) => ({
+            color: r.color,
+            gratitude: r.gratitude,
+            anxiety: r.anxiety,
+            hope: r.hope,
+          }));
+          return getRecommendation(roses);
+        }
+        return getRecommendation([]);
+      })
+      .then((r) => { if (r) setRec(r); })
+      .finally(() => setRecLoading(false));
+  });
   const colorMeta = COLORS.find((c) => c.id === color);
 
   function getFieldValue(field: Field): string {
@@ -97,6 +123,34 @@ export default function PlantPage() {
             <h2 className="text-3xl font-bold text-rose-800">选择玫瑰的颜色</h2>
             <p className="text-muted-foreground">每种颜色代表不同的心情</p>
           </div>
+          {/* Recommendation Card */}
+          {(recLoading || rec) && (
+            <div className="rounded-2xl border border-rose-200 bg-white/80 p-5 space-y-3 shadow-sm">
+              <p className="text-sm font-medium text-rose-700">智能推荐</p>
+              {recLoading ? (
+                <p className="text-sm text-muted-foreground animate-pulse">分析你的种花历史...</p>
+              ) : rec && (
+                <>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-purple-700">花语：{rec.flower_language.title}</p>
+                    <p className="text-xs text-muted-foreground">{rec.flower_language.content}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-green-700">试试：{rec.theme.title}</p>
+                    <p className="text-xs text-muted-foreground">{rec.theme.content}</p>
+                  </div>
+                  <button
+                    onClick={() => { playClick(); setColor(rec.color_suggestion.color); setStep("interactive"); }}
+                    className="w-full text-left rounded-lg border border-rose-200 p-3 hover:bg-rose-50 transition-colors cursor-pointer"
+                  >
+                    <p className="text-sm font-medium text-rose-700">推荐颜色：{rec.color_suggestion.color === "red" ? "红玫瑰" : rec.color_suggestion.color === "white" ? "白玫瑰" : "黄玫瑰"}</p>
+                    <p className="text-xs text-muted-foreground">{rec.color_suggestion.reason}</p>
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-6">
             {COLORS.map((c) => (
               <button

@@ -86,3 +86,11 @@ pre-commit:
     cargo fmt --all
     cargo clippy --all-features -- -D warnings
     cargo nextest run --all-features -- --test-threads=1
+
+# 构建 WASM 推荐模块
+wasm:
+    cd crates/recommend && wasm-pack build --target web --out-dir ../../apps/web/public/pkg
+
+# 完整构建（后端 + WASM + 前端）
+build-all: wasm build
+    cd apps/web && pnpm build
