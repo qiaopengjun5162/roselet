@@ -41,12 +41,19 @@
 - [x] 响应式布局
 
 ### 测试
-- [x] 36 个后端集成测试
-- [x] 12 个前端单元测试
+- [x] 72 个后端测试（36 集成 + 36 单元）
+- [x] 20 个前端单元测试
 
 ### 部署
 - [x] Docker 一键部署（docker-compose：PostgreSQL + 后端 + 前端）
 - [x] Swagger API 文档（/swagger，OpenAPI 3.0）
+
+### WASM 推荐模块
+- [x] 纯 Rust → WASM 智能内容推荐（crates/recommend）
+- [x] 中文关键词词典（45 个词，8 个分类）
+- [x] 花语数据库 + 主题推荐 + 颜色推荐算法
+- [x] 种花页面集成推荐卡片
+- [x] wasm-pack 构建流程（112KB）
 
 ### 文档
 - [x] README.md（英文）+ README_zh.md（中文）
@@ -55,6 +62,7 @@
 
 ## 待办
 
+- [ ] 优化 profile SQL（4 次查询 → 1 次聚合）
+- [ ] 提取公共 auth token 函数
 - [ ] 小程序适配
-- [ ] WASM AI 模块
 - [ ] Web3 功能

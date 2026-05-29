@@ -37,6 +37,15 @@ pub fn verify_token(token: &str, secret: &[u8]) -> Option<Claims> {
     .map(|data| data.claims)
 }
 
+pub fn extract_user_id(headers: &axum::http::HeaderMap, secret: &[u8]) -> Option<Uuid> {
+    headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|token| token.strip_prefix("Bearer "))
+        .and_then(|t| verify_token(t, secret))
+        .map(|claims| claims.sub)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

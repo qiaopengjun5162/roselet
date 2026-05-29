@@ -9,15 +9,6 @@ use crate::error::AppError;
 use crate::models::rose::{CreateRose, Rose, RoseResponse, UpdateRose};
 use crate::state::AppState;
 
-fn extract_user_id(headers: &HeaderMap, secret: &[u8]) -> Option<Uuid> {
-    headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|token| token.strip_prefix("Bearer "))
-        .and_then(|t| auth::verify_token(t, secret))
-        .map(|claims| claims.sub)
-}
-
 async fn lookup_nickname(pool: &PgPool, user_id: Option<Uuid>) -> Option<String> {
     let uid = user_id?;
     sqlx::query_scalar("SELECT nickname FROM users WHERE id = $1")
@@ -35,7 +26,7 @@ pub async fn create_rose(
 ) -> Result<Json<RoseResponse>, AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
-    let user_id = extract_user_id(&headers, &state.jwt_secret);
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret);
 
     let rose = sqlx::query_as::<_, Rose>(
         "INSERT INTO roses (color, gratitude, anxiety, hope, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
@@ -102,7 +93,7 @@ pub async fn update_rose(
 ) -> Result<Json<RoseResponse>, AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
-    let user_id = extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
 
     let existing = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
         .bind(id)
@@ -148,7 +139,7 @@ pub async fn delete_rose(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<(), AppError> {
-    let user_id = extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
 
     let existing = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
         .bind(id)

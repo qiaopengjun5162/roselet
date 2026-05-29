@@ -41,13 +41,7 @@ pub async fn profile(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<UserProfile>, AppError> {
-    let user_id = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|token| token.strip_prefix("Bearer "))
-        .and_then(|t| auth::verify_token(t, &state.jwt_secret))
-        .map(|claims| claims.sub)
-        .ok_or(AppError::Forbidden)?;
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
 
     let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
         .bind(user_id)
@@ -55,28 +49,12 @@ pub async fn profile(
         .await?
         .ok_or(AppError::NotFound)?;
 
-    let total_roses: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE user_id = $1")
-        .bind(user_id)
-        .fetch_one(&state.pool)
-        .await?;
-
-    let red_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE user_id = $1 AND color = 'red'")
-            .bind(user_id)
-            .fetch_one(&state.pool)
-            .await?;
-
-    let white_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE user_id = $1 AND color = 'white'")
-            .bind(user_id)
-            .fetch_one(&state.pool)
-            .await?;
-
-    let yellow_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE user_id = $1 AND color = 'yellow'")
-            .bind(user_id)
-            .fetch_one(&state.pool)
-            .await?;
+    let (total_roses, red_count, white_count, yellow_count) = sqlx::query_as::<_, (i64, i64, i64, i64)>(
+        "SELECT COUNT(*), COUNT(*) FILTER (WHERE color = 'red'), COUNT(*) FILTER (WHERE color = 'white'), COUNT(*) FILTER (WHERE color = 'yellow') FROM roses WHERE user_id = $1",
+    )
+    .bind(user_id)
+    .fetch_one(&state.pool)
+    .await?;
 
     Ok(Json(UserProfile {
         user,

@@ -19,13 +19,7 @@ pub async fn toggle_like(
     headers: HeaderMap,
     Path(rose_id): Path<Uuid>,
 ) -> Result<Json<LikeResponse>, AppError> {
-    let user_id = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|token| token.strip_prefix("Bearer "))
-        .and_then(|t| auth::verify_token(t, &state.jwt_secret))
-        .map(|claims| claims.sub)
-        .ok_or(AppError::Forbidden)?;
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
 
     let existing =
         sqlx::query_scalar::<_, Uuid>("SELECT id FROM likes WHERE user_id = $1 AND rose_id = $2")
