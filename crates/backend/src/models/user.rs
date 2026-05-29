@@ -32,3 +32,44 @@ pub struct AuthResponse {
     pub token: String,
     pub user: User,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_valid() {
+        let r = RegisterRequest { nickname: "alice".to_string() };
+        assert!(r.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_empty() {
+        let r = RegisterRequest { nickname: "".to_string() };
+        assert!(r.validate().is_err());
+    }
+
+    #[test]
+    fn test_validate_whitespace_only() {
+        let r = RegisterRequest { nickname: "   ".to_string() };
+        assert!(r.validate().is_err());
+    }
+
+    #[test]
+    fn test_validate_max_length() {
+        let r = RegisterRequest { nickname: "a".repeat(50) };
+        assert!(r.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_too_long() {
+        let r = RegisterRequest { nickname: "a".repeat(51) };
+        assert!(r.validate().is_err());
+    }
+
+    #[test]
+    fn test_validate_trimmed() {
+        let r = RegisterRequest { nickname: " alice ".to_string() };
+        assert!(r.validate().is_ok());
+    }
+}

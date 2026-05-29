@@ -195,3 +195,114 @@ describe("API Client", () => {
     });
   });
 });
+
+  describe("register", () => {
+    it("should register a user", async () => {
+      const mockResponse = {
+        token: "jwt-token",
+        user: { id: "u1", nickname: "alice", created_at: "2026-05-27T00:00:00Z" },
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const result = await (await import("../api")).register("alice");
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("should throw error on failure", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+      await expect((await import("../api")).register("alice")).rejects.toThrow("Failed to register");
+    });
+  });
+
+  describe("getMyRoses", () => {
+    it("should return paginated roses", async () => {
+      const { setToken, getMyRoses } = await import("../api");
+      setToken("test-token");
+
+      const mockResponse = {
+        data: [{ id: "1", color: "red", user_id: "u1", created_at: "" }],
+        total: 1,
+        page: 1,
+        per_page: 20,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const result = await getMyRoses();
+      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/my/roses?page=1&per_page=20",
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: "Bearer test-token" }),
+        })
+      );
+    });
+
+    it("should throw error on failure", async () => {
+      const { setToken, getMyRoses } = await import("../api");
+      setToken("test-token");
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+      await expect(getMyRoses()).rejects.toThrow("Failed to fetch my roses");
+    });
+  });
+
+  describe("getUserProfile", () => {
+    it("should return user profile", async () => {
+      const { setToken, getUserProfile } = await import("../api");
+      setToken("test-token");
+
+      const mockProfile = {
+        user: { id: "u1", nickname: "alice", created_at: "" },
+        total_roses: 5,
+        red_count: 2,
+        white_count: 2,
+        yellow_count: 1,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockProfile,
+      });
+
+      const result = await getUserProfile();
+      expect(result).toEqual(mockProfile);
+    });
+
+    it("should throw error on failure", async () => {
+      const { setToken, getUserProfile } = await import("../api");
+      setToken("test-token");
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+      await expect(getUserProfile()).rejects.toThrow("Failed to fetch profile");
+    });
+  });
+
+  describe("toggleLike", () => {
+    it("should toggle like", async () => {
+      const { setToken, toggleLike } = await import("../api");
+      setToken("test-token");
+
+      const mockResponse = { liked: true, like_count: 1 };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const result = await toggleLike("rose-1");
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("should throw error on failure", async () => {
+      const { setToken, toggleLike } = await import("../api");
+      setToken("test-token");
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+      await expect(toggleLike("rose-1")).rejects.toThrow("Failed to toggle like");
+    });
+  });

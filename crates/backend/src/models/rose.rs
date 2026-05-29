@@ -121,3 +121,129 @@ impl UpdateRose {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_rose_valid() {
+        let r = CreateRose {
+            color: "red".to_string(),
+            gratitude: Some("感谢".to_string()),
+            anxiety: None,
+            hope: None,
+        };
+        assert!(r.validate().is_ok());
+    }
+
+    #[test]
+    fn test_create_rose_invalid_color() {
+        let r = CreateRose {
+            color: "blue".to_string(),
+            gratitude: Some("test".to_string()),
+            anxiety: None,
+            hope: None,
+        };
+        assert!(r.validate().is_err());
+    }
+
+    #[test]
+    fn test_create_rose_no_content() {
+        let r = CreateRose {
+            color: "red".to_string(),
+            gratitude: None,
+            anxiety: None,
+            hope: None,
+        };
+        assert!(r.validate().is_err());
+    }
+
+    #[test]
+    fn test_create_rose_max_length_gratitude() {
+        let r = CreateRose {
+            color: "red".to_string(),
+            gratitude: Some("a".repeat(500)),
+            anxiety: None,
+            hope: None,
+        };
+        assert!(r.validate().is_ok());
+    }
+
+    #[test]
+    fn test_create_rose_too_long_gratitude() {
+        let r = CreateRose {
+            color: "red".to_string(),
+            gratitude: Some("a".repeat(501)),
+            anxiety: None,
+            hope: None,
+        };
+        assert!(r.validate().is_err());
+    }
+
+    #[test]
+    fn test_create_rose_too_long_anxiety() {
+        let r = CreateRose {
+            color: "red".to_string(),
+            gratitude: None,
+            anxiety: Some("a".repeat(501)),
+            hope: None,
+        };
+        assert!(r.validate().is_err());
+    }
+
+    #[test]
+    fn test_create_rose_too_long_hope() {
+        let r = CreateRose {
+            color: "red".to_string(),
+            gratitude: None,
+            anxiety: None,
+            hope: Some("a".repeat(501)),
+        };
+        assert!(r.validate().is_err());
+    }
+
+    #[test]
+    fn test_update_rose_valid() {
+        let r = UpdateRose {
+            color: Some("white".to_string()),
+            gratitude: None,
+            anxiety: None,
+            hope: None,
+        };
+        assert!(r.validate().is_ok());
+    }
+
+    #[test]
+    fn test_update_rose_invalid_color() {
+        let r = UpdateRose {
+            color: Some("green".to_string()),
+            gratitude: None,
+            anxiety: None,
+            hope: None,
+        };
+        assert!(r.validate().is_err());
+    }
+
+    #[test]
+    fn test_update_rose_too_long() {
+        let r = UpdateRose {
+            color: None,
+            gratitude: Some(Some("a".repeat(501))),
+            anxiety: None,
+            hope: None,
+        };
+        assert!(r.validate().is_err());
+    }
+
+    #[test]
+    fn test_update_rose_clear_field() {
+        let r = UpdateRose {
+            color: None,
+            gratitude: Some(None),
+            anxiety: None,
+            hope: None,
+        };
+        assert!(r.validate().is_ok());
+    }
+}

@@ -27,3 +27,62 @@ pub struct PaginatedResponse<T: Serialize> {
     pub page: i64,
     pub per_page: i64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_per_page_default() {
+        let p = Pagination { page: None, per_page: None };
+        assert_eq!(p.per_page(), 20);
+    }
+
+    #[test]
+    fn test_per_page_clamp_min() {
+        let p = Pagination { page: None, per_page: Some(0) };
+        assert_eq!(p.per_page(), 1);
+    }
+
+    #[test]
+    fn test_per_page_clamp_max() {
+        let p = Pagination { page: None, per_page: Some(200) };
+        assert_eq!(p.per_page(), 100);
+    }
+
+    #[test]
+    fn test_per_page_valid() {
+        let p = Pagination { page: None, per_page: Some(50) };
+        assert_eq!(p.per_page(), 50);
+    }
+
+    #[test]
+    fn test_offset_default() {
+        let p = Pagination { page: None, per_page: None };
+        assert_eq!(p.offset(), 0);
+    }
+
+    #[test]
+    fn test_offset_page_1() {
+        let p = Pagination { page: Some(1), per_page: Some(10) };
+        assert_eq!(p.offset(), 0);
+    }
+
+    #[test]
+    fn test_offset_page_2() {
+        let p = Pagination { page: Some(2), per_page: Some(10) };
+        assert_eq!(p.offset(), 10);
+    }
+
+    #[test]
+    fn test_offset_page_zero_clamped() {
+        let p = Pagination { page: Some(0), per_page: Some(10) };
+        assert_eq!(p.offset(), 0);
+    }
+
+    #[test]
+    fn test_offset_negative_page_clamped() {
+        let p = Pagination { page: Some(-5), per_page: Some(10) };
+        assert_eq!(p.offset(), 0);
+    }
+}

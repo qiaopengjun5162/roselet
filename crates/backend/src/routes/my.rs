@@ -10,12 +10,12 @@ use crate::state::AppState;
 
 use super::resolve_nicknames;
 
-fn require_user_id(headers: &HeaderMap) -> Result<uuid::Uuid, AppError> {
+fn require_user_id(headers: &HeaderMap, secret: &[u8]) -> Result<uuid::Uuid, AppError> {
     headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
         .and_then(|token| token.strip_prefix("Bearer "))
-        .and_then(auth::verify_token)
+        .and_then(|t| auth::verify_token(t, secret))
         .map(|claims| claims.sub)
         .ok_or(AppError::Forbidden)
 }
@@ -25,7 +25,7 @@ pub async fn get_my_roses(
     headers: HeaderMap,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<PaginatedResponse<RoseResponse>>, AppError> {
-    let user_id = require_user_id(&headers)?;
+    let user_id = require_user_id(&headers, &state.jwt_secret)?;
 
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE user_id = $1")
         .bind(user_id)

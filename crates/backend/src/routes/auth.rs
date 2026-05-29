@@ -23,7 +23,7 @@ pub async fn register(
     .fetch_one(&state.pool)
     .await?;
 
-    let token = auth::create_token(user.id, &user.nickname)?;
+    let token = auth::create_token(user.id, &user.nickname, &state.jwt_secret)?;
 
     Ok(Json(AuthResponse { token, user }))
 }
@@ -45,7 +45,7 @@ pub async fn profile(
         .get("authorization")
         .and_then(|v| v.to_str().ok())
         .and_then(|token| token.strip_prefix("Bearer "))
-        .and_then(auth::verify_token)
+        .and_then(|t| auth::verify_token(t, &state.jwt_secret))
         .map(|claims| claims.sub)
         .ok_or(AppError::Forbidden)?;
 

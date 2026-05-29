@@ -33,7 +33,7 @@ async fn create_test_app() -> axum::Router {
         .await
         .expect("Failed to clean users");
 
-    let state = roselet_backend::state::AppState::new(pool);
+    let state = roselet_backend::state::AppState::new(pool, "test-secret".to_string());
     let cors = tower_http::cors::CorsLayer::new()
         .allow_origin(tower_http::cors::Any)
         .allow_methods(tower_http::cors::Any)
