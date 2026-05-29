@@ -28,17 +28,12 @@ struct ChatMessageContent {
     content: String,
 }
 
-pub async fn generate_reply(
+fn build_prompt(
     color: &str,
     gratitude: Option<&str>,
     anxiety: Option<&str>,
     hope: Option<&str>,
-) -> Option<String> {
-    let api_key = std::env::var("OPENAI_API_KEY").ok()?;
-    let base_url = std::env::var("OPENAI_BASE_URL")
-        .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
-    let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
-
+) -> String {
     let color_name = match color {
         "red" => "红玫瑰（感恩）",
         "white" => "白玫瑰（纯洁）",
@@ -57,13 +52,25 @@ pub async fn generate_reply(
         parts.push(format!("期待：{}", h));
     }
 
-    let prompt = format!(
-        "用户在社区花圃种下了一朵{}，内容如下：\n{}\n\n\
-         请用温暖、真诚的语气回复一段话（50-100字），表达对用户的共鸣和支持。\
-         不要重复用户的话，要有新意。用中文回复。",
+    format!(
+        "用户在社区花圃种下了一朵{}，内容如下：\n{}\n\n请用温暖、真诚的语气回复一段话（50-100字），表达对用户的共鸣和支持。不要重复用户的话，要有新意。用中文回复。",
         color_name,
         parts.join("\n"),
-    );
+    )
+}
+
+pub async fn generate_reply(
+    color: &str,
+    gratitude: Option<&str>,
+    anxiety: Option<&str>,
+    hope: Option<&str>,
+) -> Option<String> {
+    let api_key = std::env::var("OPENAI_API_KEY").ok()?;
+    let base_url = std::env::var("OPENAI_BASE_URL")
+        .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
+    let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
+
+    let prompt = build_prompt(color, gratitude, anxiety, hope);
 
     let client = reqwest::Client::new();
     let res = client
@@ -83,4 +90,45 @@ pub async fn generate_reply(
 
     let body: ChatResponse = res.json().await.ok()?;
     body.choices.first().map(|c| c.message.content.clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_prompt_red_with_gratitude() {
+        let prompt = build_prompt("red", Some("感谢家人"), None, None);
+        assert!(prompt.contains("红玫瑰（感恩）"));
+        assert!(prompt.contains("感恩：感谢家人"));
+    }
+
+    #[test]
+    fn test_build_prompt_white_with_anxiety() {
+        let prompt = build_prompt("white", None, Some("工作压力"), None);
+        assert!(prompt.contains("白玫瑰（纯洁）"));
+        assert!(prompt.contains("焦虑：工作压力"));
+    }
+
+    #[test]
+    fn test_build_prompt_yellow_with_hope() {
+        let prompt = build_prompt("yellow", None, None, Some("期待旅行"));
+        assert!(prompt.contains("黄玫瑰（温暖）"));
+        assert!(prompt.contains("期待：期待旅行"));
+    }
+
+    #[test]
+    fn test_build_prompt_all_fields() {
+        let prompt = build_prompt("red", Some("感恩"), Some("焦虑"), Some("期待"));
+        assert!(prompt.contains("感恩：感恩"));
+        assert!(prompt.contains("焦虑：焦虑"));
+        assert!(prompt.contains("期待：期待"));
+    }
+
+    #[test]
+    fn test_build_prompt_unknown_color() {
+        let prompt = build_prompt("blue", Some("test"), None, None);
+        assert!(prompt.contains("玫瑰"));
+        assert!(!prompt.contains("红玫瑰"));
+    }
 }
