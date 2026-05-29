@@ -65,4 +65,11 @@
 - [x] 优化 profile SQL（4 次查询 → 1 次聚合）
 - [x] 提取公共 auth token 函数
 - [ ] 小程序适配
-- [ ] Web3 功能
+- [ ] Web3 功能（已设计，待实现）
+  - 用户钱包直付 Gas + 平台服务费
+  - 先走正统 Web3 流程（用户学习钱包/Gas），后续加人民币支付
+  - Ethereum Solidity + Solana Anchor 双链
+  - ChainAdapter trait 统一接口
+  - 钱包可选绑定，上链可选触发
+  - 上链内容：用户精选一句话（≤200字）+ 颜色
+  - 完整内容留链下，链上存精华
