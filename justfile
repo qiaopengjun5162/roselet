@@ -19,7 +19,7 @@ clean:
 
 # 运行所有测试
 test:
-    cargo nextest run --all-features -- --test-threads=1
+    cargo nextest run --all-features -j1
     cd apps/web && pnpm test
 
 # 快速检查
@@ -79,13 +79,13 @@ check-all:
     cargo fmt --all -- --check
     cargo clippy --all-features -- -D warnings
     cargo deny check
-    cargo nextest run --all-features -- --test-threads=1
+    cargo nextest run --all-features -j1
 
 # 提交前检查
 pre-commit:
     cargo fmt --all
     cargo clippy --all-features -- -D warnings
-    cargo nextest run --all-features -- --test-threads=1
+    cargo nextest run --all-features -j1
 
 # 构建 WASM 推荐模块
 wasm:

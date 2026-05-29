@@ -23,7 +23,6 @@ impl AppState {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_app_state_new() {
