@@ -43,6 +43,7 @@ just wasm              # 构建 WASM 推荐模块
 ## API
 ```
 POST   /api/auth/register  # 用户注册（JWT）
+GET    /health             # 健康检查（数据库连接 + 版本信息）
 POST   /api/rose           # 种一朵玫瑰（后台异步生成 AI 回复）
 PUT    /api/rose/:id       # 编辑玫瑰（仅 owner）
 DELETE /api/rose/:id       # 删除玫瑰（仅 owner）

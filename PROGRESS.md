@@ -11,6 +11,8 @@
 
 ### 后端功能
 - [x] POST /api/rose - 创建玫瑰（后台异步生成 AI 回复）
+- [x] GET /health - 健康检查（数据库连接 + 版本信息）
+- [x] GET /health - 健康检查（数据库连接 + 版本信息）
 - [x] GET /api/garden - 获取花圃（分页 + 颜色筛选）
 - [x] GET /api/rose/:id - 获取单朵玫瑰
 - [x] PUT /api/rose/:id - 编辑玫瑰（仅创建者）
@@ -26,7 +28,9 @@
 - [x] thiserror 错误处理（404/400/403/500 区分）
 - [x] CORS 配置
 - [x] JWT 认证（jsonwebtoken v9）
+- [x] tracing 结构化日志（tracing-subscriber）
 - [x] Swagger API 文档（/swagger）
+- [x] tracing 结构化日志（tracing-subscriber）
 
 ### 前端功能
 - [x] 首页：规则介绍 + "种一朵玫瑰"按钮
