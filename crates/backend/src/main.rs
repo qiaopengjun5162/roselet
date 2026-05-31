@@ -2,6 +2,7 @@ use axum::Router;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use tower_http::cors::{Any, CorsLayer};
+use tracing_subscriber::EnvFilter;
 
 use roselet_backend::config::Config;
 use roselet_backend::routes;
@@ -9,6 +10,10 @@ use roselet_backend::state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive("roselet=info".parse()?))
+        .init();
+
     let config = Config::from_env();
     let pool = roselet_backend::db::create_pool(&config.database_url).await?;
 
@@ -18,6 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
 
     let app = Router::new()
+        .route("/health", get(routes::health::health_check))
         .route("/api/auth/register", post(routes::auth::register))
         .route("/api/garden", get(routes::garden::get_garden))
         .route("/api/rose", post(routes::rose::create_rose))
@@ -50,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(state);
 
     let addr = format!("0.0.0.0:{}", config.port);
-    println!("Roselet backend listening on {}", addr);
+    tracing::info!("Roselet backend listening on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;

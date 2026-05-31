@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod docs;
 pub mod garden;
+pub mod health;
 pub mod like;
 pub mod my;
 pub mod rose;
