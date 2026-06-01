@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { createRose } from "@/lib/api";
+import { createRose, getToken, getMyRoses } from "@/lib/api";
 import { playClick, playPlant, playComplete } from "@/lib/sound";
-import { getMyRoses } from "@/lib/api";
 import { getRecommendation, type Recommendation } from "@/lib/recommend";
 
 const COLORS = [
@@ -55,27 +54,31 @@ export default function PlantPage() {
 
   const hasContent = gratitude.trim() || anxiety.trim() || hope.trim();
 
-  // Load recommendation on mount
-  useState(() => {
-    const user = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!user) return;
+  // 未登录跳转登录页，登录后跳回种花页
+  useEffect(() => {
+    if (!getToken()) {
+      router.replace("/login?redirect=/plant");
+    }
+  }, [router]);
+
+  // 加载 WASM 推荐
+  useEffect(() => {
+    if (!getToken()) return;
     setRecLoading(true);
     getMyRoses(1, 10)
       .then((res) => {
-        if (res.data.length > 0) {
-          const roses = res.data.map((r) => ({
-            color: r.color,
-            gratitude: r.gratitude,
-            anxiety: r.anxiety,
-            hope: r.hope,
-          }));
-          return getRecommendation(roses);
-        }
-        return getRecommendation([]);
+        const roses = res.data.map((r) => ({
+          color: r.color,
+          gratitude: r.gratitude,
+          anxiety: r.anxiety,
+          hope: r.hope,
+        }));
+        return getRecommendation(roses);
       })
       .then((r) => { if (r) setRec(r); })
       .finally(() => setRecLoading(false));
-  });
+  }, []);
+
   const colorMeta = COLORS.find((c) => c.id === color);
 
   function getFieldValue(field: Field): string {

@@ -80,6 +80,10 @@ export default function RoseDetailPage() {
 
   async function handleLike() {
     if (!rose) return;
+    if (!user) {
+      router.push(`/login?redirect=/rose/${rose.id}`);
+      return;
+    }
     try {
       const res = await toggleLike(rose.id);
       setRose({ ...rose, like_count: res.like_count });
@@ -227,9 +231,8 @@ export default function RoseDetailPage() {
                     variant="outline"
                     size="sm"
                     onClick={handleLike}
-                    disabled={!user}
                   >
-                    {rose.like_count > 0 ? `${rose.like_count} likes` : "like"}
+                    {rose.like_count > 0 ? `❤️ ${rose.like_count}` : "❤️ 点赞"}
                   </Button>
                 </div>
               </>

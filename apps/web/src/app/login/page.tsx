@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { register, setToken, setUser } from "@/lib/api";
 
-export default function LoginPage() {
+function LoginForm() {
   const [nickname, setNickname] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/garden";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,9 +24,9 @@ export default function LoginPage() {
       setToken(res.token);
       setUser(res.user);
       window.dispatchEvent(new Event("auth-change"));
-      router.push("/garden");
+      router.push(redirect);
     } catch {
-      setError("注册失败，请重试");
+      setError("昵称已被占用，换一个试试？");
     } finally {
       setLoading(false);
     }
@@ -33,9 +35,9 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-center mb-2">加入花圃</h1>
+        <h1 className="text-2xl font-bold text-center mb-2">给自己取个名字</h1>
         <p className="text-muted-foreground text-center mb-6">
-          输入你的昵称，开始种下第一朵玫瑰
+          起个昵称就能开始种花，已有昵称直接进入
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -44,7 +46,7 @@ export default function LoginPage() {
               type="text"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
-              placeholder="你的昵称"
+              placeholder="你想叫什么名字？"
               maxLength={50}
               className="w-full px-4 py-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
               autoFocus
@@ -58,10 +60,18 @@ export default function LoginPage() {
             disabled={loading || !nickname.trim()}
             className="w-full py-3 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? "注册中..." : "开始种花"}
+            {loading ? "进入中..." : "进入花圃"}
           </button>
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
