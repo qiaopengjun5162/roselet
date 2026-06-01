@@ -1,7 +1,7 @@
 import * as Tone from "tone";
 
 let started = false;
-let muted = true;
+let muted = false;
 
 async function ensureStarted() {
   if (!started) {

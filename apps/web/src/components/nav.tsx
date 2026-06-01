@@ -8,11 +8,12 @@ import { isMuted, toggleMute, startBgMusic, stopBgMusic } from "@/lib/sound";
 
 export function Nav() {
   const [user, setUser] = useState<User | null>(null);
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     setUser(getUser());
+    setMuted(isMuted());
 
     function onAuthChange() {
       setUser(getUser());
