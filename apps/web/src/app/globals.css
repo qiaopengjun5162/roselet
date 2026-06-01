@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0d0f1e;
+  --background: #080e0c;
   --foreground: #e2e8f0;
   --card-bg: rgba(255, 255, 255, 0.05);
   --card-border: rgba(255, 255, 255, 0.10);
@@ -18,7 +18,7 @@
 }
 
 body {
-  background: linear-gradient(135deg, #0d0f1e 0%, #121428 40%, #0f1020 70%, #0a0c18 100%);
+  background: linear-gradient(150deg, #080e0c 0%, #0c1210 30%, #0e1018 60%, #090c14 100%);
   min-height: 100vh;
   color: var(--foreground);
   font-family: var(--font-geist-sans, Arial, sans-serif);
@@ -56,10 +56,10 @@ body::after {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 55% 45% at 15% 45%, rgba(139, 92, 246, 0.14) 0%, transparent 65%),
-    radial-gradient(ellipse 45% 40% at 85% 15%, rgba(236, 72, 153, 0.12) 0%, transparent 65%),
-    radial-gradient(ellipse 50% 55% at 65% 85%, rgba(14, 165, 233, 0.10) 0%, transparent 65%),
-    radial-gradient(ellipse 35% 30% at 50% 50%, rgba(244, 63, 94, 0.06) 0%, transparent 60%);
+    radial-gradient(ellipse 55% 45% at 10% 40%, rgba(52, 211, 153, 0.09) 0%, transparent 65%),
+    radial-gradient(ellipse 45% 40% at 85% 15%, rgba(236, 72, 153, 0.10) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 55% at 65% 85%, rgba(139, 92, 246, 0.10) 0%, transparent 65%),
+    radial-gradient(ellipse 35% 30% at 50% 50%, rgba(244, 63, 94, 0.05) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
