@@ -5,11 +5,20 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 
-jest.mock("next/link", () => {
-  return ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
-    <a href={href} {...props}>{children}</a>
-  );
-});
+jest.mock("@/components/rose-card", () => ({
+  RoseCard: ({ rose }: { rose: { gratitude?: string; nickname?: string } }) => (
+    <div>
+      {rose.gratitude && <span>{rose.gratitude}</span>}
+      {rose.nickname && <span>{rose.nickname}</span>}
+    </div>
+  ),
+}));
+
+jest.mock("next/link", () =>
+  function Link({ children, href, ...props }: { children: React.ReactNode; href: string; [key: string]: unknown }) {
+    return <a href={href} {...props}>{children}</a>;
+  }
+);
 
 jest.mock("@/lib/api", () => ({
   getGarden: jest.fn(),

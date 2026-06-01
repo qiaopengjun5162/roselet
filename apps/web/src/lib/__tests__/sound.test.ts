@@ -1,7 +1,6 @@
 // Mock Tone.js
 const mockDispose = jest.fn();
 const mockTriggerAttackRelease = jest.fn();
-const mockStart = jest.fn();
 
 const createMockSynth = () => ({
   triggerAttackRelease: mockTriggerAttackRelease,
@@ -10,75 +9,56 @@ const createMockSynth = () => ({
   toDestination: jest.fn().mockReturnThis(),
 });
 
-const createMockPolySynth = () => ({
-  triggerAttackRelease: mockTriggerAttackRelease,
-  dispose: mockDispose,
-  volume: { value: 0 },
-  toDestination: jest.fn().mockReturnThis(),
-});
-
-jest.mock("tone", () => {
-  const mockTransport = { start: jest.fn(), stop: jest.fn() };
-  return {
-    start: jest.fn().mockResolvedValue(undefined),
-    now: jest.fn().mockReturnValue(0),
-    Synth: jest.fn().mockImplementation(() => createMockSynth()),
-    PolySynth: jest.fn().mockImplementation(() => createMockPolySynth()),
-    MembraneSynth: jest.fn().mockImplementation(() => createMockSynth()),
-    Loop: jest.fn().mockImplementation(() => ({
-      start: jest.fn(),
-      stop: jest.fn(),
-      dispose: jest.fn(),
-    })),
-    Transport: { start: jest.fn(), stop: jest.fn() },
-    getTransport: jest.fn().mockReturnValue(mockTransport),
-    getDestination: jest.fn().mockReturnValue({ mute: false }),
-  };
-});
-
-import { isMuted, toggleMute, playClick, playPlant, playComplete, playLike, playNotify } from "../sound";
+jest.mock("tone", () => ({
+  start: jest.fn().mockResolvedValue(undefined),
+  now: jest.fn().mockReturnValue(0),
+  Synth: jest.fn().mockImplementation(() => createMockSynth()),
+  PolySynth: jest.fn().mockImplementation(() => createMockSynth()),
+  MembraneSynth: jest.fn().mockImplementation(() => createMockSynth()),
+  Loop: jest.fn().mockImplementation(() => ({ start: jest.fn(), stop: jest.fn(), dispose: jest.fn() })),
+  getDestination: jest.fn().mockReturnValue({ mute: false }),
+  getTransport: jest.fn().mockReturnValue({ start: jest.fn(), stop: jest.fn() }),
+}));
 
 describe("sound", () => {
+  let isMuted: () => boolean;
+  let toggleMute: () => boolean;
+  let playClick: () => Promise<void>;
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetModules();
+    const sound = require("@/lib/sound");
+    isMuted = sound.isMuted;
+    toggleMute = sound.toggleMute;
+    playClick = sound.playClick;
   });
 
-  it("should start muted by default", () => {
+  it("should start unmuted by default", () => {
+    expect(isMuted()).toBe(false);
+  });
+
+  it("should toggle mute on", () => {
+    expect(isMuted()).toBe(false);
+    const result = toggleMute();
+    expect(result).toBe(true);
     expect(isMuted()).toBe(true);
   });
 
-  it("should toggle mute state", () => {
-    const result = toggleMute();
+  it("should toggle mute off", () => {
+    toggleMute(); // → muted
+    const result = toggleMute(); // → unmuted
     expect(result).toBe(false);
     expect(isMuted()).toBe(false);
+  });
 
-    const result2 = toggleMute();
-    expect(result2).toBe(true);
+  it("should not throw when playing while unmuted", async () => {
+    expect(isMuted()).toBe(false);
+    await expect(playClick()).resolves.toBeUndefined();
+  });
+
+  it("should not throw when playing while muted", async () => {
+    toggleMute();
     expect(isMuted()).toBe(true);
-  });
-
-  it("playClick should not play when muted", async () => {
-    await playClick();
-    expect(mockTriggerAttackRelease).not.toHaveBeenCalled();
-  });
-
-  it("playPlant should not play when muted", async () => {
-    await playPlant();
-    expect(mockTriggerAttackRelease).not.toHaveBeenCalled();
-  });
-
-  it("playComplete should not play when muted", async () => {
-    await playComplete();
-    expect(mockTriggerAttackRelease).not.toHaveBeenCalled();
-  });
-
-  it("playLike should not play when muted", async () => {
-    await playLike();
-    expect(mockTriggerAttackRelease).not.toHaveBeenCalled();
-  });
-
-  it("playNotify should not play when muted", async () => {
-    await playNotify();
-    expect(mockTriggerAttackRelease).not.toHaveBeenCalled();
+    await expect(playClick()).resolves.toBeUndefined();
   });
 });

@@ -3,6 +3,12 @@ import "@testing-library/jest-dom";
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
+  useSearchParams: () => ({ get: () => null }),
+}));
+
+jest.mock("react", () => ({
+  ...jest.requireActual("react"),
+  Suspense: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -24,19 +30,19 @@ describe("LoginPage", () => {
 
   it("should render login form", () => {
     render(<LoginPage />);
-    expect(screen.getByPlaceholderText("你的昵称")).toBeInTheDocument();
-    expect(screen.getByText("开始种花")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("你想叫什么名字？")).toBeInTheDocument();
+    expect(screen.getByText("进入花圃")).toBeInTheDocument();
   });
 
   it("should show error on register failure", async () => {
     register.mockRejectedValue(new Error("fail"));
     render(<LoginPage />);
-    fireEvent.change(screen.getByPlaceholderText("你的昵称"), {
+    fireEvent.change(screen.getByPlaceholderText("你想叫什么名字？"), {
       target: { value: "alice" },
     });
-    fireEvent.click(screen.getByText("开始种花"));
+    fireEvent.click(screen.getByText("进入花圃"));
     await waitFor(() => {
-      expect(screen.getByText("注册失败，请重试")).toBeInTheDocument();
+      expect(screen.getByText("昵称已被占用，换一个试试？")).toBeInTheDocument();
     });
   });
 
@@ -46,10 +52,10 @@ describe("LoginPage", () => {
       user: { id: "u1", nickname: "alice", created_at: "" },
     });
     render(<LoginPage />);
-    fireEvent.change(screen.getByPlaceholderText("你的昵称"), {
+    fireEvent.change(screen.getByPlaceholderText("你想叫什么名字？"), {
       target: { value: "alice" },
     });
-    fireEvent.click(screen.getByText("开始种花"));
+    fireEvent.click(screen.getByText("进入花圃"));
     await waitFor(() => {
       expect(register).toHaveBeenCalledWith("alice");
     });

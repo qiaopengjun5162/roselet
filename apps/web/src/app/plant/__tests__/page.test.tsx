@@ -3,12 +3,13 @@ import "@testing-library/jest-dom";
 
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: jest.fn() }),
 }));
 
 jest.mock("@/lib/api", () => ({
   createRose: jest.fn(),
   getMyRoses: jest.fn().mockResolvedValue({ data: [], total: 0 }),
+  getToken: jest.fn().mockReturnValue("jwt-token"),
 }));
 
 jest.mock("@/lib/sound", () => ({
@@ -85,7 +86,7 @@ describe("PlantPage", () => {
         anxiety: undefined,
         hope: undefined,
       });
-      expect(screen.getByText("谢谢你在社区种下的玫瑰")).toBeInTheDocument();
+      expect(screen.getByText("已种入星空花圃")).toBeInTheDocument();
     });
   });
 

@@ -117,9 +117,9 @@ describe("RoseDetailPage", () => {
     toggleLike.mockResolvedValue({ liked: true, like_count: 4 });
     render(<RoseDetailPage />);
     await waitFor(() => {
-      expect(screen.getByText("3 likes")).toBeInTheDocument();
+      expect(screen.getByText("❤️ 3")).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText("3 likes"));
+    fireEvent.click(screen.getByText("❤️ 3"));
     await waitFor(() => {
       expect(toggleLike).toHaveBeenCalledWith("rose-1");
     });
