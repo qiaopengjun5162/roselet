@@ -96,9 +96,9 @@ export default function RoseDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-rose-50 to-white p-4">
+      <main className="relative min-h-screen px-4 pb-8 pt-10 z-10">
         <div className="max-w-2xl mx-auto text-center py-20">
-          <p className="text-muted-foreground animate-pulse">加载中...</p>
+          <p className="text-slate-400 animate-pulse">加载中...</p>
         </div>
       </main>
     );
@@ -106,7 +106,7 @@ export default function RoseDetailPage() {
 
   if (error || !rose) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-rose-50 to-white p-4">
+      <main className="relative min-h-screen px-4 pb-8 pt-10 z-10">
         <div className="max-w-2xl mx-auto text-center py-20 space-y-4">
           <p className="text-red-500">{error || "玫瑰不存在"}</p>
           <Link href="/garden">
@@ -120,15 +120,15 @@ export default function RoseDetailPage() {
   const meta = COLOR_MAP[rose.color] || { emoji: "🌹", label: "玫瑰", bg: "from-rose-50 to-white" };
 
   return (
-    <main className={`min-h-screen bg-gradient-to-b ${meta.bg} p-4`}>
+    <main className="relative min-h-screen px-4 pb-8 pt-10 z-10">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <Link href="/garden">
-            <Button variant="ghost" size="sm">← 返回花圃</Button>
+            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-rose-300 hover:bg-white/5">← 返回花圃</Button>
           </Link>
           {isOwner && !editing && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={startEdit}>编辑</Button>
+              <Button variant="outline" size="sm" onClick={startEdit} className="border-white/20 text-slate-300 hover:border-white/40">编辑</Button>
               <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
                 {deleting ? "删除中..." : "删除"}
               </Button>
@@ -136,13 +136,13 @@ export default function RoseDetailPage() {
           )}
         </div>
 
-        <Card>
+        <Card className="glass-card border-0 bg-transparent">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
               <span className="text-4xl">{meta.emoji}</span>
               <div>
-                <h1 className="text-2xl">{meta.label}</h1>
-                <p className="text-sm text-muted-foreground font-normal">
+                <h1 className="text-2xl font-bold text-slate-100">{meta.label}</h1>
+                <p className="text-sm text-slate-400 font-normal">
                   {rose.nickname && <span className="mr-2">{rose.nickname}</span>}
                   {new Date(rose.created_at).toLocaleString("zh-CN")}
                 </p>
@@ -172,7 +172,7 @@ export default function RoseDetailPage() {
                   <textarea
                     value={editData.gratitude ?? ""}
                     onChange={(e) => setEditData({ ...editData, gratitude: e.target.value || null })}
-                    className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                    className="w-full mt-1 px-3 py-2 rounded-lg border border-white/15 bg-white/5 text-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-rose-400"
                     rows={2}
                   />
                 </div>
@@ -181,7 +181,7 @@ export default function RoseDetailPage() {
                   <textarea
                     value={editData.anxiety ?? ""}
                     onChange={(e) => setEditData({ ...editData, anxiety: e.target.value || null })}
-                    className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                    className="w-full mt-1 px-3 py-2 rounded-lg border border-white/15 bg-white/5 text-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-rose-400"
                     rows={2}
                   />
                 </div>
@@ -190,7 +190,7 @@ export default function RoseDetailPage() {
                   <textarea
                     value={editData.hope ?? ""}
                     onChange={(e) => setEditData({ ...editData, hope: e.target.value || null })}
-                    className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                    className="w-full mt-1 px-3 py-2 rounded-lg border border-white/15 bg-white/5 text-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-rose-400"
                     rows={2}
                   />
                 </div>
@@ -206,28 +206,28 @@ export default function RoseDetailPage() {
                 {rose.gratitude && (
                   <div className="space-y-2">
                     <h3 className="font-medium text-rose-600">感恩</h3>
-                    <p className="text-lg leading-relaxed bg-rose-50 p-4 rounded-lg">{rose.gratitude}</p>
+                    <p className="text-base leading-relaxed bg-rose-900/20 border border-rose-500/20 p-4 rounded-lg text-slate-200">{rose.gratitude}</p>
                   </div>
                 )}
                 {rose.anxiety && (
                   <div className="space-y-2">
                     <h3 className="font-medium text-amber-600">焦虑</h3>
-                    <p className="text-lg leading-relaxed bg-amber-50 p-4 rounded-lg">{rose.anxiety}</p>
+                    <p className="text-base leading-relaxed bg-amber-900/20 border border-amber-500/20 p-4 rounded-lg text-slate-200">{rose.anxiety}</p>
                   </div>
                 )}
                 {rose.hope && (
                   <div className="space-y-2">
                     <h3 className="font-medium text-green-600">期待</h3>
-                    <p className="text-lg leading-relaxed bg-green-50 p-4 rounded-lg">{rose.hope}</p>
+                    <p className="text-base leading-relaxed bg-green-900/20 border border-green-500/20 p-4 rounded-lg text-slate-200">{rose.hope}</p>
                   </div>
                 )}
                 {rose.ai_reply && (
-                  <div className="space-y-2 pt-4 border-t">
+                  <div className="space-y-2 pt-4 border-t border-white/10">
                     <h3 className="font-medium text-purple-600">AI 回复</h3>
-                    <p className="text-lg leading-relaxed bg-purple-50 p-4 rounded-lg italic">{rose.ai_reply}</p>
+                    <p className="text-base leading-relaxed bg-purple-900/20 border border-purple-500/20 p-4 rounded-lg text-slate-300 italic">{rose.ai_reply}</p>
                   </div>
                 )}
-                <div className="pt-4 border-t flex items-center gap-4 flex-wrap">
+                <div className="pt-4 border-t border-white/10 flex items-center gap-4 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
@@ -236,7 +236,7 @@ export default function RoseDetailPage() {
                     {rose.like_count > 0 ? `❤️ ${rose.like_count}` : "❤️ 点赞"}
                   </Button>
                 </div>
-                <div className="pt-2">
+                <div className="pt-2 flex justify-center">
                   <RosePlayer rose={rose} canvasSize={160} />
                 </div>
               </>
