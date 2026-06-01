@@ -43,16 +43,9 @@ export default function MyGardenPage() {
   }
 
   return (
-    <main className="relative min-h-screen px-4 pb-4 pt-10 z-10">
+    <main className="relative min-h-screen px-4 pb-4 pt-16 z-10">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-rose-300">我的花圃</h1>
-          <Link href="/plant">
-            <Button className="bg-gradient-to-r from-rose-500 to-pink-500 border-0">种一朵玫瑰</Button>
-          </Link>
-        </div>
-
-        {loading ? (
+{loading ? (
           <div className="text-center py-20">
             <p className="text-muted-foreground animate-pulse">加载中...</p>
           </div>

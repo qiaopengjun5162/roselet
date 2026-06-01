@@ -26,7 +26,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-rose-50 to-white p-4">
+      <main className="min-h-screen bg-gradient-to-b from-rose-50 to-white pt-16">
         <div className="max-w-2xl mx-auto text-center py-20">
           <p className="text-muted-foreground animate-pulse">加载中...</p>
         </div>
@@ -50,7 +50,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-rose-50 to-white p-4">
       <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold text-rose-800">个人资料</h1>
+        <h1 className="text-lg font-semibold text-rose-300">个人资料</h1>
 
         <Card>
           <CardHeader>

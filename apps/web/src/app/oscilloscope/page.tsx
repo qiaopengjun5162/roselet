@@ -166,16 +166,8 @@ export default function OscilloscopePage() {
     : preset.emotion;
 
   return (
-    <main className="relative min-h-screen px-4 pb-12 pt-10 z-10">
+    <main className="relative min-h-screen px-4 pb-12 pt-16 z-10">
       <div className="max-w-2xl mx-auto space-y-5">
-
-        {/* 标题 */}
-        <div className="text-center space-y-1">
-          <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-300 to-purple-300 tracking-wide">
-            情绪示波器
-          </h1>
-          <p className="text-sm text-slate-400">每种情绪都有自己的形状 · 左右声道 XY 模式 · 所听即所见</p>
-        </div>
 
         {/* Canvas + 情绪标签 */}
         <div className="flex flex-col items-center gap-3">

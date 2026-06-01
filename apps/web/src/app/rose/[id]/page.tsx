@@ -96,7 +96,7 @@ export default function RoseDetailPage() {
 
   if (loading) {
     return (
-      <main className="relative min-h-screen px-4 pb-8 pt-10 z-10">
+      <main className="relative min-h-screen px-4 pb-8 pt-16 z-10">
         <div className="max-w-2xl mx-auto text-center py-20">
           <p className="text-slate-400 animate-pulse">加载中...</p>
         </div>

@@ -125,7 +125,7 @@ export default function PlantPage() {
       <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-rose-50 to-white p-4">
         <div className="max-w-lg w-full space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold text-rose-800">选择玫瑰的颜色</h2>
+            <h2 className="text-xl font-bold text-rose-300">选择玫瑰的颜色</h2>
             <p className="text-muted-foreground">每种颜色代表不同的心情</p>
           </div>
           {/* Recommendation Card */}
@@ -204,7 +204,7 @@ export default function PlantPage() {
           </div>
           {/* 文字渐显 */}
           <div className="space-y-3 animate-text-reveal">
-            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-300 to-purple-300">
+            <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-300 to-purple-300">
               已种入星空花圃
             </h2>
             <p className="text-slate-400">你的情绪已经出现在花圃中，AI 正在聆听...</p>
