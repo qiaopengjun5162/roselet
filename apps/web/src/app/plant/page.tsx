@@ -122,34 +122,34 @@ export default function PlantPage() {
 
   if (step === "color") {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-rose-50 to-white p-4">
+      <main className="relative min-h-screen flex items-center justify-center p-4 z-10 pt-16">
         <div className="max-w-lg w-full space-y-8">
           <div className="text-center space-y-2">
             <h2 className="text-xl font-bold text-rose-300">选择玫瑰的颜色</h2>
-            <p className="text-muted-foreground">每种颜色代表不同的心情</p>
+            <p className="text-slate-400">每种颜色代表不同的心情</p>
           </div>
           {/* Recommendation Card */}
           {(recLoading || rec) && (
-            <div className="rounded-2xl border border-rose-200 bg-white/80 p-5 space-y-3 shadow-sm">
-              <p className="text-sm font-medium text-rose-700">智能推荐</p>
+            <div className="glass-card p-5 space-y-3">
+              <p className="text-sm font-medium text-rose-300">智能推荐</p>
               {recLoading ? (
-                <p className="text-sm text-muted-foreground animate-pulse">分析你的种花历史...</p>
+                <p className="text-sm text-slate-400 animate-pulse">分析你的种花历史...</p>
               ) : rec && (
                 <>
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-purple-700">花语：{rec.flower_language.title}</p>
-                    <p className="text-xs text-muted-foreground">{rec.flower_language.content}</p>
+                    <p className="text-sm font-medium text-purple-300">花语：{rec.flower_language.title}</p>
+                    <p className="text-xs text-slate-400">{rec.flower_language.content}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-green-700">试试：{rec.theme.title}</p>
-                    <p className="text-xs text-muted-foreground">{rec.theme.content}</p>
+                    <p className="text-sm font-medium text-green-300">试试：{rec.theme.title}</p>
+                    <p className="text-xs text-slate-400">{rec.theme.content}</p>
                   </div>
                   <button
                     onClick={() => { playClick(); setColor(rec.color_suggestion.color); setStep("interactive"); }}
-                    className="w-full text-left rounded-lg border border-rose-200 p-3 hover:bg-rose-50 transition-colors cursor-pointer"
+                    className="w-full text-left rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 hover:bg-rose-500/20 transition-colors cursor-pointer"
                   >
-                    <p className="text-sm font-medium text-rose-700">推荐颜色：{rec.color_suggestion.color === "red" ? "红玫瑰" : rec.color_suggestion.color === "white" ? "白玫瑰" : "黄玫瑰"}</p>
-                    <p className="text-xs text-muted-foreground">{rec.color_suggestion.reason}</p>
+                    <p className="text-sm font-medium text-rose-300">推荐颜色：{rec.color_suggestion.color === "red" ? "红玫瑰" : rec.color_suggestion.color === "white" ? "白玫瑰" : "黄玫瑰"}</p>
+                    <p className="text-xs text-slate-400">{rec.color_suggestion.reason}</p>
                   </button>
                 </>
               )}
@@ -165,10 +165,10 @@ export default function PlantPage() {
                   setColor(c.id);
                   setStep("interactive");
                 }}
-                className={`p-8 rounded-2xl bg-gradient-to-b ${c.gradient} border-2 border-transparent hover:border-rose-300 hover:scale-105 transition-all cursor-pointer shadow-sm hover:shadow-md`}
+                className={`p-8 rounded-2xl glass-card border-white/10 hover:border-rose-300/50 hover:scale-105 transition-all cursor-pointer`}
               >
                 <div className="text-5xl">{c.emoji}</div>
-                <div className="mt-3 font-medium text-lg">{c.label}</div>
+                <div className="mt-3 font-semibold text-lg text-slate-100">{c.label}</div>
               </button>
             ))}
           </div>
@@ -255,13 +255,13 @@ export default function PlantPage() {
   }
 
   return (
-    <main className={`min-h-screen flex items-center justify-center bg-gradient-to-b ${colorMeta?.gradient ?? "from-rose-50 to-white"} p-4`}>
+    <main className="relative min-h-screen flex items-center justify-center p-4 z-10 pt-16">
       <div className="max-w-lg w-full space-y-8">
         <div className="text-center space-y-2">
-          <h2 className="text-3xl font-bold text-rose-800">
+          <h2 className="text-xl font-bold text-rose-300">
             {colorMeta?.emoji} 种下你的玫瑰
           </h2>
-          <p className="text-muted-foreground">点击玫瑰上的光点，分享你的故事</p>
+          <p className="text-slate-400">点击玫瑰上的光点，分享你的故事</p>
         </div>
 
         {/* Interactive Rose */}
@@ -277,8 +277,8 @@ export default function PlantPage() {
               onClick={() => { playClick(); setActiveField("gratitude"); }}
               className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
                 isFieldFilled("gratitude")
-                  ? "bg-rose-200 shadow-lg shadow-rose-300"
-                  : "bg-rose-100 animate-pulse shadow-md shadow-rose-200"
+                  ? "bg-rose-500/40 shadow-lg shadow-rose-500/30 border border-rose-400/50"
+                  : "bg-rose-500/20 animate-pulse shadow-md shadow-rose-500/20 border border-rose-400/30"
               } hover:scale-110 cursor-pointer`}
             >
               <span className="text-2xl">🌹</span>
@@ -289,8 +289,8 @@ export default function PlantPage() {
               onClick={() => { playClick(); setActiveField("anxiety"); }}
               className={`absolute bottom-4 left-0 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
                 isFieldFilled("anxiety")
-                  ? "bg-amber-200 shadow-lg shadow-amber-300"
-                  : "bg-amber-100 animate-pulse shadow-md shadow-amber-200"
+                  ? "bg-amber-500/40 shadow-lg shadow-amber-500/30 border border-amber-400/50"
+                  : "bg-amber-500/20 animate-pulse shadow-md shadow-amber-500/20 border border-amber-400/30"
               } hover:scale-110 cursor-pointer`}
             >
               <span className="text-2xl">🌵</span>
@@ -301,8 +301,8 @@ export default function PlantPage() {
               onClick={() => { playClick(); setActiveField("hope"); }}
               className={`absolute bottom-4 right-0 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
                 isFieldFilled("hope")
-                  ? "bg-green-200 shadow-lg shadow-green-300"
-                  : "bg-green-100 animate-pulse shadow-md shadow-green-200"
+                  ? "bg-green-500/40 shadow-lg shadow-green-500/30 border border-green-400/50"
+                  : "bg-green-500/20 animate-pulse shadow-md shadow-green-500/20 border border-green-400/30"
               } hover:scale-110 cursor-pointer`}
             >
               <span className="text-2xl">🌱</span>
