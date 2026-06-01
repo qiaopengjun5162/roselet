@@ -653,3 +653,52 @@ UI 修复 + 代码质量审计 + 文档全量更新
 - README（英/中）已全量更新
 
 <!-- 下次会话在此处继续记录 -->
+
+## 2026-06-01 会话 #16
+
+### 会话目标
+示波器融合 + Rust WASM 情绪分析 + 全局布局修复 + 深色主题统一
+
+### 完成的工作
+
+#### 玫瑰→声音融合（三方案）
+- `lib/rose-sound.ts`：玫瑰颜色/字段/长度/点赞数 → 示波器参数映射函数
+- `components/rose-player.tsx`：可复用的利萨如 Canvas 播放器
+- 方案A：玫瑰详情页"听这朵玫瑰"按钮（160px Canvas）
+- 方案B：种花成功页烟花落定后自动播放（1.2s 延迟，12s 时长）
+- 方案C：花圃卡片悬停播放 0.3s 低音量音色
+
+#### 示波器文字输入
+- `lib/text-to-sound.ts`：TextAnalyzer 接口 + LocalKeywordAnalyzer 实现（预留 AI 替换点）
+- 示波器页面双模式：预设情绪 / 说出你的感受（300ms debounce 实时更新）
+- 显示检测情绪、强度%、频率比
+
+#### Rust WASM 情绪分析模块
+- `crates/recommend/src/emotion.rs`：48 个关键词，三类情绪，权重评分
+- intensity > 0.6 → fy+1（图形更复杂）；文字长度 → 相位偏移
+- 10 个单元测试，全部通过
+- `lib.rs` 暴露 `analyze_text()` WASM 函数
+
+#### 全局布局修复（header 重叠）
+- header z-10 → z-50
+- 所有页面 main 统一 pt-16（56px header 高度）
+- 删掉各页面内重复的 h1 页面标题（nav 链接已承担）
+- 页面内标题字号缩小：text-3xl → text-xl
+
+#### 深色主题统一
+- 种花页三步骤（选色/交互/成功）：浅色渐变背景 → 深色 z-10
+- 推荐卡片：bg-white/80 → glass-card
+- 热点按钮：浅色 → 半透明深色
+- 所有 text-muted-foreground → text-slate-400
+- 玫瑰详情页：完整深色卡片，内容块半透明带色边框
+
+### 当前状态
+- 80 前端测试 + 17 WASM 单元测试全过
+- 推送到 main
+
+### 待办
+- [ ] 将 WASM analyze_text 接入前端替换 TS 版 LocalKeywordAnalyzer
+- [ ] 完善测试覆盖（rose-sound.ts、text-to-sound.ts）
+- [ ] 微信小程序（uni-app）
+
+<!-- 下次会话在此处继续记录 -->
