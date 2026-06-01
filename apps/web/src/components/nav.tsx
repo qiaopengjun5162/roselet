@@ -37,29 +37,29 @@ export function Nav() {
           if (nowMuted) stopBgMusic();
           else startBgMusic();
         }}
-        className="text-sm text-slate-400 hover:text-rose-300 transition-colors"
+        className="text-sm text-slate-300 hover:text-rose-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5"
         title={muted ? "开启声音" : "关闭声音"}
       >
         {muted ? "🔇" : "🔊"}
       </button>
-      <Link href="/plant" className="text-sm text-slate-400 hover:text-rose-300 transition-colors">
+      <Link href="/plant" className="text-sm text-slate-300 hover:text-rose-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">
         种玫瑰
       </Link>
-      <Link href="/garden" className="text-sm text-slate-400 hover:text-rose-300 transition-colors">
+      <Link href="/garden" className="text-sm text-slate-300 hover:text-rose-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">
         花圃
       </Link>
       {user ? (
         <>
-          <Link href="/my" className="text-sm text-slate-400 hover:text-rose-300 transition-colors">
+          <Link href="/my" className="text-sm text-slate-300 hover:text-rose-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">
             我的花圃
           </Link>
-          <Link href="/profile" className="text-sm text-slate-400 hover:text-rose-300 transition-colors">
+          <Link href="/profile" className="text-sm text-slate-300 hover:text-rose-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">
             资料
           </Link>
           <span className="text-sm text-muted-foreground">{user.nickname}</span>
           <button
             onClick={handleLogout}
-            className="text-sm text-slate-400 hover:text-rose-300 transition-colors"
+            className="text-sm text-slate-300 hover:text-rose-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5"
           >
             登出
           </button>

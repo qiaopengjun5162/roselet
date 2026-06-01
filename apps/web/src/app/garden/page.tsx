@@ -54,16 +54,9 @@ export default function GardenPage() {
   }, []);
 
   return (
-    <main className="relative min-h-screen p-4 z-10">
+    <main className="relative min-h-screen px-4 pb-4 pt-6 z-10">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-rose-300">花圃</h1>
-          <Link href="/plant">
-            <Button className="bg-gradient-to-r from-rose-500 to-pink-500 hover:shadow-rose-500/40 hover:shadow-lg border-0">种一朵玫瑰</Button>
-          </Link>
-        </div>
-
-        <div className="flex gap-2">
+<div className="flex gap-2">
           {[{ value: "", label: "全部" }, { value: "red", label: "红玫瑰" }, { value: "white", label: "白玫瑰" }, { value: "yellow", label: "黄玫瑰" }].map((opt) => (
             <Button
               key={opt.value}
