@@ -8,6 +8,8 @@
   --glow-gratitude: rgba(234, 179, 8, 0.55);
   --glow-anxiety: rgba(14, 165, 233, 0.50);
   --glow-hope: rgba(217, 70, 239, 0.60);
+  --stars-opacity: 1;
+  --nebula-opacity: 0.18;
 }
 
 @theme inline {
@@ -18,10 +20,11 @@
 }
 
 body {
-  background: linear-gradient(150deg, #080e0c 0%, #0c1210 30%, #0e1018 60%, #090c14 100%);
+  background: linear-gradient(150deg, #060810 0%, #090b18 40%, #0a0814 100%);
   min-height: 100vh;
   color: var(--foreground);
   font-family: var(--font-geist-sans, Arial, sans-serif);
+  transition: background 180s ease;
 }
 
 /* 星空背景 */
@@ -47,6 +50,8 @@ body::before {
     radial-gradient(2px 2px at 45% 70%, rgba(255,255,255,0.80) 0%, transparent 100%);
   pointer-events: none;
   z-index: 0;
+  opacity: var(--stars-opacity);
+  transition: opacity 180s ease;
   animation: starTwinkle 8s ease-in-out infinite alternate;
 }
 
@@ -56,12 +61,14 @@ body::after {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 55% 45% at 10% 40%, rgba(52, 211, 153, 0.09) 0%, transparent 65%),
-    radial-gradient(ellipse 45% 40% at 85% 15%, rgba(236, 72, 153, 0.10) 0%, transparent 65%),
-    radial-gradient(ellipse 50% 55% at 65% 85%, rgba(139, 92, 246, 0.10) 0%, transparent 65%),
-    radial-gradient(ellipse 35% 30% at 50% 50%, rgba(244, 63, 94, 0.05) 0%, transparent 60%);
+    radial-gradient(ellipse 55% 45% at 10% 40%, rgba(52, 211, 153, 1) 0%, transparent 65%),
+    radial-gradient(ellipse 45% 40% at 85% 15%, rgba(236, 72, 153, 1) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 55% at 65% 85%, rgba(139, 92, 246, 1) 0%, transparent 65%),
+    radial-gradient(ellipse 35% 30% at 50% 50%, rgba(244, 63, 94, 1) 0%, transparent 60%);
+  opacity: var(--nebula-opacity);
   pointer-events: none;
   z-index: 0;
+  transition: opacity 180s ease;
 }
 
 @keyframes starTwinkle {
