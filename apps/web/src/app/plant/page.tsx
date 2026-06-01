@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { createRose, getToken, getMyRoses } from "@/lib/api";
 import { playClick, playPlant, playComplete } from "@/lib/sound";
 import { getRecommendation, type Recommendation } from "@/lib/recommend";
+import { Fireworks } from "@/components/fireworks";
 
 const COLORS = [
   { id: "red", label: "红玫瑰", emoji: "🌹", gradient: "from-red-100 to-red-50", accent: "text-red-600" },
@@ -175,19 +176,48 @@ export default function PlantPage() {
     );
   }
 
+  // 颜色对应的霓虹光晕
+  const glowMap: Record<string, string> = {
+    red:    "rgba(244,63,94,0.8)",
+    white:  "rgba(226,232,240,0.7)",
+    yellow: "rgba(234,179,8,0.8)",
+  };
+
   if (step === "success") {
+    const glowColor = glowMap[color] ?? "rgba(244,63,94,0.8)";
     return (
-      <main className={`min-h-screen flex items-center justify-center bg-gradient-to-b ${colorMeta?.gradient ?? "from-rose-50 to-white"} p-4`}>
-        <div className="max-w-md w-full text-center space-y-6">
-          <div className="text-8xl animate-bounce">{colorMeta?.emoji}</div>
-          <h2 className="text-2xl font-bold text-rose-800">谢谢你在社区种下的玫瑰</h2>
-          <p className="text-muted-foreground">你的分享已经出现在花圃中了</p>
-          <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={() => router.push("/garden")}>
+      <main className="relative min-h-screen flex items-center justify-center p-4 z-10">
+        <Fireworks />
+        {/* 中央光晕背景 */}
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-3xl pointer-events-none"
+          style={{ background: `radial-gradient(circle, ${glowColor.replace("0.8","0.15")} 0%, transparent 70%)` }}
+        />
+        <div className="relative max-w-md w-full text-center space-y-8">
+          {/* 浮动发光玫瑰 */}
+          <div
+            className="text-9xl animate-success-float animate-success-glow inline-block"
+            style={{ "--glow-color": glowColor } as React.CSSProperties}
+          >
+            {colorMeta?.emoji}
+          </div>
+          {/* 文字渐显 */}
+          <div className="space-y-3 animate-text-reveal">
+            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-300 to-purple-300">
+              已种入星空花圃
+            </h2>
+            <p className="text-slate-400">你的情绪已经出现在花圃中，AI 正在聆听...</p>
+          </div>
+          {/* 按钮 */}
+          <div className="flex gap-3 justify-center animate-text-reveal" style={{ animationDelay: "0.3s" }}>
+            <button
+              onClick={() => router.push("/garden")}
+              className="px-6 py-2.5 rounded-full text-sm font-medium glass-card text-slate-200 hover:border-white/30 transition-all"
+            >
               查看花圃
-            </Button>
-            <Button
-              className="bg-rose-500 hover:bg-rose-600"
+            </button>
+            <button
+              className="px-6 py-2.5 rounded-full text-sm font-medium bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/30 hover:shadow-rose-500/50 hover:-translate-y-0.5 transition-all"
               onClick={() => {
                 setGratitude("");
                 setAnxiety("");
@@ -196,7 +226,7 @@ export default function PlantPage() {
               }}
             >
               再种一朵
-            </Button>
+            </button>
           </div>
         </div>
       </main>
