@@ -54,12 +54,12 @@ export default function GardenPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-rose-50 to-white p-4">
+    <main className="relative min-h-screen p-4 z-10">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-rose-800">花圃</h1>
+          <h1 className="text-3xl font-bold text-rose-300">花圃</h1>
           <Link href="/plant">
-            <Button className="bg-rose-500 hover:bg-rose-600">种一朵玫瑰</Button>
+            <Button className="bg-gradient-to-r from-rose-500 to-pink-500 hover:shadow-rose-500/40 hover:shadow-lg border-0">种一朵玫瑰</Button>
           </Link>
         </div>
 
@@ -70,7 +70,7 @@ export default function GardenPage() {
               variant={colorFilter === opt.value ? "default" : "outline"}
               size="sm"
               onClick={() => setColorFilter(opt.value)}
-              className={colorFilter === opt.value ? "bg-rose-500 hover:bg-rose-600" : ""}
+              className={colorFilter === opt.value ? "bg-rose-500/80 border-rose-400 text-white" : "glass-card border-white/10 text-slate-300 hover:border-white/25"}
             >
               {opt.label}
             </Button>
@@ -91,8 +91,8 @@ export default function GardenPage() {
         ) : roses.length === 0 ? (
           <div className="text-center py-20 space-y-4">
             <p className="text-6xl">🌱</p>
-            <p className="text-xl text-muted-foreground">花圃还是空的</p>
-            <p className="text-sm text-muted-foreground">成为第一个种玫瑰的人吧</p>
+            <p className="text-xl text-slate-400">花圃还是空的</p>
+            <p className="text-sm text-slate-500">成为第一个种玫瑰的人吧</p>
             <Link href="/plant">
               <Button className="bg-rose-500 hover:bg-rose-600">
                 种第一朵玫瑰
@@ -101,7 +101,7 @@ export default function GardenPage() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-slate-500">
               共 {total} 朵玫瑰
             </p>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -109,26 +109,26 @@ export default function GardenPage() {
                 const meta = COLOR_MAP[rose.color] || { emoji: "🌹", label: "玫瑰" };
                 return (
                   <Link key={rose.id} href={`/rose/${rose.id}`}>
-                    <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                    <Card className="glass-card hover:border-white/25 transition-all cursor-pointer h-full bg-transparent border-0">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <span className="text-2xl">{meta.emoji}</span>
-                          <span className="text-sm text-muted-foreground">{meta.label}</span>
+                          <span className="text-sm text-slate-500">{meta.label}</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2 text-sm">
                         {rose.gratitude && (
-                          <p><span className="font-medium text-rose-600">感恩：</span>{rose.gratitude}</p>
+                          <p><span className="font-medium text-yellow-400">🌹 </span>{rose.gratitude}</p>
                         )}
                         {rose.anxiety && (
-                          <p><span className="font-medium text-amber-600">焦虑：</span>{rose.anxiety}</p>
+                          <p><span className="font-medium text-sky-400">🌵 </span>{rose.anxiety}</p>
                         )}
                         {rose.hope && (
-                          <p><span className="font-medium text-green-600">期待：</span>{rose.hope}</p>
+                          <p><span className="font-medium text-fuchsia-400">🌱 </span>{rose.hope}</p>
                         )}
-                        <p className="text-xs text-muted-foreground pt-2">
+                        <p className="text-xs text-slate-500 pt-2">
                           {rose.nickname && <span className="mr-2">{rose.nickname}</span>}
-                          {rose.like_count > 0 && <span className="mr-2">{rose.like_count} likes</span>}
+                          {rose.like_count > 0 && <span className="mr-2 text-rose-400">❤️ {rose.like_count}</span>}
                           {new Date(rose.created_at).toLocaleDateString("zh-CN")}
                         </p>
                       </CardContent>
@@ -143,6 +143,7 @@ export default function GardenPage() {
                   variant="outline"
                   onClick={() => loadRoses(page + 1, colorFilter || undefined)}
                   disabled={loadingMore}
+                  className="glass-card border-white/15 text-slate-300 hover:border-white/30"
                 >
                   {loadingMore ? "加载中..." : "加载更多"}
                 </Button>

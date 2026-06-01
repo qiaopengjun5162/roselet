@@ -37,35 +37,35 @@ export function Nav() {
           if (nowMuted) stopBgMusic();
           else startBgMusic();
         }}
-        className="text-sm text-muted-foreground hover:text-rose-600"
+        className="text-sm text-slate-400 hover:text-rose-300 transition-colors"
         title={muted ? "开启声音" : "关闭声音"}
       >
         {muted ? "🔇" : "🔊"}
       </button>
-      <Link href="/plant" className="text-sm text-muted-foreground hover:text-rose-600">
+      <Link href="/plant" className="text-sm text-slate-400 hover:text-rose-300 transition-colors">
         种玫瑰
       </Link>
-      <Link href="/garden" className="text-sm text-muted-foreground hover:text-rose-600">
+      <Link href="/garden" className="text-sm text-slate-400 hover:text-rose-300 transition-colors">
         花圃
       </Link>
       {user ? (
         <>
-          <Link href="/my" className="text-sm text-muted-foreground hover:text-rose-600">
+          <Link href="/my" className="text-sm text-slate-400 hover:text-rose-300 transition-colors">
             我的花圃
           </Link>
-          <Link href="/profile" className="text-sm text-muted-foreground hover:text-rose-600">
+          <Link href="/profile" className="text-sm text-slate-400 hover:text-rose-300 transition-colors">
             资料
           </Link>
           <span className="text-sm text-muted-foreground">{user.nickname}</span>
           <button
             onClick={handleLogout}
-            className="text-sm text-muted-foreground hover:text-rose-600"
+            className="text-sm text-slate-400 hover:text-rose-300 transition-colors"
           >
             登出
           </button>
         </>
       ) : (
-        <Link href="/login" className="text-sm text-rose-600 font-medium hover:text-rose-700">
+        <Link href="/login" className="text-sm text-rose-400 font-medium hover:text-rose-300 transition-colors">
           登录
         </Link>
       )}

@@ -1,59 +1,51 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-rose-50 to-white p-4">
-      <div className="max-w-2xl text-center space-y-8">
-        <h1 className="text-4xl font-bold text-rose-800">Roselet</h1>
-        <p className="text-xl text-rose-600">一起来种一个玫瑰花圃吧</p>
+    <main className="relative min-h-screen flex flex-col items-center justify-center p-6 z-10">
+      {/* 中央光晕 */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-rose-500/8 blur-3xl pointer-events-none" />
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-rose-500">玫瑰</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                在社区的这一周，一件让你感到幸福或感恩的事情是什么？
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-amber-500">尖刺</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                现在有什么让你感到焦虑或者需要帮助的事情吗？
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-green-500">花苞</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                你现在有什么期待的事情吗？这周有什么新灵感想要实现呢？
-              </p>
-            </CardContent>
-          </Card>
+      <div className="max-w-2xl w-full text-center space-y-10">
+        {/* 标题 */}
+        <div className="space-y-3">
+          <div className="text-7xl" style={{filter: "drop-shadow(0 0 24px rgba(244,63,94,0.7))"}}>🌹</div>
+          <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-300 via-pink-200 to-purple-300">
+            Roselet
+          </h1>
+          <p className="text-lg text-slate-400">在星空下种下你的情绪，等待宇宙的回响</p>
         </div>
 
+        {/* 三块说明 */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="glass-card p-5 space-y-2 glow-gratitude">
+            <div className="text-3xl">🌹</div>
+            <h3 className="font-semibold text-yellow-300">玫瑰</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">这周让你感到幸福或感恩的事情是什么？</p>
+          </div>
+          <div className="glass-card p-5 space-y-2 glow-hope">
+            <div className="text-3xl">🌱</div>
+            <h3 className="font-semibold text-fuchsia-300">花苞</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">你现在有什么期待的事情，或新灵感想实现？</p>
+          </div>
+          <div className="glass-card p-5 space-y-2 glow-anxiety">
+            <div className="text-3xl">🌵</div>
+            <h3 className="font-semibold text-sky-300">尖刺</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">有什么让你感到焦虑或需要帮助的事情？</p>
+          </div>
+        </div>
+
+        {/* 按钮 */}
         <div className="flex gap-4 justify-center">
           <Link href="/plant">
-            <Button size="lg" className="bg-rose-500 hover:bg-rose-600">
+            <button className="px-8 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/30 hover:shadow-rose-500/50 hover:-translate-y-0.5 transition-all">
               种一朵玫瑰
-            </Button>
+            </button>
           </Link>
           <Link href="/garden">
-            <Button size="lg" variant="outline">
+            <button className="px-8 py-3 rounded-full font-semibold text-sm glass-card text-slate-200 hover:-translate-y-0.5 transition-all">
               参观花圃
-            </Button>
+            </button>
           </Link>
         </div>
       </div>

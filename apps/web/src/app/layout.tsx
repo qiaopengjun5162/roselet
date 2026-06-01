@@ -30,9 +30,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+        <header className="border-b border-white/10 bg-[#090b14]/80 backdrop-blur-md sticky top-0 z-10">
           <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-            <Link href="/" className="text-xl font-bold text-rose-700">
+            <Link href="/" className="text-xl font-bold text-rose-300 tracking-wide">
               🌹 Roselet
             </Link>
             <Nav />
