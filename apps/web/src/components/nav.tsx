@@ -48,6 +48,9 @@ export function Nav() {
       <Link href="/garden" className="text-sm text-slate-300 hover:text-rose-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">
         花圃
       </Link>
+      <Link href="/oscilloscope" className="text-sm text-slate-300 hover:text-purple-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">
+        示波器
+      </Link>
       {user ? (
         <>
           <Link href="/my" className="text-sm text-slate-300 hover:text-rose-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">
