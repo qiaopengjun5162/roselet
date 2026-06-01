@@ -1,3 +1,4 @@
+mod emotion;
 mod flowers;
 mod keywords;
 
@@ -103,6 +104,14 @@ pub fn recommend(roses_json: &str) -> JsValue {
     let result = recommend_internal(&roses);
     serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
 }
+
+/// WASM 入口：分析一段文字，返回对应的示波器音乐参数
+#[wasm_bindgen]
+pub fn analyze_text(text: &str) -> JsValue {
+    let result = emotion::analyze_text_internal(text);
+    serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
+}
+
 
 #[cfg(test)]
 mod tests {
