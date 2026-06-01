@@ -23,7 +23,13 @@ export function setToken(token: string) {
 export function getUser(): User | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem("user");
-  return raw ? JSON.parse(raw) : null;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as User;
+  } catch {
+    localStorage.removeItem("user");
+    return null;
+  }
 }
 
 export function setUser(user: User) {

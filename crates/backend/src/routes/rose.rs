@@ -44,7 +44,6 @@ pub async fn create_rose(
 
     let _ = state.rose_tx.send(response.clone());
 
-    // Generate AI reply in background
     let pool = state.pool.clone();
     let rose_id = rose.id;
     let color = input.color.clone();
@@ -131,7 +130,14 @@ pub async fn update_rose(
     .await?;
 
     let nickname = lookup_nickname(&state.pool, rose.user_id).await;
-    Ok(Json(RoseResponse::from_rose(rose, nickname, 0)))
+    let like_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM likes WHERE rose_id = $1",
+    )
+    .bind(rose.id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
+    Ok(Json(RoseResponse::from_rose(rose, nickname, like_count)))
 }
 
 pub async fn delete_rose(

@@ -1,18 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RoseCard } from "@/components/rose-card";
 import { getGarden, type Rose } from "@/lib/api";
 import { connectGardenWs } from "@/lib/ws";
 import { playNotify } from "@/lib/sound";
 
-const COLOR_MAP: Record<string, { emoji: string; label: string }> = {
-  red: { emoji: "🌹", label: "红玫瑰" },
-  white: { emoji: "🤍", label: "白玫瑰" },
-  yellow: { emoji: "💛", label: "黄玫瑰" },
-};
 
 export default function GardenPage() {
   const [roses, setRoses] = useState<Rose[]>([]);
@@ -98,37 +92,9 @@ export default function GardenPage() {
               共 {total} 朵玫瑰
             </p>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {roses.map((rose) => {
-                const meta = COLOR_MAP[rose.color] || { emoji: "🌹", label: "玫瑰" };
-                return (
-                  <Link key={rose.id} href={`/rose/${rose.id}`}>
-                    <Card className="glass-card hover:border-white/25 transition-all cursor-pointer h-full bg-transparent border-0">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <span className="text-2xl">{meta.emoji}</span>
-                          <span className="text-sm text-slate-500">{meta.label}</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
-                        {rose.gratitude && (
-                          <p><span className="font-medium text-yellow-400">🌹 </span>{rose.gratitude}</p>
-                        )}
-                        {rose.anxiety && (
-                          <p><span className="font-medium text-sky-400">🌵 </span>{rose.anxiety}</p>
-                        )}
-                        {rose.hope && (
-                          <p><span className="font-medium text-fuchsia-400">🌱 </span>{rose.hope}</p>
-                        )}
-                        <p className="text-xs text-slate-500 pt-2">
-                          {rose.nickname && <span className="mr-2">{rose.nickname}</span>}
-                          {rose.like_count > 0 && <span className="mr-2 text-rose-400">❤️ {rose.like_count}</span>}
-                          {new Date(rose.created_at).toLocaleDateString("zh-CN")}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
+              {roses.map((rose) => (
+                <RoseCard key={rose.id} rose={rose} showNickname />
+              ))}
             </div>
             {roses.length < total && (
               <div className="text-center pt-4">

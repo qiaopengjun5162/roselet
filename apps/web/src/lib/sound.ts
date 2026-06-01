@@ -20,7 +20,6 @@ export function toggleMute(): boolean {
   return muted;
 }
 
-/** 轻点音效 — 清脆的钢琴音 */
 export async function playClick() {
   if (muted) return;
   await ensureStarted();
@@ -33,7 +32,6 @@ export async function playClick() {
   setTimeout(() => synth.dispose(), 500);
 }
 
-/** 种植音效 — 温暖的和弦 */
 export async function playPlant() {
   if (muted) return;
   await ensureStarted();
@@ -46,7 +44,6 @@ export async function playPlant() {
   setTimeout(() => synth.dispose(), 1000);
 }
 
-/** 完成音效 — 上升琶音 */
 export async function playComplete() {
   if (muted) return;
   await ensureStarted();
@@ -63,7 +60,6 @@ export async function playComplete() {
   setTimeout(() => synth.dispose(), 1500);
 }
 
-/** 点赞音效 — 心跳声 */
 export async function playLike() {
   if (muted) return;
   await ensureStarted();
@@ -81,7 +77,6 @@ export async function playLike() {
   setTimeout(() => synth.dispose(), 600);
 }
 
-/** 通知音效 — 叮咚 */
 export async function playNotify() {
   if (muted) return;
   await ensureStarted();
@@ -96,7 +91,6 @@ export async function playNotify() {
   setTimeout(() => synth.dispose(), 800);
 }
 
-/** 背景音乐 — 轻柔钢琴循环 */
 let bgLoop: Tone.Loop | null = null;
 let bgSynth: Tone.PolySynth | null = null;
 let bgPlaying = false;
