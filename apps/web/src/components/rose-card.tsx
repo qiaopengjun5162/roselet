@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useCallback } from "react";
 import type { Rose } from "@/lib/api";
+import { roseToSoundParams } from "@/lib/rose-sound";
 
 const COLOR_MAP: Record<string, { emoji: string; label: string }> = {
   red:    { emoji: "🌹", label: "红玫瑰" },
@@ -15,9 +19,35 @@ interface RoseCardProps {
 export function RoseCard({ rose, showNickname = false }: RoseCardProps) {
   const meta = COLOR_MAP[rose.color] ?? { emoji: "🌹", label: "玫瑰" };
 
+  // 悬停时播放 0.3s 短促音色，音量极低不打扰
+  const handleMouseEnter = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const p = roseToSoundParams(rose);
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      osc.type = p.waveform;
+      osc.frequency.value = p.baseFreq * p.fx;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.06;
+      // 快速淡出，避免爆音
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+      osc.onended = () => ctx.close();
+    } catch {
+      // AudioContext 在某些环境下不可用，静默忽略
+    }
+  }, [rose]);
+
   return (
     <Link href={`/rose/${rose.id}`}>
-      <div className="glass-card p-4 space-y-2 cursor-pointer hover:border-white/25 hover:-translate-y-0.5 transition-all h-full">
+      <div
+        className="glass-card p-4 space-y-2 cursor-pointer hover:border-white/25 hover:-translate-y-0.5 transition-all h-full"
+        onMouseEnter={handleMouseEnter}
+      >
         <div className="flex items-center gap-2">
           <span className="text-2xl">{meta.emoji}</span>
           <span className="text-sm text-slate-400">{meta.label}</span>

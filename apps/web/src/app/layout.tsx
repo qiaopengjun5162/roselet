@@ -33,7 +33,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <DayNightBackground />
-        <header className="border-b border-white/10 bg-[#090b14]/80 backdrop-blur-md sticky top-0 z-10">
+        <header className="border-b sticky top-0 z-10" style={{background:"linear-gradient(90deg,rgba(15,10,25,0.85) 0%,rgba(20,12,28,0.85) 50%,rgba(10,15,25,0.85) 100%)",backdropFilter:"blur(16px)",borderBottomColor:"rgba(244,63,94,0.15)"}}>
           <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
             <Link href="/" className="text-xl font-bold text-rose-300 tracking-wide">
               🌹 Roselet
@@ -41,7 +41,7 @@ export default function RootLayout({
             <Nav />
           </div>
         </header>
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 scroll-pt-14">{children}</main>
       </body>
     </html>
   );

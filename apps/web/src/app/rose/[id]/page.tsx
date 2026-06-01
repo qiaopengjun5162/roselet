@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRose, updateRose, deleteRose, getUser, toggleLike, type Rose, type UpdateRose } from "@/lib/api";
 import { playClick, playPlant, playLike } from "@/lib/sound";
+import { RosePlayer } from "@/components/rose-player";
 
 const COLOR_MAP: Record<string, { emoji: string; label: string; bg: string }> = {
   red: { emoji: "🌹", label: "红玫瑰", bg: "from-red-50 to-white" },
@@ -226,7 +227,7 @@ export default function RoseDetailPage() {
                     <p className="text-lg leading-relaxed bg-purple-50 p-4 rounded-lg italic">{rose.ai_reply}</p>
                   </div>
                 )}
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t flex items-center gap-4 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
@@ -234,6 +235,9 @@ export default function RoseDetailPage() {
                   >
                     {rose.like_count > 0 ? `❤️ ${rose.like_count}` : "❤️ 点赞"}
                   </Button>
+                </div>
+                <div className="pt-2">
+                  <RosePlayer rose={rose} canvasSize={160} />
                 </div>
               </>
             )}

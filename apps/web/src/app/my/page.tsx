@@ -43,7 +43,7 @@ export default function MyGardenPage() {
   }
 
   return (
-    <main className="relative min-h-screen px-4 pb-4 pt-6 z-10">
+    <main className="relative min-h-screen px-4 pb-4 pt-10 z-10">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-rose-300">我的花圃</h1>

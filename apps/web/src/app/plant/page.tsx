@@ -7,6 +7,7 @@ import { createRose, getToken, getMyRoses } from "@/lib/api";
 import { playClick, playPlant, playComplete } from "@/lib/sound";
 import { getRecommendation, type Recommendation } from "@/lib/recommend";
 import { Fireworks } from "@/components/fireworks";
+import { RosePlayer } from "@/components/rose-player";
 
 const COLORS = [
   { id: "red", label: "红玫瑰", emoji: "🌹", gradient: "from-red-100 to-red-50", accent: "text-red-600" },
@@ -207,6 +208,26 @@ export default function PlantPage() {
               已种入星空花圃
             </h2>
             <p className="text-slate-400">你的情绪已经出现在花圃中，AI 正在聆听...</p>
+          </div>
+          {/* 玫瑰声音可视化 — 烟花落定后自动播放 */}
+          <div className="flex justify-center animate-text-reveal" style={{ animationDelay: "1.2s" }}>
+            <RosePlayer
+              rose={{
+                id: "preview",
+                color,
+                gratitude: gratitude.trim() || null,
+                anxiety: anxiety.trim() || null,
+                hope: hope.trim() || null,
+                user_id: null,
+                nickname: null,
+                like_count: 0,
+                ai_reply: null,
+                created_at: new Date().toISOString(),
+              }}
+              autoPlay
+              durationMs={12000}
+              canvasSize={140}
+            />
           </div>
           {/* 按钮 */}
           <div className="flex gap-3 justify-center animate-text-reveal" style={{ animationDelay: "0.3s" }}>
