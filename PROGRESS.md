@@ -47,10 +47,14 @@
 - [x] 日夜动态背景（8 时段渐变，跟随系统时间）
 - [x] 种花成功烟花粒子动画
 - [x] 种花/点赞强制登录，登录后跳回原页面
+- [x] 玫瑰点击绽放特效（全局 click → 玫瑰 emoji 弹出动画）
+- [x] 玫瑰→声音融合：详情页"听这朵玫瑰" + 成功页自动播放 + 卡片悬停音效
+- [x] 情绪示波器：预设模式 + 文字输入实时驱动音乐（TextAnalyzer 接口）
 
 ### 测试
 - [x] 72 个后端测试（36 集成 + 36 单元）
-- [x] 20 个前端单元测试
+- [x] 88 个前端单元测试（13 套件）
+- [x] 17 个 Rust WASM 单元测试（emotion 情绪分析）
 - [x] RoseCard 通用组件（消除 garden/my 重复代码）
 
 ### 部署
@@ -63,6 +67,7 @@
 - [x] 花语数据库 + 主题推荐 + 颜色推荐算法
 - [x] 种花页面集成推荐卡片
 - [x] wasm-pack 构建流程（112KB）
+- [x] emotion.rs：analyze_text() WASM 函数，48 关键词，三类情绪权重评分
 
 ### 文档
 - [x] README.md（英文）+ README_zh.md（中文）
@@ -73,7 +78,9 @@
 
 - [x] 优化 profile SQL（4 次查询 → 1 次聚合）
 - [x] 提取公共 auth token 函数
-- [ ] 小程序适配
+- [ ] WASM analyze_text 接入前端（替换 TS LocalKeywordAnalyzer）
+- [ ] text-to-sound.ts / rose-sound.ts 前端单元测试
+- [ ] 小程序适配（uni-app，首发微信）
 - [ ] Web3 功能（已设计，待实现）
   - 用户钱包直付 Gas + 平台服务费
   - 先走正统 Web3 流程（用户学习钱包/Gas），后续加人民币支付

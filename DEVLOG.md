@@ -702,3 +702,81 @@ UI 修复 + 代码质量审计 + 文档全量更新
 - [ ] 微信小程序（uni-app）
 
 <!-- 下次会话在此处继续记录 -->
+
+## 2026-06-02 会话 #17
+
+### 会话目标
+示波器与玫瑰深度融合 + Rust WASM 情绪分析 + 全局布局修复 + 玫瑰点击绽放特效 + 文档补全
+
+### 完成的工作
+
+#### 1. 玫瑰→声音深度融合（ABC 三方案）
+- `lib/rose-sound.ts`：玫瑰属性 → 示波器参数映射
+  - 颜色(red/white/yellow) → 基础频率(220/264/198 Hz) + 光束色
+  - 情绪字段组合 → 频率比（感恩+期待=1:2，焦虑+感恩=2:3，三者=3:4）
+  - 文字长度 → 相位偏移（内容越丰富图形越扭曲）
+  - 点赞数 → 波形（≥10赞→sine纯净，≥3→triangle，<3→sawtooth粗粝）
+- `components/rose-player.tsx`：可复用利萨如 Canvas 播放器，支持 autoPlay + durationMs
+- 方案 A：玫瑰详情页 `/rose/[id]` 加"听这朵玫瑰"按钮（160px Canvas，点击播放）
+- 方案 B：种花成功页烟花落定后（1.2s delay）自动播放玫瑰专属音乐（12s）
+- 方案 C：`RoseCard` 悬停时播放 0.3s 超低音量（0.06）音色，exponential 淡出防爆音
+
+#### 2. 示波器文字输入（情绪驱动音乐）
+- `lib/text-to-sound.ts`：TextAnalyzer 接口 + LocalKeywordAnalyzer 实现
+  - 接口设计：`analyze(text): SoundParams`，未来换 AI 只改一行 `defaultAnalyzer`
+  - 关键词库：三类情绪各 15+ 词，权重区分强弱信号（0.3~1.0）
+  - intensity > 0.6 → fy+1（图形更复杂），文字长度 → 相位微调
+  - 300ms debounce 实时更新，播放中也能持续输入
+- `app/oscilloscope/page.tsx` 双模式：预设情绪 / ✏️ 说出你的感受
+
+#### 3. Rust WASM 情绪分析模块（用 Rust 替代 TS）
+- `crates/recommend/src/emotion.rs`：48 个关键词，三类情绪权重评分
+  - `analyze_text_internal(text)` 纯 Rust 函数，可单元测试
+  - 10 个单元测试：空文本、纯空白、三类情绪、强度阈值、相位增长、颜色合法性
+- `crates/recommend/src/lib.rs`：新增 `analyze_text()` WASM binding
+- 后续待做：将 WASM 产物接入前端替换 LocalKeywordAnalyzer
+
+#### 4. 全局布局修复（header 重叠问题彻底解决）
+- **根本原因**：sticky header 高度 56px，页面内容 `pt` 不足，向上滚动时内容撞入 header
+- **解决方案**：
+  - `layout.tsx`：header `z-10 → z-50`，确保覆盖所有内容层
+  - 所有页面 `main` 统一 `pt-16`（= 64px > header 56px，留出余量）
+  - 删除各页面内重复的 `h1` 大标题（nav 链接已承担导航职责）
+  - 页面内标题字号：`text-3xl → text-xl`，不再与 header 等高
+
+#### 5. 深色主题统一
+- 种花页（`/plant`）三步骤：浅色渐变背景 → 深色 `z-10`
+  - 推荐卡片：`bg-white/80 → glass-card`
+  - 热点按钮：浅色实心 → 半透明深色 + 边框
+  - `text-muted-foreground → text-slate-400`，`text-rose-700 → text-rose-300`
+- 玫瑰详情页（`/rose/[id]`）：整体深色 glass-card，内容块半透明带色边框
+- 导航栏：纯黑 → 紫红渐变毛玻璃 + 玫瑰色细边框
+
+#### 6. 玫瑰点击绽放特效
+- `components/rose-click-bloom.tsx`：监听全局 click 事件，在点击坐标生成玫瑰 emoji
+  - 随机 emoji（🌹🌸🌺），随机大小（20~36px），0.7s cubic-bezier 弹性动画
+  - 自动跳过交互元素（button/input/a/textarea）
+  - 700ms 后自动销毁，支持多个同时绽放
+  - 8 个单元测试，全部通过
+- `globals.css`：`rose-bloom` 关键帧（scale 弹出 → 旋转 → 向上飘散消失）
+
+### 遇到的问题及解决
+
+1. **header 重叠反复出现**：每次加新页面都会复现。根本解：layout.tsx header z-50 + 所有页面统一 pt-16，不再各页单独设 pt 值。
+2. **plant 测试 AudioContext 未定义**：成功页集成 RosePlayer（autoPlay）后，测试环境没有 AudioContext。解：在测试顶部 mock AudioContext + mock RosePlayer 组件。
+3. **oscilloscope 测试断言失败**：页面标题已删除，canvas 尺寸已改。解：更新断言，改用 `▶ 开始感受` 按钮文字做渲染验证。
+4. **RoseCard 删 Link import 后运行崩溃**：之前重构时删了 `import Link` 但页面内仍用 Link。解：补回 import，测试中 mock next/link。
+5. **深色背景 + 浅色文字看不清**：种花页用浅色渐变背景但继承了深色主题的低对比文字。解：种花页背景换深色，文字颜色全部提亮。
+
+### 当前状态
+- 后端：72 个测试通过（36 集成 + 36 单元）
+- 前端：88 个测试通过（13 套件）
+- Rust WASM：17 个单元测试通过
+- 已提交，待推送
+
+### 待办
+- [ ] `just wasm` 重新构建 WASM 产物，前端 `lib/recommend.ts` 接入 `analyze_text()`
+- [ ] 为 `text-to-sound.ts` 和 `rose-sound.ts` 补充前端单元测试
+- [ ] 微信小程序（uni-app，首发微信）
+
+<!-- 下次会话在此处继续记录 -->
