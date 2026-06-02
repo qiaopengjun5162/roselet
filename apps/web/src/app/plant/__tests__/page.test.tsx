@@ -1,3 +1,30 @@
+// RosePlayer 在成功页 autoPlay，需要 mock AudioContext
+global.AudioContext = jest.fn().mockImplementation(() => ({
+  createOscillator: jest.fn().mockReturnValue({
+    type: "sine", frequency: { value: 0 },
+    connect: jest.fn(), start: jest.fn(), stop: jest.fn(),
+    onended: null,
+  }),
+  createGain: jest.fn().mockReturnValue({ gain: { value: 0 }, connect: jest.fn() }),
+  createAnalyser: jest.fn().mockReturnValue({
+    fftSize: 256, frequencyBinCount: 128,
+    connect: jest.fn(), getFloatTimeDomainData: jest.fn(),
+  }),
+  createDelay: jest.fn().mockReturnValue({ delayTime: { value: 0 }, connect: jest.fn() }),
+  createChannelMerger: jest.fn().mockReturnValue({ connect: jest.fn() }),
+  destination: {},
+  close: jest.fn().mockResolvedValue(undefined),
+})) as unknown as typeof AudioContext;
+
+global.requestAnimationFrame = jest.fn().mockReturnValue(1);
+global.cancelAnimationFrame = jest.fn();
+
+HTMLCanvasElement.prototype.getContext = jest.fn().mockReturnValue({
+  fillStyle: "", strokeStyle: "", lineWidth: 0, shadowBlur: 0,
+  shadowColor: "", lineCap: "", fillRect: jest.fn(),
+  beginPath: jest.fn(), moveTo: jest.fn(), lineTo: jest.fn(), stroke: jest.fn(),
+});
+
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
@@ -16,6 +43,10 @@ jest.mock("@/lib/sound", () => ({
   playClick: jest.fn(),
   playPlant: jest.fn(),
   playComplete: jest.fn(),
+}));
+
+jest.mock("@/components/rose-player", () => ({
+  RosePlayer: () => <div data-testid="rose-player" />,
 }));
 
 jest.mock("@/lib/recommend", () => ({

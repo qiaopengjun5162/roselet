@@ -58,10 +58,9 @@ import OscilloscopePage from "../page";
 describe("OscilloscopePage", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("renders title and subtitle", () => {
+  it("renders start button and canvas", () => {
     render(<OscilloscopePage />);
-    expect(screen.getByText("情绪示波器")).toBeInTheDocument();
-    expect(screen.getByText(/每种情绪都有自己的形状/)).toBeInTheDocument();
+    expect(screen.getByText("▶ 开始感受")).toBeInTheDocument();
   });
 
   it("renders all preset buttons", () => {
@@ -110,7 +109,7 @@ describe("OscilloscopePage", () => {
     const canvas = document.querySelector("canvas");
     expect(canvas).toBeInTheDocument();
     expect(canvas?.width).toBe(460);
-    expect(canvas?.height).toBe(380);
+    expect(canvas?.height).toBe(360);
   });
 
   it("renders all three sliders", () => {
