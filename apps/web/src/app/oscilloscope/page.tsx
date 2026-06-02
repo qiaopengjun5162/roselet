@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { defaultAnalyzer, type SoundParams } from "@/lib/text-to-sound";
+import { analyzeTextAsync, type SoundParams } from "@/lib/text-to-sound";
 
 const PRESETS = [
   { label: "同频共振", fx: 1, fy: 1, emotion: "gratitude", desc: "心与心的共鸣，感恩最纯粹的形状" },
@@ -63,16 +63,17 @@ export default function OscilloscopePage() {
   const autoColor = mode === "text" && textParams
     ? colorFromParams(textParams)
     : EMOTION_COLORS[preset.emotion as keyof typeof EMOTION_COLORS];
-  const color = manualColor === "extra" ? EXTRA_COLOR
-    : manualColor && manualColor !== "extra" ? EMOTION_COLORS[manualColor as keyof typeof EMOTION_COLORS]
-    : autoColor;
+  const color = manualColor === "extra"
+    ? EXTRA_COLOR
+    : (manualColor !== null && manualColor in EMOTION_COLORS)
+      ? EMOTION_COLORS[manualColor as keyof typeof EMOTION_COLORS]
+      : autoColor;
 
   // 文字分析（实时，debounce 300ms）
   useEffect(() => {
     if (mode !== "text") return;
     const id = setTimeout(() => {
-      const p = defaultAnalyzer.analyze(inputText);
-      setTextParams(p);
+      analyzeTextAsync(inputText).then(setTextParams);
     }, 300);
     return () => clearTimeout(id);
   }, [inputText, mode]);

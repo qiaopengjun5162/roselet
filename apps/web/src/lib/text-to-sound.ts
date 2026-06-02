@@ -94,3 +94,42 @@ export class LocalKeywordAnalyzer implements TextAnalyzer {
 // 单例，调用方统一用这个
 // 未来换成 AIAnalyzer 只需改这一行
 export const defaultAnalyzer: TextAnalyzer = new LocalKeywordAnalyzer();
+
+// ── WASM 分析器（Rust 实现，更准确）───────────────────────────────────
+// 与 LocalKeywordAnalyzer 实现同一接口，运行时动态加载
+import { analyzeTextWasm } from "@/lib/recommend";
+
+export class WasmAnalyzer implements TextAnalyzer {
+  private fallback = new LocalKeywordAnalyzer();
+
+  analyze(text: string): SoundParams {
+    // 同步调用时降级到本地版（WASM 是异步加载的）
+    return this.fallback.analyze(text);
+  }
+
+  async analyzeAsync(text: string): Promise<SoundParams> {
+    const result = await analyzeTextWasm(text);
+    if (!result) return this.fallback.analyze(text);
+
+    // Rust 返回的字段名是 snake_case，映射到 SoundParams
+    return {
+      fx:           (result.fx as number) ?? 1,
+      fy:           (result.fy as number) ?? 1,
+      waveform:     (result.waveform as OscillatorType) ?? "sine",
+      baseFreq:     (result.base_freq as number) ?? 220,
+      phase:        (result.phase as number) ?? 0,
+      stroke:       (result.stroke as string) ?? "#94a3b8",
+      glow:         (result.glow as string) ?? "rgba(148,163,184,0.4)",
+      emotionLabel: (result.emotion_label as string) ?? "○ 中性",
+      intensity:    (result.intensity as number) ?? 0,
+    };
+  }
+}
+
+// 导出异步版 analyze，示波器页面统一调用这个
+// LocalKeywordAnalyzer 保留作为同步降级和测试用途
+export const wasmAnalyzer = new WasmAnalyzer();
+
+export async function analyzeTextAsync(text: string): Promise<SoundParams> {
+  return wasmAnalyzer.analyzeAsync(text);
+}
