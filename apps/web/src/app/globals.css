@@ -55,16 +55,16 @@ body::before {
   animation: starTwinkle 8s ease-in-out infinite alternate;
 }
 
-/* 深空星云光晕 */
+/* 深空星云光晕 — 玫瑰主题色调 */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 55% 45% at 10% 40%, rgba(52, 211, 153, 1) 0%, transparent 65%),
-    radial-gradient(ellipse 45% 40% at 85% 15%, rgba(236, 72, 153, 1) 0%, transparent 65%),
-    radial-gradient(ellipse 50% 55% at 65% 85%, rgba(139, 92, 246, 1) 0%, transparent 65%),
-    radial-gradient(ellipse 35% 30% at 50% 50%, rgba(244, 63, 94, 1) 0%, transparent 60%);
+    radial-gradient(ellipse 60% 50% at 15% 45%, rgba(220, 60, 120, 1)  0%, transparent 65%),
+    radial-gradient(ellipse 50% 45% at 88% 18%, rgba(180, 60, 200, 1)  0%, transparent 65%),
+    radial-gradient(ellipse 55% 60% at 60% 88%, rgba(100, 60, 220, 1)  0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(244, 63,  94, 1)  0%, transparent 55%);
   opacity: var(--nebula-opacity);
   pointer-events: none;
   z-index: 0;
