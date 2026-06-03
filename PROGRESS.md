@@ -53,7 +53,7 @@
 
 ### 测试
 - [x] 72 个后端测试（36 集成 + 36 单元）
-- [x] 88 个前端单元测试（13 套件）
+- [x] 120 个前端单元测试（15 套件）
 - [x] 17 个 Rust WASM 单元测试（emotion 情绪分析）
 - [x] RoseCard 通用组件（消除 garden/my 重复代码）
 
@@ -78,8 +78,8 @@
 
 - [x] 优化 profile SQL（4 次查询 → 1 次聚合）
 - [x] 提取公共 auth token 函数
-- [ ] WASM analyze_text 接入前端（替换 TS LocalKeywordAnalyzer）
-- [ ] text-to-sound.ts / rose-sound.ts 前端单元测试
+- [x] WASM analyze_text 接入前端（WasmAnalyzer，降级 LocalKeywordAnalyzer）
+- [x] text-to-sound.ts / rose-sound.ts 前端单元测试（各 16/19 个用例）
 - [ ] 小程序适配（uni-app，首发微信）
 - [ ] Web3 功能（已设计，待实现）
   - 用户钱包直付 Gas + 平台服务费

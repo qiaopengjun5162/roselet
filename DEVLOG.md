@@ -780,3 +780,51 @@ UI 修复 + 代码质量审计 + 文档全量更新
 - [ ] 微信小程序（uni-app，首发微信）
 
 <!-- 下次会话在此处继续记录 -->
+
+## 2026-06-03 会话 #18
+
+### 会话目标
+WASM analyze_text 接入前端 + 补充测试覆盖 + 日夜背景重设计
+
+### 完成的工作
+
+#### WASM analyze_text 接入前端
+- `lib/recommend.ts`：新增 `analyzeTextWasm()` 函数，复用已有 WASM loader，新增 `WasmMod` 接口
+- `lib/text-to-sound.ts`：新增 `WasmAnalyzer` 类实现 `TextAnalyzer` 接口
+  - `analyzeAsync(text)` 优先调用 WASM，WASM 失败时降级到 `LocalKeywordAnalyzer`
+  - 导出 `analyzeTextAsync()` 便捷函数供示波器页面使用
+  - Rust 返回 snake_case 字段（base_freq, emotion_label），在 TS 层做映射
+- `app/oscilloscope/page.tsx`：`defaultAnalyzer.analyze()` → `analyzeTextAsync()`（WASM 优先）
+- 修复 `ColorKey` TS 类型缩窄错误（`manualColor !== "extra"` 比较类型不重叠）
+
+#### 测试覆盖补充（88 → 120 个）
+- `lib/__tests__/text-to-sound.test.ts`：16 个测试
+  - 空输入/空白 → neutral、三类情绪识别、stroke/glow 格式、intensity 范围、长文字相位增长
+- `lib/__tests__/rose-sound.test.ts`：16 个测试（实际 19 个）
+  - 四种颜色 → 频率映射、7 种字段组合 → 频率比、4 档点赞 → 波形、长度 → 相位、颜色输出格式
+
+#### 日夜背景重设计
+- 全程保持深色（不再有难以辨认的浅色白天），但各时段差异明显可感知
+  - 下午（12-17）：深墨绿蓝 `#060e0c`，stars=0，最素净
+  - 傍晚（17-19）：最富有视觉冲击，深玫瑰暮色 `#3a1020`，nebula=0.32
+  - 深夜（0-4 / 22-24）：最深冷蓝黑 `#02040d`，stars=1.0，星空最亮
+  - 黎明（4-6）：暗橙紫红破晓，stars=0.65
+- `globals.css`：星云颜色从绿紫蓝 → 玫瑰粉/紫/深红，与傍晚时段协调
+
+### 遇到的问题及解决
+
+1. **WASM pkg 被 .gitignore 排除**：`apps/web/public/pkg/` 在 gitignore 中，无法提交构建产物。解：运行时由 `just wasm` 在本地构建，CI 需要在构建前运行 `just wasm`（已在 workflow 中有步骤）。
+2. **Rust 返回 snake_case 字段，TS 期望 camelCase**：`analyze_text()` 返回 `base_freq`、`emotion_label`，但 `SoundParams` 接口用 `baseFreq`、`emotionLabel`。解：在 `WasmAnalyzer.analyzeAsync()` 做显式字段映射。
+3. **ColorKey 类型比较错误**：`manualColor !== "extra"` 当 `manualColor` 类型为 `"gratitude"|"anxiety"|"hope"` 时 TS 报 no overlap。解：改用 `manualColor in EMOTION_COLORS` 做对象属性检查。
+
+### 当前状态
+- 前端：120 个测试通过（15 套件）
+- 后端：72 个测试通过
+- WASM：17 个单元测试通过
+- 已推送到 main
+
+### 待办
+- [ ] 微信小程序（uni-app）——需确认本地环境（HBuilderX / AppID）
+- [ ] Web3 功能（设计已完成，待实现）
+
+<!-- 下次会话在此处继续记录 -->
