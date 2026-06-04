@@ -1,3 +1,4 @@
 export default definePageConfig({
-  navigationBarTitleText: '示波器',
+  navigationStyle: 'custom',
+  disableScroll: true,
 });

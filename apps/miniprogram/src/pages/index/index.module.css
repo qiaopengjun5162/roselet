@@ -1,97 +1,16 @@
-.container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 24px;
-  /* 简化渐变：微信 WebView 对多层 radial-gradient 支持差，用线性渐变+底色 */
-  background: #060810;
-  background-image: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(244,63,94,0.08) 0%, transparent 100%),
-    radial-gradient(ellipse 60% 50% at 20% 70%, rgba(139,92,246,0.06) 0%, transparent 100%);
-  position: relative;
-  overflow: hidden;
-}
-
-.glow {
-  position: absolute;
-  top: 25%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 300px;
-  height: 300px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(244,63,94,0.12) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.emoji {
-  font-size: 64px;
-  margin-bottom: 8px;
-  filter: drop-shadow(0 0 20px rgba(244,63,94,0.6));
-}
-
-.title {
-  font-size: 36px;
-  font-weight: bold;
-  color: #f43f5e;
-  margin-bottom: 4px;
-}
-
-.sub {
-  font-size: 14px;
-  color: #94a3b8;
-  margin-bottom: 32px;
-}
-
-.cards {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  max-width: 340px;
-  margin-bottom: 24px;
-}
-
-.card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-}
-
+.page { min-height: 100vh; background: #0a0b14; overflow: hidden; }
+.container { height: calc(100vh - 88px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; margin-top: 88px; }
+.glow { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(244,63,94,0.1) 0%, transparent 70%); pointer-events: none; }
+.emoji { font-size: 64px; margin-bottom: 8px; filter: drop-shadow(0 0 20px rgba(244,63,94,0.6)); }
+.title { font-size: 36px; font-weight: bold; color: #f43f5e; margin-bottom: 4px; display: block; }
+.sub { font-size: 14px; color: #94a3b8; margin-bottom: 28px; display: block; }
+.cards { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 340px; margin-bottom: 20px; }
+.card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
 .cardGratitude { border-left: 3px solid rgba(234,179,8,0.6); }
 .cardHope { border-left: 3px solid rgba(217,70,239,0.6); }
 .cardAnxiety { border-left: 3px solid rgba(14,165,233,0.6); }
-
 .cardEmoji { font-size: 24px; flex-shrink: 0; }
 .cardTitle { font-size: 14px; font-weight: 600; color: #e2e8f0; flex-shrink: 0; width: 40px; }
 .cardDesc { font-size: 11px; color: #64748b; line-height: 1.5; }
-
-.btnPrimary {
-  width: 100%;
-  max-width: 340px;
-  background: linear-gradient(135deg, #f43f5e, #ec4899);
-  color: #fff;
-  border: none;
-  border-radius: 50px;
-  font-size: 15px;
-  font-weight: 600;
-  padding: 14px 0;
-  margin-bottom: 10px;
-  box-shadow: 0 4px 20px rgba(244,63,94,0.3);
-}
-
-.btnSecondary {
-  width: 100%;
-  max-width: 340px;
-  background: rgba(255,255,255,0.06);
-  color: #cbd5e1;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 50px;
-  font-size: 14px;
-  padding: 12px 0;
-}
+.btnPrimary { width: 100%; max-width: 340px; background: linear-gradient(135deg, #f43f5e, #ec4899); color: #fff; border: none; border-radius: 50px; font-size: 15px; font-weight: 600; padding: 14px 0; margin-bottom: 10px; }
+.btnSecondary { width: 100%; max-width: 340px; background: rgba(255,255,255,0.06); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); border-radius: 50px; font-size: 14px; padding: 12px 0; }

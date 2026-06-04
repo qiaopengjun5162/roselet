@@ -1,9 +1,8 @@
-.container { min-height: 100vh; background: #060810; padding: 24px 16px; position: relative; }
-.filters { display: flex; gap: 8px; margin-top: 24px; margin-bottom: 20px; }
+.page { min-height: 100vh; background: #0a0b14; }
+.container { padding: 100px 16px 24px; }
+.filters { display: flex; gap: 8px; margin-bottom: 16px; }
 .filter { padding: 6px 16px; border-radius: 50px; font-size: 13px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; }
 .active { background: rgba(244,63,94,0.15); border-color: rgba(244,63,94,0.4); color: #f43f5e; }
-.list { height: calc(100vh - 140px); }
+.list { height: calc(100vh - 200px); }
 .hint { color: #64748b; font-size: 14px; text-align: center; display: block; margin-top: 80px; }
 .more { color: #94a3b8; font-size: 13px; text-align: center; display: block; padding: 16px 0; }
-.fab { position: fixed; right: 24px; bottom: 48px; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #f43f5e, #ec4899); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(244,63,94,0.35); z-index: 10; }
-.fabText { font-size: 22px; }

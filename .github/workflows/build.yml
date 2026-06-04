@@ -79,10 +79,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Setup just
-        uses: extractions/setup-just@v2
-
-
       - name: Install dependencies
         run: pnpm install
 
@@ -114,18 +110,21 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Setup just
-        uses: extractions/setup-just@v2
-
-
       - name: Install dependencies
         run: pnpm install
 
+      - name: Init miniprogram config
+        run: bash scripts/init-miniprogram.sh
+
       - name: Build WASM for miniprogram
-        run: just wasm-mini
+        run: |
+          cd crates/recommend
+          wasm-pack build --target web --out-dir ../../apps/miniprogram/pkg
+          cd ../..
+          node scripts/patch-wasm.js
 
       - name: Build miniprogram
-        run: just miniprogram-build
+        run: cd apps/miniprogram && pnpm build:weapp
 
       - name: Test miniprogram
         run: cd apps/miniprogram && pnpm test

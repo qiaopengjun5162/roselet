@@ -3,6 +3,7 @@ import { View, Text, Input, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { register } from '@/api'
 import { setToken, setUser } from '@/utils/storage'
+import { NavBar } from '@/components/NavBar'
 import styles from './index.module.css'
 
 export default function Login() {
@@ -17,9 +18,7 @@ export default function Login() {
     try {
       const res = await register(trimmed)
       setToken(res.token); setUser(res.user)
-      const pages = Taro.getCurrentPages()
-      if (pages.length > 1) Taro.navigateBack()
-      else Taro.navigateTo({ url: '/pages/garden/index' })
+      Taro.navigateBack()
     } catch {
       setError('注册失败，请重试')
     } finally {
@@ -28,21 +27,24 @@ export default function Login() {
   }
 
   return (
-    <View className={styles.container}>
-      <View className={styles.card}>
-        <Text className={styles.title}>🌹 Roselet</Text>
-        <Text className={styles.sub}>给自己取个名字，开始种花</Text>
-        <Input
-          className={styles.input}
-          placeholder="你想叫什么名字？"
-          maxlength={20}
-          value={nickname}
-          onInput={e => setNickname(e.detail.value)}
-        />
-        {error ? <Text className={styles.error}>{error}</Text> : null}
-        <Button className={styles.btn} loading={loading} disabled={loading} onClick={handleRegister}>
-          {loading ? '进入中...' : '进入花圃'}
-        </Button>
+    <View className={styles.page}>
+      <NavBar title="登录" />
+      <View className={styles.container}>
+        <View className={styles.card}>
+          <Text className={styles.title}>🌹 给自己取个名字</Text>
+          <Text className={styles.sub}>起个昵称，开始种花</Text>
+          <Input
+            className={styles.input}
+            placeholder="你想叫什么名字？"
+            maxlength={20}
+            value={nickname}
+            onInput={e => setNickname(e.detail.value)}
+          />
+          {error ? <Text className={styles.error}>{error}</Text> : null}
+          <Button className={styles.btn} loading={loading} disabled={loading} onClick={handleRegister}>
+            {loading ? '进入中...' : '进入花圃'}
+          </Button>
+        </View>
       </View>
     </View>
   )
