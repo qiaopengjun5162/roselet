@@ -112,6 +112,7 @@ pub fn analyze_text(text: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
 }
 
+mod datefmt;
 mod garden;
 mod plant;
 
@@ -153,7 +154,10 @@ pub fn parse_garden_response_wasm(json: &str) -> JsValue {
             let result = serde_json::json!({ "items": items, "total": total });
             serde_wasm_bindgen::to_value(&result).unwrap()
         }
-        Err(e) => serde_wasm_bindgen::to_value(&serde_json::json!({ "items": [], "total": 0, "error": e })).unwrap()
+        Err(e) => serde_wasm_bindgen::to_value(
+            &serde_json::json!({ "items": [], "total": 0, "error": e }),
+        )
+        .unwrap(),
     }
 }
 
@@ -163,10 +167,9 @@ pub fn parse_rose_response_wasm(json: &str) -> JsValue {
     use garden::parse_rose_response;
     match parse_rose_response(json) {
         Ok(rose) => serde_wasm_bindgen::to_value(&rose).unwrap(),
-        Err(e) => serde_wasm_bindgen::to_value(&serde_json::json!({ "error": e })).unwrap()
+        Err(e) => serde_wasm_bindgen::to_value(&serde_json::json!({ "error": e })).unwrap(),
     }
 }
-
 
 use plant::{PlantInput, format_plant_request, validate_plant};
 

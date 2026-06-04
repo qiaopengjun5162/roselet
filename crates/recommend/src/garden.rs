@@ -235,41 +235,118 @@ mod device_tests {
     use super::*;
 
     /// 模拟真机参数矩阵 —— 不依赖模拟器，Rust 侧跑所有机型
-    struct Device { name: &'static str, width: u32, height: u32, safe_top: u32, safe_bottom: u32 }
+    struct Device {
+        name: &'static str,
+        width: u32,
+        height: u32,
+        safe_top: u32,
+        safe_bottom: u32,
+    }
 
     fn devices() -> Vec<Device> {
         vec![
-            Device { name: "iPhone 14 Pro",     width: 393, height: 852,  safe_top: 54, safe_bottom: 34 },
-            Device { name: "iPhone SE",          width: 375, height: 667,  safe_top: 20, safe_bottom: 0  },
-            Device { name: "iPhone 15 Pro Max",  width: 430, height: 932,  safe_top: 54, safe_bottom: 34 },
-            Device { name: "小米 14",            width: 393, height: 852,  safe_top: 44, safe_bottom: 24 },
-            Device { name: "华为 Mate 60 Pro",   width: 440, height: 960,  safe_top: 48, safe_bottom: 28 },
-            Device { name: "OPPO Find N3 (折叠)",width: 450, height: 1020, safe_top: 44, safe_bottom: 24 },
+            Device {
+                name: "iPhone 14 Pro",
+                width: 393,
+                height: 852,
+                safe_top: 54,
+                safe_bottom: 34,
+            },
+            Device {
+                name: "iPhone SE",
+                width: 375,
+                height: 667,
+                safe_top: 20,
+                safe_bottom: 0,
+            },
+            Device {
+                name: "iPhone 15 Pro Max",
+                width: 430,
+                height: 932,
+                safe_top: 54,
+                safe_bottom: 34,
+            },
+            Device {
+                name: "小米 14",
+                width: 393,
+                height: 852,
+                safe_top: 44,
+                safe_bottom: 24,
+            },
+            Device {
+                name: "华为 Mate 60 Pro",
+                width: 440,
+                height: 960,
+                safe_top: 48,
+                safe_bottom: 28,
+            },
+            Device {
+                name: "OPPO Find N3 (折叠)",
+                width: 450,
+                height: 1020,
+                safe_top: 44,
+                safe_bottom: 24,
+            },
         ]
     }
 
     #[test]
     fn test_all_devices_layout() {
         for d in devices() {
-            let info = ScreenInfo { width: d.width, height: d.height, safe_area_top: d.safe_top, safe_area_bottom: d.safe_bottom, is_web: false };
+            let info = ScreenInfo {
+                width: d.width,
+                height: d.height,
+                safe_area_top: d.safe_top,
+                safe_area_bottom: d.safe_bottom,
+                is_web: false,
+            };
             let layout = GardenLayout::compute(&info);
             // 卡片不能比屏幕宽
-            assert!(layout.card_width < info.width, "{}: card {} >= width {}", d.name, layout.card_width, info.width);
+            assert!(
+                layout.card_width < info.width,
+                "{}: card {} >= width {}",
+                d.name,
+                layout.card_width,
+                info.width
+            );
             // 列数至少 1
             assert!(layout.columns >= 1, "{}: columns=0", d.name);
             // 顶部偏移必须大于安全区
-            assert!(layout.offset_top > info.safe_area_top, "{}: offset_top {} <= safe_top {}", d.name, layout.offset_top, info.safe_area_top);
+            assert!(
+                layout.offset_top > info.safe_area_top,
+                "{}: offset_top {} <= safe_top {}",
+                d.name,
+                layout.offset_top,
+                info.safe_area_top
+            );
             // 底部偏移必须大于等于安全区
-            assert!(layout.offset_bottom >= info.safe_area_bottom, "{}: offset_bottom {} < safe_bottom {}", d.name, layout.offset_bottom, info.safe_area_bottom);
+            assert!(
+                layout.offset_bottom >= info.safe_area_bottom,
+                "{}: offset_bottom {} < safe_bottom {}",
+                d.name,
+                layout.offset_bottom,
+                info.safe_area_bottom
+            );
         }
     }
 
     #[test]
     fn test_no_device_has_zero_card() {
         for d in devices() {
-            let info = ScreenInfo { width: d.width, height: d.height, safe_area_top: d.safe_top, safe_area_bottom: d.safe_bottom, is_web: false };
+            let info = ScreenInfo {
+                width: d.width,
+                height: d.height,
+                safe_area_top: d.safe_top,
+                safe_area_bottom: d.safe_bottom,
+                is_web: false,
+            };
             let layout = GardenLayout::compute(&info);
-            assert!(layout.card_width > 100, "{}: card_width too small: {}", d.name, layout.card_width);
+            assert!(
+                layout.card_width > 100,
+                "{}: card_width too small: {}",
+                d.name,
+                layout.card_width
+            );
         }
     }
 }
@@ -285,15 +362,15 @@ pub struct ApiResponse {
 
 /// 解析花圃列表响应，返回验证后的 RoseItem 数组
 pub fn parse_garden_response(json: &str) -> Result<(Vec<RoseItem>, u32), String> {
-    let resp: ApiResponse = serde_json::from_str(json).map_err(|e| format!("JSON 解析失败: {}", e))?;
+    let resp: ApiResponse =
+        serde_json::from_str(json).map_err(|e| format!("JSON 解析失败: {}", e))?;
     let total = resp.total.unwrap_or(0);
     let items = match resp.data {
-        Some(serde_json::Value::Array(arr)) => {
-            arr.iter()
-                .map(|v| serde_json::from_value::<RoseItem>(v.clone()))
-                .filter_map(|r| r.ok())
-                .collect()
-        }
+        Some(serde_json::Value::Array(arr)) => arr
+            .iter()
+            .map(|v| serde_json::from_value::<RoseItem>(v.clone()))
+            .filter_map(|r| r.ok())
+            .collect(),
         _ => Vec::new(),
     };
     Ok((items, total))
