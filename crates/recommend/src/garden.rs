@@ -273,3 +273,73 @@ mod device_tests {
         }
     }
 }
+
+/// API 响应解析 — Rust 强类型验证后端数据
+#[derive(Debug, Deserialize)]
+pub struct ApiResponse {
+    pub data: Option<serde_json::Value>,
+    pub total: Option<u32>,
+    pub page: Option<u32>,
+    pub per_page: Option<u32>,
+}
+
+/// 解析花圃列表响应，返回验证后的 RoseItem 数组
+pub fn parse_garden_response(json: &str) -> Result<(Vec<RoseItem>, u32), String> {
+    let resp: ApiResponse = serde_json::from_str(json).map_err(|e| format!("JSON 解析失败: {}", e))?;
+    let total = resp.total.unwrap_or(0);
+    let items = match resp.data {
+        Some(serde_json::Value::Array(arr)) => {
+            arr.iter()
+                .map(|v| serde_json::from_value::<RoseItem>(v.clone()))
+                .filter_map(|r| r.ok())
+                .collect()
+        }
+        _ => Vec::new(),
+    };
+    Ok((items, total))
+}
+
+/// 解析单朵玫瑰响应
+pub fn parse_rose_response(json: &str) -> Result<RoseItem, String> {
+    serde_json::from_str::<RoseItem>(json).map_err(|e| format!("玫瑰数据解析失败: {}", e))
+}
+
+#[cfg(test)]
+mod api_tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_garden_response() {
+        let json = r#"{"data":[{"id":"1","color":"red","gratitude":"hello","anxiety":null,"hope":null,"nickname":"alice","like_count":3,"ai_reply":null,"created_at":"2026-06-04"}],"total":1,"page":1,"per_page":20}"#;
+        let (items, total) = parse_garden_response(json).unwrap();
+        assert_eq!(total, 1);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].id, "1");
+        assert_eq!(items[0].color, "red");
+        assert_eq!(items[0].gratitude.as_deref().unwrap(), "hello");
+        assert_eq!(items[0].nickname.as_deref().unwrap(), "alice");
+        assert_eq!(items[0].like_count, 3);
+    }
+
+    #[test]
+    fn test_parse_empty_garden() {
+        let json = r#"{"data":[],"total":0,"page":1,"per_page":20}"#;
+        let (items, total) = parse_garden_response(json).unwrap();
+        assert_eq!(total, 0);
+        assert_eq!(items.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_rose_response() {
+        let json = r#"{"id":"abc","color":"white","gratitude":"peace","anxiety":null,"hope":null,"nickname":"bob","like_count":5,"ai_reply":"hello world","created_at":"2026-06-04"}"#;
+        let rose = parse_rose_response(json).unwrap();
+        assert_eq!(rose.id, "abc");
+        assert_eq!(rose.ai_reply.unwrap(), "hello world");
+    }
+
+    #[test]
+    fn test_parse_invalid_json() {
+        assert!(parse_garden_response("not json").is_err());
+        assert!(parse_rose_response("{broken").is_err());
+    }
+}

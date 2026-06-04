@@ -144,6 +144,30 @@ pub fn filter_roses(roses_json: &str, color_filter: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&filtered).unwrap()
 }
 
+/// WASM: 解析花圃 API 响应
+#[wasm_bindgen]
+pub fn parse_garden_response_wasm(json: &str) -> JsValue {
+    use garden::parse_garden_response;
+    match parse_garden_response(json) {
+        Ok((items, total)) => {
+            let result = serde_json::json!({ "items": items, "total": total });
+            serde_wasm_bindgen::to_value(&result).unwrap()
+        }
+        Err(e) => serde_wasm_bindgen::to_value(&serde_json::json!({ "items": [], "total": 0, "error": e })).unwrap()
+    }
+}
+
+/// WASM: 解析单朵玫瑰响应
+#[wasm_bindgen]
+pub fn parse_rose_response_wasm(json: &str) -> JsValue {
+    use garden::parse_rose_response;
+    match parse_rose_response(json) {
+        Ok(rose) => serde_wasm_bindgen::to_value(&rose).unwrap(),
+        Err(e) => serde_wasm_bindgen::to_value(&serde_json::json!({ "error": e })).unwrap()
+    }
+}
+
+
 use plant::{PlantInput, format_plant_request, validate_plant};
 
 /// WASM: 验证种花表单，返回 JSON (Rust 侧统一校验规则)
