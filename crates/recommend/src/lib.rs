@@ -114,9 +114,9 @@ pub fn analyze_text(text: &str) -> JsValue {
 
 mod datefmt;
 mod garden;
+mod petal;
 mod plant;
 mod store;
-mod petal;
 
 use garden::{GardenLayout, GardenState, RoseItem};
 

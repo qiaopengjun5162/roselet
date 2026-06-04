@@ -1,16 +1,16 @@
-use serde::Serialize;
 use rand::Rng;
 use rand::SeedableRng;
+use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct PetalConfig {
     pub emoji: String,
-    pub left: u32,       // 起始水平位置 (%)
-    pub size: u32,        // 字号 (px)
-    pub duration: f32,    // 动画时长 (s)
-    pub delay: f32,       // 延迟启动 (s)
-    pub sway: i32,        // 左右摆动幅度 (px)
-    pub opacity: f32,     // 透明度
+    pub left: u32,     // 起始水平位置 (%)
+    pub size: u32,     // 字号 (px)
+    pub duration: f32, // 动画时长 (s)
+    pub delay: f32,    // 延迟启动 (s)
+    pub sway: i32,     // 左右摆动幅度 (px)
+    pub opacity: f32,  // 透明度
 }
 
 const EMOJIS: &[&str] = &["🌸", "🌺", "🌷", "💮", "🏵️", "🌼", "✿", "❀", "🌹", "💐"];
@@ -18,15 +18,17 @@ const EMOJIS: &[&str] = &["🌸", "🌺", "🌷", "💮", "🏵️", "🌼", "�
 /// Rust 驱动花瓣生成器 —— 相同 seed 产生完全相同的结果
 pub fn generate_petals(count: u32, seed: u64) -> Vec<PetalConfig> {
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    (0..count).map(|_| PetalConfig {
-        emoji: EMOJIS[rng.gen_range(0..EMOJIS.len())].into(),
-        left: rng.gen_range(5..95),
-        size: rng.gen_range(14..28),
-        duration: rng.gen_range(8.0..16.0),
-        delay: rng.gen_range(0.0..8.0),
-        sway: rng.gen_range(15..60),
-        opacity: rng.gen_range(0.15..0.35),
-    }).collect()
+    (0..count)
+        .map(|_| PetalConfig {
+            emoji: EMOJIS[rng.gen_range(0..EMOJIS.len())].into(),
+            left: rng.gen_range(5..95),
+            size: rng.gen_range(14..28),
+            duration: rng.gen_range(8.0..16.0),
+            delay: rng.gen_range(0.0..8.0),
+            sway: rng.gen_range(15..60),
+            opacity: rng.gen_range(0.15..0.35),
+        })
+        .collect()
 }
 
 #[cfg(test)]
