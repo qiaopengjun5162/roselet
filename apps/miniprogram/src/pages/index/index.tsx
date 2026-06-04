@@ -18,6 +18,10 @@ export default function Index() {
       <NavBar title="Roselet" />
       <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 32}px`, paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}>
         <View className={styles.glow} />
+        <Text className="petal-fall-1">🌸</Text>
+        <Text className="petal-fall-2">🌺</Text>
+        <Text className="petal-fall-3">🌷</Text>
+        <Text className="petal-fall-4">💮</Text>
         <Text className={`${styles.emoji} fade-in-up`}>🌹</Text>
         <Text className={`${styles.title} fade-in-up-d1`} style={{ fontFamily: 'STXingkai, KaiTi, 楷体, serif' }}>Roselet</Text>
         <Text className={`${styles.tagline} fade-in-up-d1`}>在星空下种下你的情绪</Text>

@@ -41,6 +41,9 @@ export default function Garden() {
 
   return (
     <View className={styles.page}>
+        <Text className="petal-fall-1">🌸</Text>
+        <Text className="petal-fall-2">🌺</Text>
+        <Text className="petal-fall-3">🌷</Text>
       <NavBar title="花圃" />
       <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 12}px` }}>
         <View className={styles.filters}>
