@@ -4,9 +4,8 @@ import Taro from '@tarojs/taro'
 import { createRose } from '@/api'
 import { getToken } from '@/utils/storage'
 import { initWasm, getRecommendation } from '@/utils/wasm'
+import { COLOR_OPTIONS } from '@/utils/constants'
 import styles from './index.module.css'
-
-const COLORS = [{ id: 'red', label: '红玫瑰', emoji: '🌹' }, { id: 'white', label: '白玫瑰', emoji: '🤍' }, { id: 'yellow', label: '黄玫瑰', emoji: '💛' }]
 
 export default function Plant() {
   const [step, setStep] = useState<'color' | 'form' | 'success'>('color')
@@ -38,14 +37,14 @@ export default function Plant() {
     finally { setSubmitting(false) }
   }
 
-  const colorMeta = COLORS.find(c => c.id === color)
+  const colorMeta = COLOR_OPTIONS.find(c => c.id === color)
 
   if (step === 'color') return (
     <View className={styles.container}>
       <Text className={styles.title}>选择玫瑰颜色</Text>
-      {recColor && <Text className={styles.rec}>推荐：{COLORS.find(c => c.id === recColor)?.label}</Text>}
+      {recColor && <Text className={styles.rec}>推荐：{COLOR_OPTIONS.find(c => c.id === recColor)?.label}</Text>}
       <View className={styles.colors}>
-        {COLORS.map(c => (
+        {COLOR_OPTIONS.map(c => (
           <View key={c.id} className={styles.colorCard} onClick={() => { setColor(c.id); setStep('form') }}>
             <Text className={styles.colorEmoji}>{c.emoji}</Text>
             <Text className={styles.colorLabel}>{c.label}</Text>

@@ -5,9 +5,8 @@ import type { Rose } from '@roselet/core'
 import { getGarden } from '@/api'
 import { getToken } from '@/utils/storage'
 import { RoseCard } from '@/components/RoseCard'
+import { COLOR_FILTERS } from '@/utils/constants'
 import styles from './index.module.css'
-
-const FILTERS = [{ value: '', label: '全部' }, { value: 'red', label: '红' }, { value: 'white', label: '白' }, { value: 'yellow', label: '黄' }]
 
 export default function Garden() {
   const [roses, setRoses] = useState<Rose[]>([])
@@ -28,10 +27,16 @@ export default function Garden() {
   useEffect(() => { load(1, color) }, [color])
   Taro.useDidShow(() => { load(1, color) })
 
+  // 未登录时跳转到登录页，否则跳种花页
+  function handleFabClick() {
+    if (!getToken()) Taro.navigateTo({ url: '/pages/login/index' })
+    else Taro.navigateTo({ url: '/pages/plant/index' })
+  }
+
   return (
     <View className={styles.container}>
       <View className={styles.filters}>
-        {FILTERS.map(f => (
+        {COLOR_FILTERS.map(f => (
           <Text key={f.value} className={`${styles.filter} ${color === f.value ? styles.active : ''}`} onClick={() => setColor(f.value)}>{f.label}</Text>
         ))}
       </View>
@@ -44,10 +49,7 @@ export default function Garden() {
             {roses.length < total && <Text className={styles.more} onClick={() => load(page + 1, color)}>加载更多</Text>}
           </ScrollView>
         )}
-      <View className={styles.fab} onClick={() => {
-        if (!getToken()) Taro.navigateTo({ url: '/pages/login/index' })
-        else Taro.navigateTo({ url: '/pages/plant/index' })
-      }}>
+      <View className={styles.fab} onClick={handleFabClick}>
         <Text className={styles.fabText}>🌹</Text>
       </View>
     </View>

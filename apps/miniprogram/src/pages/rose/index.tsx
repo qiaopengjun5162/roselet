@@ -3,9 +3,8 @@ import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import type { Rose } from '@roselet/core'
 import { getRose } from '@/api'
+import { COLOR_EMOJI } from '@/utils/constants'
 import styles from './index.module.css'
-
-const COLOR_EMOJI: Record<string, string> = { red: '🌹', white: '🤍', yellow: '💛' }
 
 export default function RoseDetail() {
   const { id } = Taro.getCurrentInstance().router?.params ?? {}
