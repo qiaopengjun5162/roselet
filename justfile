@@ -84,10 +84,9 @@ check-all:
 
 # 提交前检查
 pre-commit:
-    cargo fmt --all
+    cargo fmt --all -- --check
     cargo clippy --all-features -- -D warnings
-    cargo nextest run --all-features -j1
-
+    just test
 # 构建 WASM 推荐模块
 wasm:
     cd crates/recommend && wasm-pack build --target web --out-dir ../../apps/web/public/pkg
