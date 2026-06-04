@@ -117,6 +117,7 @@ mod garden;
 mod petal;
 mod plant;
 mod store;
+mod api_client;
 
 use garden::{GardenLayout, GardenState, RoseItem};
 
@@ -185,6 +186,25 @@ pub fn format_date_wasm(iso_str: &str) -> JsValue {
 pub fn generate_petals_wasm(count: u32, seed: u64) -> JsValue {
     use petal::generate_petals;
     serde_wasm_bindgen::to_value(&generate_petals(count, seed)).unwrap()
+}
+
+/// WASM: Rust API 客户端 — 构造 URL、请求体、分页计算
+#[wasm_bindgen]
+pub fn build_garden_url(base_url: &str, page: u32, per_page: u32, color: &str) -> String {
+    let client = api_client::ApiClient::new(base_url.to_string());
+    client.build_garden_url(page, per_page, if color.is_empty() { None } else { Some(color) })
+}
+
+#[wasm_bindgen]
+pub fn build_plant_body(color: &str, gratitude: &str, anxiety: &str, hope: &str) -> String {
+    let client = api_client::ApiClient::default();
+    client.build_plant_body(color, if gratitude.is_empty() { None } else { Some(gratitude) }, if anxiety.is_empty() { None } else { Some(anxiety) }, if hope.is_empty() { None } else { Some(hope) })
+}
+
+#[wasm_bindgen]
+pub fn compute_pagination(total: u32, page: u32, per_page: u32) -> JsValue {
+    let client = api_client::ApiClient::default();
+    serde_wasm_bindgen::to_value(&client.compute_pagination(total, page, per_page)).unwrap()
 }
 
 use std::sync::Mutex;
