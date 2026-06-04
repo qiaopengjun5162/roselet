@@ -21,6 +21,8 @@ clean:
 test:
     NO_PROXY=localhost,127.0.0.1 cargo nextest run --all-features -j1
     cd apps/web && pnpm test
+    cd apps/miniprogram && pnpm test
+    cd apps/miniprogram && pnpm test
 
 # 快速检查
 check:

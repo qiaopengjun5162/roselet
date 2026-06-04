@@ -1,0 +1,41 @@
+{
+  "name": "@roselet/miniprogram",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:weapp": "taro build --type weapp --watch",
+    "build:weapp": "taro build --type weapp",
+    "dev:h5": "taro build --type h5 --watch",
+    "build:h5": "taro build --type h5",
+    "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "@roselet/core": "workspace:*",
+    "@tarojs/components": "4.x",
+    "@tarojs/plugin-framework-react": "4.x",
+    "@tarojs/react": "^4.2.0",
+    "@tarojs/runtime": "4.x",
+    "@tarojs/taro": "4.x",
+    "fast-text-encoding": "^1.0.6",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.29.7",
+    "@babel/preset-react": "^7.29.7",
+    "@tarojs/cli": "4.x",
+    "@tarojs/plugin-html": "4.x",
+    "@tarojs/plugin-platform-weapp": "^4.2.0",
+    "@tarojs/shared": "^4.2.0",
+    "@tarojs/webpack5-runner": "^4.2.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/wechat-miniprogram": "^3.4.6",
+    "babel-preset-taro": "^4.2.0",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "ts-jest": "^29.4.11",
+    "typescript": "^5.0.0"
+  }
+}
