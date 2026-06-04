@@ -172,6 +172,13 @@ pub fn parse_rose_response_wasm(json: &str) -> JsValue {
     }
 }
 
+/// WASM: 统一日期格式化 — { full_cn, short_cn, iso, weekday_cn, relative }
+#[wasm_bindgen]
+pub fn format_date_wasm(iso_str: &str) -> JsValue {
+    use datefmt::format_date;
+    serde_wasm_bindgen::to_value(&format_date(iso_str)).unwrap()
+}
+
 use std::sync::Mutex;
 use store::{Store, StoreAction};
 

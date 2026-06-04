@@ -7,7 +7,7 @@ interface WasmMod {
   recommend: (json: string) => unknown; analyze_text: (text: string) => unknown;
   compute_layout: (json: string) => unknown; filter_roses: (json: string, f: string) => unknown;
   validate_plant_input: (json: string) => unknown; format_plant_request_wasm: (json: string) => string;
-  parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
+  parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown; format_date_wasm: (iso: string) => unknown;
 }
 
 let wasmModule: WasmMod | null = null;
@@ -30,6 +30,7 @@ export async function parseGardenResponse(json: string): Promise<{ items: unknow
 
 /// Rust 解析单朵玫瑰 API 响应
 export async function parseRoseResponse(json: string): Promise<unknown | null> {
+export async function formatDate(iso: string): Promise<{full_cn:string,short_cn:string,iso:string,weekday_cn:string,relative:string}|null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.format_date_wasm(iso) as any; } catch { return null; } }
   const mod = await loadWasm(); if (!mod) return null;
   try { return mod.parse_rose_response_wasm(json) as unknown; } catch { return null; }
 }
