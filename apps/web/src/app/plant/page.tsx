@@ -313,7 +313,7 @@ export default function PlantPage() {
         {/* Status indicators */}
         <div className="flex justify-center gap-6 text-sm">
           {(["gratitude", "anxiety", "hope"] as Field[]).map((field) => (
-            <div key={field} className={`flex items-center gap-1 ${isFieldFilled(field) ? FIELD_CONFIG[field].color : "text-muted-foreground"}`}>
+            <div key={field} className={`flex items-center gap-1 ${isFieldFilled(field) ? FIELD_CONFIG[field].color : "text-slate-300"}`}>
               <span>{FIELD_CONFIG[field].icon}</span>
               <span>{isFieldFilled(field) ? "已填写" : FIELD_CONFIG[field].hint}</span>
             </div>
@@ -357,7 +357,7 @@ export default function PlantPage() {
                 {FIELD_CONFIG[activeField].label}
               </h3>
             </div>
-            <p className="text-sm text-muted-foreground">{FIELD_CONFIG[activeField].hint}</p>
+            <p className="text-sm text-gray-600">{FIELD_CONFIG[activeField].hint}</p>
             <textarea
               className="w-full rounded-lg border border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 px-4 py-3 text-sm min-h-[120px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
               placeholder={FIELD_CONFIG[activeField].placeholder}
@@ -367,7 +367,7 @@ export default function PlantPage() {
               autoFocus
             />
             <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-500">
                 {getFieldValue(activeField).length}/500
               </p>
               <Button
