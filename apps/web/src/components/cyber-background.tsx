@@ -2,7 +2,7 @@
 
 /**
  * Roselet 赛博星空背景 — 多层叠加架构
- * Layer 1: 深邃暗色基底 #05070f
+ * Layer 1: 深邃暗色基底 #0a0b14
  * Layer 2: 超大模糊光晕气泡 (暗紫 + 深海蓝)，mix-blend-mode: screen
  * Layer 3: SVG 分形噪点纹理 (opacity 0.03)，打破数码光滑感
  */
@@ -10,7 +10,7 @@ export function CyberBackground() {
   return (
     <div className="fixed inset-0 -z-50 overflow-hidden" aria-hidden="true">
       {/* Layer 1: 基底 */}
-      <div className="absolute inset-0 bg-[#05070f]" />
+      <div className="absolute inset-0 bg-[#0a0b14]" />
 
       {/* Layer 2: 环境光晕气泡 */}
       {/* 左上暗紫光 */}

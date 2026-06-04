@@ -22,7 +22,7 @@
 
 
 body {
-  background: #05070f; /* fallback, CyberBackground handles visuals */
+  background: #0a0b14; /* fallback, CyberBackground handles visuals */
   height: 100dvh; overflow: hidden; overscroll-behavior: none;
   color: var(--foreground);
   font-family: var(--font-geist-sans, Arial, sans-serif);
