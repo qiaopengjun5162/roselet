@@ -87,3 +87,35 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+  miniprogram:
+    name: Miniprogram Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build WASM for miniprogram
+        run: just wasm-mini
+
+      - name: Build miniprogram
+        run: just miniprogram-build
+
+      - name: Test miniprogram
+        run: cd apps/miniprogram && pnpm test
