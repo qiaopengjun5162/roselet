@@ -863,3 +863,61 @@ WASM analyze_text 接入前端 + 补充测试覆盖 + 日夜背景重设计
 - [ ] Web3 功能（设计已完成，待实现）
 
 <!-- 下次会话在此处继续记录 -->
+
+## 2026-06-04 会话 #20
+
+### 会话目标
+实现 Taro + Rust WASM 微信小程序 MVP，高质量代码 + 完整测试
+
+### 完成的工作
+
+#### Taro 4 小程序项目搭建
+- `apps/miniprogram/`：Taro 4 + React 18 + TypeScript + Webpack5
+- 5 个页面：首页、登录、花圃、种花、玫瑰详情
+- 1 个组件：RoseCard
+- `@/` 路径别名配置（替代 `../../` 相对导入）
+- Webpack 持久化缓存开启
+
+#### Rust WASM 适配
+- `scripts/patch-wasm.js`：WXWebAssembly 补丁，完整修复双重替换 bug
+- `src/utils/wasm.ts`：WASM 加载器，降级策略：WASM 失败自动回退 JS
+- `src/types/global.d.ts`：WXWebAssembly TypeScript 类型声明
+
+#### 工具层 + 安全校验
+- `src/utils/storage.ts`：Token/User 本地存储封装
+- `src/utils/request.ts`：HTTP 请求封装（wx.request + JWT 认证）
+- `src/utils/validate.ts`：输入安全校验（防注入、控制字符、超长字符串）
+
+#### 测试覆盖（53 个测试，5 套件）
+- storage.test.ts：11 测试（token CRUD、user JSON 损坏恢复、logout 幂等）
+- request.test.ts：12 测试（GET/POST/DELETE、2xx/4xx/5xx、auth header、网络失败）
+- api.test.ts：10 测试（6 个 API 函数的参数构造和 auth 标记）
+- validate.test.ts：20 测试（昵称校验、玫瑰字段校验、表单完整性、注入防御）
+- wasm.test.ts：1 测试（未初始化时返回 null）
+
+### 遇到的问题及解决
+
+1. **patch-wasm.js 双重替换**：`WXWebAssembly.instantiate` 包含 `WebAssembly.instantiate` 子串导致二次替换。解决：全部正则添加 `(?<!WX)` negative lookbehind。
+2. **@tarojs/plugin-platform-weapp 缺失**：解决：`pnpm add -D @tarojs/plugin-platform-weapp`。
+3. **@tarojs/shared 设为 null 导致 webpack schema 错误**：解决：显式安装 `@tarojs/shared`。
+4. **babel 配置缺失**：解决：手动创建 `babel-preset-taro` 配置。
+5. **pkg/ 内 polyfill import 路径错误**：解决：修正相对路径为 `../src/polyfill`。
+
+### 关键决策
+- Taro 4（非 uni-app）：React + TS 开发体验与 web 版一致，共用 `@roselet/core` 类型包
+- WXWebAssembly 而非 WebAssembly：微信小程序不支持标准 WebAssembly API
+- WASM 降级策略：加载失败不影响核心种花流程，仅颜色推荐降级
+- 输入校验前置：validate.ts 统一校验，防御空字节、控制字符、HTML 标签注入
+
+### 当前状态
+- Taro 构建通过（684KB，120KB WASM）
+- 53 个单元测试全部通过（5 套件）
+- 已提交到本地
+
+### 待办
+- [ ] 微信开发者工具端到端验证（需 AppID + 后端运行）
+- [ ] CI/CD 新增 miniprogram build job
+- [ ] 小程序体积优化（wasm-opt、code splitting）
+- [ ] Web3 功能（设计已完成，待实现）
+
+<!-- 下次会话在此处继续记录 -->
