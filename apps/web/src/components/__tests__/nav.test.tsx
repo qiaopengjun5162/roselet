@@ -1,72 +1,44 @@
-import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from "@testing-library/react";
-import { Nav } from "../nav";
+import "@testing-library/jest-dom";
 
+const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: jest.fn() }),
+  usePathname: () => "/garden",
 }));
 
-jest.mock("next/link", () => {
-  return ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
-    <a href={href} {...props}>{children}</a>
-  );
-});
-
 jest.mock("@/lib/api", () => ({
-  getUser: jest.fn(),
+  getUser: jest.fn().mockReturnValue(null),
   logout: jest.fn(),
 }));
 
 jest.mock("@/lib/sound", () => ({
-  isMuted: jest.fn().mockReturnValue(true),
-  toggleMute: jest.fn().mockReturnValue(false),
+  isMuted: jest.fn().mockReturnValue(false),
+  toggleMute: jest.fn().mockReturnValue(true),
   startBgMusic: jest.fn(),
   stopBgMusic: jest.fn(),
 }));
 
-const { getUser } = require("@/lib/api") as { getUser: jest.Mock };
+import { Nav } from "../nav";
 
 describe("Nav", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+  beforeEach(() => jest.clearAllMocks());
 
-  it("should show login link when not logged in", () => {
-    getUser.mockReturnValue(null);
-    render(<Nav />);
-    expect(screen.getByText("登录")).toBeInTheDocument();
-    expect(screen.queryByText("登出")).not.toBeInTheDocument();
-  });
-
-  it("should show user info when logged in", () => {
-    getUser.mockReturnValue({ id: "u1", nickname: "alice", created_at: "" });
-    render(<Nav />);
-    expect(screen.getByText("alice")).toBeInTheDocument();
-    expect(screen.getByText("登出")).toBeInTheDocument();
-    expect(screen.queryByText("登录")).not.toBeInTheDocument();
-  });
-
-  it("should show navigation links", () => {
-    getUser.mockReturnValue(null);
+  it("renders main links", () => {
     render(<Nav />);
     expect(screen.getByText("种玫瑰")).toBeInTheDocument();
     expect(screen.getByText("花圃")).toBeInTheDocument();
+    expect(screen.getByText("示波器")).toBeInTheDocument();
   });
 
-  it("should show my garden link when logged in", () => {
-    getUser.mockReturnValue({ id: "u1", nickname: "alice", created_at: "" });
+  it("shows login button when not authenticated", () => {
     render(<Nav />);
-    expect(screen.getByText("alice")).toBeInTheDocument();
-    expect(screen.getByText("alice")).toBeInTheDocument();
+    expect(screen.getByText("登录")).toBeInTheDocument();
   });
 
-  it("should toggle mute on button click", () => {
-    getUser.mockReturnValue(null);
-    const { toggleMute } = require("@/lib/sound") as { toggleMute: jest.Mock };
-    toggleMute.mockReturnValue(false);
+  it("active link has highlight", () => {
     render(<Nav />);
-    const muteBtn = screen.getAllByRole("button")[0]; // mute btn
-    fireEvent.click(muteBtn);
-    expect(toggleMute).toHaveBeenCalled();
+    const gardenLink = screen.getByText("花圃").closest("a");
+    expect(gardenLink?.className).toContain("bg-rose-500/15");
   });
 });

@@ -37,10 +37,10 @@ export default function RootLayout({
         <CyberBackground />
         <FallingPetals />
         <RoseClickBloom />
-        <header className="sticky top-0 z-50 bg-[#0a0b14]/80 backdrop-blur-2xl border-b border-rose-500/10">
-          <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-            <Link href="/" className="text-xl font-bold text-rose-300 tracking-wide">
-              🌹 Roselet
+        <header className="sticky top-0 z-50 bg-[#0a0b14]/75 backdrop-blur-2xl" style={{borderBottom:"1px solid rgba(244,63,94,0.12)",boxShadow:"0 1px 20px rgba(244,63,94,0.04)"}}>
+          <div className="max-w-4xl mx-auto px-5 h-14 flex items-center justify-between">
+            <Link href="/" className="text-xl font-bold text-rose-300 tracking-[0.15em]" style={{fontFamily:"Ma Shan Zheng, STXingkai, KaiTi, cursive"}}>
+              玫 · 瑰 · 源
             </Link>
             <Nav />
           </div>
