@@ -19,6 +19,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
+
+
 body {
   background: linear-gradient(150deg, #060810 0%, #090b18 40%, #0a0814 100%);
   min-height: 100vh;
