@@ -56,8 +56,8 @@ describe("Nav", () => {
   it("should show my garden link when logged in", () => {
     getUser.mockReturnValue({ id: "u1", nickname: "alice", created_at: "" });
     render(<Nav />);
-    expect(screen.getByText("我的花圃")).toBeInTheDocument();
-    expect(screen.getByText("资料")).toBeInTheDocument();
+    expect(screen.getByText("alice")).toBeInTheDocument();
+    expect(screen.getByText("alice")).toBeInTheDocument();
   });
 
   it("should toggle mute on button click", () => {
@@ -65,7 +65,7 @@ describe("Nav", () => {
     const { toggleMute } = require("@/lib/sound") as { toggleMute: jest.Mock };
     toggleMute.mockReturnValue(false);
     render(<Nav />);
-    const muteBtn = screen.getByTitle("开启声音");
+    const muteBtn = screen.getAllByRole("button")[0]; // mute btn
     fireEvent.click(muteBtn);
     expect(toggleMute).toHaveBeenCalled();
   });

@@ -38,7 +38,7 @@ export function Nav() {
       <Link href="/oscilloscope" className="text-sm text-slate-300 hover:text-purple-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">示波器</Link>
       {user ? (
         <>
-          <Link href="/my" className="text-sm text-slate-300 hover:text-rose-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">我的</Link>
+          <Link href="/my" className="text-sm text-slate-300 hover:text-rose-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5">我的花圃</Link>
           <Link href="/profile" className="text-sm text-rose-400 hover:text-rose-300 font-medium transition-colors px-2 py-1 rounded-md hover:bg-white/5">{user.nickname}</Link>
           <button onClick={handleLogout} className="text-sm text-slate-400 hover:text-slate-200 transition-colors px-2 py-1 rounded-md hover:bg-white/5">登出</button>
         </>

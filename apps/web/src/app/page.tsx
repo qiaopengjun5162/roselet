@@ -13,7 +13,7 @@ export default function Home() {
           <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-300 via-pink-200 to-purple-300">
             Roselet
           </h1>
-          <p className="text-lg text-slate-400">在星空下种下你的情绪，等待宇宙的回响</p>
+          <p className="text-lg tracking-[0.3em] font-light text-transparent bg-clip-text bg-gradient-to-r from-rose-300/80 via-purple-300/60 to-indigo-300/80 drop-shadow-[0_0_30px_rgba(244,63,94,0.15)]">在星空下种下你的情绪，等待宇宙的回响</p>
         </div>
 
         {/* 三块说明 */}
