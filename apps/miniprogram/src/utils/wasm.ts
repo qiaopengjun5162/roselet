@@ -25,8 +25,9 @@ export async function initWasm(): Promise<boolean> {
     const glue = await import('../../pkg/roselet_recommend') as unknown as GlueMod;
     const imports = glue.__wbg_get_imports();
     const fs = wx.getFileSystemManager();
-    const raw = fs.readFileSync("/pkg/roselet_recommend_bg.wasm");
-    const wasmBytes = raw instanceof ArrayBuffer ? raw : new ArrayBuffer(0);
+    try { var raw = fs.readFileSync("/pkg/roselet_recommend_bg.wasm"); } catch(e) { console.warn("WASM file not found:", e); return false; }
+    var wasmBytes = raw instanceof ArrayBuffer ? raw : new ArrayBuffer(0);
+    if (wasmBytes.byteLength === 0) { console.warn("WASM file empty"); return false; }
     await WXWebAssembly.instantiate(wasmBytes, imports);
     await glue.default(wasmBytes);
     api = glue;
