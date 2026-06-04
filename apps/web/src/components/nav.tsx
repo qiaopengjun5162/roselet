@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { getUser, logout, type User } from "@/lib/api";
+import { logout, setToken, setUser } from "@/lib/api";
 import { isMuted, toggleMute, startBgMusic, stopBgMusic } from "@/lib/sound";
+import { useWasmStore } from "@/lib/useWasmStore";
 
 const MAIN_LINKS = [
   { href: "/plant", label: "种玫瑰", icon: "🌹" },
@@ -13,22 +14,16 @@ const MAIN_LINKS = [
 ];
 
 export function Nav() {
-  const [user, setUser] = useState<User | null>(null);
   const [muted, setMuted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { auth, nickname, dispatch } = useWasmStore();
 
-  useEffect(() => {
-    setUser(getUser());
-    setMuted(isMuted());
-    function onAuthChange() { setUser(getUser()); }
-    window.addEventListener("auth-change", onAuthChange);
-    return () => window.removeEventListener("auth-change", onAuthChange);
-  }, []);
+  useEffect(() => { setMuted(isMuted()); }, []);
 
   function handleLogout() {
     logout();
-    setUser(null);
+    dispatch({ type: "clear_auth" });
     router.push("/");
   }
 
@@ -52,7 +47,7 @@ export function Nav() {
 
       <span className="w-px h-5 bg-white/8 mx-1.5" />
 
-      {user ? (
+      {auth ? (
         <>
           <Link
             href="/my"
@@ -64,9 +59,9 @@ export function Nav() {
           </Link>
           <Link
             href="/profile"
-            className={`text-[13px] px-3 py-1.5 rounded-full transition-all duration-200 text-amber-300/80 hover:text-amber-200 hover:bg-amber-500/5`}
+            className="text-[13px] px-3 py-1.5 rounded-full transition-all duration-200 text-amber-300/80 hover:text-amber-200 hover:bg-amber-500/5"
           >
-            ✨ {user.nickname}
+            ✨ {nickname}
           </Link>
           <button onClick={handleLogout} className="text-[12px] text-slate-500 hover:text-slate-300 px-2 py-1 transition-colors ml-1">
             登出

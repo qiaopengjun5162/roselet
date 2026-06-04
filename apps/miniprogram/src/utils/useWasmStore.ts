@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { initWasm } from './wasm'
 
 interface StoreSnapshot {
+  user_id: string | null;
+  nickname: string | null;
+  authenticated: boolean;
   filtered: unknown[]
   filter: string
   page: number
@@ -66,6 +69,9 @@ export function useWasmStore(initialFilter = 'all') {
     total: snap?.total ?? 0,
     hasMore: snap?.has_more ?? false,
     loading: snap?.loading ?? true,
+    auth: snap?.authenticated ?? false,
+    userId: snap?.user_id ?? null,
+    nickname: snap?.nickname ?? null,
     error: snap?.error,
     dispatch,
   }

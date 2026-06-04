@@ -19,6 +19,10 @@ pub enum StoreAction {
     SetLoading { loading: bool },
     /// 设置错误信息
     SetError { error: String },
+    /// 用户登录
+    SetAuth { user_id: String, nickname: String },
+    /// 用户登出
+    ClearAuth,
     /// 重置整个状态
     Reset,
 }
@@ -26,6 +30,12 @@ pub enum StoreAction {
 /// 状态快照 —— 前端直接渲染
 #[derive(Debug, Serialize)]
 pub struct StoreSnapshot {
+    /// 用户 ID（认证后）
+    pub user_id: Option<String>,
+    /// 用户昵称
+    pub nickname: Option<String>,
+    /// 是否已认证
+    pub authenticated: bool,
     /// 当前筛选后的玫瑰
     pub filtered: Vec<RoseItem>,
     /// 筛选器
@@ -50,6 +60,8 @@ pub struct Store {
     total: u32,
     loading: bool,
     error: Option<String>,
+    user_id: Option<String>,
+    nickname: Option<String>,
 }
 
 impl Store {
@@ -61,6 +73,8 @@ impl Store {
             total: 0,
             loading: true,
             error: None,
+            user_id: None,
+            nickname: None,
         }
     }
 
@@ -83,6 +97,14 @@ impl Store {
                 self.filter = filter;
                 self.page = 1;
                 self.loading = true;
+            }
+            StoreAction::SetAuth { user_id, nickname } => {
+                self.user_id = Some(user_id);
+                self.nickname = Some(nickname);
+            }
+            StoreAction::ClearAuth => {
+                self.user_id = None;
+                self.nickname = None;
             }
             StoreAction::SetLoading { loading } => {
                 self.loading = loading;
@@ -107,6 +129,9 @@ impl Store {
         };
 
         StoreSnapshot {
+            user_id: self.user_id.clone(),
+            nickname: self.nickname.clone(),
+            authenticated: self.user_id.is_some(),
             filtered,
             filter: self.filter.clone(),
             page: self.page,

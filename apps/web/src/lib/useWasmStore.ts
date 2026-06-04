@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 
 interface StoreSnapshot {
+  user_id: string | null;
+  nickname: string | null;
+  authenticated: boolean;
   filtered: unknown[];
   filter: string;
   page: number;
@@ -13,7 +16,7 @@ interface StoreSnapshot {
 }
 
 interface StoreAction {
-  type: "set_roses" | "append_roses" | "set_filter" | "set_loading" | "set_error" | "reset";
+  type: "set_roses" | "append_roses" | "set_filter" | "set_loading" | "set_error" | "set_auth" | "clear_auth" | "reset";
   [key: string]: unknown;
 }
 
@@ -69,6 +72,9 @@ export function useWasmStore(initialFilter = "all") {
     /** 是否加载中 */
     loading: snap?.loading ?? true,
     /** 错误信息 */
+    auth: snap?.authenticated ?? false,
+    userId: snap?.user_id ?? null,
+    nickname: snap?.nickname ?? null,
     error: snap?.error,
     dispatch,
   };
