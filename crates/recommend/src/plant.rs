@@ -21,12 +21,13 @@ pub enum ValidationError {
 
 impl ValidationError {
     /// 错误码 → 中文提示
+    #[allow(dead_code)]
     pub fn message(&self) -> &'static str {
         match self {
             Self::InvalidColor => "请选择有效的玫瑰颜色",
             Self::EmptyContent => "至少填写一项",
             Self::FieldTooLong { max: _ } => "单项超过字数限制",
-            Self::TotalTooLong { max } => "总字数超过限制",
+            Self::TotalTooLong { max: _ } => "总字数超过限制",
             Self::NullByteInjection => "内容含非法字符",
         }
     }

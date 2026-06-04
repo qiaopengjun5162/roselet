@@ -17,6 +17,7 @@ pub struct RoseItem {
 #[derive(Debug, Deserialize)]
 pub struct ScreenInfo {
     pub width: u32,
+    #[allow(dead_code)]
     pub height: u32,
     pub safe_area_top: u32,
     pub safe_area_bottom: u32,
@@ -81,6 +82,7 @@ impl GardenLayout {
     }
 
     /// 简化接口 — 向后兼容
+    #[allow(dead_code)]
     pub fn compute_simple(screen_width: u32, is_web: bool) -> Self {
         Self::compute(&ScreenInfo {
             width: screen_width,
@@ -114,6 +116,7 @@ impl GardenState {
         self.filter = filter;
     }
 
+    #[allow(dead_code)]
     pub fn get_filter(&self) -> &str {
         &self.filter
     }
@@ -356,7 +359,9 @@ mod device_tests {
 pub struct ApiResponse {
     pub data: Option<serde_json::Value>,
     pub total: Option<u32>,
+    #[allow(dead_code)]
     pub page: Option<u32>,
+    #[allow(dead_code)]
     pub per_page: Option<u32>,
 }
 
