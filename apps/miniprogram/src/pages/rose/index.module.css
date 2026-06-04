@@ -1,4 +1,5 @@
-.container { min-height: 100vh; background: #060810; padding: 24px; }
+.page { min-height: 100vh; background: #0a0b14; }
+.container { padding: 100px 24px 40px; }
 .emoji { font-size: 56px; text-align: center; display: block; margin-bottom: 6px; }
 .nick { color: #64748b; font-size: 13px; text-align: center; display: block; margin-bottom: 24px; }
 .section { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; border-left: 3px solid rgba(244,63,94,0.35); }

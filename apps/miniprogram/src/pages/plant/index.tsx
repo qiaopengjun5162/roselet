@@ -4,6 +4,7 @@ import Taro from '@tarojs/taro'
 import { createRose } from '@/api'
 import { getToken } from '@/utils/storage'
 import { initWasm, getRecommendation } from '@/utils/wasm'
+import { NavBar } from '@/components/NavBar'
 import { COLOR_OPTIONS } from '@/utils/constants'
 import styles from './index.module.css'
 
@@ -19,12 +20,7 @@ export default function Plant() {
 
   useEffect(() => {
     if (!getToken()) { Taro.navigateTo({ url: '/pages/login/index' }); return }
-    initWasm().then(ok => {
-      if (ok) {
-        const rec = getRecommendation([])
-        if (rec) setRecColor(rec.color_suggestion.color)
-      }
-    })
+    initWasm().then(ok => { if (ok) { const rec = getRecommendation([]); if (rec) setRecColor(rec.color_suggestion.color) } })
   }, [])
 
   async function handleSubmit() {
@@ -33,48 +29,56 @@ export default function Plant() {
     try {
       await createRose({ color, gratitude: gratitude.trim() || undefined, anxiety: anxiety.trim() || undefined, hope: hope.trim() || undefined })
       setStep('success')
-    } catch { setError('提交失败，请重试') }
-    finally { setSubmitting(false) }
+    } catch { setError('提交失败，请重试') } finally { setSubmitting(false) }
   }
 
   const colorMeta = COLOR_OPTIONS.find(c => c.id === color)
 
   if (step === 'color') return (
-    <View className={styles.container}>
-      <Text className={styles.title}>选择玫瑰颜色</Text>
-      {recColor && <Text className={styles.rec}>推荐：{COLOR_OPTIONS.find(c => c.id === recColor)?.label}</Text>}
-      <View className={styles.colors}>
-        {COLOR_OPTIONS.map(c => (
-          <View key={c.id} className={styles.colorCard} onClick={() => { setColor(c.id); setStep('form') }}>
-            <Text className={styles.colorEmoji}>{c.emoji}</Text>
-            <Text className={styles.colorLabel}>{c.label}</Text>
-          </View>
-        ))}
+    <View className={styles.page}>
+      <NavBar title="种一朵玫瑰" />
+      <View className={styles.container}>
+        <Text className={styles.title}>选择玫瑰颜色</Text>
+        {recColor && <Text className={styles.rec}>💡 推荐：{COLOR_OPTIONS.find(c => c.id === recColor)?.label}</Text>}
+        <View className={styles.colors}>
+          {COLOR_OPTIONS.map(c => (
+            <View key={c.id} className={styles.colorCard} onClick={() => { setColor(c.id); setStep('form') }}>
+              <Text className={styles.colorEmoji}>{c.emoji}</Text>
+              <Text className={styles.colorLabel}>{c.label}</Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   )
 
   if (step === 'success') return (
-    <View className={styles.container}>
-      <Text className={styles.successEmoji}>{colorMeta?.emoji}</Text>
-      <Text className={styles.successTitle}>已种入花圃</Text>
-      <Text className={styles.successSub}>AI 正在聆听你的故事...</Text>
-      <Button className={styles.btn} onClick={() => Taro.navigateBack()}>回到花圃</Button>
+    <View className={styles.page}>
+      <NavBar title="种花成功" />
+      <View className={styles.container}>
+        <Text className={styles.successEmoji}>{colorMeta?.emoji}</Text>
+        <Text className={styles.successTitle}>已种入花圃</Text>
+        <Text className={styles.successSub}>AI 正在聆听你的故事...</Text>
+        <Button className={styles.btn} onClick={() => Taro.switchTab({ url: '/pages/garden/index' })}>回到花圃</Button>
+      </View>
     </View>
   )
 
   return (
-    <View className={styles.container}>
-      <Text className={styles.title}>{colorMeta?.emoji} 种下你的玫瑰</Text>
-      <Text className={styles.fieldLabel}>🌹 感恩（选填）</Text>
-      <Textarea className={styles.textarea} placeholder="这周让你感到幸福的事..." maxlength={500} value={gratitude} onInput={e => setGratitude(e.detail.value)} />
-      <Text className={styles.fieldLabel}>🌵 焦虑（选填）</Text>
-      <Textarea className={styles.textarea} placeholder="有什么让你感到压力..." maxlength={500} value={anxiety} onInput={e => setAnxiety(e.detail.value)} />
-      <Text className={styles.fieldLabel}>🌱 期待（选填）</Text>
-      <Textarea className={styles.textarea} placeholder="你现在期待的事情..." maxlength={500} value={hope} onInput={e => setHope(e.detail.value)} />
-      {error ? <Text className={styles.error}>{error}</Text> : null}
-      <Button className={styles.btn} loading={submitting} disabled={submitting} onClick={handleSubmit}>种下玫瑰</Button>
-      <Text className={styles.back} onClick={() => setStep('color')}>换颜色</Text>
+    <View className={styles.page}>
+      <NavBar title="种一朵玫瑰" />
+      <View className={styles.container}>
+        <Text className={styles.formTitle}>{colorMeta?.emoji} 写下你的心情</Text>
+        <Text className={styles.fieldLabel}>🌹 感恩</Text>
+        <Textarea className={styles.textarea} placeholder="这周让你感到幸福的事..." maxlength={500} value={gratitude} onInput={e => setGratitude(e.detail.value)} />
+        <Text className={styles.fieldLabel}>🌵 焦虑</Text>
+        <Textarea className={styles.textarea} placeholder="有什么让你感到压力..." maxlength={500} value={anxiety} onInput={e => setAnxiety(e.detail.value)} />
+        <Text className={styles.fieldLabel}>🌱 期待</Text>
+        <Textarea className={styles.textarea} placeholder="你现在期待的事情..." maxlength={500} value={hope} onInput={e => setHope(e.detail.value)} />
+        {error ? <Text className={styles.error}>{error}</Text> : null}
+        <Button className={styles.btn} loading={submitting} disabled={submitting} onClick={handleSubmit}>种下玫瑰</Button>
+        <Text className={styles.back} onClick={() => setStep('color')}>← 换颜色</Text>
+      </View>
     </View>
   )
 }
