@@ -26,7 +26,8 @@ pub async fn create_rose(
 ) -> Result<Json<RoseResponse>, AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
-    let user_id = auth::extract_user_id(&headers, &state.jwt_secret);
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
+        .ok_or(AppError::Auth("请先登录再种花".into()))?;
 
     let rose = sqlx::query_as::<_, Rose>(
         "INSERT INTO roses (color, gratitude, anxiety, hope, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
