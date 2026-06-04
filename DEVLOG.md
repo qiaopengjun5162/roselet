@@ -813,8 +813,8 @@ UI 修复 + 代码质量审计 + 文档全量更新
 - justfile `test` 已加 `NO_PROXY`
 
 ### 待办
-- [ ] 微信小程序（uni-app）
-- [ ] Web3 功能
+- [ ] 微信小程序（实现计划已完成，见 docs/superpowers/plans/2026-06-04-miniprogram.md）
+- [ ] Web3 功能（预留接口已在 packages/core/src/web3.ts 占位）
 
 ## 2026-06-03 会话 #18
 

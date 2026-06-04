@@ -138,14 +138,13 @@ copy: {
 
 **Polyfill（`apps/miniprogram/src/polyfill.ts`，在 `app.tsx` 第一行引入）：**
 
+使用 `fast-text-encoding`（专为极简环境设计，仅支持 UTF-8，体积 < 5KB）而非 `text-encoding`（全量字符集，数百 KB，不可接受）。
+
 ```typescript
-import { TextEncoder, TextDecoder } from 'text-encoding';
-// @ts-ignore
-if (typeof global !== 'undefined') {
-  global.TextEncoder = TextEncoder;
-  global.TextDecoder = TextDecoder;
-}
+import 'fast-text-encoding'; // 自动挂载到 global
 ```
+
+备选：手写极简 UTF-8 only 版（几十行），在包体积极限情况下使用。
 
 **WASM 在 MVP 中的用途**：种花页面的智能颜色/主题推荐（`recommend()`），失败时静默降级，不阻断主流程。
 
