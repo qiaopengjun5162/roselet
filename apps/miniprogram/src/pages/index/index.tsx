@@ -23,6 +23,10 @@ export default function Index() {
         <Text className="petal-fall-2">🌺</Text>
         <Text className="petal-fall-3">🌷</Text>
         <Text className="petal-fall-4">💮</Text>
+        <Text className="petal-fall-5">🏵️</Text>
+        <Text className="petal-fall-6">🌼</Text>
+        <Text className="petal-fall-7">✿</Text>
+        <Text className="petal-fall-8">❀</Text>
         <Text className={`${styles.emoji} fade-in-up`}>🌹</Text>
         <Text className={`${styles.title} fade-in-up-d1`} style={{ fontFamily: 'STXingkai, KaiTi, 楷体, serif' }}>Roselet</Text>
         <Text className={`${styles.tagline} fade-in-up-d1`}>在星空下种下你的情绪</Text>
