@@ -1,3 +1,4 @@
+interface PetalConfig { emoji:string; left:number; size:number; duration:number; delay:number; sway:number; opacity:number }
 import Taro from "@tarojs/taro";
 import type { CreateRose } from '@roselet/core';
 

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
+import { formatDate } from "@/lib/recommend";
 import type { Rose } from "@/lib/api";
 import { roseToSoundParams } from "@/lib/rose-sound";
 
@@ -17,6 +18,9 @@ interface RoseCardProps {
 }
 
 export function RoseCard({ rose, showNickname = false }: RoseCardProps) {
+  const [fmtDate, setFmtDate] = useState("");
+  useEffect(() => { formatDate(rose.created_at).then(d => { if (d) setFmtDate(d.short_cn || d.relative); }); }, [rose.created_at]);
+
   const meta = COLOR_MAP[rose.color] ?? { emoji: "🌹", label: "玫瑰", border: "border-l-rose-500/40", glow: "hover:shadow-rose-500/8" };
 
   const handleMouseEnter = useCallback(() => {
@@ -74,7 +78,7 @@ export function RoseCard({ rose, showNickname = false }: RoseCardProps) {
           {rose.like_count > 0 && (
             <span className="text-rose-400/80">❤️ {rose.like_count}</span>
           )}
-          <span>{new Date(rose.created_at).toLocaleDateString("zh-CN")}</span>
+          <span>{fmtDate || new Date(rose.created_at).toLocaleDateString("zh-CN")}</span>
         </div>
       </div>
     </Link>

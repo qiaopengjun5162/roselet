@@ -116,6 +116,7 @@ mod datefmt;
 mod garden;
 mod plant;
 mod store;
+mod petal;
 
 use garden::{GardenLayout, GardenState, RoseItem};
 
@@ -177,6 +178,13 @@ pub fn parse_rose_response_wasm(json: &str) -> JsValue {
 pub fn format_date_wasm(iso_str: &str) -> JsValue {
     use datefmt::format_date;
     serde_wasm_bindgen::to_value(&format_date(iso_str)).unwrap()
+}
+
+/// WASM: 生成花瓣配置列表（确定性随机，同 seed 同结果）
+#[wasm_bindgen]
+pub fn generate_petals_wasm(count: u32, seed: u64) -> JsValue {
+    use petal::generate_petals;
+    serde_wasm_bindgen::to_value(&generate_petals(count, seed)).unwrap()
 }
 
 use std::sync::Mutex;
