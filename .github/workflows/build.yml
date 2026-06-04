@@ -53,6 +53,7 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost/roselet_test
+          NO_PROXY: localhost,127.0.0.1
         run: cargo nextest run --all-features -j1
 
   frontend:
@@ -60,6 +61,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: Build WASM
+        run: cd crates/recommend && wasm-pack build --target web --out-dir ../../apps/web/public/pkg
+
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
