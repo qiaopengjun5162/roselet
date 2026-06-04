@@ -4,7 +4,7 @@ import Taro from '@tarojs/taro'
 import type { Rose } from '@roselet/core'
 import { getGarden } from '@/api'
 import { RoseCard } from '@/components/RoseCard'
-import { NavBar } from '@/components/NavBar'
+import { NavBar, TOTAL_HEADER_HEIGHT } from '@/components/NavBar'
 import { initWasm, getLayout, filterRoses } from '@/utils/wasm'
 import styles from './index.module.css'
 
@@ -42,7 +42,7 @@ export default function Garden() {
   return (
     <View className={styles.page}>
       <NavBar title="花圃" />
-      <View className={styles.container}>
+      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 12}px` }}>
         <View className={styles.filters}>
           {FILTERS.map(f => (
             <Text key={f.value} className={`${styles.filter} ${color === f.value ? styles.active : ''}`} onClick={() => setColor(f.value)}>{f.label}</Text>

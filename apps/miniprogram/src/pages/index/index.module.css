@@ -1,5 +1,4 @@
 .page { min-height: 100vh; background: #0a0b14; overflow: hidden; }
-.container { height: calc(100vh - 88px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; margin-top: 88px; }
 .glow { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(244,63,94,0.1) 0%, transparent 70%); pointer-events: none; }
 .emoji { font-size: 64px; margin-bottom: 8px; filter: drop-shadow(0 0 20px rgba(244,63,94,0.6)); }
 .title { font-size: 36px; font-weight: bold; color: #f43f5e; margin-bottom: 4px; display: block; }

@@ -1,5 +1,5 @@
 .page { min-height: 100vh; background: #0a0b14; }
-.container { padding: 100px 16px 24px; }
+.container { padding: 16px 16px 24px; }
 .filters { display: flex; gap: 8px; margin-bottom: 16px; }
 .filter { padding: 6px 16px; border-radius: 50px; font-size: 13px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; }
 .active { background: rgba(244,63,94,0.15); border-color: rgba(244,63,94,0.4); color: #f43f5e; }

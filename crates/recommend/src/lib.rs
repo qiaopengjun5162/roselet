@@ -113,13 +113,18 @@ pub fn analyze_text(text: &str) -> JsValue {
 }
 
 mod garden;
+mod plant;
 
 use garden::{GardenState, GardenLayout, RoseItem};
 
-/// WASM: 根据屏幕宽度计算卡片布局
+/// WASM: 根据屏幕参数和安全区计算卡片布局
 #[wasm_bindgen]
-pub fn compute_layout(screen_width: u32, is_web: bool) -> JsValue {
-    let layout = GardenLayout::compute(screen_width, is_web);
+pub fn compute_layout(screen_json: &str) -> JsValue {
+    use garden::ScreenInfo;
+    let info: ScreenInfo = serde_json::from_str(screen_json).unwrap_or(ScreenInfo {
+        width: 375, height: 667, safe_area_top: 0, safe_area_bottom: 0, is_web: false,
+    });
+    let layout = GardenLayout::compute(&info);
     serde_wasm_bindgen::to_value(&layout).unwrap()
 }
 
@@ -133,6 +138,33 @@ pub fn filter_roses(roses_json: &str, color_filter: &str) -> JsValue {
     state.set_filter(color_filter.to_string());
     let filtered = state.filtered();
     serde_wasm_bindgen::to_value(&filtered).unwrap()
+}
+
+use plant::{validate_plant, format_plant_request, PlantInput};
+
+/// WASM: 验证种花表单，返回 JSON (Rust 侧统一校验规则)
+#[wasm_bindgen]
+pub fn validate_plant_input(json: &str) -> JsValue {
+    let input: PlantInput = serde_json::from_str(json).unwrap_or(PlantInput {
+        color: String::new(),
+        gratitude: None,
+        anxiety: None,
+        hope: None,
+    });
+    let result = validate_plant(&input);
+    serde_wasm_bindgen::to_value(&result).unwrap()
+}
+
+/// WASM: 格式化种花请求，返回可直接 POST 的 JSON 字符串
+#[wasm_bindgen]
+pub fn format_plant_request_wasm(json: &str) -> String {
+    let input: PlantInput = serde_json::from_str(json).unwrap_or(PlantInput {
+        color: String::new(),
+        gratitude: None,
+        anxiety: None,
+        hope: None,
+    });
+    format_plant_request(&input)
 }
 
 #[cfg(test)]

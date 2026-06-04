@@ -3,7 +3,7 @@ import { View, Text, Input, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { register } from '@/api'
 import { setToken, setUser } from '@/utils/storage'
-import { NavBar } from '@/components/NavBar'
+import { NavBar, TOTAL_HEADER_HEIGHT } from '@/components/NavBar'
 import styles from './index.module.css'
 
 export default function Login() {
@@ -29,7 +29,7 @@ export default function Login() {
   return (
     <View className={styles.page}>
       <NavBar title="登录" />
-      <View className={styles.container}>
+      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 16}px` }}>
         <View className={styles.card}>
           <Text className={styles.title}>🌹 给自己取个名字</Text>
           <Text className={styles.sub}>起个昵称，开始种花</Text>

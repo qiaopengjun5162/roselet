@@ -4,7 +4,7 @@ import Taro from '@tarojs/taro'
 import { createRose } from '@/api'
 import { getToken } from '@/utils/storage'
 import { initWasm, getRecommendation } from '@/utils/wasm'
-import { NavBar } from '@/components/NavBar'
+import { NavBar, TOTAL_HEADER_HEIGHT } from '@/components/NavBar'
 import { COLOR_OPTIONS } from '@/utils/constants'
 import styles from './index.module.css'
 
@@ -37,7 +37,7 @@ export default function Plant() {
   if (step === 'color') return (
     <View className={styles.page}>
       <NavBar title="种一朵玫瑰" />
-      <View className={styles.container}>
+      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 16}px` }}>
         <Text className={styles.title}>选择玫瑰颜色</Text>
         {recColor && <Text className={styles.rec}>💡 推荐：{COLOR_OPTIONS.find(c => c.id === recColor)?.label}</Text>}
         <View className={styles.colors}>
@@ -55,7 +55,7 @@ export default function Plant() {
   if (step === 'success') return (
     <View className={styles.page}>
       <NavBar title="种花成功" />
-      <View className={styles.container}>
+      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 16}px` }}>
         <Text className={styles.successEmoji}>{colorMeta?.emoji}</Text>
         <Text className={styles.successTitle}>已种入花圃</Text>
         <Text className={styles.successSub}>AI 正在聆听你的故事...</Text>
@@ -67,7 +67,7 @@ export default function Plant() {
   return (
     <View className={styles.page}>
       <NavBar title="种一朵玫瑰" />
-      <View className={styles.container}>
+      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 16}px` }}>
         <Text className={styles.formTitle}>{colorMeta?.emoji} 写下你的心情</Text>
         <Text className={styles.fieldLabel}>🌹 感恩</Text>
         <Textarea className={styles.textarea} placeholder="这周让你感到幸福的事..." maxlength={500} value={gratitude} onInput={e => setGratitude(e.detail.value)} />

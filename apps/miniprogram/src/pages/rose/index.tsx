@@ -3,7 +3,7 @@ import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import type { Rose } from '@roselet/core'
 import { getRose } from '@/api'
-import { NavBar } from '@/components/NavBar'
+import { NavBar, TOTAL_HEADER_HEIGHT } from '@/components/NavBar'
 import { COLOR_EMOJI } from '@/utils/constants'
 import styles from './index.module.css'
 
@@ -20,7 +20,7 @@ export default function RoseDetail() {
   return (
     <View className={styles.page}>
       <NavBar title="玫瑰详情" />
-      <View className={styles.container}>
+      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 16}px` }}>
         <Text className={styles.emoji}>{COLOR_EMOJI[rose.color] ?? '🌸'}</Text>
         {rose.nickname && <Text className={styles.nick}>@{rose.nickname}</Text>}
         {rose.gratitude && <View className={styles.section}><Text className={styles.sectionTitle}>🌹 感恩</Text><Text className={styles.content}>{rose.gratitude}</Text></View>}

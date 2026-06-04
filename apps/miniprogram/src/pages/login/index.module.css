@@ -1,5 +1,4 @@
 .page { min-height: 100vh; background: #0a0b14; }
-.container { height: calc(100vh - 88px); display: flex; align-items: center; justify-content: center; padding: 40px 24px; margin-top: 88px; }
 .card { width: 100%; max-width: 320px; }
 .title { color: #f43f5e; font-size: 24px; font-weight: bold; text-align: center; display: block; }
 .sub { color: #94a3b8; font-size: 14px; text-align: center; display: block; margin-top: 8px; margin-bottom: 32px; }

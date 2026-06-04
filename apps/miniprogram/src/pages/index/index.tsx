@@ -2,7 +2,7 @@ import { View, Text, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { getToken } from '@/utils/storage'
 import { initWasm } from '@/utils/wasm'
-import { NavBar } from '@/components/NavBar'
+import { NavBar, TOTAL_HEADER_HEIGHT } from '@/components/NavBar'
 import styles from './index.module.css'
 
 export default function Index() {
@@ -16,7 +16,7 @@ export default function Index() {
   return (
     <View className={styles.page}>
       <NavBar title="Roselet" />
-      <View className={styles.container}>
+      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 16}px` }}>
         <View className={styles.glow} />
         <Text className={styles.emoji}>🌹</Text>
         <Text className={styles.title}>Roselet</Text>

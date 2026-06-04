@@ -1,17 +1,24 @@
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
-const { statusBarHeight } = Taro.getSystemInfoSync()
+const systemInfo = Taro.getSystemInfoSync()
 const menuButton = Taro.getMenuButtonBoundingClientRect()
-const navHeight = (menuButton.top - statusBarHeight) * 2 + menuButton.height
-const totalHeight = statusBarHeight + navHeight
+
+/** 状态栏高度 — iPhone 14 Pro: 54px, iPhone SE: 20px */
+export const STATUS_BAR_HEIGHT = systemInfo.statusBarHeight || 20
+
+/** 导航栏高度（不含状态栏），根据胶囊按钮位置动态计算 */
+export const NAV_BAR_HEIGHT = (menuButton.top - STATUS_BAR_HEIGHT) * 2 + menuButton.height
+
+/** 顶部安全区总高度 — 状态栏 + 导航栏 */
+export const TOTAL_HEADER_HEIGHT = STATUS_BAR_HEIGHT + NAV_BAR_HEIGHT
 
 export function NavBar({ title }: { title: string }) {
   return (
     <View
       style={{
-        paddingTop: `${statusBarHeight}px`,
-        height: `${totalHeight}px`,
+        paddingTop: `${STATUS_BAR_HEIGHT}px`,
+        height: `${TOTAL_HEADER_HEIGHT}px`,
         background: 'linear-gradient(180deg, rgba(15,8,30,0.95) 0%, rgba(20,10,35,0.9) 100%)',
         borderBottom: '1px solid rgba(244,63,94,0.15)',
         display: 'flex',
@@ -37,8 +44,4 @@ export function NavBar({ title }: { title: string }) {
       </Text>
     </View>
   )
-}
-
-export function useNavHeight() {
-  return totalHeight
 }
