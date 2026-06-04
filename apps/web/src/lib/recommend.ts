@@ -6,8 +6,9 @@ export interface ValidationResult { valid: boolean; error: string | null; cleane
 interface WasmMod {
   recommend: (json: string) => unknown; analyze_text: (text: string) => unknown;
   compute_layout: (json: string) => unknown; filter_roses: (json: string, f: string) => unknown;
-  validate_plant_input: (json: string) => unknown; format_plant_request_wasm: (json: string) => string;
-  parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown; format_date_wasm: (iso: string) => unknown;
+  validate_plant_input: (json: string) => unknown;
+  parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
+  format_date_wasm: (iso: string) => unknown;
 }
 
 let wasmModule: WasmMod | null = null;
@@ -18,19 +19,14 @@ async function loadWasm(): Promise<WasmMod | null> {
 
 export async function getRecommendation(roses: RoseInput[]): Promise<Recommendation | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.recommend(JSON.stringify(roses)) as Recommendation; } catch { return null; } }
 export async function analyzeTextWasm(text: string): Promise<Record<string, unknown> | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.analyze_text(text) as Record<string, unknown>; } catch { return null; } }
-export async function getLayout(screenWidth: number): Promise<GardenLayout | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.compute_layout(JSON.stringify({ width: screenWidth, height: typeof window !== "undefined" ? window.innerHeight : 0, safe_area_top: 0, safe_area_bottom: 0, is_web: true })) as GardenLayout; } catch { return null; } }
+export async function getLayout(screenWidth: number): Promise<GardenLayout | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.compute_layout(JSON.stringify({ width: screenWidth, height: 0, safe_area_top: 0, safe_area_bottom: 0, is_web: true })) as GardenLayout; } catch { return null; } }
 export async function filterRosesInWasm<T extends { color: string }>(roses: T[], f: string): Promise<T[] | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.filter_roses(JSON.stringify(roses), f) as T[]; } catch { return null; } }
 export async function validatePlantInput(input: RoseInput): Promise<ValidationResult | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.validate_plant_input(JSON.stringify(input)) as ValidationResult; } catch { return null; } }
 
-/// Rust 解析花圃 API 响应 → { items, total }
-export async function parseGardenResponse(json: string): Promise<{ items: unknown[]; total: number } | null> {
-  const mod = await loadWasm(); if (!mod) return null;
-  try { return mod.parse_garden_response_wasm(json) as { items: unknown[]; total: number }; } catch { return null; }
-}
+export async function parseGardenResponse(json: string): Promise<{ items: unknown[]; total: number } | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.parse_garden_response_wasm(json) as { items: unknown[]; total: number }; } catch { return null; } }
+export async function parseRoseResponse(json: string): Promise<unknown | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.parse_rose_response_wasm(json) as unknown; } catch { return null; } }
 
-/// Rust 解析单朵玫瑰 API 响应
-export async function parseRoseResponse(json: string): Promise<unknown | null> {
-export async function formatDate(iso: string): Promise<{full_cn:string,short_cn:string,iso:string,weekday_cn:string,relative:string}|null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.format_date_wasm(iso) as any; } catch { return null; } }
+export async function formatDate(iso: string): Promise<{ full_cn: string; short_cn: string; iso: string; weekday_cn: string; relative: string } | null> {
   const mod = await loadWasm(); if (!mod) return null;
-  try { return mod.parse_rose_response_wasm(json) as unknown; } catch { return null; }
+  try { return mod.format_date_wasm(iso) as any; } catch { return null; }
 }
