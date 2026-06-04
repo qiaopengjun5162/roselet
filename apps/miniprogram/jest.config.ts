@@ -9,6 +9,7 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@roselet/core$': '<rootDir>/../../packages/core/src/index.ts',
   },
+  transformIgnorePatterns: ["node_modules/(?!@tarojs/)"],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },

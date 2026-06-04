@@ -48,7 +48,7 @@ export default function Index() {
         </View>
 
         <Button className={styles.btnPrimary} onClick={handlePlant}>种一朵玫瑰</Button>
-        <Button className={styles.btnSecondary} onClick={() => Taro.switchTab({ url: '/pages/garden/index' })}>参观花圃</Button>
+        <Button className={styles.btnSecondary} onClick={() => Taro.navigateTo({ url: '/pages/garden/index' })}>参观花圃</Button>
       </View>
     </View>
   )
