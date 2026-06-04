@@ -23,7 +23,7 @@
 
 body {
   background: linear-gradient(150deg, #060810 0%, #090b18 40%, #0a0814 100%);
-  min-height: 100vh;
+  height: 100dvh; overflow: hidden; overscroll-behavior: none;
   color: var(--foreground);
   font-family: var(--font-geist-sans, Arial, sans-serif);
   transition: background 180s ease;

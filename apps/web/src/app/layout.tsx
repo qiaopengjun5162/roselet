@@ -29,10 +29,10 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased overscroll-none overflow-hidden`}
       suppressHydrationWarning
     >
-      <body className="h-screen flex flex-col overflow-hidden" suppressHydrationWarning>
+      <body className="h-[100dvh] w-screen flex flex-col overflow-hidden overscroll-none" suppressHydrationWarning>
         <DayNightBackground />
         <RoseClickBloom />
         <header className="border-b sticky top-0 z-50" style={{background:"linear-gradient(90deg,rgba(15,10,25,0.85) 0%,rgba(20,12,28,0.85) 50%,rgba(10,15,25,0.85) 100%)",backdropFilter:"blur(16px)",borderBottomColor:"rgba(244,63,94,0.15)"}}>

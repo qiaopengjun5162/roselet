@@ -49,7 +49,7 @@ export default function GardenPage() {
   }, []);
 
   return (
-    <main className="relative min-h-screen px-4 pb-4 pt-16 z-10">
+    <main className="relative h-full px-4 pb-4 pt-16 z-10">
       <div className="max-w-4xl mx-auto space-y-6">
 <div className="flex gap-2">
           {[{ value: "", label: "全部" }, { value: "red", label: "红玫瑰" }, { value: "white", label: "白玫瑰" }, { value: "yellow", label: "黄玫瑰" }].map((opt) => (

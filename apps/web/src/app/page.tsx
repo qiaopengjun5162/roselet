@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="relative min-h-screen flex flex-col items-center justify-center p-6 z-10">
+    <main className="relative h-full flex flex-col items-center justify-center p-6 z-10">
       {/* 中央光晕 */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-rose-500/8 blur-3xl pointer-events-none" />
 

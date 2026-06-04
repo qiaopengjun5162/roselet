@@ -43,7 +43,7 @@ export default function MyGardenPage() {
   }
 
   return (
-    <main className="relative min-h-screen px-4 pb-4 pt-16 z-10">
+    <main className="relative h-full px-4 pb-4 pt-16 z-10">
       <div className="max-w-4xl mx-auto space-y-6">
 {loading ? (
           <div className="text-center py-20">

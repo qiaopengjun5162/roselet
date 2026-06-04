@@ -1,7 +1,7 @@
-/* 锁死根页面滚动，只在内部 ScrollView 中滚动 */
 page {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #060810;
 }

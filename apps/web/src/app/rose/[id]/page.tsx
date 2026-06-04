@@ -96,7 +96,7 @@ export default function RoseDetailPage() {
 
   if (loading) {
     return (
-      <main className="relative min-h-screen px-4 pb-8 pt-16 z-10">
+      <main className="relative h-full px-4 pb-8 pt-16 z-10">
         <div className="max-w-2xl mx-auto text-center py-20">
           <p className="text-slate-400 animate-pulse">加载中...</p>
         </div>
@@ -106,7 +106,7 @@ export default function RoseDetailPage() {
 
   if (error || !rose) {
     return (
-      <main className="relative min-h-screen px-4 pb-8 pt-10 z-10">
+      <main className="relative h-full px-4 pb-8 pt-10 z-10">
         <div className="max-w-2xl mx-auto text-center py-20 space-y-4">
           <p className="text-red-500">{error || "玫瑰不存在"}</p>
           <Link href="/garden">
@@ -120,7 +120,7 @@ export default function RoseDetailPage() {
   const meta = COLOR_MAP[rose.color] || { emoji: "🌹", label: "玫瑰", bg: "from-rose-50 to-white" };
 
   return (
-    <main className="relative min-h-screen px-4 pb-8 pt-10 z-10">
+    <main className="relative h-full px-4 pb-8 pt-10 z-10">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <Link href="/garden">
