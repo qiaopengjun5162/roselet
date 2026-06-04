@@ -25,7 +25,7 @@ impl ValidationError {
         match self {
             Self::InvalidColor => "请选择有效的玫瑰颜色",
             Self::EmptyContent => "至少填写一项",
-            Self::FieldTooLong { max } => "单项超过字数限制",
+            Self::FieldTooLong { max: _ } => "单项超过字数限制",
             Self::TotalTooLong { max } => "总字数超过限制",
             Self::NullByteInjection => "内容含非法字符",
         }

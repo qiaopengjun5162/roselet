@@ -16,14 +16,14 @@ export default function Index() {
   return (
     <View className={styles.page}>
       <NavBar title="Roselet" />
-      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 32}px` }}>
+      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 32}px`, paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}>
         <View className={styles.glow} />
-        <Text className={styles.emoji}>🌹</Text>
-        <Text className={styles.title} style={{ fontFamily: 'STXingkai, KaiTi, 楷体, serif' }}>Roselet</Text>
-        <Text className={styles.tagline}>在星空下种下你的情绪</Text>
-        <Text className={styles.taglineSub}>等待宇宙的回响</Text>
+        <Text className={`${styles.emoji} fade-in-up`}>🌹</Text>
+        <Text className={`${styles.title} fade-in-up-d1`} style={{ fontFamily: 'STXingkai, KaiTi, 楷体, serif' }}>Roselet</Text>
+        <Text className={`${styles.tagline} fade-in-up-d1`}>在星空下种下你的情绪</Text>
+        <Text className={`${styles.taglineSub} fade-in-up-d2`}>等待宇宙的回响</Text>
 
-        <View className={styles.cards}>
+        <View className={`${styles.cards} fade-in-up-d2`}>
           <View className={`${styles.card} ${styles.cardGratitude}`}>
             <Text className={styles.cardEmoji}>🌹</Text>
             <View>
@@ -47,8 +47,10 @@ export default function Index() {
           </View>
         </View>
 
-        <Button className={styles.btnPrimary} onClick={handlePlant}>种一朵玫瑰</Button>
-        <Button className={styles.btnSecondary} onClick={() => Taro.navigateTo({ url: '/pages/garden/index' })}>参观花圃</Button>
+        <View className="fade-in-up-d3" style={{ width: '100%', maxWidth: '340px' }}>
+          <Button className={styles.btnPrimary} onClick={handlePlant}>种一朵玫瑰</Button>
+          <Button className={styles.btnSecondary} onClick={() => Taro.navigateTo({ url: '/pages/garden/index' })}>参观花圃</Button>
+        </View>
       </View>
     </View>
   )
