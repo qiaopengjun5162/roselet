@@ -1,12 +1,16 @@
-use serde::{Deserialize, Serialize};
 use crate::garden::RoseItem;
+use serde::{Deserialize, Serialize};
 
 /// 前端 Action —— 纯数据，不携带逻辑
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum StoreAction {
     /// 替换全部玫瑰列表
-    SetRoses { roses: Vec<RoseItem>, total: u32, page: u32 },
+    SetRoses {
+        roses: Vec<RoseItem>,
+        total: u32,
+        page: u32,
+    },
     /// 追加玫瑰（分页加载更多）
     AppendRoses { roses: Vec<RoseItem>, page: u32 },
     /// 更改颜色筛选
@@ -99,10 +103,7 @@ impl Store {
         let filtered: Vec<RoseItem> = if self.filter == "all" || self.filter.is_empty() {
             self.roses.clone()
         } else {
-            self.roses.iter()
-                .filter(|r| r.color == self.filter)
-                .cloned()
-                .collect()
+            self.roses.iter().filter(|r| r.color == self.filter).cloned().collect()
         };
 
         StoreSnapshot {
@@ -137,9 +138,15 @@ mod tests {
 
     fn make_rose(id: &str, color: &str) -> RoseItem {
         RoseItem {
-            id: id.into(), color: color.into(),
-            gratitude: None, anxiety: None, hope: None,
-            nickname: None, like_count: 0, ai_reply: None, created_at: String::new(),
+            id: id.into(),
+            color: color.into(),
+            gratitude: None,
+            anxiety: None,
+            hope: None,
+            nickname: None,
+            like_count: 0,
+            ai_reply: None,
+            created_at: String::new(),
         }
     }
 
@@ -148,14 +155,17 @@ mod tests {
         let mut store = Store::new();
         let snap = store.dispatch(StoreAction::SetRoses {
             roses: vec![make_rose("1", "red"), make_rose("2", "white")],
-            total: 2, page: 1,
+            total: 2,
+            page: 1,
         });
         assert_eq!(snap.total, 2);
         assert_eq!(snap.filtered.len(), 2);
         assert!(!snap.has_more);
         assert!(!snap.loading);
 
-        let snap = store.dispatch(StoreAction::SetFilter { filter: "red".into() });
+        let snap = store.dispatch(StoreAction::SetFilter {
+            filter: "red".into(),
+        });
         assert_eq!(snap.filtered.len(), 1);
         assert_eq!(snap.filtered[0].color, "red");
         assert!(snap.loading);
@@ -166,7 +176,8 @@ mod tests {
         let mut store = Store::new();
         store.dispatch(StoreAction::SetRoses {
             roses: vec![make_rose("1", "red")],
-            total: 5, page: 1,
+            total: 5,
+            page: 1,
         });
         let snap = store.dispatch(StoreAction::AppendRoses {
             roses: vec![make_rose("2", "white"), make_rose("3", "red")],
@@ -180,7 +191,9 @@ mod tests {
     #[test]
     fn test_error_handling() {
         let mut store = Store::new();
-        let snap = store.dispatch(StoreAction::SetError { error: "网络错误".into() });
+        let snap = store.dispatch(StoreAction::SetError {
+            error: "网络错误".into(),
+        });
         assert_eq!(snap.error.unwrap(), "网络错误");
         assert!(!snap.loading);
     }
@@ -190,7 +203,8 @@ mod tests {
         let mut store = Store::new();
         store.dispatch(StoreAction::SetRoses {
             roses: vec![make_rose("1", "red")],
-            total: 1, page: 1,
+            total: 1,
+            page: 1,
         });
         let snap = store.dispatch(StoreAction::Reset);
         assert_eq!(snap.total, 0);

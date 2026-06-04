@@ -115,6 +115,7 @@ pub fn analyze_text(text: &str) -> JsValue {
 mod datefmt;
 mod garden;
 mod plant;
+mod store;
 
 use garden::{GardenLayout, GardenState, RoseItem};
 
@@ -169,6 +170,37 @@ pub fn parse_rose_response_wasm(json: &str) -> JsValue {
         Ok(rose) => serde_wasm_bindgen::to_value(&rose).unwrap(),
         Err(e) => serde_wasm_bindgen::to_value(&serde_json::json!({ "error": e })).unwrap(),
     }
+}
+
+use std::sync::Mutex;
+use store::{Store, StoreAction};
+
+static STORE: Mutex<Option<Store>> = Mutex::new(None);
+
+fn get_store() -> std::sync::MutexGuard<'static, Option<Store>> {
+    let mut guard = STORE.lock().unwrap();
+    if guard.is_none() {
+        *guard = Some(Store::new());
+    }
+    guard
+}
+
+/// WASM: 发送 Action 给 Rust 状态机，返回新快照
+#[wasm_bindgen]
+pub fn store_dispatch(action_json: &str) -> JsValue {
+    let action: StoreAction = serde_json::from_str(action_json).unwrap_or(StoreAction::Reset);
+    let mut guard = get_store();
+    let store = guard.as_mut().unwrap();
+    let snapshot = store.dispatch(action);
+    serde_wasm_bindgen::to_value(&snapshot).unwrap()
+}
+
+/// WASM: 获取当前状态快照
+#[wasm_bindgen]
+pub fn store_get_snapshot() -> JsValue {
+    let guard = get_store();
+    let store = guard.as_ref().unwrap();
+    serde_wasm_bindgen::to_value(&store.snapshot()).unwrap()
 }
 
 use plant::{PlantInput, format_plant_request, validate_plant};
