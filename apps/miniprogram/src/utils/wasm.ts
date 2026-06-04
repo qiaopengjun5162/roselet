@@ -44,3 +44,8 @@ export function parseRoseResponse(json: string): unknown | null {
   if (!api) return null;
   try { return api.parse_rose_response_wasm(json) as unknown; } catch { return null; }
 }
+
+export function generatePetals(count: number, seed: number): PetalConfig[] | null {
+  if (!api) return null;
+  try { return api.generate_petals_wasm(count, seed) as PetalConfig[]; } catch { return null; }
+}
