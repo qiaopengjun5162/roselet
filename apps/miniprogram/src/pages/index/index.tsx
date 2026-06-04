@@ -15,7 +15,7 @@ export default function Index() {
   }
 
   return (
-    <View className={styles.page} onClick={onPageTap}>
+    <View className={styles.page} onClick={handleTap}>
       <NavBar title="Roselet" />
       <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 32}px`, paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}>
         <View className={styles.glow} />
