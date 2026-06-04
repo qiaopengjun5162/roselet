@@ -167,7 +167,7 @@ export default function OscilloscopePage() {
     : preset.emotion;
 
   return (
-    <main className="relative h-full px-4 pb-12 pt-16 z-10">
+    <main className="relative h-full px-4 pb-12 pt-16 z-10 overflow-hidden">
       <div className="max-w-2xl mx-auto space-y-5">
 
         {/* Canvas + 情绪标签 */}
