@@ -1,7 +1,36 @@
+/* 根页面锁定 */
 page {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
   overscroll-behavior: none;
-  background: #060810;
+  background: #0a0b14;
+}
+
+/* 光晕气泡 — 用 ::before 伪元素模拟（小程序不支持 mix-blend-mode） */
+page::before {
+  content: "";
+  position: fixed;
+  top: -20%;
+  left: -15%;
+  width: 80%;
+  height: 60%;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.06);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 深海蓝光晕 */
+page::after {
+  content: "";
+  position: fixed;
+  right: -20%;
+  bottom: -15%;
+  width: 85%;
+  height: 65%;
+  border-radius: 50%;
+  background: rgba(79, 70, 229, 0.08);
+  z-index: 0;
+  pointer-events: none;
 }

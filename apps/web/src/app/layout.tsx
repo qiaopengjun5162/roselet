@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { Nav } from "@/components/nav";
 import { CyberBackground } from "@/components/cyber-background";
+import { FallingPetals } from "@/components/falling-petals";
 import { RoseClickBloom } from "@/components/rose-click-bloom";
 import "./globals.css";
 
@@ -34,6 +35,7 @@ export default function RootLayout({
     >
       <body className="h-[100dvh] w-screen flex flex-col overflow-hidden overscroll-none" suppressHydrationWarning>
         <CyberBackground />
+        <FallingPetals />
         <RoseClickBloom />
         <header className="border-b sticky top-0 z-50" style={{background:"linear-gradient(90deg,rgba(15,10,25,0.85) 0%,rgba(20,12,28,0.85) 50%,rgba(10,15,25,0.85) 100%)",backdropFilter:"blur(16px)",borderBottomColor:"rgba(244,63,94,0.15)"}}>
           <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
