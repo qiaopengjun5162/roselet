@@ -108,3 +108,12 @@ body {
   font-family: "Ma Shan Zheng", "STXingkai", "华文行楷", "KaiTi", "楷体", cursive;
   font-weight: 400;
 }
+
+@keyframes petal-fall-rust {
+  0%   { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: var(--petal-opacity, 0.3); }
+  30%  { transform: translateY(30vh) translateX(calc(1 * var(--sway, 30px))) rotate(120deg); }
+  60%  { transform: translateY(60vh) translateX(calc(-0.6 * var(--sway, 30px))) rotate(240deg); }
+  85%  { opacity: var(--petal-opacity, 0.25); }
+  100% { transform: translateY(105vh) translateX(calc(0.4 * var(--sway, 30px))) rotate(360deg); opacity: 0; }
+}

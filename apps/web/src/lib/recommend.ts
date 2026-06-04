@@ -9,6 +9,7 @@ interface WasmMod {
   validate_plant_input: (json: string) => unknown;
   parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
   format_date_wasm: (iso: string) => unknown;
+  generate_petals_wasm: (count: number, seed: bigint) => unknown;
 }
 
 let wasmModule: WasmMod | null = null;
@@ -29,4 +30,9 @@ export async function parseRoseResponse(json: string): Promise<unknown | null> {
 export async function formatDate(iso: string): Promise<{ full_cn: string; short_cn: string; iso: string; weekday_cn: string; relative: string } | null> {
   const mod = await loadWasm(); if (!mod) return null;
   try { return mod.format_date_wasm(iso) as any; } catch { return null; }
+}
+
+export async function generatePetals(count: number, seed: bigint) {
+  const mod = await loadWasm(); if (!mod) return null;
+  try { return mod.generate_petals_wasm(count, seed) as {emoji:string;left:number;size:number;duration:number;delay:number;sway:number;opacity:number}[]; } catch { return null; }
 }
