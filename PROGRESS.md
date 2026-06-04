@@ -80,7 +80,7 @@
 - [x] 提取公共 auth token 函数
 - [x] WASM analyze_text 接入前端（WasmAnalyzer，降级 LocalKeywordAnalyzer）
 - [x] text-to-sound.ts / rose-sound.ts 前端单元测试（各 16/19 个用例）
-- [ ] 小程序适配（uni-app，首发微信）
+- [ ] 小程序适配（Taro + Rust WASM，架构设计完成，实现计划在 docs/superpowers/plans/2026-06-04-miniprogram.md）
 - [ ] Web3 功能（已设计，待实现）
   - 用户钱包直付 Gas + 平台服务费
   - 先走正统 Web3 流程（用户学习钱包/Gas），后续加人民币支付
