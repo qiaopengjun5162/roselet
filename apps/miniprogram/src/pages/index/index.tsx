@@ -1,10 +1,10 @@
-import { View, Text, Button } from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import { getToken } from '@/utils/storage'
-import { initWasm } from '@/utils/wasm'
-import { useBloomTap } from '@/components/BloomTap'
-import styles from './index.module.css'
-
+import { View, Text, Button } from "@tarojs/components";
+import Taro from "@tarojs/taro";
+import { getToken } from "@/utils/storage";
+import { initWasm } from "@/utils/wasm";
+import { NavBar, TOTAL_HEADER_HEIGHT } from "@/components/NavBar";
+import { useBloomTap } from "@/components/BloomTap";
+import styles from "./index.module.css";
 export default function Index() {
   const { handleTap, bloomsView } = useBloomTap()
   Taro.useLoad(() => { initWasm() })
