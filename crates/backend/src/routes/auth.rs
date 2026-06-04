@@ -64,3 +64,54 @@ pub async fn profile(
         yellow_count,
     }))
 }
+
+#[derive(Debug, serde::Deserialize)]
+pub struct RefreshRequest {
+    pub refresh_token: String,
+    pub user_id: uuid::Uuid,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RefreshResponse {
+    pub access_token: String,
+}
+
+pub async fn refresh(
+    State(state): State<AppState>,
+    Json(input): Json<RefreshRequest>,
+) -> Result<Json<RefreshResponse>, AppError> {
+    let valid = auth::verify_refresh_token(&state.pool, &input.refresh_token, input.user_id).await?;
+    if !valid {
+        return Err(AppError::Auth("invalid or expired refresh token".into()));
+    }
+
+    // 发行新 access token（需要查用户昵称）
+    let user = sqlx::query_as::<_, User>(
+        "SELECT * FROM users WHERE id = $1"
+    )
+    .bind(input.user_id)
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    let access_token = auth::create_access_token(user.id, &user.nickname, &state.jwt_secret)?;
+
+    Ok(Json(RefreshResponse { access_token }))
+}
+
+#[derive(Debug, Serialize)]
+pub struct LogoutResponse {
+    pub success: bool,
+}
+
+pub async fn logout(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<LogoutResponse>, AppError> {
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
+        .ok_or(AppError::Auth("missing or invalid token".into()))?;
+
+    auth::revoke_refresh_tokens(&state.pool, user_id).await?;
+
+    Ok(Json(LogoutResponse { success: true }))
+}

@@ -1,4 +1,5 @@
 use sqlx::PgPool;
+use crate::rate_limit::RateLimiter;
 use tokio::sync::broadcast;
 
 use crate::models::rose::RoseResponse;
@@ -8,15 +9,18 @@ pub struct AppState {
     pub pool: PgPool,
     pub rose_tx: broadcast::Sender<RoseResponse>,
     pub jwt_secret: Vec<u8>,
+    pub rate_limiter: RateLimiter,
 }
 
 impl AppState {
     pub fn new(pool: PgPool, jwt_secret: String) -> Self {
+        let rate_limiter = RateLimiter::new(30, 60);
         let (rose_tx, _) = broadcast::channel(100);
         Self {
             pool,
             rose_tx,
             jwt_secret: jwt_secret.into_bytes(),
+            rate_limiter,
         }
     }
 }

@@ -25,6 +25,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/health", get(routes::health::health_check))
         .route("/api/auth/register", post(routes::auth::register))
+        .route("/api/auth/refresh", post(routes::auth::refresh))
+        .route("/api/auth/logout", post(routes::auth::logout))
         .route("/api/garden", get(routes::garden::get_garden))
         .route("/api/rose", post(routes::rose::create_rose))
         .route(
