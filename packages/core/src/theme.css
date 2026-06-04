@@ -26,7 +26,7 @@
 /* ── 全局字体系统 ── */
 :root {
   /* 中文衬线字体栈 — 标题用，优雅有文化感 */
-  --font-display: "KaiTi", "楷体", "STKaiti", "华文楷体", "Noto Serif SC", serif;
+  --font-display: "Ma Shan Zheng", "STXingkai", "华文行楷", "KaiTi", "楷体", cursive;
   /* 中文无衬线 — 正文用，清晰现代 */
   --font-body: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "WenQuanYi Micro Hei", system-ui, sans-serif;
   /* 字间距 — 中文需要更大间距 */
