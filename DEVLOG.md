@@ -921,3 +921,48 @@ WASM analyze_text 接入前端 + 补充测试覆盖 + 日夜背景重设计
 - [ ] Web3 功能（设计已完成，待实现）
 
 <!-- 下次会话在此处继续记录 -->
+
+## 2026-06-04 会话 #21：微信小程序运行时崩溃事件复盘
+
+### 🚨 现象
+微信开发者工具模拟器一片深蓝，控制台报错：
+```
+TypeError: Cannot read property 'baseURI' of undefined
+Page "pages/index/index" has not been registered yet.
+```
+
+### 🔍 根因分析
+Webpack 5 在所有产物的 `runtime.js` 中生成了强制自动探测代码：
+```javascript
+e.b = document.baseURI || self.location.href
+```
+微信小程序的 `WASubContext` 沙盒中 `document` 为 `undefined`。
+`runtime.js` 的执行时序在所有业务代码（`app.js`、`polyfill.ts`）之前，
+因此运行时补丁无法拦截这行代码。
+
+### ❓ 为什么 271 个测试没有测到？
+1. **jsdom 仿真边界差**：Jest 的 `testEnvironment: 'jsdom'` 自动注入合法的
+   `document.baseURI`，Webpack 的脏代码在测试环境完美跑通。
+2. **runtime.js 不是业务代码**：单元测试入口是模块代码，不覆盖 Webpack 引导代码。
+3. **缺乏微信沙盒 E2E**：Jenkins/本地 Jest 无法模拟 `WASubContext` 的极端环境。
+
+### ✅ 解决方案
+```typescript
+// config/index.ts → mini.webpackChain
+chain.output.publicPath('').globalObject('global');
+chain.plugin('mp-runtime-patch').use(webpack.BannerPlugin, [{
+  banner: 'var document = ... { baseURI: "/", currentScript: { baseURI: "/" } };',
+  raw: true,
+  test: /\.js$/,  // 关键：只注入 JS，避免 CSS minifier 报错
+}]);
+```
+
+### 🛡️ 防回归措施
+新增 `src/__tests__/build-smoke.test.ts`：构建后验证 runtime.js 含 document mock。
+
+### 💡 经验教训
+- **构建时注入（BannerPlugin）> 运行时补丁（Polyfill）**：执行时序决定一切
+- **永远不要盲目信任 jsdom 的全绿测试**：跨端胶水层必须上真机走烟雾测试
+- **publicPath 无法根治**：Webpack 5 在 chunk loading 时会强制退回到 baseURI 探测
+
+<!-- 下次会话在此处继续记录 -->
