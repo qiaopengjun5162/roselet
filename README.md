@@ -1,7 +1,7 @@
 # Roselet
 
 ![Rust](https://img.shields.io/badge/Rust-1.88.0-orange?logo=rust)
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![Next.js] ![Taro](https://img.shields.io/badge/Taro-4-0ab?logo=taro) ![WASM](https://img.shields.io/badge/WASM-Rust-654ff0?logo=webassembly)(https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
 > Plant a rose, share your emotions, wait for the universe to respond.

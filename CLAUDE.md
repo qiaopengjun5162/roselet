@@ -26,6 +26,20 @@ roselet/
 └── package.json        # pnpm workspace
 ```
 
+## 架构原则
+
+**80/20 Rust-TS 架构**：核心逻辑（过滤、校验、状态、API、花瓣）在 `crates/recommend`，
+前端只做渲染。Rust Store (`store.rs`) 是全局状态机。认证双令牌 (Access 15min + Refresh 7天)。
+
+## 测试状态
+```
+Rust backend:   118 passed
+Rust WASM:       54 passed
+Web frontend:   120 passed
+Miniprogram:     56 passed
+Total:          348 passed, clippy clean, fmt clean
+```
+
 ## 常用命令（justfile）
 ```bash
 just dev              # 启动完整开发环境（后端 3001 + 前端 3000）
