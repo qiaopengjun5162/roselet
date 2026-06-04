@@ -37,7 +37,7 @@ export default function RootLayout({
         <CyberBackground />
         <FallingPetals />
         <RoseClickBloom />
-        <header className="sticky top-0 z-50 bg-gradient-to-r from-[#100720] via-[#1a0e2e] to-[#100720] backdrop-blur-xl border-b-2 border-rose-500/20 shadow-lg shadow-rose-500/5">
+        <header className="sticky top-0 z-50 bg-[#0a0b14]/80 backdrop-blur-2xl border-b border-rose-500/10">
           <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
             <Link href="/" className="text-xl font-bold text-rose-300 tracking-wide">
               🌹 Roselet

@@ -19,7 +19,7 @@ export function NavBar({ title }: { title: string }) {
       style={{
         paddingTop: `${STATUS_BAR_HEIGHT}px`,
         height: `${TOTAL_HEADER_HEIGHT}px`,
-        background: 'linear-gradient(180deg, rgba(15,8,30,0.95) 0%, rgba(20,10,35,0.9) 100%)',
+        background: "rgba(10,11,20,0.88)",
         borderBottom: '1px solid rgba(244,63,94,0.15)',
         display: 'flex',
         alignItems: 'center',
