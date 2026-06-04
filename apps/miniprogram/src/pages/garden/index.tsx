@@ -35,6 +35,9 @@ export default function Garden() {
 
   return (
     <View className={styles.container}>
+      <Text className="petal-fall-1">🌸</Text>
+      <Text className="petal-fall-2">🌺</Text>
+      <Text className="petal-fall-3">🌷</Text>
       <View className={styles.filters}>
         {COLOR_FILTERS.map(f => (
           <Text key={f.value} className={`${styles.filter} ${color === f.value ? styles.active : ''}`} onClick={() => setColor(f.value)}>{f.label}</Text>

@@ -14,6 +14,10 @@ export default function Index() {
 
   return (
     <View className={styles.container}>
+      <Text className="petal-fall-1">🌸</Text>
+      <Text className="petal-fall-2">🌺</Text>
+      <Text className="petal-fall-3">🌷</Text>
+      <Text className="petal-fall-4">💮</Text>
       {/* 光晕 */}
       <View className={styles.glow} />
 
