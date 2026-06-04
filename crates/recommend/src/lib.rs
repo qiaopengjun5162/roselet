@@ -112,6 +112,29 @@ pub fn analyze_text(text: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
 }
 
+mod garden;
+
+use garden::{GardenState, GardenLayout, RoseItem};
+
+/// WASM: 根据屏幕宽度计算卡片布局
+#[wasm_bindgen]
+pub fn compute_layout(screen_width: u32, is_web: bool) -> JsValue {
+    let layout = GardenLayout::compute(screen_width, is_web);
+    serde_wasm_bindgen::to_value(&layout).unwrap()
+}
+
+/// WASM: 过滤玫瑰列表，返回 JSON
+#[wasm_bindgen]
+pub fn filter_roses(roses_json: &str, color_filter: &str) -> JsValue {
+    let mut state = GardenState::new();
+    if let Ok(roses) = serde_json::from_str::<Vec<RoseItem>>(roses_json) {
+        state.set_roses(roses);
+    }
+    state.set_filter(color_filter.to_string());
+    let filtered = state.filtered();
+    serde_wasm_bindgen::to_value(&filtered).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
