@@ -1,41 +1,43 @@
-/* 根页面锁定 */
 page {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
   overscroll-behavior: none;
   background: #0a0b14;
+  font-family: "STXingkai", "KaiTi", "楷体", "PingFang SC", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.02em;
+  line-height: 1.85;
 }
 
-/* 光晕气泡 — page::before 左上 */
+/* 光晕 — 左上暗紫 */
 page::before {
   content: "";
   position: fixed;
-  top: -20%;
-  left: -15%;
-  width: 80%;
-  height: 60%;
+  top: -15%;
+  left: -10%;
+  width: 70%;
+  height: 50%;
   border-radius: 50%;
-  background: rgba(139, 92, 246, 0.06);
+  background: radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%);
   z-index: 0;
   pointer-events: none;
 }
 
-/* page::after 右下深海蓝 */
+/* 光晕 — 右下深海蓝 */
 page::after {
   content: "";
   position: fixed;
   right: -20%;
-  bottom: -15%;
-  width: 85%;
-  height: 65%;
+  bottom: -10%;
+  width: 80%;
+  height: 60%;
   border-radius: 50%;
-  background: rgba(79, 70, 229, 0.08);
+  background: radial-gradient(circle, rgba(79,70,229,0.1) 0%, transparent 70%);
   z-index: 0;
   pointer-events: none;
 }
 
-/* 花瓣飘落 — CSS 动画 */
+/* 花瓣飘落动画 */
 @keyframes petalFall1 {
   0%   { transform: translateY(-5vh) translateX(0) rotate(0deg); opacity: 0; }
   10%  { opacity: 0.3; }
@@ -51,51 +53,7 @@ page::after {
   100% { transform: translateY(105vh) translateX(25px) rotate(-380deg); opacity: 0; }
 }
 
-/* 散布在页面上的花瓣伪元素 */
-.petal-fall-1 {
-  position: fixed;
-  top: -5%;
-  left: 12%;
-  font-size: 20px;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  animation: petalFall1 10s 0s ease-in infinite;
-}
-.petal-fall-2 {
-  position: fixed;
-  top: -5%;
-  left: 35%;
-  font-size: 16px;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  animation: petalFall2 12s 3s ease-in infinite;
-}
-.petal-fall-3 {
-  position: fixed;
-  top: -5%;
-  left: 58%;
-  font-size: 24px;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  animation: petalFall1 14s 6s ease-in infinite;
-}
-.petal-fall-4 {
-  position: fixed;
-  top: -5%;
-  left: 78%;
-  font-size: 18px;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  animation: petalFall2 11s 2s ease-in infinite;
-}
-
-/* 全局字体 */
-page {
-  font-family: "Ma Shan Zheng", "STXingkai", "华文行楷", "PingFang SC", "Microsoft YaHei", sans-serif;
-  letter-spacing: 0.02em;
-  line-height: 1.85;
-}
+.petal-fall-1 { position: fixed; top: -5%; left: 12%; font-size: 20px; z-index: 0; pointer-events: none; opacity: 0; animation: petalFall1 10s 0s ease-in infinite; }
+.petal-fall-2 { position: fixed; top: -5%; left: 35%; font-size: 16px; z-index: 0; pointer-events: none; opacity: 0; animation: petalFall2 12s 3s ease-in infinite; }
+.petal-fall-3 { position: fixed; top: -5%; left: 58%; font-size: 24px; z-index: 0; pointer-events: none; opacity: 0; animation: petalFall1 14s 6s ease-in infinite; }
+.petal-fall-4 { position: fixed; top: -5%; left: 78%; font-size: 18px; z-index: 0; pointer-events: none; opacity: 0; animation: petalFall2 11s 2s ease-in infinite; }

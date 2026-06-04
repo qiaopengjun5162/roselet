@@ -16,28 +16,37 @@ export default function Index() {
   return (
     <View className={styles.page}>
       <NavBar title="Roselet" />
-      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 16}px` }}>
+      <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 32}px` }}>
         <View className={styles.glow} />
         <Text className={styles.emoji}>🌹</Text>
-        <Text className={styles.title}>Roselet</Text>
-        <Text className={styles.sub}>在星空下种下你的情绪，等待宇宙的回响</Text>
+        <Text className={styles.title} style={{ fontFamily: 'STXingkai, KaiTi, 楷体, serif' }}>Roselet</Text>
+        <Text className={styles.tagline}>在星空下种下你的情绪</Text>
+        <Text className={styles.taglineSub}>等待宇宙的回响</Text>
+
         <View className={styles.cards}>
           <View className={`${styles.card} ${styles.cardGratitude}`}>
             <Text className={styles.cardEmoji}>🌹</Text>
-            <Text className={styles.cardTitle}>玫瑰</Text>
-            <Text className={styles.cardDesc}>感恩与幸福</Text>
+            <View>
+              <Text className={styles.cardTitle}>玫瑰 · 感恩</Text>
+              <Text className={styles.cardDesc}>这周让你感到幸福的事情</Text>
+            </View>
           </View>
           <View className={`${styles.card} ${styles.cardHope}`}>
             <Text className={styles.cardEmoji}>🌱</Text>
-            <Text className={styles.cardTitle}>花苞</Text>
-            <Text className={styles.cardDesc}>期待与灵感</Text>
+            <View>
+              <Text className={styles.cardTitle}>花苞 · 期待</Text>
+              <Text className={styles.cardDesc}>你正期待的新灵感和愿望</Text>
+            </View>
           </View>
           <View className={`${styles.card} ${styles.cardAnxiety}`}>
             <Text className={styles.cardEmoji}>🌵</Text>
-            <Text className={styles.cardTitle}>尖刺</Text>
-            <Text className={styles.cardDesc}>焦虑与帮助</Text>
+            <View>
+              <Text className={styles.cardTitle}>尖刺 · 焦虑</Text>
+              <Text className={styles.cardDesc}>让你感到压力或需要帮助的事</Text>
+            </View>
           </View>
         </View>
+
         <Button className={styles.btnPrimary} onClick={handlePlant}>种一朵玫瑰</Button>
         <Button className={styles.btnSecondary} onClick={() => Taro.switchTab({ url: '/pages/garden/index' })}>参观花圃</Button>
       </View>
