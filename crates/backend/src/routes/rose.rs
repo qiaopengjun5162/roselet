@@ -130,13 +130,11 @@ pub async fn update_rose(
     .await?;
 
     let nickname = lookup_nickname(&state.pool, rose.user_id).await;
-    let like_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM likes WHERE rose_id = $1",
-    )
-    .bind(rose.id)
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+    let like_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM likes WHERE rose_id = $1")
+        .bind(rose.id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or(0);
     Ok(Json(RoseResponse::from_rose(rose, nickname, like_count)))
 }
 

@@ -3,16 +3,16 @@ use serde::Serialize;
 /// 情绪分析结果，对应前端 SoundParams 接口
 #[derive(Debug, Serialize)]
 pub struct EmotionParams {
-    pub emotion: String,      // "gratitude" | "anxiety" | "hope" | "neutral"
+    pub emotion: String,       // "gratitude" | "anxiety" | "hope" | "neutral"
     pub emotion_label: String, // 显示用：🌹 感恩
     pub fx: u32,
     pub fy: u32,
-    pub waveform: String,     // "sine" | "sawtooth" | "triangle" | "square"
+    pub waveform: String, // "sine" | "sawtooth" | "triangle" | "square"
     pub base_freq: f32,
     pub phase: f32,
-    pub stroke: String,       // CSS 颜色
-    pub glow: String,         // CSS rgba
-    pub intensity: f32,       // 0.0 ~ 1.0
+    pub stroke: String, // CSS 颜色
+    pub glow: String,   // CSS rgba
+    pub intensity: f32, // 0.0 ~ 1.0
 }
 
 struct EmotionKeyword {
@@ -31,52 +31,228 @@ enum EmotionType {
 // 关键词库：覆盖三种情绪，权重区分强弱信号
 const EMOTION_KEYWORDS: &[EmotionKeyword] = &[
     // 感恩
-    EmotionKeyword { word: "感谢",  emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "感恩",  emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "谢谢",  emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "幸福",  emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "开心",  emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "快乐",  emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "高兴",  emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "美好",  emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "温暖",  emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "喜欢",  emotion: EmotionType::Gratitude, weight: 0.8 },
-    EmotionKeyword { word: "棒",    emotion: EmotionType::Gratitude, weight: 0.8 },
-    EmotionKeyword { word: "太好了",emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "感动",  emotion: EmotionType::Gratitude, weight: 1.0 },
-    EmotionKeyword { word: "爱",    emotion: EmotionType::Gratitude, weight: 0.7 },
-    EmotionKeyword { word: "不错",  emotion: EmotionType::Gratitude, weight: 0.4 },
-    EmotionKeyword { word: "还好",  emotion: EmotionType::Gratitude, weight: 0.3 },
+    EmotionKeyword {
+        word: "感谢",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "感恩",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "谢谢",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "幸福",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "开心",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "快乐",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "高兴",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "美好",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "温暖",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "喜欢",
+        emotion: EmotionType::Gratitude,
+        weight: 0.8,
+    },
+    EmotionKeyword {
+        word: "棒",
+        emotion: EmotionType::Gratitude,
+        weight: 0.8,
+    },
+    EmotionKeyword {
+        word: "太好了",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "感动",
+        emotion: EmotionType::Gratitude,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "爱",
+        emotion: EmotionType::Gratitude,
+        weight: 0.7,
+    },
+    EmotionKeyword {
+        word: "不错",
+        emotion: EmotionType::Gratitude,
+        weight: 0.4,
+    },
+    EmotionKeyword {
+        word: "还好",
+        emotion: EmotionType::Gratitude,
+        weight: 0.3,
+    },
     // 焦虑
-    EmotionKeyword { word: "焦虑",  emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "烦",    emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "压力",  emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "担心",  emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "紧张",  emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "害怕",  emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "崩溃",  emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "难受",  emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "痛苦",  emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "纠结",  emotion: EmotionType::Anxiety, weight: 0.8 },
-    EmotionKeyword { word: "迷茫",  emotion: EmotionType::Anxiety, weight: 0.8 },
-    EmotionKeyword { word: "失眠",  emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "累",    emotion: EmotionType::Anxiety, weight: 0.7 },
-    EmotionKeyword { word: "难",    emotion: EmotionType::Anxiety, weight: 0.5 },
-    EmotionKeyword { word: "恐惧",  emotion: EmotionType::Anxiety, weight: 1.0 },
-    EmotionKeyword { word: "不知道",emotion: EmotionType::Anxiety, weight: 0.4 },
+    EmotionKeyword {
+        word: "焦虑",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "烦",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "压力",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "担心",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "紧张",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "害怕",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "崩溃",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "难受",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "痛苦",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "纠结",
+        emotion: EmotionType::Anxiety,
+        weight: 0.8,
+    },
+    EmotionKeyword {
+        word: "迷茫",
+        emotion: EmotionType::Anxiety,
+        weight: 0.8,
+    },
+    EmotionKeyword {
+        word: "失眠",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "累",
+        emotion: EmotionType::Anxiety,
+        weight: 0.7,
+    },
+    EmotionKeyword {
+        word: "难",
+        emotion: EmotionType::Anxiety,
+        weight: 0.5,
+    },
+    EmotionKeyword {
+        word: "恐惧",
+        emotion: EmotionType::Anxiety,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "不知道",
+        emotion: EmotionType::Anxiety,
+        weight: 0.4,
+    },
     // 期待
-    EmotionKeyword { word: "期待",  emotion: EmotionType::Hope, weight: 1.0 },
-    EmotionKeyword { word: "希望",  emotion: EmotionType::Hope, weight: 1.0 },
-    EmotionKeyword { word: "计划",  emotion: EmotionType::Hope, weight: 0.8 },
-    EmotionKeyword { word: "目标",  emotion: EmotionType::Hope, weight: 0.8 },
-    EmotionKeyword { word: "梦想",  emotion: EmotionType::Hope, weight: 1.0 },
-    EmotionKeyword { word: "未来",  emotion: EmotionType::Hope, weight: 0.8 },
-    EmotionKeyword { word: "加油",  emotion: EmotionType::Hope, weight: 0.8 },
-    EmotionKeyword { word: "努力",  emotion: EmotionType::Hope, weight: 0.7 },
-    EmotionKeyword { word: "试试",  emotion: EmotionType::Hope, weight: 0.7 },
-    EmotionKeyword { word: "想",    emotion: EmotionType::Hope, weight: 0.5 },
-    EmotionKeyword { word: "新",    emotion: EmotionType::Hope, weight: 0.4 },
-    EmotionKeyword { word: "开始",  emotion: EmotionType::Hope, weight: 0.6 },
+    EmotionKeyword {
+        word: "期待",
+        emotion: EmotionType::Hope,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "希望",
+        emotion: EmotionType::Hope,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "计划",
+        emotion: EmotionType::Hope,
+        weight: 0.8,
+    },
+    EmotionKeyword {
+        word: "目标",
+        emotion: EmotionType::Hope,
+        weight: 0.8,
+    },
+    EmotionKeyword {
+        word: "梦想",
+        emotion: EmotionType::Hope,
+        weight: 1.0,
+    },
+    EmotionKeyword {
+        word: "未来",
+        emotion: EmotionType::Hope,
+        weight: 0.8,
+    },
+    EmotionKeyword {
+        word: "加油",
+        emotion: EmotionType::Hope,
+        weight: 0.8,
+    },
+    EmotionKeyword {
+        word: "努力",
+        emotion: EmotionType::Hope,
+        weight: 0.7,
+    },
+    EmotionKeyword {
+        word: "试试",
+        emotion: EmotionType::Hope,
+        weight: 0.7,
+    },
+    EmotionKeyword {
+        word: "想",
+        emotion: EmotionType::Hope,
+        weight: 0.5,
+    },
+    EmotionKeyword {
+        word: "新",
+        emotion: EmotionType::Hope,
+        weight: 0.4,
+    },
+    EmotionKeyword {
+        word: "开始",
+        emotion: EmotionType::Hope,
+        weight: 0.6,
+    },
 ];
 
 // 文字长度对相位的微调：内容越丰富，图形越复杂
@@ -91,7 +267,8 @@ pub fn analyze_text_internal(text: &str) -> EmotionParams {
         return EmotionParams {
             emotion: "neutral".into(),
             emotion_label: "○ 中性".into(),
-            fx: 1, fy: 1,
+            fx: 1,
+            fy: 1,
             waveform: "sine".into(),
             base_freq: 220.0,
             phase: 0.0,
@@ -109,8 +286,8 @@ pub fn analyze_text_internal(text: &str) -> EmotionParams {
         if text.contains(kw.word) {
             match kw.emotion {
                 EmotionType::Gratitude => g_score += kw.weight,
-                EmotionType::Anxiety   => a_score += kw.weight,
-                EmotionType::Hope      => h_score += kw.weight,
+                EmotionType::Anxiety => a_score += kw.weight,
+                EmotionType::Hope => h_score += kw.weight,
             }
         }
     }
@@ -118,13 +295,17 @@ pub fn analyze_text_internal(text: &str) -> EmotionParams {
     let max_possible = 5.0f32;
 
     // 同时有焦虑和感恩/期待：取综合比例
-    let dominant = if g_score >= a_score && g_score >= h_score { EmotionType::Gratitude }
-        else if a_score >= h_score { EmotionType::Anxiety }
-        else { EmotionType::Hope };
+    let dominant = if g_score >= a_score && g_score >= h_score {
+        EmotionType::Gratitude
+    } else if a_score >= h_score {
+        EmotionType::Anxiety
+    } else {
+        EmotionType::Hope
+    };
     let top_score = match dominant {
         EmotionType::Gratitude => g_score,
-        EmotionType::Anxiety   => a_score,
-        EmotionType::Hope      => h_score,
+        EmotionType::Anxiety => a_score,
+        EmotionType::Hope => h_score,
     };
 
     let intensity = (top_score / max_possible).min(1.0);
@@ -134,7 +315,8 @@ pub fn analyze_text_internal(text: &str) -> EmotionParams {
         return EmotionParams {
             emotion: "neutral".into(),
             emotion_label: "○ 中性".into(),
-            fx: 1, fy: 1,
+            fx: 1,
+            fy: 1,
             waveform: "sine".into(),
             base_freq: 220.0,
             phase: length_to_phase(text, 0.0),
@@ -255,7 +437,9 @@ mod tests {
     #[test]
     fn longer_text_increases_phase() {
         let short = analyze_text_internal("感恩");
-        let long  = analyze_text_internal("感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩");
+        let long = analyze_text_internal(
+            "感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩感恩",
+        );
         assert!(long.phase > short.phase);
     }
 

@@ -15,8 +15,16 @@ pub async fn health_check(State(state): State<AppState>) -> Json<HealthResponse>
     let db_healthy = sqlx::query("SELECT 1").fetch_one(&state.pool).await.is_ok();
 
     Json(HealthResponse {
-        status: if db_healthy { "ok".to_string() } else { "degraded".to_string() },
-        database: if db_healthy { "healthy".to_string() } else { "unhealthy".to_string() },
+        status: if db_healthy {
+            "ok".to_string()
+        } else {
+            "degraded".to_string()
+        },
+        database: if db_healthy {
+            "healthy".to_string()
+        } else {
+            "unhealthy".to_string()
+        },
         version: env!("CARGO_PKG_VERSION").to_string(),
     })
 }

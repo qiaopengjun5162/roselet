@@ -112,7 +112,6 @@ pub fn analyze_text(text: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

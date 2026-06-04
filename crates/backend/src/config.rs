@@ -53,7 +53,10 @@ mod tests {
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://custom/testdb");
         assert_eq!(config.port, 8080);
-        assert_eq!(config.jwt_secret, "my-secret-key-with-sufficient-length-32bytes");
+        assert_eq!(
+            config.jwt_secret,
+            "my-secret-key-with-sufficient-length-32bytes"
+        );
 
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
