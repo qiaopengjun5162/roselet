@@ -94,3 +94,16 @@ wasm:
 # 完整构建（后端 + WASM + 前端）
 build-all: wasm build
     cd apps/web && pnpm build
+
+# 为小程序构建 WASM（编译 + WXWebAssembly 补丁）
+wasm-mini:
+    cd crates/recommend && wasm-pack build --target web --out-dir ../../apps/miniprogram/pkg
+    node scripts/patch-wasm.js
+
+# 小程序开发模式（微信）
+miniprogram:
+    cd apps/miniprogram && pnpm dev:weapp
+
+# 小程序生产构建
+miniprogram-build:
+    cd apps/miniprogram && pnpm build:weapp
