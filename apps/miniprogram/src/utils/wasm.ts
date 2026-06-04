@@ -6,28 +6,43 @@ export interface Recommendation {
   color_suggestion: { color: string; reason: string };
 }
 
-interface WasmMod {
+interface GlueMod {
   recommend: (json: string) => unknown;
   analyze_text: (text: string) => unknown;
-  __wbg_set_wasm: (exports: unknown) => void;
+  __wbg_get_imports: () => Record<string, unknown>;
+  default: (wasmBytes: ArrayBuffer) => Promise<void>;
 }
 
-let wasmMod: WasmMod | null = null;
+let wasmMod: { recommend: (json: string) => unknown; analyze_text: (text: string) => unknown } | null = null;
 
 /**
- * 初始化 Rust WASM 模块（通过 WXWebAssembly.instantiate 加载）。
- * 已初始化时直接返回 true，加载失败返回 false（降级为纯 JS 模式）。
+ * 初始化 Rust WASM 模块。
+ * 使用胶水代码自带的 __wbg_get_imports() 获取正确的 import 对象，
+ * 通过 wx.getFileSystemManager 读取 WASM 字节，调用 WXWebAssembly.instantiate。
  */
 export async function initWasm(): Promise<boolean> {
   if (wasmMod) return true;
   try {
-    const mod = await import('../../pkg/roselet_recommend') as unknown as WasmMod;
-    const result = await WXWebAssembly.instantiate(
-      '/pkg/roselet_recommend_bg.wasm',
-      { './roselet_recommend_bg.js': mod }
-    );
-    mod.__wbg_set_wasm(result.instance.exports);
-    wasmMod = mod;
+    const glue = await import('../../pkg/roselet_recommend') as unknown as GlueMod;
+    const imports = glue.__wbg_get_imports();
+
+    // 微信小程序中通过文件系统管理器读取 WASM 二进制
+    const fs = wx.getFileSystemManager();
+    const wasmPath = `${wx.env.USER_DATA_PATH}/pkg/roselet_recommend_bg.wasm`;
+    let wasmBytes: ArrayBuffer;
+    try {
+      wasmBytes = fs.readFileSync(wasmPath).buffer as ArrayBuffer;
+    } catch {
+      // 生产构建时 WASM 在包内路径
+      wasmBytes = fs.readFileSync('/pkg/roselet_recommend_bg.wasm').buffer as ArrayBuffer;
+    }
+
+    const { instance } = await WXWebAssembly.instantiate(wasmBytes, imports);
+
+    // 调用 default init 完成内部状态绑定
+    await glue.default(wasmBytes);
+
+    wasmMod = { recommend: glue.recommend, analyze_text: glue.analyze_text };
     return true;
   } catch (e) {
     console.warn('WASM load failed, degraded mode:', e);
@@ -36,8 +51,7 @@ export async function initWasm(): Promise<boolean> {
 }
 
 /**
- * 调用 WASM 推荐算法，传入用户已种的玫瑰列表，返回颜色建议。
- * WASM 未初始化或调用异常时返回 null。
+ * 调用 WASM 推荐算法，WASM 未初始化时返回 null。
  */
 export function getRecommendation(roses: CreateRose[]): Recommendation | null {
   if (!wasmMod) return null;

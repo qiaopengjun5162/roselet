@@ -24,5 +24,12 @@ if (!code.startsWith(header)) {
   code = header + code;
 }
 
+
+// 导出 __wbg_get_imports 以便 wasm.ts 获取正确的 WASM import 对象
+code = code.replace(
+  /export \{ initSync, __wbg_init as default \};/,
+  'export { initSync, __wbg_init as default, __wbg_get_imports };'
+);
+
 fs.writeFileSync(gluePath, code);
 console.log('patch-wasm: WXWebAssembly 补丁注入成功');
