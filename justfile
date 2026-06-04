@@ -96,15 +96,20 @@ wasm:
 build-all: wasm build
     cd apps/web && pnpm build
 
+# 小程序初始化（从模板生成 project.config.json，需设置 TARO_APP_ID 环境变量）
+miniprogram-init:
+    bash scripts/init-miniprogram.sh
+
+
 # 为小程序构建 WASM（编译 + WXWebAssembly 补丁）
-wasm-mini:
+wasm-mini: miniprogram-init
     cd crates/recommend && wasm-pack build --target web --out-dir ../../apps/miniprogram/pkg
     node scripts/patch-wasm.js
 
 # 小程序开发模式（微信）
-miniprogram:
+miniprogram: miniprogram-init
     cd apps/miniprogram && pnpm dev:weapp
 
 # 小程序生产构建
-miniprogram-build:
+miniprogram-build: miniprogram-init
     cd apps/miniprogram && pnpm build:weapp

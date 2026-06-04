@@ -2,7 +2,7 @@
   "miniprogramRoot": "dist/weapp",
   "projectname": "roselet-miniprogram",
   "description": "Roselet 社区破冰花圃",
-  "appid": "wx4408068e26478673",
+  "appid": "YOUR_APPID_HERE",
   "setting": {
     "urlCheck": false,
     "es6": true,

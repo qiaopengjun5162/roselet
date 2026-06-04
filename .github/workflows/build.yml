@@ -90,6 +90,8 @@ jobs:
 
   miniprogram:
     name: Miniprogram Build
+    env:
+      TARO_APP_ID: wx4408068e26478673
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

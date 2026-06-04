@@ -5,3 +5,5 @@ pkg/
 
 .swc/
 coverage/
+project.config.json
+.env
