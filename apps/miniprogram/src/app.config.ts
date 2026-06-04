@@ -7,10 +7,9 @@ export default defineAppConfig({
     'pages/rose/index',
   ],
   window: {
-    navigationBarBackgroundColor: '#020d1a',
+    navigationBarBackgroundColor: '#060810',
     navigationBarTextStyle: 'white',
     navigationBarTitleText: 'Roselet',
-    backgroundColor: '#020d1a',
+    backgroundColor: '#060810',
   },
-  singlePage: {},
 });

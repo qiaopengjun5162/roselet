@@ -1,5 +1,7 @@
+/* 锁死根页面滚动，只在内部 ScrollView 中滚动 */
 page {
-  background: #020d1a;
-  color: #e2e8f0;
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #060810;
 }
