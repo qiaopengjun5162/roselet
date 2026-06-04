@@ -93,3 +93,22 @@ page::after { animation: breatheIndigo 10s ease-in-out infinite; }
   pointer-events: none;
   animation: clickBloom 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
+@keyframes petalFall3 {
+  0%   { transform: translateY(-5vh) translateX(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.2; }
+  50%  { transform: translateY(50vh) translateX(-20px) rotate(-160deg); }
+  90%  { opacity: 0.2; }
+  100% { transform: translateY(105vh) translateX(15px) rotate(-320deg); opacity: 0; }
+}
+@keyframes petalFall4 {
+  0%   { transform: translateY(-5vh) translateX(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.35; }
+  50%  { transform: translateY(50vh) translateX(50px) rotate(220deg); }
+  90%  { opacity: 0.2; }
+  100% { transform: translateY(105vh) translateX(-35px) rotate(400deg); opacity: 0; }
+}
+.petal-fall-5 { position: fixed; top: -5%; left: 22%; font-size: 22px; z-index: 0; pointer-events: none; opacity: 0; animation: petalFall3 13s 4s ease-in infinite; }
+.petal-fall-6 { position: fixed; top: -5%; left: 48%; font-size: 14px; z-index: 0; pointer-events: none; opacity: 0; animation: petalFall4 9s 1s ease-in infinite; }
+.petal-fall-7 { position: fixed; top: -5%; left: 68%; font-size: 20px; z-index: 0; pointer-events: none; opacity: 0; animation: petalFall1 11s 7s ease-in infinite; }
+.petal-fall-8 { position: fixed; top: -5%; left: 88%; font-size: 16px; z-index: 0; pointer-events: none; opacity: 0; animation: petalFall2 14s 5s ease-in infinite; }
