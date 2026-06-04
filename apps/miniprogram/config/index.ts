@@ -1,5 +1,6 @@
 import { defineConfig } from "@tarojs/cli";
 import path from "path";
+import webpack from "webpack";
 
 export default defineConfig({
   projectName: "roselet-miniprogram",
@@ -33,6 +34,14 @@ export default defineConfig({
   framework: "react",
   compiler: "webpack5",
   mini: {
+    webpackChain(chain) {
+      chain.output.publicPath("").globalObject("global");
+      chain.plugin("mp-runtime-patch").use(webpack.BannerPlugin, [{
+        banner: 'var document = typeof global !== "undefined" && global.document ? global.document : { baseURI: "/", currentScript: { baseURI: "/" } };',
+        raw: true,
+        include: /\.js$/,
+      }]);
+    },
     postcss: {
       pxtransform: { enable: true, config: {} },
       cssModules: {
