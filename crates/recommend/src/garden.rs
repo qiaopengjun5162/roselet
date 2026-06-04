@@ -13,7 +13,6 @@ pub struct RoseItem {
     pub created_at: String,
 }
 
-
 /// 屏幕环境参数（由前端传入）
 #[derive(Debug, Deserialize)]
 pub struct ScreenInfo {
@@ -61,9 +60,9 @@ impl GardenLayout {
 
         // 安全区补偿 —— 确保内容不被刘海/HomeBar遮挡
         let offset_top = if info.safe_area_top > 0 {
-            info.safe_area_top + 12  // 安全区基础上再加 12px 呼吸空间
+            info.safe_area_top + 12 // 安全区基础上再加 12px 呼吸空间
         } else {
-            16  // 无安全区时默认 16px
+            16 // 无安全区时默认 16px
         };
         let offset_bottom = if info.safe_area_bottom > 0 {
             info.safe_area_bottom + 8
@@ -71,7 +70,14 @@ impl GardenLayout {
             16
         };
 
-        Self { card_width, columns, gap, padding_x, offset_top, offset_bottom }
+        Self {
+            card_width,
+            columns,
+            gap,
+            padding_x,
+            offset_top,
+            offset_bottom,
+        }
     }
 
     /// 简化接口 — 向后兼容
@@ -94,7 +100,10 @@ pub struct GardenState {
 
 impl GardenState {
     pub fn new() -> Self {
-        Self { filter: String::from("all"), roses: Vec::new() }
+        Self {
+            filter: String::from("all"),
+            roses: Vec::new(),
+        }
     }
 
     pub fn set_roses(&mut self, roses: Vec<RoseItem>) {
@@ -133,8 +142,28 @@ mod tests {
     fn test_filter_all() {
         let mut state = GardenState::new();
         state.set_roses(vec![
-            RoseItem { id: "1".into(), color: "red".into(), gratitude: None, anxiety: None, hope: None, nickname: None, like_count: 0, ai_reply: None, created_at: "".into() },
-            RoseItem { id: "2".into(), color: "white".into(), gratitude: None, anxiety: None, hope: None, nickname: None, like_count: 0, ai_reply: None, created_at: "".into() },
+            RoseItem {
+                id: "1".into(),
+                color: "red".into(),
+                gratitude: None,
+                anxiety: None,
+                hope: None,
+                nickname: None,
+                like_count: 0,
+                ai_reply: None,
+                created_at: "".into(),
+            },
+            RoseItem {
+                id: "2".into(),
+                color: "white".into(),
+                gratitude: None,
+                anxiety: None,
+                hope: None,
+                nickname: None,
+                like_count: 0,
+                ai_reply: None,
+                created_at: "".into(),
+            },
         ]);
         state.set_filter("all".into());
         assert_eq!(state.filtered().len(), 2);
@@ -144,8 +173,28 @@ mod tests {
     fn test_filter_red() {
         let mut state = GardenState::new();
         state.set_roses(vec![
-            RoseItem { id: "1".into(), color: "red".into(), gratitude: None, anxiety: None, hope: None, nickname: None, like_count: 0, ai_reply: None, created_at: "".into() },
-            RoseItem { id: "2".into(), color: "white".into(), gratitude: None, anxiety: None, hope: None, nickname: None, like_count: 0, ai_reply: None, created_at: "".into() },
+            RoseItem {
+                id: "1".into(),
+                color: "red".into(),
+                gratitude: None,
+                anxiety: None,
+                hope: None,
+                nickname: None,
+                like_count: 0,
+                ai_reply: None,
+                created_at: "".into(),
+            },
+            RoseItem {
+                id: "2".into(),
+                color: "white".into(),
+                gratitude: None,
+                anxiety: None,
+                hope: None,
+                nickname: None,
+                like_count: 0,
+                ai_reply: None,
+                created_at: "".into(),
+            },
         ]);
         state.set_filter("red".into());
         assert_eq!(state.filtered().len(), 1);

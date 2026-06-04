@@ -59,7 +59,11 @@ const MAX_TOTAL_LEN: usize = 1500;
 /// Rust 驱动的表单验证 —— 返回类型化错误码，前端可做 i18n 映射
 pub fn validate_plant(input: &PlantInput) -> ValidationResult {
     if !VALID_COLORS.contains(&input.color.as_str()) {
-        return ValidationResult { valid: false, error: Some(ValidationError::InvalidColor), cleaned: None };
+        return ValidationResult {
+            valid: false,
+            error: Some(ValidationError::InvalidColor),
+            cleaned: None,
+        };
     }
 
     let g = input.gratitude.as_deref().unwrap_or("").trim();
@@ -67,19 +71,35 @@ pub fn validate_plant(input: &PlantInput) -> ValidationResult {
     let h = input.hope.as_deref().unwrap_or("").trim();
 
     if g.is_empty() && a.is_empty() && h.is_empty() {
-        return ValidationResult { valid: false, error: Some(ValidationError::EmptyContent), cleaned: None };
+        return ValidationResult {
+            valid: false,
+            error: Some(ValidationError::EmptyContent),
+            cleaned: None,
+        };
     }
 
     if g.len() > MAX_FIELD_LEN || a.len() > MAX_FIELD_LEN || h.len() > MAX_FIELD_LEN {
-        return ValidationResult { valid: false, error: Some(ValidationError::FieldTooLong { max: MAX_FIELD_LEN }), cleaned: None };
+        return ValidationResult {
+            valid: false,
+            error: Some(ValidationError::FieldTooLong { max: MAX_FIELD_LEN }),
+            cleaned: None,
+        };
     }
 
     if g.len() + a.len() + h.len() > MAX_TOTAL_LEN {
-        return ValidationResult { valid: false, error: Some(ValidationError::TotalTooLong { max: MAX_TOTAL_LEN }), cleaned: None };
+        return ValidationResult {
+            valid: false,
+            error: Some(ValidationError::TotalTooLong { max: MAX_TOTAL_LEN }),
+            cleaned: None,
+        };
     }
 
     if g.contains('\x00') || a.contains('\x00') || h.contains('\x00') {
-        return ValidationResult { valid: false, error: Some(ValidationError::NullByteInjection), cleaned: None };
+        return ValidationResult {
+            valid: false,
+            error: Some(ValidationError::NullByteInjection),
+            cleaned: None,
+        };
     }
 
     ValidationResult {
@@ -87,9 +107,21 @@ pub fn validate_plant(input: &PlantInput) -> ValidationResult {
         error: None,
         cleaned: Some(CleanedPlant {
             color: input.color.clone(),
-            gratitude: if g.is_empty() { None } else { Some(g.to_string()) },
-            anxiety: if a.is_empty() { None } else { Some(a.to_string()) },
-            hope: if h.is_empty() { None } else { Some(h.to_string()) },
+            gratitude: if g.is_empty() {
+                None
+            } else {
+                Some(g.to_string())
+            },
+            anxiety: if a.is_empty() {
+                None
+            } else {
+                Some(a.to_string())
+            },
+            hope: if h.is_empty() {
+                None
+            } else {
+                Some(h.to_string())
+            },
         }),
     }
 }
@@ -110,7 +142,12 @@ mod tests {
 
     #[test]
     fn test_valid_input() {
-        let input = PlantInput { color: "red".into(), gratitude: Some("感谢阳光".into()), anxiety: None, hope: None };
+        let input = PlantInput {
+            color: "red".into(),
+            gratitude: Some("感谢阳光".into()),
+            anxiety: None,
+            hope: None,
+        };
         let r = validate_plant(&input);
         assert!(r.valid);
         assert_eq!(r.cleaned.unwrap().gratitude.unwrap(), "感谢阳光");
@@ -118,7 +155,12 @@ mod tests {
 
     #[test]
     fn test_empty_rejected() {
-        let input = PlantInput { color: "red".into(), gratitude: None, anxiety: None, hope: None };
+        let input = PlantInput {
+            color: "red".into(),
+            gratitude: None,
+            anxiety: None,
+            hope: None,
+        };
         let r = validate_plant(&input);
         assert!(!r.valid);
         assert_eq!(r.error.unwrap(), ValidationError::EmptyContent);
@@ -126,13 +168,26 @@ mod tests {
 
     #[test]
     fn test_invalid_color() {
-        let input = PlantInput { color: "blue".into(), gratitude: Some("hi".into()), anxiety: None, hope: None };
-        assert_eq!(validate_plant(&input).error.unwrap(), ValidationError::InvalidColor);
+        let input = PlantInput {
+            color: "blue".into(),
+            gratitude: Some("hi".into()),
+            anxiety: None,
+            hope: None,
+        };
+        assert_eq!(
+            validate_plant(&input).error.unwrap(),
+            ValidationError::InvalidColor
+        );
     }
 
     #[test]
     fn test_trim_whitespace() {
-        let input = PlantInput { color: "white".into(), gratitude: None, anxiety: Some("  焦虑  ".into()), hope: None };
+        let input = PlantInput {
+            color: "white".into(),
+            gratitude: None,
+            anxiety: Some("  焦虑  ".into()),
+            hope: None,
+        };
         let r = validate_plant(&input);
         assert!(r.valid);
         assert_eq!(r.cleaned.unwrap().anxiety.unwrap(), "焦虑");
@@ -140,19 +195,37 @@ mod tests {
 
     #[test]
     fn test_null_byte_rejected() {
-        let input = PlantInput { color: "red".into(), gratitude: Some("hi\x00there".into()), anxiety: None, hope: None };
-        assert_eq!(validate_plant(&input).error.unwrap(), ValidationError::NullByteInjection);
+        let input = PlantInput {
+            color: "red".into(),
+            gratitude: Some("hi\x00there".into()),
+            anxiety: None,
+            hope: None,
+        };
+        assert_eq!(
+            validate_plant(&input).error.unwrap(),
+            ValidationError::NullByteInjection
+        );
     }
 
     #[test]
     fn test_max_length() {
-        let input = PlantInput { color: "yellow".into(), gratitude: Some("x".repeat(501)), anxiety: None, hope: None };
+        let input = PlantInput {
+            color: "yellow".into(),
+            gratitude: Some("x".repeat(501)),
+            anxiety: None,
+            hope: None,
+        };
         assert!(!validate_plant(&input).valid);
     }
 
     #[test]
     fn test_format_plant_request() {
-        let input = PlantInput { color: "red".into(), gratitude: Some("  hello  ".into()), anxiety: None, hope: Some("world".into()) };
+        let input = PlantInput {
+            color: "red".into(),
+            gratitude: Some("  hello  ".into()),
+            anxiety: None,
+            hope: Some("world".into()),
+        };
         let json = format_plant_request(&input);
         assert!(json.contains("\"gratitude\":\"hello\""));
         assert!(json.contains("\"hope\":\"world\""));
@@ -161,6 +234,9 @@ mod tests {
     #[test]
     fn test_error_message_chinese() {
         assert_eq!(ValidationError::EmptyContent.message(), "至少填写一项");
-        assert_eq!(ValidationError::InvalidColor.message(), "请选择有效的玫瑰颜色");
+        assert_eq!(
+            ValidationError::InvalidColor.message(),
+            "请选择有效的玫瑰颜色"
+        );
     }
 }

@@ -115,14 +115,18 @@ pub fn analyze_text(text: &str) -> JsValue {
 mod garden;
 mod plant;
 
-use garden::{GardenState, GardenLayout, RoseItem};
+use garden::{GardenLayout, GardenState, RoseItem};
 
 /// WASM: 根据屏幕参数和安全区计算卡片布局
 #[wasm_bindgen]
 pub fn compute_layout(screen_json: &str) -> JsValue {
     use garden::ScreenInfo;
     let info: ScreenInfo = serde_json::from_str(screen_json).unwrap_or(ScreenInfo {
-        width: 375, height: 667, safe_area_top: 0, safe_area_bottom: 0, is_web: false,
+        width: 375,
+        height: 667,
+        safe_area_top: 0,
+        safe_area_bottom: 0,
+        is_web: false,
     });
     let layout = GardenLayout::compute(&info);
     serde_wasm_bindgen::to_value(&layout).unwrap()
@@ -140,7 +144,7 @@ pub fn filter_roses(roses_json: &str, color_filter: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&filtered).unwrap()
 }
 
-use plant::{validate_plant, format_plant_request, PlantInput};
+use plant::{PlantInput, format_plant_request, validate_plant};
 
 /// WASM: 验证种花表单，返回 JSON (Rust 侧统一校验规则)
 #[wasm_bindgen]
