@@ -29,19 +29,21 @@ export default function Login() {
 
   return (
     <View className={styles.container}>
-      <Text className={styles.title}>🌹 Roselet</Text>
-      <Text className={styles.sub}>起个昵称，开始种花</Text>
-      <Input
-        className={styles.input}
-        placeholder="你的昵称（1-20字）"
-        maxlength={20}
-        value={nickname}
-        onInput={e => setNickname(e.detail.value)}
-      />
-      {error ? <Text className={styles.error}>{error}</Text> : null}
-      <Button className={styles.btn} loading={loading} disabled={loading} onClick={handleRegister}>
-        进入花圃
-      </Button>
+      <View className={styles.card}>
+        <Text className={styles.title}>🌹 Roselet</Text>
+        <Text className={styles.sub}>给自己取个名字，开始种花</Text>
+        <Input
+          className={styles.input}
+          placeholder="你想叫什么名字？"
+          maxlength={20}
+          value={nickname}
+          onInput={e => setNickname(e.detail.value)}
+        />
+        {error ? <Text className={styles.error}>{error}</Text> : null}
+        <Button className={styles.btn} loading={loading} disabled={loading} onClick={handleRegister}>
+          {loading ? '进入中...' : '进入花圃'}
+        </Button>
+      </View>
     </View>
   )
 }

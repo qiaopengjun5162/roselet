@@ -1,15 +1,16 @@
-.container { min-height: 100vh; background: #020d1a; padding: 24px; }
+.container { min-height: 100vh; background: #060810; padding: 24px; }
 .title { color: #f9a8d4; font-size: 20px; font-weight: bold; text-align: center; display: block; margin-bottom: 8px; }
-.rec { color: #86efac; font-size: 13px; text-align: center; display: block; margin-bottom: 24px; }
-.colors { display: flex; gap: 16px; justify-content: center; margin-top: 40px; }
-.colorCard { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; width: 90px; }
-.colorEmoji { font-size: 36px; }
+.rec { color: #86efac; font-size: 13px; text-align: center; display: block; margin-bottom: 20px; }
+.colors { display: flex; gap: 14px; justify-content: center; margin-top: 32px; }
+.colorCard { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; width: 90px; }
+.colorCard:active { border-color: rgba(244,63,94,0.4); background: rgba(244,63,94,0.08); }
+.colorEmoji { font-size: 34px; }
 .colorLabel { color: #e2e8f0; font-size: 13px; margin-top: 8px; }
 .fieldLabel { color: #94a3b8; font-size: 13px; margin-top: 20px; margin-bottom: 6px; display: block; }
-.textarea { width: 100%; min-height: 80px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: #e2e8f0; font-size: 14px; }
+.textarea { width: 100%; min-height: 80px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; color: #e2e8f0; font-size: 14px; box-sizing: border-box; }
 .error { color: #f87171; font-size: 13px; margin-top: 8px; display: block; }
-.btn { width: 100%; margin-top: 24px; background: #f43f5e; color: white; border-radius: 50px; font-size: 16px; }
-.back { color: #64748b; font-size: 13px; text-align: center; display: block; margin-top: 16px; }
-.successEmoji { font-size: 80px; text-align: center; display: block; margin-top: 100px; }
+.btn { width: 100%; margin-top: 24px; background: linear-gradient(135deg, #f43f5e, #ec4899); color: #fff; border: none; border-radius: 50px; font-size: 15px; font-weight: 600; padding: 14px 0; }
+.back { color: #64748b; font-size: 13px; text-align: center; display: block; margin-top: 14px; }
+.successEmoji { font-size: 72px; text-align: center; display: block; margin-top: 80px; }
 .successTitle { color: #f9a8d4; font-size: 22px; font-weight: bold; text-align: center; display: block; margin-top: 24px; }
-.successSub { color: #64748b; font-size: 14px; text-align: center; display: block; margin-top: 8px; margin-bottom: 32px; }
+.successSub { color: #64748b; font-size: 14px; text-align: center; display: block; margin-top: 8px; margin-bottom: 28px; }
