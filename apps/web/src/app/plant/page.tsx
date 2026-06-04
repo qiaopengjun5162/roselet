@@ -359,7 +359,7 @@ export default function PlantPage() {
             </div>
             <p className="text-sm text-muted-foreground">{FIELD_CONFIG[activeField].hint}</p>
             <textarea
-              className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm min-h-[120px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
+              className="w-full rounded-lg border border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 px-4 py-3 text-sm min-h-[120px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
               placeholder={FIELD_CONFIG[activeField].placeholder}
               value={getFieldValue(activeField)}
               onChange={(e) => setFieldValue(activeField, e.target.value)}

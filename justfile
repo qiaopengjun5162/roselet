@@ -19,7 +19,7 @@ clean:
 
 # 运行所有测试
 test:
-    cargo nextest run --all-features -j1
+    NO_PROXY=localhost,127.0.0.1 cargo nextest run --all-features -j1
     cd apps/web && pnpm test
 
 # 快速检查
