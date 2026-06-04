@@ -5,7 +5,6 @@ import type { Rose } from '@roselet/core'
 import { getGarden } from '@/api'
 import { RoseCard } from '@/components/RoseCard'
 import { NavBar } from '@/components/NavBar'
-import { COLOR_FILTERS } from '@/utils/constants'
 import styles from './index.module.css'
 
 export default function Garden() {
@@ -15,6 +14,8 @@ export default function Garden() {
   const [color, setColor] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const filtered = color ? roses.filter(r => r.color === color) : roses
 
   function load(p: number, c: string) {
     if (p === 1) setLoading(true)
@@ -27,22 +28,24 @@ export default function Garden() {
   useEffect(() => { load(1, color) }, [color])
   Taro.useDidShow(() => { load(1, color) })
 
+  const filters = [{ value: '', label: '全部' }, { value: 'red', label: '红' }, { value: 'white', label: '白' }, { value: 'yellow', label: '黄' }]
+
   return (
     <View className={styles.page}>
       <NavBar title="花圃" />
       <View className={styles.container}>
         <View className={styles.filters}>
-          {COLOR_FILTERS.map(f => (
+          {filters.map(f => (
             <Text key={f.value} className={`${styles.filter} ${color === f.value ? styles.active : ''}`} onClick={() => setColor(f.value)}>{f.label}</Text>
           ))}
         </View>
         {loading ? <Text className={styles.hint}>加载中...</Text>
           : error ? <Text className={styles.hint}>{error}</Text>
-          : roses.length === 0 ? <Text className={styles.hint}>花圃还是空的</Text>
+          : filtered.length === 0 ? <Text className={styles.hint}>花圃还是空的</Text>
           : (
             <ScrollView scrollY className={styles.list}>
-              {roses.map(r => <RoseCard key={r.id} rose={r} />)}
-              {roses.length < total && <Text className={styles.more} onClick={() => load(page + 1, color)}>加载更多</Text>}
+              {filtered.map(r => <RoseCard key={r.id} rose={r} />)}
+              {filtered.length < total && <Text className={styles.more} onClick={() => load(page + 1, color)}>加载更多</Text>}
             </ScrollView>
           )}
       </View>
