@@ -3,7 +3,7 @@ import { View, Text, Textarea, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { createRose } from '@/api'
 import { getToken } from '@/utils/storage'
-import { initWasm, getRecommendation } from '@/utils/wasm'
+import { initWasm, getRecommendation, validatePlant } from '@/utils/wasm'
 import { NavBar, TOTAL_HEADER_HEIGHT } from '@/components/NavBar'
 import { COLOR_OPTIONS } from '@/utils/constants'
 import styles from './index.module.css'
@@ -27,7 +27,11 @@ export default function Plant() {
     if (!gratitude.trim() && !anxiety.trim() && !hope.trim()) { setError('至少填写一项'); return }
     setSubmitting(true); setError('')
     try {
-      await createRose({ color, gratitude: gratitude.trim() || undefined, anxiety: anxiety.trim() || undefined, hope: hope.trim() || undefined })
+      const input = { color, gratitude: gratitude.trim() || undefined, anxiety: anxiety.trim() || undefined, hope: hope.trim() || undefined }
+      const result = validatePlant(input)
+      if (result && !result.valid) { setError(result.error || '校验失败'); setSubmitting(false); return }
+      const c = result?.cleaned
+      await createRose({ color: c?.color || color, gratitude: c?.gratitude || undefined, anxiety: c?.anxiety || undefined, hope: c?.hope || undefined })
       setStep('success')
     } catch { setError('提交失败，请重试') } finally { setSubmitting(false) }
   }

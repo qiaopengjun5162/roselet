@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { createRose, getToken, getMyRoses } from "@/lib/api";
 import { playClick, playPlant, playComplete } from "@/lib/sound";
-import { getRecommendation, type Recommendation } from "@/lib/recommend";
+import { getRecommendation, validatePlantInput, type Recommendation } from "@/lib/recommend";
 import { Fireworks } from "@/components/fireworks";
 import { RosePlayer } from "@/components/rose-player";
 
@@ -106,11 +106,25 @@ export default function PlantPage() {
     playPlant();
 
     try {
-      await createRose({
+      const result = await validatePlantInput({
         color,
         gratitude: gratitude.trim() || undefined,
         anxiety: anxiety.trim() || undefined,
         hope: hope.trim() || undefined,
+      });
+
+      if (result && !result.valid) {
+        setError(result.error || "校验失败");
+        setSubmitting(false);
+        return;
+      }
+
+      const cleaned = result?.cleaned;
+      await createRose({
+        color: cleaned?.color || color,
+        gratitude: cleaned?.gratitude || undefined,
+        anxiety: cleaned?.anxiety || undefined,
+        hope: cleaned?.hope || undefined,
       });
       playComplete();
       setStep("success");
