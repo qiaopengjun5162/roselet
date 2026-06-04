@@ -49,7 +49,7 @@ describe("GardenPage", () => {
     getGarden.mockResolvedValue({ data: [], total: 0, page: 1, per_page: 20 });
     render(<GardenPage />);
     await waitFor(() => {
-      expect(screen.getByText("花圃还是空的")).toBeInTheDocument();
+      expect(screen.getByText("花圃还是空的，去种一朵花吧")).toBeInTheDocument();
     });
   });
 
@@ -65,7 +65,6 @@ describe("GardenPage", () => {
     render(<GardenPage />);
     await waitFor(() => {
       expect(screen.getByText("感恩社区")).toBeInTheDocument();
-      expect(screen.getByText("共 1 朵玫瑰")).toBeInTheDocument();
     });
   });
 

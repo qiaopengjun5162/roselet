@@ -122,9 +122,9 @@ export default function PlantPage() {
       const cleaned = result?.cleaned;
       await createRose({
         color: cleaned?.color || color,
-        gratitude: cleaned?.gratitude || undefined,
-        anxiety: cleaned?.anxiety || undefined,
-        hope: cleaned?.hope || undefined,
+        gratitude: cleaned ? (cleaned.gratitude || undefined) : (gratitude.trim() || undefined),
+        anxiety: cleaned ? (cleaned.anxiety || undefined) : (anxiety.trim() || undefined),
+        hope: cleaned ? (cleaned.hope || undefined) : (hope.trim() || undefined),
       });
       playComplete();
       setStep("success");

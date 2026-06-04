@@ -32,11 +32,15 @@ const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn() }),
 }));
-
 jest.mock("@/lib/api", () => ({
   createRose: jest.fn(),
   getMyRoses: jest.fn().mockResolvedValue({ data: [], total: 0 }),
   getToken: jest.fn().mockReturnValue("jwt-token"),
+}));
+
+jest.mock("@/lib/recommend", () => ({
+  getRecommendation: jest.fn().mockResolvedValue(null),
+  validatePlantInput: jest.fn().mockResolvedValue({ valid: true, error: null, cleaned: null }),
 }));
 
 jest.mock("@/lib/sound", () => ({
@@ -49,12 +53,8 @@ jest.mock("@/components/rose-player", () => ({
   RosePlayer: () => <div data-testid="rose-player" />,
 }));
 
-jest.mock("@/lib/recommend", () => ({
-  getRecommendation: jest.fn().mockResolvedValue(null),
-}));
 
 const { createRose } = require("@/lib/api") as { createRose: jest.Mock };
-
 import PlantPage from "../page";
 
 describe("PlantPage", () => {
