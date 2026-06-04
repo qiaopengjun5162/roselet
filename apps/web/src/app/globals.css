@@ -22,10 +22,12 @@
 
 
 body {
+  letter-spacing: var(--tracking-body);
+  line-height: var(--leading-body);
   background: #0a0b14; /* fallback, CyberBackground handles visuals */
   height: 100dvh; overflow: hidden; overscroll-behavior: none;
   color: var(--foreground);
-  font-family: var(--font-geist-sans, Arial, sans-serif);
+  font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, sans-serif;
   transition: background 180s ease;
 }
 

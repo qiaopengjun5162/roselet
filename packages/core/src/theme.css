@@ -22,3 +22,17 @@
   --glow-indigo: rgba(79, 70, 229, 0.08);
   --glow-rose: rgba(244, 63, 94, 0.05);
 }
+
+/* ── 全局字体系统 ── */
+:root {
+  /* 中文衬线字体栈 — 标题用，优雅有文化感 */
+  --font-display: "Noto Serif SC", "Source Han Serif SC", "STSong", "Songti SC", "SimSun", "KaiTi", "楷体", serif;
+  /* 中文无衬线 — 正文用，清晰现代 */
+  --font-body: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "WenQuanYi Micro Hei", system-ui, sans-serif;
+  /* 字间距 — 中文需要更大间距 */
+  --tracking-heading: 0.08em;
+  --tracking-body: 0.02em;
+  /* 行高 — 中文推荐 1.8-2.0 */
+  --leading-heading: 1.4;
+  --leading-body: 1.85;
+}

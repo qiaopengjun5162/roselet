@@ -92,3 +92,10 @@ page::after {
   opacity: 0;
   animation: petalFall2 11s 2s ease-in infinite;
 }
+
+/* 全局字体 */
+page {
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  line-height: 1.85;
+}
