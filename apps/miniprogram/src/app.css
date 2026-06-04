@@ -7,7 +7,7 @@ page {
   background: #0a0b14;
 }
 
-/* 光晕气泡 — 用 ::before 伪元素模拟（小程序不支持 mix-blend-mode） */
+/* 光晕气泡 — page::before 左上 */
 page::before {
   content: "";
   position: fixed;
@@ -21,7 +21,7 @@ page::before {
   pointer-events: none;
 }
 
-/* 深海蓝光晕 */
+/* page::after 右下深海蓝 */
 page::after {
   content: "";
   position: fixed;

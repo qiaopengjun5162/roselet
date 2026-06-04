@@ -1,0 +1,24 @@
+/* Roselet 共享主题变量 — Web 和 Miniprogram 统一引用 */
+:root {
+  /* 背景层级 */
+  --color-bg-deep: #0a0b14;
+  --color-bg-nav: rgba(13, 10, 24, 0.82);
+  --color-bg-card: rgba(255, 255, 255, 0.04);
+  --color-border-card: rgba(255, 255, 255, 0.07);
+
+  /* 品牌色 */
+  --color-rose: #f43f5e;
+  --color-rose-glow: rgba(244, 63, 94, 0.35);
+  --color-purple: #a78bfa;
+  --color-purple-glow: rgba(139, 92, 246, 0.25);
+
+  /* 文字层级 */
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  /* 光晕色 */
+  --glow-purple: rgba(139, 92, 246, 0.06);
+  --glow-indigo: rgba(79, 70, 229, 0.08);
+  --glow-rose: rgba(244, 63, 94, 0.05);
+}

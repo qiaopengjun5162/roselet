@@ -8,7 +8,7 @@ export default defineAppConfig({
     'pages/rose/index',
   ],
   window: {
-    navigationBarBackgroundColor: "#0d0a18",
+    navigationBarBackgroundColor: "#0f0c1d",
     navigationBarTextStyle: "white",
     navigationBarTitleText: "Roselet",
     backgroundColor: "#0a0b14",
@@ -16,7 +16,7 @@ export default defineAppConfig({
   tabBar: {
     color: "#64748b",
     selectedColor: "#f43f5e",
-    backgroundColor: "#0d0a18",
+    backgroundColor: "#0f0c1d",
     borderStyle: "black",
     list: [
       {
