@@ -32,6 +32,14 @@ jest.mock("@/lib/sound", () => ({
   playNotify: jest.fn(),
 }));
 
+jest.mock("@/lib/useWasmStore", () => ({
+  useWasmStore: jest.fn().mockReturnValue({
+    items: [], total: 0, hasMore: false, loading: false,
+    error: null, filter: "all", dispatch: jest.fn(), ready: false,
+  }),
+}));
+
+
 const { getGarden } = require("@/lib/api") as { getGarden: jest.Mock };
 
 import GardenPage from "../page";
