@@ -1,13 +1,15 @@
 import { View, Text, Button } from "@tarojs/components";
+import { useState } from "react"
 import Taro from "@tarojs/taro";
 import { getToken } from "@/utils/storage";
-import { initWasm } from "@/utils/wasm";
+import { initWasm, generatePetals } from "@/utils/wasm";
 import { NavBar, TOTAL_HEADER_HEIGHT } from "@/components/NavBar";
 import { useBloomTap } from "@/components/BloomTap";
 import styles from "./index.module.css";
 export default function Index() {
   const { handleTap, bloomsView } = useBloomTap()
-  Taro.useLoad(() => { initWasm() })
+  const [petals, setPetals] = useState<any[]>([])
+  Taro.useLoad(() => { initWasm().then(() => { const p = generatePetals(8, 42); if (p) setPetals(p); }) })
 
   function handlePlant() {
     if (!getToken()) Taro.navigateTo({ url: '/pages/login/index' })
@@ -19,14 +21,7 @@ export default function Index() {
       <NavBar title="Roselet" />
       <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 32}px`, paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}>
         <View className={styles.glow} />
-        <Text className="petal-fall-1">🌸</Text>
-        <Text className="petal-fall-2">🌺</Text>
-        <Text className="petal-fall-3">🌷</Text>
-        <Text className="petal-fall-4">💮</Text>
-        <Text className="petal-fall-5">🏵️</Text>
-        <Text className="petal-fall-6">🌼</Text>
-        <Text className="petal-fall-7">✿</Text>
-        <Text className="petal-fall-8">❀</Text>
+        {petals.map((p, i) => (<Text key={i} style={{ position: "fixed", top: "-5%", left: p.left+"%", fontSize: p.size+"px", zIndex: 0, pointerEvents: "none", opacity: p.opacity, animation: "petalFall1 "+p.duration+"s "+p.delay+"s ease-in infinite" }}>{p.emoji}</Text>))}
         <Text className={`${styles.emoji} fade-in-up`}>🌹</Text>
         <Text className={`${styles.title} fade-in-up-d1`} style={{ fontFamily: 'STXingkai, KaiTi, 楷体, serif' }}>Roselet</Text>
         <Text className={`${styles.tagline} fade-in-up-d1`}>在星空下种下你的情绪</Text>
