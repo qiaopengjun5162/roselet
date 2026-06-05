@@ -27,8 +27,9 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
   }, []);
 
   const validateInput = useCallback(async () => {
-    if (feedback.trim().length > 0) {
-      const validation = await validateFeedback(feedback.trim());
+    const trimmed = feedback.trim();
+    if (trimmed.length > 0) {
+      const validation = await validateFeedback(trimmed);
       if (!validation.valid && validation.error) {
         setError(validation.error);
         setIsValidating(true);
@@ -36,6 +37,8 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
       } else {
         setError("");
       }
+    } else {
+      setError("");
     }
   }, [feedback]);
 
@@ -107,11 +110,11 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
         const errorData = await result.text();
         const errorMessage = errorData || "提交失败";
         setError(errorMessage);
-        announce(`错误：${errorMessage}`);
+        announce(`错误：${errorMessage}`, true);
       }
     } catch {
       setError("提交失败，请稍后重试");
-      announce('错误：提交失败，请稍后重试');
+      announce('错误：提交失败，请稍后重试', true);
     } finally {
       setSubmitting(false);
     }
