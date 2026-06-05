@@ -88,19 +88,16 @@ pub async fn create_refresh_token(pool: &PgPool, user_id: Uuid) -> Result<String
 pub async fn verify_refresh_token(
     pool: &PgPool,
     token: &str,
-    user_id: Uuid,
-) -> Result<bool, AppError> {
+) -> Result<Option<Uuid>, AppError> {
     let hash = hash_token(token);
-    let row = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM refresh_tokens WHERE token_hash = $1 AND user_id = $2 AND revoked = false AND expires_at > now())"
+    let user_id = sqlx::query_scalar::<_, Uuid>(
+        "SELECT user_id FROM refresh_tokens WHERE token_hash = $1 AND revoked = false AND expires_at > now() LIMIT 1"
     )
     .bind(&hash)
-    .bind(user_id)
-    .fetch_one(pool)
-    .await
-    ?;
+    .fetch_optional(pool)
+    .await?;
 
-    Ok(row)
+    Ok(user_id)
 }
 
 pub async fn revoke_refresh_tokens(pool: &PgPool, user_id: Uuid) -> Result<(), AppError> {

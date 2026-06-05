@@ -13,11 +13,6 @@ interface RefreshResponse {
   access_token: string;
 }
 
-interface RefreshRequest {
-  refresh_token: string;
-  user_id: string;
-}
-
 // 防止并发刷新：同一时间只有一个刷新请求
 let refreshing: Promise<string | null> | null = null;
 
@@ -45,18 +40,19 @@ function doRequest<T>(path: string, opts: RequestOptions, token?: string | null)
 }
 
 // 用 Refresh Token 换取新 Access Token，成功返回新 token，失败返回 null
-function refreshAccessToken(userId?: string | null): Promise<string | null> {
+interface RefreshResponse {
+  access_token: string;
+}
+
+function refreshAccessToken(): Promise<string | null> {
   if (refreshing) return refreshing;
 
   const refreshToken = getRefreshToken();
-  if (!refreshToken || !userId) return Promise.resolve(null);
+  if (!refreshToken) return Promise.resolve(null);
 
   refreshing = doRequest<RefreshResponse>('/api/auth/refresh', {
     method: 'POST',
-    data: {
-      refresh_token: refreshToken,
-      user_id: userId
-    },
+    data: { refresh_token: refreshToken },
   }).then((res) => {
     setToken(res.access_token);
     return res.access_token;
@@ -73,15 +69,13 @@ function refreshAccessToken(userId?: string | null): Promise<string | null> {
 
 export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const token = opts.auth ? getToken() : null;
-  const user = getUser();
 
   try {
     return await doRequest<T>(path, opts, token);
   } catch (err: unknown) {
-    // 401 且有 auth 要求时，尝试静默刷新
     const statusCode = (err as { statusCode?: number }).statusCode;
     if (statusCode === 401 && opts.auth) {
-      const newToken = await refreshAccessToken(user?.id);
+      const newToken = await refreshAccessToken();
       if (newToken) {
         // 用新 token 重试一次
         return doRequest<T>(path, opts, newToken);
@@ -93,19 +87,9 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
 
 export async function submitFeedback(content: string): Promise<boolean> {
   try {
-    const token = getToken();
-    const response = await wx.request({
-      url: `${BASE_URL}/api/feedback`,
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      data: { content },
-    });
-
-    return response.statusCode === 201;
-  } catch (err) {
+    await request<{ id: number }>('/api/feedback', { method: 'POST', auth: false, data: { content } });
+    return true;
+  } catch {
     return false;
   }
 }

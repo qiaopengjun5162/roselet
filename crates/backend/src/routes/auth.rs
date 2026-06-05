@@ -68,7 +68,6 @@ pub async fn profile(
 #[derive(Debug, serde::Deserialize)]
 pub struct RefreshRequest {
     pub refresh_token: String,
-    pub user_id: uuid::Uuid,
 }
 
 #[derive(Debug, Serialize)]
@@ -80,15 +79,12 @@ pub async fn refresh(
     State(state): State<AppState>,
     Json(input): Json<RefreshRequest>,
 ) -> Result<Json<RefreshResponse>, AppError> {
-    let valid =
-        auth::verify_refresh_token(&state.pool, &input.refresh_token, input.user_id).await?;
-    if !valid {
-        return Err(AppError::Auth("invalid or expired refresh token".into()));
-    }
+    let user_id = auth::verify_refresh_token(&state.pool, &input.refresh_token)
+        .await?
+        .ok_or_else(|| AppError::Auth("invalid or expired refresh token".into()))?;
 
-    // 发行新 access token（需要查用户昵称）
     let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
-        .bind(input.user_id)
+        .bind(user_id)
         .fetch_optional(&state.pool)
         .await?
         .ok_or(AppError::NotFound)?;
