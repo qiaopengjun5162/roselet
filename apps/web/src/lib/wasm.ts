@@ -12,6 +12,7 @@ interface WasmMod {
   color_emoji: (color: string) => string;
   color_label: (color: string) => string;
   compute_sky_params_wasm: (hour: number) => unknown;
+  generate_star_particles_wasm: (count: number, seed: bigint) => unknown;
 }
 
 let wasmModule: WasmMod | null = null;
@@ -38,4 +39,4 @@ export async function validateFeedback(content: string): Promise<FeedbackValidat
 }
 
 // 导出其他已有的 WASM 功能
-export { getRecommendation, analyzeTextWasm, getLayout, filterRosesInWasm, validatePlantInput, parseGardenResponse, parseRoseResponse, formatDate, generatePetals, roseToSoundParamsWasm, computeSkyParams, colorEmoji, colorLabel } from "./recommend";
+export { getRecommendation, analyzeTextWasm, getLayout, filterRosesInWasm, validatePlantInput, parseGardenResponse, parseRoseResponse, formatDate, generatePetals, roseToSoundParamsWasm, computeSkyParams, generateStarParticles, colorEmoji, colorLabel } from "./recommend";

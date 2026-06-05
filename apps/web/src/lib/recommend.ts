@@ -12,6 +12,7 @@ interface WasmMod {
   generate_petals_wasm: (count: number, seed: bigint) => unknown;
   rose_to_sound_params_wasm: (rose_json: string) => unknown;
   compute_sky_params_wasm: (hour: number) => unknown;
+  generate_star_particles_wasm: (count: number, seed: bigint) => unknown;
   color_emoji: (color: string) => string;
   color_label: (color: string) => string;
 }
@@ -51,6 +52,13 @@ export interface SkyParams { gradient: string; stars: number; nebula: number; la
 export async function computeSkyParams(hour: number): Promise<SkyParams | null> {
   const mod = await loadWasm(); if (!mod) return null;
   try { return mod.compute_sky_params_wasm(hour) as SkyParams; } catch { return null; }
+}
+
+export interface StarParticle { left: number; delay: number; duration: number; size: number; opacity: number }
+
+export async function generateStarParticles(count: number, seed: bigint): Promise<StarParticle[] | null> {
+  const mod = await loadWasm(); if (!mod) return null;
+  try { return mod.generate_star_particles_wasm(count, seed) as StarParticle[]; } catch { return null; }
 }
 
 // 颜色元数据 — 同步调用（WASM 已加载则走 Rust，否则 TS 兜底保证首屏不闪）

@@ -117,3 +117,20 @@ body {
   85%  { opacity: var(--petal-opacity, 0.25); }
   100% { transform: translateY(105vh) translateX(calc(0.4 * var(--sway, 30px))) rotate(360deg); opacity: 0; }
 }
+
+@keyframes star-fall {
+  0%   { transform: translateY(-10px) translateX(0); opacity: 0; }
+  10%  { opacity: var(--star-opacity, 0.25); }
+  90%  { opacity: var(--star-opacity, 0.25); }
+  100% { transform: translateY(100vh) translateX(20px); opacity: 0; }
+}
+
+@keyframes bottle-enter {
+  0%   { opacity: 0; transform: translateY(40px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes bottle-glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px var(--bottle-glow, rgba(244,63,94,0.15)), 0 0 60px var(--bottle-glow, rgba(244,63,94,0.05)); }
+  50%      { box-shadow: 0 0 30px var(--bottle-glow, rgba(244,63,94,0.25)), 0 0 80px var(--bottle-glow, rgba(244,63,94,0.08)); }
+}

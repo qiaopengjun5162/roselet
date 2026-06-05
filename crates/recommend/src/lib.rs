@@ -306,6 +306,50 @@ pub fn compute_sky_params_wasm(hour: u32) -> JsValue {
     serde_wasm_bindgen::to_value(&sky::compute_sky_params(hour)).unwrap()
 }
 
+/// WASM: 生成星尘粒子配置 — 确定性伪随机 left/delay/duration/size/opacity
+#[wasm_bindgen]
+pub fn generate_star_particles_wasm(count: u32, seed: u64) -> JsValue {
+    use std::hash::{Hash, Hasher};
+    use std::collections::hash_map::DefaultHasher;
+
+    #[derive(Serialize)]
+    struct StarParticle {
+        left: f64,
+        delay: f64,
+        duration: f64,
+        size: f64,
+        opacity: f64,
+    }
+
+    let mut particles = Vec::with_capacity(count as usize);
+    let mut h = seed;
+
+    for i in 0..count {
+        let mut hasher = DefaultHasher::new();
+        h.hash(&mut hasher);
+        i.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        let r1 = (hash >> 16) as f64 / 65535.0;
+        let r2 = ((hash >> 32) & 0xFFFF) as f64 / 65535.0;
+        let r3 = (hash & 0xFFFF) as f64 / 65535.0;
+        let r4 = ((hash >> 48) as u8) as f64 / 255.0;
+        let r5 = ((hash >> 40) as u8) as f64 / 255.0;
+
+        particles.push(StarParticle {
+            left: (r1 * 100.0 * 100.0).round() / 100.0,
+            delay: (r2 * 10.0 * 100.0).round() / 100.0,
+            duration: 15.0 + (r3 * 10.0 * 100.0).round() / 100.0,
+            size: 1.0 + (r4 * 2.0 * 100.0).round() / 100.0,
+            opacity: 0.15 + (r5 * 0.35 * 100.0).round() / 100.0,
+        });
+
+        h = hash.wrapping_add(1);
+    }
+
+    serde_wasm_bindgen::to_value(&particles).unwrap()
+}
+
 /// WASM: 格式化种花请求，返回可直接 POST 的 JSON 字符串
 #[wasm_bindgen]
 pub fn format_plant_request_wasm(json: &str) -> String {
