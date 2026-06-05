@@ -3,24 +3,23 @@ import { View, Text, Textarea, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { createRose } from '@/api'
 import { getToken } from '@/utils/storage'
-import { initWasm, getRecommendation, validatePlant } from '@/utils/wasm'
+import { initWasm, getRecommendation, validatePlant, colorOptions } from '@/utils/wasm'
 import { NavBar, TOTAL_HEADER_HEIGHT } from '@/components/NavBar'
-import { COLOR_OPTIONS } from '@/utils/constants'
 import styles from './index.module.css'
 
 export default function Plant() {
-  const [step, setStep] = useState<'color' | 'form' | 'success'>('color')
-  const [color, setColor] = useState('')
+  const [step, setStep]           = useState<'color' | 'form' | 'success'>('color')
+  const [color, setColor]         = useState('')
   const [gratitude, setGratitude] = useState('')
-  const [anxiety, setAnxiety] = useState('')
-  const [hope, setHope] = useState('')
+  const [anxiety, setAnxiety]     = useState('')
+  const [hope, setHope]           = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [recColor, setRecColor] = useState<string | null>(null)
+  const [error, setError]         = useState('')
+  const [recColor, setRecColor]   = useState<string | null>(null)
 
   useEffect(() => {
     if (!getToken()) { Taro.navigateTo({ url: '/pages/login/index' }); return }
-    initWasm().then(ok => { if (ok) { const rec = getRecommendation([]); if (rec) setRecColor(rec.color_suggestion.color) } })
+    initWasm().then(ok => { if (ok) { const rec = getRecommendation([]); if (rec) setRecColor((rec as any).color_suggestion.color) } })
   }, [])
 
   async function handleSubmit() {
@@ -36,16 +35,17 @@ export default function Plant() {
     } catch { setError('提交失败，请重试') } finally { setSubmitting(false) }
   }
 
-  const colorMeta = COLOR_OPTIONS.find(c => c.id === color)
+  const options   = colorOptions()
+  const colorMeta = options.find(c => c.id === color)
 
   if (step === 'color') return (
     <View className={styles.page}>
       <NavBar title="种一朵玫瑰" />
       <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 16}px` }}>
         <Text className={styles.title}>选择玫瑰颜色</Text>
-        {recColor && <Text className={styles.rec}>💡 推荐：{COLOR_OPTIONS.find(c => c.id === recColor)?.label}</Text>}
+        {recColor && <Text className={styles.rec}>💡 推荐：{options.find(c => c.id === recColor)?.label}</Text>}
         <View className={styles.colors}>
-          {COLOR_OPTIONS.map(c => (
+          {options.map(c => (
             <View key={c.id} className={styles.colorCard} onClick={() => { setColor(c.id); setStep('form') }}>
               <Text className={styles.colorEmoji}>{c.emoji}</Text>
               <Text className={styles.colorLabel}>{c.label}</Text>

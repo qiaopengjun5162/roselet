@@ -113,6 +113,7 @@ pub fn analyze_text(text: &str) -> JsValue {
 }
 
 mod audio;
+mod color;
 mod datefmt;
 mod garden;
 mod petal;

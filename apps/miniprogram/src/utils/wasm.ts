@@ -10,6 +10,8 @@ interface GlueMod {
   compute_layout: (json: string) => unknown; filter_roses: (json: string, f: string) => unknown;
   validate_plant_input: (json: string) => unknown; format_plant_request_wasm: (json: string) => string;
   parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
+  color_emoji: (color: string) => string; color_label: (color: string) => string;
+  color_options: () => unknown;
   __wbg_get_imports: () => Record<string, unknown>; default: (b: ArrayBuffer) => Promise<void>;
 }
 
@@ -49,3 +51,13 @@ export function generatePetals(count: number, seed: number): PetalConfig[] | nul
   if (!api) return null;
   try { return api.generate_petals_wasm(count, seed) as PetalConfig[]; } catch { return null; }
 }
+
+export interface ColorMeta { id: string; label: string; emoji: string }
+const COLOR_FALLBACK: ColorMeta[] = [
+  { id: 'red', label: '红玫瑰', emoji: '🌹' },
+  { id: 'white', label: '白玫瑰', emoji: '🤍' },
+  { id: 'yellow', label: '黄玫瑰', emoji: '💛' },
+];
+export function colorEmoji(color: string): string { if (!api) return COLOR_FALLBACK.find(c => c.id === color)?.emoji ?? '🌸'; try { return api.color_emoji(color); } catch { return '🌸'; } }
+export function colorLabel(color: string): string { if (!api) return COLOR_FALLBACK.find(c => c.id === color)?.label ?? color; try { return api.color_label(color); } catch { return color; } }
+export function colorOptions(): ColorMeta[] { if (!api) return COLOR_FALLBACK; try { return api.color_options() as ColorMeta[]; } catch { return COLOR_FALLBACK; } }
