@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { validateFeedback } from "@/lib/wasm";
@@ -14,10 +14,18 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [lastKeystroke, setLastKeystroke] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
 
-  // 使用 WASM 进行实时验证
+  const announcementRef = useRef<HTMLDivElement>(null);
+  const errorAnnouncementRef = useRef<HTMLDivElement>(null);
+  const typingIndicatorRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+
+  const announce = useCallback((message: string, isError = false) => {
+    const el = isError ? errorAnnouncementRef.current : announcementRef.current;
+    if (el) el.textContent = message;
+  }, []);
+
   const validateInput = useCallback(async () => {
     if (feedback.trim().length > 0) {
       const validation = await validateFeedback(feedback.trim());
@@ -25,6 +33,8 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
         setError(validation.error);
         setIsValidating(true);
         setTimeout(() => setIsValidating(false), 2000);
+      } else {
+        setError("");
       }
     }
   }, [feedback]);
@@ -38,15 +48,11 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
   }, [feedback, validateInput]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setFeedback(value);
-    setLastKeystroke(Date.now());
+    setFeedback(e.target.value);
   }, []);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + Enter to submit
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !submitting) {
         e.preventDefault();
         const form = document.getElementById('feedback-form');
@@ -55,7 +61,6 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
         }
       }
 
-      // Escape to clear error
       if (e.key === 'Escape' && error) {
         setError('');
       }
@@ -68,20 +73,12 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Announce form submission to screen readers
-    const announcement = document.getElementById('form-announcement');
-    if (announcement) {
-      announcement.textContent = '正在提交反馈...';
-    }
+    announce('正在提交反馈...');
 
-    // 使用 WASM 验证
     const validation = await validateFeedback(feedback.trim());
     if (!validation.valid) {
       setError(validation.error || "请输入反馈内容");
-      const errorAnnouncement = document.getElementById('error-announcement');
-      if (errorAnnouncement) {
-        errorAnnouncement.textContent = `错误：${validation.error || '请输入反馈内容'}`;
-      }
+      announce(`错误：${validation.error || '请输入反馈内容'}`, true);
       return;
     }
 
@@ -104,28 +101,17 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
         setSubmitted(true);
         setFeedback("");
         onSubmitSuccess?.();
-
-        // Announce success to screen readers
-        if (announcement) {
-          announcement.textContent = '反馈提交成功！';
-        }
-
+        announce('反馈提交成功！');
         setTimeout(() => setSubmitted(false), 3000);
       } else {
         const errorData = await result.text();
         const errorMessage = errorData || "提交失败";
         setError(errorMessage);
-
-        // Announce error to screen readers
-        if (announcement) {
-          announcement.textContent = `错误：${errorMessage}`;
-        }
+        announce(`错误：${errorMessage}`);
       }
-    } catch (err) {
+    } catch {
       setError("提交失败，请稍后重试");
-      if (announcement) {
-        announcement.textContent = '错误：提交失败，请稍后重试';
-      }
+      announce('错误：提交失败，请稍后重试');
     } finally {
       setSubmitting(false);
     }
@@ -138,16 +124,10 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
         aria-live="polite"
         className="text-center py-12 relative overflow-hidden"
       >
-        {/* Screen reader announcement */}
-        <div id="form-announcement" className="sr-only"></div>
-
-        {/* 背景装饰 */}
         <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-pink-500/5"></div>
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-transparent to-black/20"></div>
 
-        {/* 成功动画 */}
         <div className="relative z-10 animate-in fade-in duration-500">
-          {/* 成功动画图标 */}
           <div className="relative inline-flex items-center justify-center w-20 h-20 mb-6">
             <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full animate-ping opacity-20"></div>
             <div className="relative w-16 h-16 bg-gradient-to-br from-green-500/20 to-emerald-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-green-500/30 animate-in zoom-in duration-300">
@@ -164,12 +144,10 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
             感谢您的宝贵反馈，您的意见将帮助我们持续改进产品体验。
           </p>
 
-          {/* 装饰线条 */}
           <div className="mt-6 flex justify-center animate-in fade-in duration-500 delay-300">
             <div className="h-px bg-gradient-to-r from-transparent via-green-500/30 to-transparent w-32"></div>
           </div>
 
-          {/* 可访问的关闭按钮提示 */}
           <div className="mt-6 animate-in fade-in duration-500 delay-400">
             <p className="text-xs text-slate-500" aria-hidden="true">
               3秒后自动关闭
@@ -189,24 +167,27 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
       className="space-y-6 relative"
       noValidate
     >
-      {/* Screen reader announcements */}
       <div
-        id="error-announcement"
+        ref={announcementRef}
+        className="sr-only"
+        aria-live="polite"
+        aria-atomic="true"
+      ></div>
+      <div
+        ref={errorAnnouncementRef}
         className="sr-only"
         aria-live="assertive"
         aria-atomic="true"
       ></div>
       <div
-        id="typing-indicator"
+        ref={typingIndicatorRef}
         className="sr-only"
         aria-live="polite"
       ></div>
 
-      {/* 背景装饰 */}
       <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 via-transparent to-pink-500/5 rounded-xl -z-10"></div>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-transparent to-black/10 rounded-xl -z-10"></div>
 
-      {/* 标题区域 */}
       <div className="relative mb-8">
         <div className="absolute -top-4 -left-4 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl"></div>
         <div className="absolute -bottom-4 -right-4 w-40 h-40 bg-pink-500/10 rounded-full blur-2xl"></div>
@@ -231,20 +212,17 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
         </div>
       </div>
 
-      {/* 输入区域 */}
       <div className="relative">
         <label
           htmlFor="feedback"
           className="text-sm font-medium text-slate-300 mb-3 block"
-          aria-required="true"
         >
           您的反馈
         </label>
         <div className="relative">
-          {/* 装饰边框 */}
           <div
+            ref={glowRef}
             className="absolute inset-0 bg-gradient-to-r from-rose-500/20 to-pink-500/20 rounded-xl blur-sm opacity-0 -z-10 transition-opacity duration-300 pointer-events-none"
-            id="feedback-glow"
           ></div>
 
           <Textarea
@@ -253,18 +231,15 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
             placeholder="请描述您的建议、遇到的问题或其他想法..."
             value={feedback}
             onChange={handleInputChange}
-            onFocus={(e) => {
-              const glow = document.getElementById('feedback-glow');
-              if (glow) glow.classList.add('opacity-100');
+            onFocus={() => {
+              if (glowRef.current) glowRef.current.classList.add('opacity-100');
             }}
-            onBlur={(e) => {
-              const glow = document.getElementById('feedback-glow');
-              if (glow) glow.classList.remove('opacity-100');
+            onBlur={() => {
+              if (glowRef.current) glowRef.current.classList.remove('opacity-100');
             }}
             onKeyDown={(e) => {
-              // Typing indicator for screen readers
               if (e.key.length === 1) {
-                const indicator = document.getElementById('typing-indicator');
+                const indicator = typingIndicatorRef.current;
                 if (indicator) {
                   indicator.textContent = '正在输入...';
                   setTimeout(() => {
@@ -276,6 +251,7 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
               }
             }}
             aria-describedby="char-count validation-hint"
+            aria-required="true"
             required
             minLength={5}
             maxLength={500}
@@ -283,7 +259,6 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
           />
         </div>
 
-        {/* 字符计数器和提示 */}
         <div className="flex items-center justify-between mt-3">
           <div className="flex items-center gap-2">
             <div
@@ -307,6 +282,7 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
             </p>
           </div>
           <span
+            id="char-count"
             className={`text-xs font-mono font-light tracking-wider transition-colors duration-300 ${
               feedback.length > 450
                 ? 'text-red-400 animate-pulse'
@@ -323,7 +299,6 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
         </div>
       </div>
 
-      {/* 错误提示 */}
       {error && (
         <div
           role="alert"
@@ -336,14 +311,13 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="text-sm text-red-400 font-medium" aria-live="assertive">
+            <p className="text-sm text-red-400 font-medium">
               {error}
             </p>
           </div>
         </div>
       )}
 
-      {/* 验证中提示 */}
       {isValidating && feedback.length > 0 && feedback.length < 5 && (
         <div className="flex items-center gap-2 text-xs text-amber-400 animate-pulse">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -353,20 +327,15 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
         </div>
       )}
 
-      {/* 提交按钮 */}
       <Button
         type="submit"
         disabled={submitting || !feedback.trim()}
         aria-describedby={submitting ? "submitting" : undefined}
         className="w-full relative overflow-hidden group"
       >
-        {/* 背景装饰 */}
         <div className="absolute inset-0 bg-gradient-to-r from-rose-600 to-pink-600 opacity-100 group-hover:opacity-90 transition-opacity duration-200"></div>
-
-        {/* 动态光泽效果 */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
-        {/* 按钮内容 */}
         <span
           className="relative z-10 flex items-center justify-center gap-3"
           role="status"
@@ -395,7 +364,6 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
         </span>
       </Button>
 
-      {/* 键盘快捷键提示 */}
       <div className="text-center text-xs text-slate-500 mt-4" aria-hidden="true">
         按 Ctrl+Enter 快速提交
       </div>
