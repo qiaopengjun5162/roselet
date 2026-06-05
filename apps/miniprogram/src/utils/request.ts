@@ -1,4 +1,4 @@
-import { getToken, setToken, getRefreshToken, logout, getUser } from '@/utils/storage';
+import { getToken, setToken, getRefreshToken, logout } from '@/utils/storage';
 
 const BASE_URL = 'http://localhost:3001';
 
