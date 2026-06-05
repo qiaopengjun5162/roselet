@@ -42,10 +42,17 @@ roselet/
 ## 测试状态
 ```
 Rust backend:    87 passed  (76 passing; 11 需 DB 启动)
-Rust WASM:       69 passed  (含 audio.rs 12 + color.rs 3)
+Rust WASM:       76 passed  (含 audio 12 + emotion 11 + color 3 + sky 7)
 Web frontend:    86 passed
 Miniprogram:     42 passed
-Total:          284 passed（功能测试全绿，后端需拉起 DB）
+Total:          291 passed
+
+llvm-cov (recommend): 81.94% 行覆盖
+  100%: petal, sky, keywords
+  99%+: garden (99.61%), audio (97.87%)
+  90%+: api_client (94.79%), plant (93.06%), emotion (91.43%), store (90.21%)
+  70%+: datefmt (89.36%), flowers (70.41% - 无专用测试)
+  64%:  color (无专用测试)
 ```
 
 ## WASM 模块清单（crates/recommend/src/）
@@ -90,9 +97,11 @@ just miniprogram-build # 小程序生产构建
 
 ## API
 ```
-POST   /api/auth/register  # 用户注册（JWT）
+POST   /api/auth/register  # 用户注册（JWT）【注意：仍用 30 天单令牌，待改双令牌】
+POST   /api/auth/refresh   # 刷新 Access Token
+POST   /api/auth/logout    # 注销（撤销 Refresh Token）
 GET    /health             # 健康检查（数据库连接 + 版本信息）
-POST   /api/rose           # 种一朵玫瑰（后台异步生成 AI 回复）
+POST   /api/rose           # 种一朵玫瑰（后台异步生成 AI 回复）→ 201 Created
 PUT    /api/rose/:id       # 编辑玫瑰（仅 owner）
 DELETE /api/rose/:id       # 删除玫瑰（仅 owner）
 GET    /api/garden         # 获取花圃（分页，可选 ?color=red/white/yellow）
@@ -102,8 +111,8 @@ GET    /api/user/profile   # 获取用户资料 + 种花统计（需 JWT）
 POST   /api/rose/:id/like  # 点赞/取消点赞（需 JWT）
 GET    /api/ws             # WebSocket 实时推送
 GET    /swagger            # Swagger API 文档
-GET    /oscilloscope       # 情绪示波器（前端路由，非 API）
-POST   /api/feedback       # 提交反馈（可选 JWT，匿名/登录均可）【迁移待应用】
+GET    /api/openapi.json   # OpenAPI 3.0 规范 JSON
+POST   /api/feedback       # 提交反馈（可选 JWT，匿名/登录均可）
 ```
 
 ## 开发工具链

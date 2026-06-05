@@ -1236,4 +1236,52 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 | about/page.tsx | 硬编码 emoji | WASM 驱动 | Rust 同源 |
 | sky.rs | 不存在 | 84 行 | 新增 Rust 模块 |
 
+## 2026-06-05 会话 #26：全维度审计 + 流光连结 + CRITICAL 修复
+
+### 完成的工作
+
+#### 情绪流光连结（音-色-情绪闭环）
+- `useEmotionSound.ts`：Rust analyzeTextWasm → Tone.js 环境音合成
+  - 感恩→sine 220Hz, 焦虑→sawtooth 180Hz, 期待→triangle 264Hz
+  - 音量随情绪强度动态 -35~-20dB, 停止输入 2s 自动 fade out
+- `feedback-bottle.tsx`：辉光色随情绪实时渐变 (gratitude→玫瑰红, anxiety→天蓝, hope→花苞紫)
+- 三步审计修复：提取 buildEmotion() 纯函数, mountedRef 防卸载后 setState, 魔法数字→命名常量
+- star-bottle.tsx: onMouseEnter/onMouseLeave 操作 DOM → CSS hover 伪类
+- silent-error-boundary.tsx: 三个瓶子独立包裹, fallback "这部分暂时无法显示，但花圃还在"
+
+#### CLAUDE.md 强化
+- 架构原则: 80/20 → 90/10 Rust-TS
+- 新增强制判断标准: "TS 文件里的 if/switch/for/while 必须能解释为什么不能是 Rust WASM 调用"
+- API 文档: 补 refresh/logout/openapi.json 三个未文档化端点
+- 测试状态: 更新 to 291 tests + llvm-cov 覆盖率数据
+
+#### justfile 扩展
+- 新增 dev-web, web-test, web-build, wasm-test, backend-test 5 个快捷命令
+
+#### 全维度审计（4 个 Agent 并行 + llvm-cov）
+- PRODUCT.md 对齐: 5/10 (交互式 2D/3D 玫瑰/扫码/入圃动画缺失)
+- WASM 模块拓扑: 28 导出, 纯 DAG, flowers+keywords 零测试
+- TS 残留: 2 CRITICAL (已修), 2 WARNING, 5 DEAD
+- 测试覆盖: 5 个后端路由无集成测试, 13/15 组件无测试
+- llvm-cov: 81.94% 行覆盖 (petal/sky/keywords 100%)
+
+#### CRITICAL 修复
+- api.ts: getGarden/createRose 改用 Rust WASM build_garden_url/build_plant_body
+- lib.rs: 删除 6 个死 WASM 导出 (~170 行 + regex 依赖)
+- POST /api/rose: 200 OK → 201 Created (REST 规范)
+- 3 个集成测试断言同步更新
+
+### 仍开放（下次会话优先级）
+| P0 | just migrate 应用 007 → /api/feedback 可运行 |
+| P0 | register 改 Short-lived Access (15min) + Refresh (30d) 双令牌 |
+| P1 | flowers.rs (70.41%) + color.rs (64%) 补专用测试 |
+| P1 | 5 个后端路由无集成测试 (health/refresh/logout/swagger/openapi.json) |
+| P2 | packages/core 3 个零调用文件清理 |
+| P2 | Fireworks 粒子算法下沉 WASM |
+
+### 当前测试状态
+- Rust WASM: 76 tests | Web: 86 tests | Miniprogram: 42 tests
+- llvm-cov: 81.94%
+- clippy + fmt 干净
+
 <!-- 下次会话在此处继续记录 -->
