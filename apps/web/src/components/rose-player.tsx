@@ -81,6 +81,7 @@ export function RosePlayer({ rose, autoPlay = false, durationMs, canvasSize = 20
   // Canvas 利萨如绘制
   useEffect(() => {
     if (!playing || !params) return;
+    const p = params;
     const canvas = canvasRef.current;
     if (!canvas || !analyserLRef.current || !analyserRRef.current) return;
     const ctx2d = canvas.getContext("2d")!;
@@ -103,10 +104,10 @@ export function RosePlayer({ rose, autoPlay = false, durationMs, canvasSize = 20
       const pts = trailRef.current;
       if (pts.length < 2) return;
       ctx2d.lineWidth = 1.4; ctx2d.shadowBlur = 8;
-      ctx2d.shadowColor = params.glow; ctx2d.lineCap = "round";
+      ctx2d.shadowColor = p.glow; ctx2d.lineCap = "round";
       for (let i = 1; i < pts.length; i++) {
         const alpha = Math.floor((i / pts.length) * 200).toString(16).padStart(2, "0");
-        ctx2d.strokeStyle = params.stroke + alpha;
+        ctx2d.strokeStyle = p.stroke + alpha;
         ctx2d.beginPath();
         ctx2d.moveTo(pts[i - 1].x, pts[i - 1].y);
         ctx2d.lineTo(pts[i].x, pts[i].y);

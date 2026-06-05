@@ -1,4 +1,4 @@
-import type { FeedbackValidation } from "@roselet/core";
+interface FeedbackValidation { valid: boolean; error?: string }
 
 interface WasmMod {
   recommend: (json: string) => unknown; analyze_text: (text: string) => unknown;

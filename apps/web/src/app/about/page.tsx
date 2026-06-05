@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getUser } from "@/lib/api";
@@ -218,16 +218,12 @@ export default function AboutPage() {
                   </p>
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800" asChild>
-                    <Link href="https://github.com/qiaopengjun5162" target="_blank">
-                      <span className="mr-2">📁</span> GitHub
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800" asChild>
-                    <Link href="mailto:qiaopengjun5162@gmail.com">
-                      <span className="mr-2">📧</span> Email
-                    </Link>
-                  </Button>
+                  <Link href="https://github.com/qiaopengjun5162" target="_blank" className={buttonVariants({ variant: "outline", size: "sm", className: "border-slate-600 text-slate-300 hover:bg-slate-800" })}>
+                    <span className="mr-2">📁</span> GitHub
+                  </Link>
+                  <Link href="mailto:qiaopengjun5162@gmail.com" className={buttonVariants({ variant: "outline", size: "sm", className: "border-slate-600 text-slate-300 hover:bg-slate-800" })}>
+                    <span className="mr-2">📧</span> Email
+                  </Link>
                 </div>
               </div>
             </div>
@@ -297,10 +293,8 @@ export default function AboutPage() {
                 <div className="text-sm text-slate-400">
                   🌟 Star our GitHub repo to support the project
                 </div>
-                <Link href="https://github.com/qiaopengjun5162/roselet" target="_blank">
-                  <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800">
-                    查看源代码
-                  </Button>
+                <Link href="https://github.com/qiaopengjun5162/roselet" target="_blank" className={buttonVariants({ variant: "outline", size: "sm", className: "border-slate-600 text-slate-300 hover:bg-slate-800" })}>
+                  查看源代码
                 </Link>
               </div>
             </div>
