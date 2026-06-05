@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getUser } from "@/lib/api";
 import { FeedbackForm } from "@/components/feedback-form";
+import { ColorEmoji, ColorLabel } from "@/components/color-meta";
 
 export const metadata: Metadata = {
   title: "关于我们 - Roselet",
@@ -29,7 +30,7 @@ export default function AboutPage() {
           <Card className="bg-gradient-to-br from-red-500/10 to-transparent border-red-500/20">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-red-300">
-                <span className="text-2xl">🌹</span> 情感表达
+                <ColorEmoji color="red" className="text-2xl" /> 情感表达
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -79,13 +80,13 @@ export default function AboutPage() {
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-3 gap-4">
               <div className="text-center p-4 rounded-lg bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/20">
-                <div className="text-3xl mb-2">🌹</div>
-                <h3 className="font-semibold text-red-300">玫瑰（感恩）</h3>
+                <ColorEmoji color="red" className="text-3xl mb-2 block" />
+                <h3 className="font-semibold text-red-300"><ColorLabel color="red" /></h3>
                 <p className="text-sm text-slate-400 mt-1">感谢身边的人和事</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/20">
-                <div className="text-3xl mb-2">🌸</div>
-                <h3 className="font-semibold text-yellow-300">花苞（期待）</h3>
+                <ColorEmoji color="yellow" className="text-3xl mb-2 block" />
+                <h3 className="font-semibold text-yellow-300"><ColorLabel color="yellow" /></h3>
                 <p className="text-sm text-slate-400 mt-1">对未来的美好期许</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-gradient-to-br from-gray-500/10 to-gray-500/5 border border-gray-500/20">

@@ -119,6 +119,7 @@ mod datefmt;
 mod garden;
 mod petal;
 mod plant;
+mod sky;
 mod store;
 
 use garden::{GardenLayout, GardenState, RoseItem};
@@ -297,6 +298,12 @@ pub fn rose_to_sound_params_wasm(rose_json: &str) -> JsValue {
             like_count: None,
         });
     serde_wasm_bindgen::to_value(&audio::rose_to_sound_params_internal(&input)).unwrap()
+}
+
+/// WASM: 根据小时(0-23)返回天空参数 — 梯度/星空/星云/时段标签
+#[wasm_bindgen]
+pub fn compute_sky_params_wasm(hour: u32) -> JsValue {
+    serde_wasm_bindgen::to_value(&sky::compute_sky_params(hour)).unwrap()
 }
 
 /// WASM: 格式化种花请求，返回可直接 POST 的 JSON 字符串

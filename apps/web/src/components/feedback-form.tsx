@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { validateFeedback } from "@/lib/wasm";
+import { analyzeTextWasm } from "@/lib/recommend";
 
 interface FeedbackFormProps {
   onSubmitSuccess?: () => void;
@@ -15,6 +16,9 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [isValidating, setIsValidating] = useState(false);
+  const [emotionLabel, setEmotionLabel] = useState<string | null>(null);
+  const [emotionKey, setEmotionKey] = useState<string | null>(null);
+  const [emotionIntensity, setEmotionIntensity] = useState(0);
 
   const announcementRef = useRef<HTMLDivElement>(null);
   const errorAnnouncementRef = useRef<HTMLDivElement>(null);
@@ -53,6 +57,33 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setFeedback(e.target.value);
   }, []);
+
+  useEffect(() => {
+    const trimmed = feedback.trim();
+    if (trimmed.length < 3) {
+      setEmotionLabel(null);
+      setEmotionKey(null);
+      setEmotionIntensity(0);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const result = await analyzeTextWasm(trimmed);
+      if (result) {
+        const key = (result.emotion as string) ?? "neutral";
+        const label = result.emotion_label as string | undefined;
+        const intensity = (result.intensity as number) ?? 0;
+        if (key !== "neutral" && label) {
+          setEmotionKey(key);
+          setEmotionLabel(label);
+        } else {
+          setEmotionKey(null);
+          setEmotionLabel(null);
+        }
+        setEmotionIntensity(intensity);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [feedback]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -300,6 +331,25 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
             {feedback.length}/500
           </span>
         </div>
+
+        {emotionLabel && feedback.trim().length >= 3 && (
+          <div className="mt-2 flex items-center gap-2 text-xs animate-in fade-in duration-300">
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${
+                emotionKey === "gratitude"
+                  ? "border-red-500/30 bg-red-500/10 text-red-300"
+                  : emotionKey === "anxiety"
+                    ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
+                    : "border-purple-500/30 bg-purple-500/10 text-purple-300"
+              }`}
+            >
+              Rust WASM 检测: {emotionLabel}
+            </span>
+            <span className="text-slate-500">
+              强度 {Math.round(emotionIntensity * 100)}%
+            </span>
+          </div>
+        )}
       </div>
 
       {error && (
