@@ -112,6 +112,7 @@ pub fn analyze_text(text: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
 }
 
+mod audio;
 mod datefmt;
 mod garden;
 mod petal;
@@ -251,6 +252,19 @@ pub fn validate_plant_input(json: &str) -> JsValue {
     });
     let result = validate_plant(&input);
     serde_wasm_bindgen::to_value(&result).unwrap()
+}
+
+/// WASM: 玫瑰属性 → 示波器音频参数（颜色/字段/长度/点赞 → fx/fy/waveform/baseFreq/phase/stroke/glow）
+#[wasm_bindgen]
+pub fn rose_to_sound_params_wasm(rose_json: &str) -> JsValue {
+    let input: audio::RoseAudioInput = serde_json::from_str(rose_json).unwrap_or(audio::RoseAudioInput {
+        color: "red".to_string(),
+        gratitude: None,
+        anxiety: None,
+        hope: None,
+        like_count: None,
+    });
+    serde_wasm_bindgen::to_value(&audio::rose_to_sound_params_internal(&input)).unwrap()
 }
 
 /// WASM: 格式化种花请求，返回可直接 POST 的 JSON 字符串

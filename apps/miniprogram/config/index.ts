@@ -37,6 +37,13 @@ export default defineConfig({
     webpackChain(chain) {
       chain.output.publicPath("").globalObject("global");
       chain.module.rule("ts").include.add(/packages\/core/);
+      // WASM dedup: webpack emits wasm to pkg/ (same as copy pattern destination)
+      // eliminating the duplicate 301KB .wasm at dist root
+      chain.module
+        .rule("wasm-asset")
+        .test(/\.wasm$/i)
+        .type("asset/resource")
+        .set("generator", { filename: "pkg/[name][ext]" });
       chain.plugin("mp-runtime-patch").use(webpack.BannerPlugin, [{
         banner: `var document="undefined"!==typeof global&&global.document?global.document:{baseURI:"/",currentScript:{baseURI:"/"}};if("undefined"!==typeof global){if(!global.TextEncoder){global.TextEncoder=function(){this.encode=function(e){if(!e)return new Uint8Array(0);for(var t=e.length,n=new Uint8Array(3*t),r=0,o=0;o<t;o++){var a=e.charCodeAt(o);a<128?n[r++]=a:a<2048?(n[r++]=192|a>>6,n[r++]=128|63&a):(n[r++]=224|a>>12,n[r++]=128|a>>6&63,n[r++]=128|63&a)}return n.slice(0,r)}}}if(!global.TextDecoder){global.TextDecoder=function(){this.decode=function(e){if(!e)return"";for(var t=e instanceof ArrayBuffer?new Uint8Array(e):e,n="",r=0;r<t.length;){var o=t[r];if(o<128)n+=String.fromCharCode(o),r+=1;else if(192==(224&o))n+=String.fromCharCode((31&o)<<6|63&t[r+1]),r+=2;else n+=String.fromCharCode((15&o)<<12|(63&t[r+1])<<6|63&t[r+2]),r+=3}return n}}}}`,
         raw: true,

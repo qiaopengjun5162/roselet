@@ -63,7 +63,7 @@ export default function Plant() {
         <Text className={styles.successEmoji}>{colorMeta?.emoji}</Text>
         <Text className={styles.successTitle}>已种入花圃</Text>
         <Text className={styles.successSub}>AI 正在聆听你的故事...</Text>
-        <Button className={styles.btn} onClick={() => Taro.navigateTo({ url: '/pages/garden/index' })}>回到花圃</Button>
+        <Button className={styles.btn} onClick={() => Taro.navigateTo({ url: '/subpkg-garden/pages/garden/index' })}>回到花圃</Button>
       </View>
     </View>
   )

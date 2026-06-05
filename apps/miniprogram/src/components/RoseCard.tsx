@@ -6,7 +6,7 @@ import styles from './RoseCard.module.css'
 
 export function RoseCard({ rose }: { rose: Rose }) {
   return (
-    <View className={styles.card} onClick={() => Taro.navigateTo({ url: `/pages/rose/index?id=${rose.id}` })}>
+    <View className={styles.card} onClick={() => Taro.navigateTo({ url: `/subpkg-garden/pages/rose/index?id=${rose.id}` })}>
       <View className={styles.header}>
         <Text className={styles.emoji}>{COLOR_EMOJI[rose.color] ?? '🌸'}</Text>
         <Text className={styles.color}>{COLOR_LABEL[rose.color] ?? rose.color}</Text>

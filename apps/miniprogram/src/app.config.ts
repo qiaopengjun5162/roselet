@@ -1,11 +1,23 @@
 export default defineAppConfig({
   pages: [
     'pages/index/index',
-    'pages/garden/index',
-    'pages/plant/index',
-    'pages/rose/index',
     'pages/login/index',
-    'pages/oscilloscope/index',
+  ],
+  subPackages: [
+    {
+      root: 'subpkg-garden',
+      pages: [
+        'pages/garden/index',
+        'pages/plant/index',
+        'pages/rose/index',
+      ],
+    },
+    {
+      root: 'subpkg-oscilloscope',
+      pages: [
+        'pages/oscilloscope/index',
+      ],
+    },
   ],
   window: {
     navigationStyle: 'custom',

@@ -1,5 +1,6 @@
 import {
   getToken, setToken,
+  getRefreshToken, setRefreshToken,
   getUser, setUser,
   logout,
 } from '@/utils/storage';
@@ -75,13 +76,33 @@ describe('storage', () => {
     });
   });
 
+  // ── Refresh Token ──────────────────────────────────
+  describe('getRefreshToken / setRefreshToken', () => {
+    it('returns null when no refresh token stored', () => {
+      expect(getRefreshToken()).toBeNull();
+    });
+
+    it('returns stored refresh token', () => {
+      setRefreshToken('refresh-jwt');
+      expect(getRefreshToken()).toBe('refresh-jwt');
+    });
+
+    it('overwrites existing refresh token', () => {
+      setRefreshToken('old-refresh');
+      setRefreshToken('new-refresh');
+      expect(getRefreshToken()).toBe('new-refresh');
+    });
+  });
+
   // ── Logout ─────────────────────────────────────────
   describe('logout', () => {
-    it('clears both token and user', () => {
+    it('clears token, refresh token, and user', () => {
       setToken('token');
+      setRefreshToken('refresh');
       setUser({ id: '1', nickname: 'test', created_at: '2024-06-01T00:00:00Z' });
       logout();
       expect(getToken()).toBeNull();
+      expect(getRefreshToken()).toBeNull();
       expect(getUser()).toBeNull();
     });
 

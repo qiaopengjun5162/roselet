@@ -13,7 +13,7 @@ export default function Index() {
 
   function handlePlant() {
     if (!getToken()) Taro.navigateTo({ url: '/pages/login/index' })
-    else Taro.navigateTo({ url: '/pages/plant/index' })
+    else Taro.navigateTo({ url: '/subpkg-garden/pages/plant/index' })
   }
 
   return (
@@ -53,7 +53,7 @@ export default function Index() {
 
         <View className="fade-in-up-d3" style={{ width: '100%', maxWidth: '340px' }}>
           <Button className={styles.btnPrimary} onClick={handlePlant}>种一朵玫瑰</Button>
-          <Button className={styles.btnSecondary} onClick={() => Taro.navigateTo({ url: '/pages/garden/index' })}>参观花圃</Button>
+          <Button className={styles.btnSecondary} onClick={() => Taro.navigateTo({ url: '/subpkg-garden/pages/garden/index' })}>参观花圃</Button>
         </View>
       </View>
       {bloomsView}
