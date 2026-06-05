@@ -967,6 +967,40 @@ chain.plugin('mp-runtime-patch').use(webpack.BannerPlugin, [{
 
 <!-- 下次会话在此处继续记录 -->
 
+## 2026-06-05 会话 #23
+
+### 会话目标
+战场 C：rose-sound.ts 70 行算法下沉 Rust。战场 A：小程序双令牌静默刷新拦截器。
+
+### 完成的工作
+
+#### 战场 C：Rust WASM 音频参数引擎（recommend: 66 tests）
+- `crates/recommend/src/audio.rs`：全新模块
+  - 颜色→频率、字段组合→fx/fy、文字长→相位、点赞→波形
+  - `rose_to_sound_params_internal()` 公开入口，12 tests
+- `lib.rs`：`rose_to_sound_params_wasm()` WASM 入口
+- `recommend.ts`：`roseToSoundParamsWasm()` 异步导出
+- `rose-sound.ts` 重构：`roseToSoundParamsAsync()`（WASM优先+降级）/ `roseToSoundParams()`（同步TS fallback） / `playRose()`（不变，纯扬声器）
+
+#### 战场 A：小程序双令牌静默刷新拦截器
+- `storage.ts`：新增 `getRefreshToken/setRefreshToken`，`logout` 清除 refresh key
+- `request.ts` 重写：`doRequest()`内部化 + `refreshAccessToken()`（并发防重 Promise 复用）+ `request()`（401+auth→静默刷新→重试）
+
+#### 测试（56 → 62 miniprogram）
+- request.test.ts：队列式 mock，4 个新刷新场景测试
+- storage.test.ts：Refresh Token CRUD + logout 断言
+
+### 当前状态
+- recommend: 66 tests | web: 118 tests | miniprogram: 62 tests
+- 已提交推送
+
+### 待办
+- [ ] 小程序真机联调（AppID + 微信开发者工具）
+- [ ] CI/CD miniprogram build job
+- [ ] Solana 链上解析
+
+<!-- 下次会话在此处继续记录 -->
+
 ## 2026-06-04 会话 #22：Rust 驱动的极致重构——80/20 架构落地
 
 ### 会话目标
