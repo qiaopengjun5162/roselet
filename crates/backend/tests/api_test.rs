@@ -243,7 +243,8 @@ async fn test_create_rose_empty_content() {
 
 #[tokio::test]
 async fn test_get_rose_by_id() {
-    let (app, _) = create_test_app().await;
+    let (app, pool) = create_test_app().await;
+    let token = create_test_jwt(&pool, "get-rose-user").await;
     let create_response = app
         .clone()
         .oneshot(
@@ -251,6 +252,7 @@ async fn test_get_rose_by_id() {
                 .method("POST")
                 .uri("/api/rose")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(
                     serde_json::to_vec(&json!({ "color": "yellow", "gratitude": "感恩测试" }))
                         .unwrap(),
@@ -297,7 +299,8 @@ async fn test_get_rose_not_found() {
 
 #[tokio::test]
 async fn test_garden_with_multiple_roses() {
-    let (app, _) = create_test_app().await;
+    let (app, pool) = create_test_app().await;
+    let token = create_test_jwt(&pool, "multi-rose-user").await;
     for color in &["red", "white", "yellow"] {
         app.clone()
             .oneshot(
@@ -305,6 +308,7 @@ async fn test_garden_with_multiple_roses() {
                     .method("POST")
                     .uri("/api/rose")
                     .header("content-type", "application/json")
+                    .header("Authorization", format!("Bearer {}", token))
                     .body(Body::from(
                         serde_json::to_vec(
                             &json!({ "color": color, "gratitude": format!("感恩{}", color) }),
@@ -329,7 +333,8 @@ async fn test_garden_with_multiple_roses() {
 
 #[tokio::test]
 async fn test_garden_pagination() {
-    let (app, _) = create_test_app().await;
+    let (app, pool) = create_test_app().await;
+    let token = create_test_jwt(&pool, "pagination-user").await;
     for i in 0..5 {
         app.clone()
             .oneshot(
@@ -337,6 +342,7 @@ async fn test_garden_pagination() {
                     .method("POST")
                     .uri("/api/rose")
                     .header("content-type", "application/json")
+                    .header("Authorization", format!("Bearer {}", token))
                     .body(Body::from(
                         serde_json::to_vec(
                             &json!({ "color": "red", "gratitude": format!("感恩{}", i) }),
@@ -550,8 +556,13 @@ async fn test_websocket_receives_new_rose() {
         .expect("Failed to connect WebSocket");
 
     let client = reqwest::Client::new();
+    let auth = register_user(&base, "ws-user").await;
     client
         .post(format!("{}/api/rose", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth["token"].as_str().unwrap()),
+        )
         .json(&json!({ "color": "red", "gratitude": "ws测试" }))
         .send()
         .await
@@ -912,24 +923,14 @@ async fn test_garden_includes_nickname() {
         .await
         .unwrap();
 
-    client
-        .post(format!("{}/api/rose", base))
-        .json(&json!({ "color": "white", "gratitude": "anonymous" }))
-        .send()
-        .await
-        .unwrap();
-
     let res = client.get(format!("{}/api/garden", base)).send().await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let body: Value = res.json().await.unwrap();
     let roses = body["data"].as_array().unwrap();
-    assert_eq!(roses.len(), 2);
+    assert_eq!(roses.len(), 1);
 
     let named = roses.iter().find(|r| r["nickname"] == "gardener").unwrap();
     assert_eq!(named["gratitude"], "garden test");
-
-    let anon = roses.iter().find(|r| r["nickname"].is_null()).unwrap();
-    assert_eq!(anon["gratitude"], "anonymous");
 }
 
 #[tokio::test]
@@ -1042,6 +1043,7 @@ async fn test_like_and_unlike() {
 
     let res = client
         .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&json!({ "color": "red", "gratitude": "likeable" }))
         .send()
         .await
@@ -1094,6 +1096,7 @@ async fn test_garden_includes_like_count() {
 
     let res = client
         .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&json!({ "color": "yellow", "gratitude": "popular" }))
         .send()
         .await

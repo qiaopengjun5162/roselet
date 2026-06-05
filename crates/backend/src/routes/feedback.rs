@@ -6,7 +6,7 @@ use crate::{auth, error::AppError, state::AppState};
 
 #[derive(Deserialize)]
 pub struct FeedbackRequest {
-    pub content: String,
+    pub content: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -19,7 +19,12 @@ pub async fn submit_feedback(
     headers: HeaderMap,
     Json(body): Json<FeedbackRequest>,
 ) -> Result<(StatusCode, Json<FeedbackResponse>), AppError> {
-    let content = body.content.trim().to_string();
+    let content = body
+        .content
+        .as_deref()
+        .ok_or_else(|| AppError::BadRequest("缺少 content 字段".into()))?
+        .trim()
+        .to_string();
     if content.chars().count() < 5 {
         return Err(AppError::BadRequest("反馈内容至少 5 个字".into()));
     }

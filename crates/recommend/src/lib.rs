@@ -281,7 +281,6 @@ impl Default for FeedbackValidation {
     }
 }
 
-
 /// WASM: 验证种花表单，返回 JSON (Rust 侧统一校验规则)
 #[wasm_bindgen]
 pub fn validate_plant_input(json: &str) -> JsValue {
@@ -449,7 +448,8 @@ pub fn validate_string_format(text: &str, pattern: &str) -> JsValue {
     };
 
     let matches = if is_match {
-        re.as_ref().map(|re| re.captures(text))
+        re.as_ref()
+            .map(|re| re.captures(text))
             .map(|c| {
                 let mut results = Vec::new();
                 if let Some(c) = c {

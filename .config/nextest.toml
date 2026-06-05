@@ -1,0 +1,3 @@
+[profile.default]
+# 后端集成测试共享同一个 PostgreSQL 数据库，必须串行执行避免互删数据导致 FK 500
+test-threads = 1
