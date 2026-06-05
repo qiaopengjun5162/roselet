@@ -337,12 +337,13 @@ pub fn validate_feedback_input(json: &str) -> JsValue {
         return serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL);
     }
 
-    if trimmed.len() < 5 {
+    let char_count = trimmed.chars().count();
+    if char_count < 5 {
         validation.error = Some("反馈内容至少需要 5 个字符".to_string());
         return serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL);
     }
 
-    if trimmed.len() > 500 {
+    if char_count > 500 {
         validation.error = Some("反馈内容不能超过 500 个字符".to_string());
         return serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL);
     }
