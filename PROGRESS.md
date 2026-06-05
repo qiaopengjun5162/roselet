@@ -74,18 +74,32 @@
 - [x] CONTRIBUTING.md（英文）
 - [x] CLAUDE.md / DEVLOG.md / PROGRESS.md
 
+## 最近完成（会话 #23–24）
+
+### Rust WASM 架构深化
+- [x] `audio.rs`：玫瑰属性→示波器音频参数（12 tests）
+- [x] `color.rs`：颜色元数据单一事实来源（3 tests），Web + 小程序同源
+- [x] 双令牌静默刷新拦截器（小程序 request.ts，Promise 并发锁）
+- [x] storage.ts 新增 getRefreshToken/setRefreshToken/logout 清除 refresh key
+
+### DRY 大扫除（净删 ~500 行 TS）
+- [x] 删 miniprogram/utils/validate.ts（plant.rs 已覆盖）
+- [x] 删 miniprogram/utils/constants.ts（color.rs 替代）
+- [x] rose-sound.ts：删除 TS fallback，强制 WASM，playRose→playWithParams
+- [x] text-to-sound.ts：135行→35行，删 LocalKeywordAnalyzer（emotion.rs 替代）
+- [x] 删 52 个 TS 算法测试（Rust 侧已覆盖）
+- [x] Web rose-card.tsx + rose/[id]/page.tsx：COLOR_MAP → colorEmoji/colorLabel
+
+### 关于&反馈功能（部分）
+- [x] `migrations/007_create_feedbacks.sql`：feedbacks 表
+- [x] `routes/feedback.rs`：POST /api/feedback（未注册，待完成）
+
 ## 待办
 
-- [x] 优化 profile SQL（4 次查询 → 1 次聚合）
-- [x] 提取公共 auth token 函数
-- [x] WASM analyze_text 接入前端（WasmAnalyzer，降级 LocalKeywordAnalyzer）
-- [x] text-to-sound.ts / rose-sound.ts 前端单元测试（各 16/19 个用例）
-- [ ] 小程序适配（Taro + Rust WASM，架构设计完成，实现计划在 docs/superpowers/plans/2026-06-04-miniprogram.md）
+- [ ] **feedback 路由注册**：mod.rs + main.rs + sqlx migrate run + 2 集成测试
+- [ ] **Web /about 页面**：版本（读 /health）+ 帮助折叠 + 反馈表单 + 微信公众号联系方式
+- [ ] **小程序关于页面**：同上，主包新增页面
+- [ ] **小程序真机联调**：AppID 已有，需拉起后端验证双令牌 + WASM 花瓣
 - [ ] Web3 功能（已设计，待实现）
-  - 用户钱包直付 Gas + 平台服务费
-  - 先走正统 Web3 流程（用户学习钱包/Gas），后续加人民币支付
-  - Ethereum Solidity + Solana Anchor 双链
-  - ChainAdapter trait 统一接口
-  - 钱包可选绑定，上链可选触发
-  - 上链内容：用户精选一句话（≤200字）+ 颜色
-  - 完整内容留链下，链上存精华
+  - Ethereum Solidity + Solana Anchor 双链，ChainAdapter trait
+  - 上链内容：精选一句话（≤200字）+ 颜色，完整内容留链下

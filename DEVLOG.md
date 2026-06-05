@@ -967,6 +967,64 @@ chain.plugin('mp-runtime-patch').use(webpack.BannerPlugin, [{
 
 <!-- 下次会话在此处继续记录 -->
 
+## 2026-06-05 会话 #24
+
+### 会话目标
+DRY 终局清扫：消灭最后的 TS 算法孤岛；Web COLOR_MAP 同源化；启动「关于&反馈」功能；将项目经验提炼为通用 rust-dev-workflow skill。
+
+### 完成的工作
+
+#### TS 算法孤岛全歼
+- `validate.ts`（miniprogram）：删除，`plant.rs` 已完整覆盖，删对应 20 个测试
+- `constants.ts`（miniprogram）：删除，`color.rs` 替代，两端颜色元数据同源
+- `rose-sound.ts`：删除 TS fallback（`roseToSoundParamsFallback`），`roseToSoundParams` 改为异步 WASM 调用，`playRose` 重命名为 `playWithParams`（纯扬声器，零业务逻辑）
+- `text-to-sound.ts`：135行→35行，`LocalKeywordAnalyzer` 完全删除，直接调 `emotion.rs` WASM
+- 删除 52 个 TS 算法测试（`rose-sound.test.ts`、`text-to-sound.test.ts`、`validate.test.ts`）
+
+#### 新增 Rust WASM 模块
+- `crates/recommend/src/color.rs`：颜色元数据（emoji/label/options），3 tests
+- `crates/recommend/src/audio.rs`：玫瑰属性→示波器参数，12 tests
+- 两端 WASM 接口：`colorEmoji/colorLabel/colorOptions`（miniprogram wasm.ts + web recommend.ts）
+
+#### Web COLOR_MAP 最后副本清除
+- `rose-card.tsx`、`rose/[id]/page.tsx` inline COLOR_MAP 中的 emoji/label → `colorEmoji/colorLabel`
+- CSS 类（border/glow/bg）保留在 TS（平台专属，非业务数据）
+
+#### 双令牌静默刷新（小程序）
+- `storage.ts`：新增 `getRefreshToken/setRefreshToken`，`logout` 清除 refresh key
+- `request.ts`：401 拦截 → `refreshAccessToken()`（Promise 复用锁防并发） → 重试；Refresh 失效则强制 logout
+- 新增 4 个测试：成功刷新/无令牌/令牌失效/非 auth 请求
+
+#### 「关于&反馈」功能（部分）
+- `migrations/007_create_feedbacks.sql`：feedbacks 表（content 5~500字约束，user_id 可选）
+- `routes/feedback.rs`：`POST /api/feedback`，挂载 `Option<Claims>`，复用限流
+- 路由**未注册**，迁移**未应用**，待下次会话完成
+
+#### rust-dev-workflow skill 扩展
+- 原 167 行 → 390 行，新增两章节：
+  - 「Rust WASM 全栈开发模式」：构建配置、WXWebAssembly 补丁、加载模式、函数设计规则、80/20 分层表
+  - 「跨端架构铁律与踩坑录」：DRY 迁移检查清单、测试金字塔策略、错误速查表（9 条）
+- 写法：通用工程规律，Roselet 作例证，不绑定具体项目
+
+### 遇到的问题及解决
+
+1. **Workflow subagent 全部失败（deepseek-v4-flash 不支持）**：代理端点 cc.freemodel.dev 将 subagent 路由到不支持 StructuredOutput 的模型，指定 model:'sonnet' 无效，subagent_tokens=0。解决：绕过 Workflow，在主会话直接完成 skill 编写。
+
+### 当前测试状态
+- Rust WASM：69 tests（含 audio 12 + color 3）
+- Web：86 tests
+- Miniprogram：42 tests
+- 后端：76/87 通过（11 个集成测试需 DB 启动）
+
+### 待办（下次会话）
+1. `routes/mod.rs` 加 `pub mod feedback;`，`main.rs` 注册路由
+2. `sqlx migrate run` 应用 007
+3. 写 2 个集成测试
+4. Web `/about` 页面 + 小程序关于页面
+5. 小程序真机联调
+
+<!-- 下次会话在此处继续记录 -->
+
 ## 2026-06-05 会话 #23
 
 ### 会话目标

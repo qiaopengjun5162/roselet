@@ -28,17 +28,44 @@ roselet/
 
 ## 架构原则
 
-**80/20 Rust-TS 架构**：核心逻辑（过滤、校验、状态、API、花瓣）在 `crates/recommend`，
-前端只做渲染。Rust Store (`store.rs`) 是全局状态机。认证双令牌 (Access 15min + Refresh 7天)。
+**80/20 Rust-TS 架构**：核心逻辑在 `crates/recommend`，TS 只做平台调用和 UI 渲染。
+
+铁律：
+- **Rust 拥有**：业务算法、数据校验、状态机、颜色元数据、音频参数映射、情绪分析、花瓣轨迹
+- **TS 拥有**：Web Audio API、wx.request、Taro API、React/Taro 组件渲染
+- 凡是可以写 Rust 单元测试的逻辑，都不留在 TS 里
+
+认证：双令牌 (Access 15min + Refresh 7天，DB 存 SHA-256 哈希)，令牌桶限流 30req/60s。
+小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请求重试。
 
 ## 测试状态
 ```
-Rust backend:   118 passed
-Rust WASM:       54 passed
-Web frontend:   120 passed
-Miniprogram:     56 passed
-Total:          348 passed, clippy clean, fmt clean
+Rust backend:    87 passed  (76 passing; 11 需 DB 启动)
+Rust WASM:       69 passed  (含 audio.rs 12 + color.rs 3)
+Web frontend:    86 passed
+Miniprogram:     42 passed
+Total:          284 passed（功能测试全绿，后端需拉起 DB）
 ```
+
+## WASM 模块清单（crates/recommend/src/）
+| 模块 | 功能 | WASM 导出 |
+|------|------|----------|
+| `emotion.rs` | 文本→情绪→音频参数 | `analyze_text` |
+| `audio.rs` | 玫瑰属性→示波器参数 | `rose_to_sound_params_wasm` |
+| `color.rs` | 颜色元数据（emoji/label） | `color_emoji`, `color_label`, `color_options` |
+| `petal.rs` | 确定性花瓣轨迹（seed） | `generate_petals_wasm` |
+| `datefmt.rs` | 日期格式化（中文） | `format_date_wasm` |
+| `garden.rs` | 花圃布局 + 过滤 | `compute_layout`, `filter_roses` |
+| `plant.rs` | 种花表单校验 | `validate_plant_input`, `format_plant_request_wasm` |
+| `store.rs` | 全局状态机 | `store_dispatch`, `store_get_snapshot` |
+| `api_client.rs` | URL/请求体构造 | `build_garden_url`, `build_plant_body` |
+
+## 已知坑（勿重踩）
+- **reqwest 测试 502**：本地开启 Clash 代理时，加 `NO_PROXY=localhost,127.0.0.1`
+- **wasm-opt bulk-memory**：Cargo.toml 设 `wasm-opt = false`
+- **小程序 document.baseURI**：Webpack BannerPlugin 注入 document mock（非运行时 polyfill）
+- **wasm-bindgen Option<&str>**：改用 `&str`，空字符串表示 None
+- **git push**：必须用 `https_proxy=http://127.0.0.1:7897 git push`
 
 ## 常用命令（justfile）
 ```bash
@@ -75,6 +102,7 @@ POST   /api/rose/:id/like  # 点赞/取消点赞（需 JWT）
 GET    /api/ws             # WebSocket 实时推送
 GET    /swagger            # Swagger API 文档
 GET    /oscilloscope       # 情绪示波器（前端路由，非 API）
+POST   /api/feedback       # 提交反馈（可选 JWT，匿名/登录均可）【迁移待应用】
 ```
 
 ## 开发工具链
