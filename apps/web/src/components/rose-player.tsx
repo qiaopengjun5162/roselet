@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { roseToSoundParams, playRose, type RoseSoundParams } from "@/lib/rose-sound";
+import { roseToSoundParams, playWithParams, type RoseSoundParams } from "@/lib/rose-sound";
 import type { Rose } from "@/lib/api";
 
 interface RosePlayerProps {
@@ -12,22 +12,21 @@ interface RosePlayerProps {
   onStop?: () => void;
 }
 
-export function RosePlayer({
-  rose,
-  autoPlay = false,
-  durationMs,
-  canvasSize = 200,
-  onStop,
-}: RosePlayerProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export function RosePlayer({ rose, autoPlay = false, durationMs, canvasSize = 200, onStop }: RosePlayerProps) {
+  const canvasRef    = useRef<HTMLCanvasElement>(null);
   const analyserLRef = useRef<AnalyserNode | null>(null);
   const analyserRRef = useRef<AnalyserNode | null>(null);
-  const animRef = useRef<number>(0);
-  const trailRef = useRef<{ x: number; y: number }[]>([]);
-  const stopFnRef = useRef<(() => void) | null>(null);
+  const animRef      = useRef<number>(0);
+  const trailRef     = useRef<{ x: number; y: number }[]>([]);
+  const stopFnRef    = useRef<(() => void) | null>(null);
 
   const [playing, setPlaying] = useState(false);
-  const [params, setParams] = useState<RoseSoundParams>(() => roseToSoundParams(rose));
+  const [params, setParams]   = useState<RoseSoundParams | null>(null);
+
+  // 挂载时预取 WASM 音频参数
+  useEffect(() => {
+    roseToSoundParams(rose).then(setParams).catch(() => {});
+  }, [rose]);
 
   const stop = useCallback(() => {
     stopFnRef.current?.();
@@ -40,8 +39,8 @@ export function RosePlayer({
     onStop?.();
   }, [onStop]);
 
-  const start = useCallback(() => {
-    const p = roseToSoundParams(rose);
+  const start = useCallback(async () => {
+    const p = params ?? await roseToSoundParams(rose);
     setParams(p);
 
     const ctx = new AudioContext();
@@ -66,33 +65,28 @@ export function RosePlayer({
     rightOsc.connect(delay); delay.connect(rg); rg.connect(aR); rg.connect(merger, 0, 1);
 
     merger.connect(ctx.destination);
-    leftOsc.start();
-    rightOsc.start();
+    leftOsc.start(); rightOsc.start();
 
     let stopped = false;
     stopFnRef.current = () => {
       if (stopped) return;
       stopped = true;
-      leftOsc.stop();
-      rightOsc.stop();
-      ctx.close();
+      leftOsc.stop(); rightOsc.stop(); ctx.close();
     };
 
     setPlaying(true);
     if (durationMs) setTimeout(stop, durationMs);
-  }, [rose, durationMs, stop]);
+  }, [rose, params, durationMs, stop]);
 
-  // Canvas 绘制
+  // Canvas 利萨如绘制
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || !params) return;
     const canvas = canvasRef.current;
     if (!canvas || !analyserLRef.current || !analyserRRef.current) return;
     const ctx2d = canvas.getContext("2d")!;
-    const W = canvas.width;
-    const H = canvas.height;
+    const W = canvas.width, H = canvas.height;
     const bufLen = analyserLRef.current.frequencyBinCount;
-    const bufL = new Float32Array(bufLen);
-    const bufR = new Float32Array(bufLen);
+    const bufL = new Float32Array(bufLen), bufR = new Float32Array(bufLen);
     const TRAIL = 800;
 
     function draw() {
@@ -100,25 +94,16 @@ export function RosePlayer({
       if (!analyserLRef.current || !analyserRRef.current) return;
       analyserLRef.current.getFloatTimeDomainData(bufL);
       analyserRRef.current.getFloatTimeDomainData(bufR);
-
       for (let i = 0; i < bufLen; i++) {
-        trailRef.current.push({
-          x: (bufL[i] * 0.44 + 0.5) * W,
-          y: (bufR[i] * -0.44 + 0.5) * H,
-        });
+        trailRef.current.push({ x: (bufL[i] * 0.44 + 0.5) * W, y: (bufR[i] * -0.44 + 0.5) * H });
       }
       if (trailRef.current.length > TRAIL) trailRef.current = trailRef.current.slice(-TRAIL);
-
       ctx2d.fillStyle = "rgba(8,14,12,0.35)";
       ctx2d.fillRect(0, 0, W, H);
-
       const pts = trailRef.current;
       if (pts.length < 2) return;
-      ctx2d.lineWidth = 1.4;
-      ctx2d.shadowBlur = 8;
-      ctx2d.shadowColor = params.glow;
-      ctx2d.lineCap = "round";
-
+      ctx2d.lineWidth = 1.4; ctx2d.shadowBlur = 8;
+      ctx2d.shadowColor = params.glow; ctx2d.lineCap = "round";
       for (let i = 1; i < pts.length; i++) {
         const alpha = Math.floor((i / pts.length) * 200).toString(16).padStart(2, "0");
         ctx2d.strokeStyle = params.stroke + alpha;
@@ -128,14 +113,12 @@ export function RosePlayer({
         ctx2d.stroke();
       }
     }
-
     ctx2d.fillStyle = "#080e0c";
     ctx2d.fillRect(0, 0, W, H);
     draw();
     return () => cancelAnimationFrame(animRef.current);
   }, [playing, params]);
 
-  // autoPlay
   useEffect(() => {
     if (autoPlay) start();
     return () => { stopFnRef.current?.(); cancelAnimationFrame(animRef.current); };
@@ -148,11 +131,12 @@ export function RosePlayer({
         width={canvasSize}
         height={canvasSize}
         className="rounded-xl border border-white/10 bg-[#080e0c]"
-        style={{ boxShadow: playing ? `0 0 24px ${params.glow}` : "none", transition: "box-shadow 0.5s" }}
+        style={{ boxShadow: playing ? `0 0 24px ${params?.glow}` : "none", transition: "box-shadow 0.5s" }}
       />
       <button
         onClick={playing ? stop : start}
-        className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all ${
+        disabled={!params}
+        className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all disabled:opacity-40 ${
           playing
             ? "glass-card text-slate-300 hover:border-white/30"
             : "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-500/30 hover:-translate-y-0.5"
