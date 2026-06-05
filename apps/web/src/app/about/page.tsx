@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { FeedbackForm } from "@/components/feedback-form";
+import { FeedbackBottle } from "@/components/feedback-bottle";
 import { StarBottle } from "@/components/star-bottle";
 import { StarParticles } from "@/components/star-particles";
 
@@ -45,18 +45,9 @@ export default function AboutPage() {
           </StarBottle>
         </div>
 
-        {/* 中栏: 反馈瓶 — 略下沉，视觉重心 */}
+        {/* 中栏: 反馈瓶 — 略下沉，视觉重心，辉光随情绪实时渐变 */}
         <div className="w-full md:w-2/5 flex items-center justify-center md:self-center md:-mt-4">
-          <StarBottle
-            delay={0}
-            glowColor="rgba(244,63,94,0.2)"
-            className="w-full max-w-md p-6 md:p-8"
-          >
-            <h2 className="text-xs md:text-sm text-slate-400 tracking-wide mb-4 md:mb-6">
-              为花圃留下你的声音
-            </h2>
-            <FeedbackForm />
-          </StarBottle>
+          <FeedbackBottle />
         </div>
 
         {/* 右栏: 开发者瓶 — 中部微偏上 */}

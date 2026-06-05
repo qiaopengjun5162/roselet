@@ -26,14 +26,15 @@ roselet/
 └── package.json        # pnpm workspace
 ```
 
-## 架构原则
+## 架构原则（最高优先级）
 
-**80/20 Rust-TS 架构**：核心逻辑在 `crates/recommend`，TS 只做平台调用和 UI 渲染。
+**90/10 Rust-TS 架构**：Rust WASM 承载全部业务逻辑，TS 退化为纯平台调用层 + UI 渲染壳。
 
-铁律：
-- **Rust 拥有**：业务算法、数据校验、状态机、颜色元数据、音频参数映射、情绪分析、花瓣轨迹
-- **TS 拥有**：Web Audio API、wx.request、Taro API、React/Taro 组件渲染
-- 凡是可以写 Rust 单元测试的逻辑，都不留在 TS 里
+**铁律（违反即错误）：**
+- **Rust WASM 拥有（`crates/recommend/src/`）**：业务算法、数据校验、状态机、颜色元数据、音频参数映射、情绪分析、花瓣轨迹、天空时段、粒子生成、日期格式化、花圃布局、表单验证、推荐引擎、敏感词检测、字符串处理
+- **TS 仅拥有**：`fetch()` / `localStorage`、Web Audio API / Tone.js 扬声器、Taro API / wx.request、React/Taro 组件渲染、Tailwind CSS 样式
+- **判断标准**：凡是可以写 Rust 单元测试的逻辑，一律不留在 TS 里。新增功能必须先问"这个逻辑能不能放进 `crates/recommend/src/`？"
+- **TS 文件里的 `if/switch/for/while` 必须能解释为什么不能是 Rust WASM 调用**
 
 认证：双令牌 (Access 15min + Refresh 7天，DB 存 SHA-256 哈希)，令牌桶限流 30req/60s。
 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请求重试。

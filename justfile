@@ -52,6 +52,26 @@ dev:
     @echo "Starting backend (3001) and frontend (3000)..."
     @just backend & just frontend
 
+# 仅启动前端开发服务器
+dev-web:
+    cd apps/web && pnpm dev
+
+# 前端测试
+web-test:
+    cd apps/web && pnpm test
+
+# 前端构建
+web-build:
+    just wasm && cd apps/web && pnpm build
+
+# Rust WASM 测试
+wasm-test:
+    cargo test -p roselet-recommend
+
+# Rust 后端测试
+backend-test:
+    NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend -j1
+
 # 运行数据库迁移
 migrate:
     cd crates/backend && sqlx migrate run

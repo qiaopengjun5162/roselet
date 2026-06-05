@@ -4,21 +4,19 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { validateFeedback } from "@/lib/wasm";
-import { analyzeTextWasm } from "@/lib/recommend";
+import { useEmotionSound } from "@/lib/useEmotionSound";
 
 interface FeedbackFormProps {
   onSubmitSuccess?: () => void;
+  onEmotionChange?: (glow: string) => void;
 }
 
-export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
+export function FeedbackForm({ onSubmitSuccess, onEmotionChange }: FeedbackFormProps) {
   const [feedback, setFeedback] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [isValidating, setIsValidating] = useState(false);
-  const [emotionLabel, setEmotionLabel] = useState<string | null>(null);
-  const [emotionKey, setEmotionKey] = useState<string | null>(null);
-  const [emotionIntensity, setEmotionIntensity] = useState(0);
 
   const announcementRef = useRef<HTMLDivElement>(null);
   const errorAnnouncementRef = useRef<HTMLDivElement>(null);
@@ -58,32 +56,13 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
     setFeedback(e.target.value);
   }, []);
 
+  // Rust WASM 驱动: 情绪检测 → 环境音 + 辉光色
+  const emotion = useEmotionSound(feedback);
+
+  // 通知父组件辉光变化
   useEffect(() => {
-    const trimmed = feedback.trim();
-    if (trimmed.length < 3) {
-      setEmotionLabel(null);
-      setEmotionKey(null);
-      setEmotionIntensity(0);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      const result = await analyzeTextWasm(trimmed);
-      if (result) {
-        const key = (result.emotion as string) ?? "neutral";
-        const label = result.emotion_label as string | undefined;
-        const intensity = (result.intensity as number) ?? 0;
-        if (key !== "neutral" && label) {
-          setEmotionKey(key);
-          setEmotionLabel(label);
-        } else {
-          setEmotionKey(null);
-          setEmotionLabel(null);
-        }
-        setEmotionIntensity(intensity);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [feedback]);
+    onEmotionChange?.(emotion.glow);
+  }, [emotion.glow, onEmotionChange]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -332,22 +311,23 @@ export function FeedbackForm({ onSubmitSuccess }: FeedbackFormProps) {
           </span>
         </div>
 
-        {emotionLabel && feedback.trim().length >= 3 && (
+        {emotion.label && feedback.trim().length >= 3 && (
           <div className="mt-2 flex items-center gap-2 text-xs animate-in fade-in duration-300">
             <span
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${
-                emotionKey === "gratitude"
+                emotion.key === "gratitude"
                   ? "border-red-500/30 bg-red-500/10 text-red-300"
-                  : emotionKey === "anxiety"
+                  : emotion.key === "anxiety"
                     ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
                     : "border-purple-500/30 bg-purple-500/10 text-purple-300"
               }`}
             >
-              Rust WASM 检测: {emotionLabel}
+              {emotion.label}
             </span>
             <span className="text-slate-500">
-              强度 {Math.round(emotionIntensity * 100)}%
+              强度 {Math.round(emotion.intensity * 100)}%
             </span>
+            <span className="text-slate-600">♪</span>
           </div>
         )}
       </div>
