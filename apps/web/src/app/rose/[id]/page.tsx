@@ -8,15 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRose, updateRose, deleteRose, getUser, toggleLike, type Rose, type UpdateRose } from "@/lib/api";
 import { playClick, playPlant, playLike } from "@/lib/sound";
 import { RosePlayer } from "@/components/rose-player";
+import { colorEmoji, colorLabel } from "@/lib/recommend";
 
-const COLOR_MAP: Record<string, { emoji: string; label: string; bg: string }> = {
-  red: { emoji: "🌹", label: "红玫瑰", bg: "from-red-50 to-white" },
-  white: { emoji: "🤍", label: "白玫瑰", bg: "from-gray-50 to-white" },
-  yellow: { emoji: "💛", label: "黄玫瑰", bg: "from-amber-50 to-white" },
+// bg 是 Web 专属 Tailwind 渐变，留 TS；emoji/label 来自 color.rs
+const COLOR_BG: Record<string, string> = {
+  red: "from-red-50 to-white", white: "from-gray-50 to-white", yellow: "from-amber-50 to-white",
 };
 
 const COLORS = ["red", "white", "yellow"];
-const COLOR_LABELS: Record<string, string> = { red: "红", white: "白", yellow: "黄" };
 
 export default function RoseDetailPage() {
   const params = useParams();
@@ -117,7 +116,7 @@ export default function RoseDetailPage() {
     );
   }
 
-  const meta = COLOR_MAP[rose.color] || { emoji: "🌹", label: "玫瑰", bg: "from-rose-50 to-white" };
+  const colorBg = COLOR_BG[rose.color] ?? "from-rose-50 to-white";
 
   return (
     <main className="relative h-full px-4 pb-8 pt-10 z-10">
@@ -139,9 +138,9 @@ export default function RoseDetailPage() {
         <Card className="glass-card border-0 bg-transparent">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <span className="text-4xl">{meta.emoji}</span>
+              <span className="text-4xl">{colorEmoji(rose.color)}</span>
               <div>
-                <h1 className="text-2xl font-bold text-slate-100">{meta.label}</h1>
+                <h1 className="text-2xl font-bold text-slate-100">{colorLabel(rose.color)}</h1>
                 <p className="text-sm text-slate-400 font-normal">
                   {rose.nickname && <span className="mr-2">{rose.nickname}</span>}
                   {new Date(rose.created_at).toLocaleString("zh-CN")}
@@ -163,7 +162,7 @@ export default function RoseDetailPage() {
                           : "border-gray-200 hover:border-rose-300"
                       }`}
                     >
-                      {COLOR_LABELS[c]}
+                      {colorEmoji(c)} {colorLabel(c)}
                     </button>
                   ))}
                 </div>

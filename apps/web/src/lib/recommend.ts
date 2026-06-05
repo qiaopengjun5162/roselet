@@ -11,6 +11,8 @@ interface WasmMod {
   format_date_wasm: (iso: string) => unknown;
   generate_petals_wasm: (count: number, seed: bigint) => unknown;
   rose_to_sound_params_wasm: (rose_json: string) => unknown;
+  color_emoji: (color: string) => string;
+  color_label: (color: string) => string;
 }
 
 let wasmModule: WasmMod | null = null;
@@ -42,3 +44,9 @@ export async function roseToSoundParamsWasm(roseJson: string): Promise<Record<st
   const mod = await loadWasm(); if (!mod) return null;
   try { return mod.rose_to_sound_params_wasm(roseJson) as Record<string, unknown>; } catch { return null; }
 }
+
+// 颜色元数据 — 同步调用（WASM 已加载则走 Rust，否则 TS 兜底保证首屏不闪）
+const _CE: Record<string, string> = { red: "🌹", white: "🤍", yellow: "💛" };
+const _CL: Record<string, string> = { red: "红玫瑰", white: "白玫瑰", yellow: "黄玫瑰" };
+export function colorEmoji(color: string): string { try { return wasmModule?.color_emoji(color) ?? _CE[color] ?? "🌸"; } catch { return _CE[color] ?? "🌸"; } }
+export function colorLabel(color: string): string { try { return wasmModule?.color_label(color) ?? _CL[color] ?? color; } catch { return _CL[color] ?? color; } }
