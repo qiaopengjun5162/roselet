@@ -81,3 +81,22 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     throw err;
   }
 }
+
+export async function submitFeedback(content: string): Promise<boolean> {
+  try {
+    const token = getToken();
+    const response = await wx.request({
+      url: `${API_BASE}/api/feedback`,
+      method: 'POST',
+      header: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      data: { content },
+    });
+
+    return response.statusCode === 201;
+  } catch (err) {
+    return false;
+  }
+}

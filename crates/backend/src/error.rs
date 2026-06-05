@@ -33,7 +33,7 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "服务器内部错误".to_string(),
             ),
-            AppError::Auth(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+            AppError::Auth(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
         };
 
         (status, Json(json!({ "error": message }))).into_response()
@@ -75,7 +75,7 @@ mod tests {
     #[tokio::test]
     async fn test_auth_error_response() {
         let resp = AppError::Auth("token expired".to_string()).into_response();
-        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
         let body = to_bytes(resp.into_body(), 1024).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert!(json["error"].as_str().unwrap().contains("token expired"));

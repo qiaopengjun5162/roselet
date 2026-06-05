@@ -11,6 +11,7 @@ const MAIN_LINKS = [
   { href: "/plant", label: "种玫瑰", icon: "🌹" },
   { href: "/garden", label: "花圃", icon: "🌸" },
   { href: "/oscilloscope", label: "示波器", icon: "🎵" },
+  { href: "/about", label: "关于", icon: "ℹ️" },
 ];
 
 export function Nav() {

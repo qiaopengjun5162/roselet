@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod docs;
+pub mod feedback;
 pub mod garden;
 pub mod health;
 pub mod like;

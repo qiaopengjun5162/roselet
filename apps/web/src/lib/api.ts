@@ -171,3 +171,34 @@ export async function toggleLike(roseId: string): Promise<LikeResponse> {
   if (!res.ok) throw new Error("Failed to toggle like");
   return res.json();
 }
+
+export interface FeedbackRequest {
+  content: string;
+}
+
+export interface FeedbackResponse {
+  id: number;
+}
+
+export async function submitFeedback(content: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/feedback`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+      },
+      body: JSON.stringify({ content }),
+    });
+
+    if (res.ok) {
+      const data: FeedbackResponse = await res.json();
+      return { success: true };
+    } else {
+      const error = await res.text();
+      return { success: false, error: error || "Failed to submit feedback" };
+    }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}

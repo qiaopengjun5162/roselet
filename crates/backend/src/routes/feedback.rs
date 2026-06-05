@@ -1,7 +1,8 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, http::StatusCode, Json, http::HeaderMap};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-use crate::{auth::Claims, error::AppError, state::AppState};
+use crate::{auth, error::AppError, state::AppState};
 
 #[derive(Deserialize)]
 pub struct FeedbackRequest {
@@ -15,18 +16,18 @@ pub struct FeedbackResponse {
 
 pub async fn submit_feedback(
     State(state): State<AppState>,
-    claims: Option<Claims>,
+    headers: HeaderMap,
     Json(body): Json<FeedbackRequest>,
 ) -> Result<(StatusCode, Json<FeedbackResponse>), AppError> {
     let content = body.content.trim().to_string();
     if content.chars().count() < 5 {
-        return Err(AppError::Validation("反馈内容至少 5 个字".into()));
+        return Err(AppError::BadRequest("反馈内容至少 5 个字".into()));
     }
     if content.chars().count() > 500 {
-        return Err(AppError::Validation("反馈内容不超过 500 字".into()));
+        return Err(AppError::BadRequest("反馈内容不超过 500 字".into()));
     }
 
-    let user_id: Option<i64> = claims.map(|c| c.sub);
+    let user_id: Option<Uuid> = auth::extract_user_id(&headers, &state.jwt_secret);
 
     let id = sqlx::query_scalar!(
         "INSERT INTO feedbacks (user_id, content) VALUES ($1, $2) RETURNING id",

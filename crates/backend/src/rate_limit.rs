@@ -46,8 +46,6 @@ impl Default for RateLimiter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread;
-    use std::time::Duration;
 
     #[test]
     fn test_allows_within_limit() {

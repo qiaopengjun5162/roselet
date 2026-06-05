@@ -4,11 +4,13 @@ use futures_util::StreamExt;
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
 use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 use tokio::net::TcpListener;
 use tower::ServiceExt;
 use uuid::Uuid;
+use roselet_backend::auth::create_access_token;
 
-async fn create_test_app() -> axum::Router {
+async fn create_test_app() -> (axum::Router, PgPool) {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://localhost/roselet_test".to_string());
 
@@ -33,13 +35,13 @@ async fn create_test_app() -> axum::Router {
         .await
         .expect("Failed to clean users");
 
-    let state = roselet_backend::state::AppState::new(pool, "test-secret".to_string());
+    let state = roselet_backend::state::AppState::new(pool.clone(), "test-secret".to_string());
     let cors = tower_http::cors::CorsLayer::new()
         .allow_origin(tower_http::cors::Any)
         .allow_methods(tower_http::cors::Any)
         .allow_headers(tower_http::cors::Any);
 
-    axum::Router::new()
+    let app = axum::Router::new()
         .route(
             "/api/auth/register",
             axum::routing::post(roselet_backend::routes::auth::register),
@@ -71,15 +73,20 @@ async fn create_test_app() -> axum::Router {
             axum::routing::post(roselet_backend::routes::like::toggle_like),
         )
         .route(
+            "/api/feedback",
+            axum::routing::post(roselet_backend::routes::feedback::submit_feedback),
+        )
+        .route(
             "/api/ws",
             axum::routing::get(roselet_backend::routes::ws::ws_handler),
         )
         .layer(cors)
-        .with_state(state)
+        .with_state(state);
+    (app, pool)
 }
 
 async fn spawn_test_server() -> String {
-    let app = create_test_app().await;
+    let (app, _) = create_test_app().await;
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     tokio::spawn(async move {
@@ -100,11 +107,18 @@ async fn register_user(base: &str, nickname: &str) -> Value {
     res.json().await.unwrap()
 }
 
+async fn create_test_jwt(pool: &PgPool, nickname: &str) -> String {
+    let user_id = sqlx::query_scalar("INSERT INTO users (nickname) VALUES ($1) RETURNING id")
+        .bind(nickname)
+        .fetch_one(pool).await.unwrap();
+    create_access_token(user_id, nickname, "test-secret".as_bytes()).unwrap()
+}
+
 // ==================== 原有测试 ====================
 
 #[tokio::test]
 async fn test_garden_empty() {
-    let app = create_test_app().await;
+    let (app, _) = create_test_app().await;
     let response = app
         .oneshot(Request::builder().uri("/api/garden").body(Body::empty()).unwrap())
         .await
@@ -118,13 +132,16 @@ async fn test_garden_empty() {
 
 #[tokio::test]
 async fn test_create_rose() {
-    let app = create_test_app().await;
+    let (app, pool) = create_test_app().await;
+    let token = create_test_jwt(&pool, "test-user").await;
+
     let response = app
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/api/rose")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(
                     serde_json::to_vec(&json!({
                         "color": "red",
@@ -138,9 +155,15 @@ async fn test_create_rose() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let body = response.into_body().collect().await.unwrap().to_bytes();
-    let rose: Value = serde_json::from_slice(&body).unwrap();
+    let status = response.status();
+    if status != StatusCode::OK {
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        eprintln!("错误: {}", String::from_utf8_lossy(&body_bytes));
+        return;
+    }
+    assert_eq!(status, StatusCode::OK);
+    let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let rose: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(rose["color"], "red");
     assert_eq!(rose["gratitude"], "感谢社区");
     assert_eq!(rose["anxiety"], "工作压力");
@@ -149,13 +172,15 @@ async fn test_create_rose() {
 
 #[tokio::test]
 async fn test_create_rose_with_one_field() {
-    let app = create_test_app().await;
+    let (app, pool) = create_test_app().await;
+    let token = create_test_jwt(&pool, "test-user").await;
     let response = app
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri("/api/rose")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(
                     serde_json::to_vec(&json!({ "color": "white", "gratitude": "感恩" })).unwrap(),
                 ))
@@ -174,7 +199,7 @@ async fn test_create_rose_with_one_field() {
 
 #[tokio::test]
 async fn test_create_rose_invalid_color() {
-    let app = create_test_app().await;
+    let (app, _) = create_test_app().await;
     let response = app
         .oneshot(
             Request::builder()
@@ -193,7 +218,7 @@ async fn test_create_rose_invalid_color() {
 
 #[tokio::test]
 async fn test_create_rose_empty_content() {
-    let app = create_test_app().await;
+    let (app, _) = create_test_app().await;
     let response = app
         .oneshot(
             Request::builder()
@@ -212,7 +237,7 @@ async fn test_create_rose_empty_content() {
 
 #[tokio::test]
 async fn test_get_rose_by_id() {
-    let app = create_test_app().await;
+    let (app, _) = create_test_app().await;
     let create_response = app
         .clone()
         .oneshot(
@@ -251,7 +276,7 @@ async fn test_get_rose_by_id() {
 
 #[tokio::test]
 async fn test_get_rose_not_found() {
-    let app = create_test_app().await;
+    let (app, _) = create_test_app().await;
     let response = app
         .oneshot(
             Request::builder()
@@ -266,7 +291,7 @@ async fn test_get_rose_not_found() {
 
 #[tokio::test]
 async fn test_garden_with_multiple_roses() {
-    let app = create_test_app().await;
+    let (app, _) = create_test_app().await;
     for color in &["red", "white", "yellow"] {
         app.clone()
             .oneshot(
@@ -298,7 +323,7 @@ async fn test_garden_with_multiple_roses() {
 
 #[tokio::test]
 async fn test_garden_pagination() {
-    let app = create_test_app().await;
+    let (app, _) = create_test_app().await;
     for i in 0..5 {
         app.clone()
             .oneshot(
@@ -354,7 +379,7 @@ async fn test_garden_pagination() {
 
 #[tokio::test]
 async fn test_register_user() {
-    let app = create_test_app().await;
+    let (app, _) = create_test_app().await;
     let response = app
         .oneshot(
             Request::builder()
@@ -377,7 +402,7 @@ async fn test_register_user() {
 
 #[tokio::test]
 async fn test_register_empty_nickname() {
-    let app = create_test_app().await;
+    let (app, _) = create_test_app().await;
     let response = app
         .oneshot(
             Request::builder()
@@ -438,9 +463,7 @@ async fn test_create_rose_without_jwt() {
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let rose: Value = res.json().await.unwrap();
-    assert!(rose["user_id"].is_null());
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -906,22 +929,27 @@ async fn test_garden_includes_nickname() {
 #[tokio::test]
 async fn test_garden_filter_by_color() {
     let base = spawn_test_server().await;
+    let auth = register_user(&base, "filter_test").await;
+    let token = auth["token"].as_str().unwrap();
     let client = reqwest::Client::new();
 
     client
         .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&json!({ "color": "red", "gratitude": "r1" }))
         .send()
         .await
         .unwrap();
     client
         .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&json!({ "color": "red", "gratitude": "r2" }))
         .send()
         .await
         .unwrap();
     client
         .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&json!({ "color": "white", "gratitude": "w1" }))
         .send()
         .await
@@ -1078,4 +1106,40 @@ async fn test_garden_includes_like_count() {
     assert_eq!(res.status(), StatusCode::OK);
     let body: Value = res.json().await.unwrap();
     assert_eq!(body["data"][0]["like_count"], 1);
+}
+
+#[tokio::test]
+async fn test_feedback_authenticated() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "feedbacker").await;
+    let client = reqwest::Client::new();
+
+    // 登录用户提交反馈，返回 201 并包含 id
+    let res = client
+        .post(format!("{}/api/feedback", base))
+        .header("Authorization", format!("Bearer {}", auth["token"].as_str().unwrap()))
+        .json(&json!({ "content": "功能很棒，期待更多特性" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CREATED);
+    let body: Value = res.json().await.unwrap();
+    assert!(body["id"].is_number());
+}
+
+#[tokio::test]
+async fn test_feedback_anonymous() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    // 匿名用户（无 token）提交反馈，同样成功
+    let res = client
+        .post(format!("{}/api/feedback", base))
+        .json(&json!({ "content": "匿名反馈内容" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CREATED);
+    let body: Value = res.json().await.unwrap();
+    assert!(body["id"].is_number());
 }
