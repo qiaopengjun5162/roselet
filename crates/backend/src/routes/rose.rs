@@ -1,6 +1,6 @@
 use axum::Json;
 use axum::extract::{Path, State};
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, StatusCode};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -23,7 +23,7 @@ pub async fn create_rose(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(input): Json<CreateRose>,
-) -> Result<Json<RoseResponse>, AppError> {
+) -> Result<(StatusCode, Json<RoseResponse>), AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
     let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
@@ -68,7 +68,7 @@ pub async fn create_rose(
         }
     });
 
-    Ok(Json(response))
+    Ok((StatusCode::CREATED, Json(response)))
 }
 
 pub async fn get_rose(

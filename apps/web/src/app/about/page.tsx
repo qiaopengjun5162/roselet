@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { FeedbackBottle } from "@/components/feedback-bottle";
 import { StarBottle } from "@/components/star-bottle";
 import { StarParticles } from "@/components/star-particles";
+import { SilentErrorBoundary } from "@/components/silent-error-boundary";
 
 export const metadata: Metadata = {
   title: "留言 - Roselet",
@@ -27,6 +28,7 @@ export default function AboutPage() {
       <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8 px-4 md:px-10 pt-16 pb-4 z-10">
         {/* 左栏: 项目瓶 — 顶部对齐，微上浮 */}
         <div className="w-full md:w-1/4 flex items-start justify-center md:self-start md:mt-6">
+          <SilentErrorBoundary>
           <StarBottle
             delay={100}
             glowColor="rgba(167,139,250,0.12)"
@@ -43,15 +45,19 @@ export default function AboutPage() {
               会为它生成专属回应，Rust 驱动的声音引擎将情感转化为波形。
             </p>
           </StarBottle>
+          </SilentErrorBoundary>
         </div>
 
         {/* 中栏: 反馈瓶 — 略下沉，视觉重心，辉光随情绪实时渐变 */}
         <div className="w-full md:w-2/5 flex items-center justify-center md:self-center md:-mt-4">
+          <SilentErrorBoundary>
           <FeedbackBottle />
+          </SilentErrorBoundary>
         </div>
 
         {/* 右栏: 开发者瓶 — 中部微偏上 */}
         <div className="w-full md:w-1/4 flex items-center justify-center md:self-start md:mt-16">
+          <SilentErrorBoundary>
           <StarBottle
             delay={200}
             glowColor="rgba(234,179,8,0.1)"
@@ -95,6 +101,7 @@ export default function AboutPage() {
               </Link>
             </div>
           </StarBottle>
+          </SilentErrorBoundary>
         </div>
       </div>
 

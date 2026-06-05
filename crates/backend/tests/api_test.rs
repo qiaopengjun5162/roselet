@@ -162,12 +162,12 @@ async fn test_create_rose() {
         .await
         .unwrap();
     let status = response.status();
-    if status != StatusCode::OK {
+    if status != StatusCode::CREATED {
         let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
         eprintln!("错误: {}", String::from_utf8_lossy(&body_bytes));
         return;
     }
-    assert_eq!(status, StatusCode::OK);
+    assert_eq!(status, StatusCode::CREATED);
     let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
     let rose: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(rose["color"], "red");
@@ -194,7 +194,7 @@ async fn test_create_rose_with_one_field() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::CREATED);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let rose: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(rose["color"], "white");
@@ -457,7 +457,7 @@ async fn test_create_rose_with_jwt() {
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
     let rose: Value = res.json().await.unwrap();
     assert_eq!(rose["color"], "red");
     assert_eq!(rose["gratitude"], "感恩测试");
