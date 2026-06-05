@@ -266,19 +266,10 @@ pub struct FeedbackInput {
 }
 
 /// 反馈验证结果
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct FeedbackValidation {
     pub valid: bool,
     pub error: Option<String>,
-}
-
-impl Default for FeedbackValidation {
-    fn default() -> Self {
-        Self {
-            valid: false,
-            error: None,
-        }
-    }
 }
 
 /// WASM: 验证种花表单，返回 JSON (Rust 侧统一校验规则)

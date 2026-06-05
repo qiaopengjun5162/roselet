@@ -61,17 +61,12 @@ impl ApiClient {
         format!("{{{}}}", fields.join(","))
     }
 
-    /// 构造注册请求体
-    pub fn build_register_body(&self, nickname: &str) -> String {
-        format!("{{\"nickname\":\"{}\"}}", nickname)
-    }
-
     /// 计算分页信息
     pub fn compute_pagination(&self, total: u32, page: u32, per_page: u32) -> Pagination {
         let total_pages = if total == 0 {
             1
         } else {
-            (total + per_page - 1) / per_page
+            total.div_ceil(per_page)
         };
         Pagination {
             has_more: (page as u64) * (per_page as u64) < total as u64,
