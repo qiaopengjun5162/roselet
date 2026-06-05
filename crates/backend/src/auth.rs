@@ -35,23 +35,6 @@ pub fn create_access_token(
     .map_err(|e| AppError::Auth(e.to_string()))
 }
 
-// ── 向后兼容：原来的 create_token (30天) ──
-
-pub fn create_token(user_id: Uuid, nickname: &str, secret: &[u8]) -> Result<String, AppError> {
-    let exp = (Utc::now() + Duration::days(30)).timestamp() as usize;
-    let claims = Claims {
-        sub: user_id,
-        nickname: nickname.to_string(),
-        exp,
-    };
-    encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(secret),
-    )
-    .map_err(|e| AppError::Auth(e.to_string()))
-}
-
 pub fn verify_token(token: &str, secret: &[u8]) -> Option<Claims> {
     decode::<Claims>(
         token,
@@ -73,7 +56,7 @@ fn hash_token(token: &str) -> String {
 pub async fn create_refresh_token(pool: &PgPool, user_id: Uuid) -> Result<String, AppError> {
     let token = Uuid::new_v4().to_string();
     let hash = hash_token(&token);
-    let expires = Utc::now() + Duration::days(7);
+    let expires = Utc::now() + Duration::days(30);
 
     sqlx::query("INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)")
         .bind(user_id)
@@ -124,21 +107,14 @@ mod tests {
 
     #[test]
     fn test_create_and_verify_token() {
-        let token = create_token(Uuid::nil(), "alice", TEST_SECRET).unwrap();
+        let token = create_access_token(Uuid::nil(), "alice", TEST_SECRET).unwrap();
         let claims = verify_token(&token, TEST_SECRET).unwrap();
         assert_eq!(claims.nickname, "alice");
     }
 
     #[test]
-    fn test_access_token_expiry() {
-        let token = create_access_token(Uuid::nil(), "bob", TEST_SECRET).unwrap();
-        let claims = verify_token(&token, TEST_SECRET).unwrap();
-        assert_eq!(claims.nickname, "bob");
-    }
-
-    #[test]
     fn test_verify_token_wrong_secret() {
-        let token = create_token(Uuid::nil(), "alice", TEST_SECRET).unwrap();
+        let token = create_access_token(Uuid::nil(), "alice", TEST_SECRET).unwrap();
         assert!(verify_token(&token, b"wrong-secret").is_none());
     }
 

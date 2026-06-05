@@ -47,6 +47,14 @@ async fn create_test_app() -> (axum::Router, PgPool) {
             axum::routing::post(roselet_backend::routes::auth::register),
         )
         .route(
+            "/api/auth/refresh",
+            axum::routing::post(roselet_backend::routes::auth::refresh),
+        )
+        .route(
+            "/api/auth/logout",
+            axum::routing::post(roselet_backend::routes::auth::logout),
+        )
+        .route(
             "/api/garden",
             axum::routing::get(roselet_backend::routes::garden::get_garden),
         )
@@ -107,7 +115,7 @@ async fn register_user(base: &str, nickname: &str) -> Value {
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
     res.json().await.unwrap()
 }
 
@@ -405,10 +413,11 @@ async fn test_register_user() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::CREATED);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let result: Value = serde_json::from_slice(&body).unwrap();
-    assert!(result["token"].as_str().is_some());
+    assert!(result["access_token"].as_str().is_some());
+    assert!(result["refresh_token"].as_str().is_some());
     assert_eq!(result["user"]["nickname"], "alice");
 }
 
@@ -437,9 +446,9 @@ async fn test_register_empty_nickname() {
 async fn test_register_duplicate_nickname() {
     let base = spawn_test_server().await;
     let res1 = register_user(&base, "bob").await;
-    assert!(res1["token"].as_str().is_some());
+    assert!(res1["access_token"].as_str().is_some());
     let res2 = register_user(&base, "bob").await;
-    assert!(res2["token"].as_str().is_some());
+    assert!(res2["access_token"].as_str().is_some());
     assert_eq!(res1["user"]["id"], res2["user"]["id"]);
 }
 
@@ -447,7 +456,7 @@ async fn test_register_duplicate_nickname() {
 async fn test_create_rose_with_jwt() {
     let base = spawn_test_server().await;
     let auth = register_user(&base, "carol").await;
-    let token = auth["token"].as_str().unwrap();
+    let token = auth["access_token"].as_str().unwrap();
 
     let client = reqwest::Client::new();
     let res = client
@@ -561,7 +570,7 @@ async fn test_websocket_receives_new_rose() {
         .post(format!("{}/api/rose", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth["token"].as_str().unwrap()),
+            format!("Bearer {}", auth["access_token"].as_str().unwrap()),
         )
         .json(&json!({ "color": "red", "gratitude": "ws测试" }))
         .send()
@@ -586,7 +595,7 @@ async fn test_websocket_receives_new_rose() {
 async fn test_update_rose_by_owner() {
     let base = spawn_test_server().await;
     let auth = register_user(&base, "dave").await;
-    let token = auth["token"].as_str().unwrap();
+    let token = auth["access_token"].as_str().unwrap();
     let client = reqwest::Client::new();
 
     let res = client
@@ -623,7 +632,7 @@ async fn test_update_rose_forbidden() {
         .post(format!("{}/api/rose", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth1["token"].as_str().unwrap()),
+            format!("Bearer {}", auth1["access_token"].as_str().unwrap()),
         )
         .json(&json!({ "color": "red", "gratitude": "eve的玫瑰" }))
         .send()
@@ -636,7 +645,7 @@ async fn test_update_rose_forbidden() {
         .put(format!("{}/api/rose/{}", base, rose_id))
         .header(
             "Authorization",
-            format!("Bearer {}", auth2["token"].as_str().unwrap()),
+            format!("Bearer {}", auth2["access_token"].as_str().unwrap()),
         )
         .json(&json!({ "gratitude": "尝试修改" }))
         .send()
@@ -655,7 +664,7 @@ async fn test_update_rose_no_auth() {
         .post(format!("{}/api/rose", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth["token"].as_str().unwrap()),
+            format!("Bearer {}", auth["access_token"].as_str().unwrap()),
         )
         .json(&json!({ "color": "red", "gratitude": "greg的玫瑰" }))
         .send()
@@ -677,7 +686,7 @@ async fn test_update_rose_no_auth() {
 async fn test_delete_rose_by_owner() {
     let base = spawn_test_server().await;
     let auth = register_user(&base, "helen").await;
-    let token = auth["token"].as_str().unwrap();
+    let token = auth["access_token"].as_str().unwrap();
     let client = reqwest::Client::new();
 
     let res = client
@@ -713,7 +722,7 @@ async fn test_delete_rose_forbidden() {
         .post(format!("{}/api/rose", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth1["token"].as_str().unwrap()),
+            format!("Bearer {}", auth1["access_token"].as_str().unwrap()),
         )
         .json(&json!({ "color": "red", "gratitude": "ivan的玫瑰" }))
         .send()
@@ -726,7 +735,7 @@ async fn test_delete_rose_forbidden() {
         .delete(format!("{}/api/rose/{}", base, rose_id))
         .header(
             "Authorization",
-            format!("Bearer {}", auth2["token"].as_str().unwrap()),
+            format!("Bearer {}", auth2["access_token"].as_str().unwrap()),
         )
         .send()
         .await
@@ -747,7 +756,7 @@ async fn test_delete_rose_not_found() {
         ))
         .header(
             "Authorization",
-            format!("Bearer {}", auth["token"].as_str().unwrap()),
+            format!("Bearer {}", auth["access_token"].as_str().unwrap()),
         )
         .send()
         .await
@@ -775,7 +784,7 @@ async fn test_my_roses_only_own() {
             .post(format!("{}/api/rose", base))
             .header(
                 "Authorization",
-                format!("Bearer {}", auth1["token"].as_str().unwrap()),
+                format!("Bearer {}", auth1["access_token"].as_str().unwrap()),
             )
             .json(&json!({ "color": "red", "gratitude": format!("owner rose {}", i) }))
             .send()
@@ -787,7 +796,7 @@ async fn test_my_roses_only_own() {
         .post(format!("{}/api/rose", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth2["token"].as_str().unwrap()),
+            format!("Bearer {}", auth2["access_token"].as_str().unwrap()),
         )
         .json(&json!({ "color": "white", "gratitude": "other rose" }))
         .send()
@@ -798,7 +807,7 @@ async fn test_my_roses_only_own() {
         .get(format!("{}/api/my/roses", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth1["token"].as_str().unwrap()),
+            format!("Bearer {}", auth1["access_token"].as_str().unwrap()),
         )
         .send()
         .await
@@ -812,7 +821,7 @@ async fn test_my_roses_only_own() {
         .get(format!("{}/api/my/roses", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth2["token"].as_str().unwrap()),
+            format!("Bearer {}", auth2["access_token"].as_str().unwrap()),
         )
         .send()
         .await
@@ -833,7 +842,7 @@ async fn test_my_roses_empty() {
         .get(format!("{}/api/my/roses", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth["token"].as_str().unwrap()),
+            format!("Bearer {}", auth["access_token"].as_str().unwrap()),
         )
         .send()
         .await
@@ -855,7 +864,7 @@ async fn test_my_roses_pagination() {
             .post(format!("{}/api/rose", base))
             .header(
                 "Authorization",
-                format!("Bearer {}", auth["token"].as_str().unwrap()),
+                format!("Bearer {}", auth["access_token"].as_str().unwrap()),
             )
             .json(&json!({ "color": "red", "gratitude": format!("rose {}", i) }))
             .send()
@@ -867,7 +876,7 @@ async fn test_my_roses_pagination() {
         .get(format!("{}/api/my/roses?page=1&per_page=2", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth["token"].as_str().unwrap()),
+            format!("Bearer {}", auth["access_token"].as_str().unwrap()),
         )
         .send()
         .await
@@ -890,13 +899,13 @@ async fn test_rose_includes_nickname() {
         .post(format!("{}/api/rose", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth["token"].as_str().unwrap()),
+            format!("Bearer {}", auth["access_token"].as_str().unwrap()),
         )
         .json(&json!({ "color": "red", "gratitude": "test nickname" }))
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
     let rose: Value = res.json().await.unwrap();
     assert_eq!(rose["nickname"], "planter");
 
@@ -916,7 +925,7 @@ async fn test_garden_includes_nickname() {
         .post(format!("{}/api/rose", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth["token"].as_str().unwrap()),
+            format!("Bearer {}", auth["access_token"].as_str().unwrap()),
         )
         .json(&json!({ "color": "yellow", "gratitude": "garden test" }))
         .send()
@@ -937,7 +946,7 @@ async fn test_garden_includes_nickname() {
 async fn test_garden_filter_by_color() {
     let base = spawn_test_server().await;
     let auth = register_user(&base, "filter_test").await;
-    let token = auth["token"].as_str().unwrap();
+    let token = auth["access_token"].as_str().unwrap();
     let client = reqwest::Client::new();
 
     client
@@ -986,7 +995,7 @@ async fn test_garden_filter_by_color() {
 async fn test_user_profile() {
     let base = spawn_test_server().await;
     let auth = register_user(&base, "profiler").await;
-    let token = auth["token"].as_str().unwrap();
+    let token = auth["access_token"].as_str().unwrap();
     let client = reqwest::Client::new();
 
     client
@@ -1038,7 +1047,7 @@ async fn test_user_profile_no_auth() {
 async fn test_like_and_unlike() {
     let base = spawn_test_server().await;
     let auth = register_user(&base, "liker").await;
-    let token = auth["token"].as_str().unwrap();
+    let token = auth["access_token"].as_str().unwrap();
     let client = reqwest::Client::new();
 
     let res = client
@@ -1091,7 +1100,7 @@ async fn test_like_no_auth() {
 async fn test_garden_includes_like_count() {
     let base = spawn_test_server().await;
     let auth = register_user(&base, "fan").await;
-    let token = auth["token"].as_str().unwrap();
+    let token = auth["access_token"].as_str().unwrap();
     let client = reqwest::Client::new();
 
     let res = client
@@ -1128,7 +1137,7 @@ async fn test_feedback_authenticated() {
         .post(format!("{}/api/feedback", base))
         .header(
             "Authorization",
-            format!("Bearer {}", auth["token"].as_str().unwrap()),
+            format!("Bearer {}", auth["access_token"].as_str().unwrap()),
         )
         .json(&json!({ "content": "功能很棒，期待更多特性" }))
         .send()
@@ -1258,4 +1267,116 @@ async fn test_feedback_no_content_field() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+// ── Refresh / Logout 集成测试 ──
+
+#[tokio::test]
+async fn test_refresh_success() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "refresh-test").await;
+    let refresh_token = auth["refresh_token"].as_str().unwrap();
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{}/api/auth/refresh", base))
+        .json(&json!({ "refresh_token": refresh_token }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    let new_access_token = body["access_token"].as_str().unwrap();
+    assert!(!new_access_token.is_empty());
+    // 验证新 token 也可用于认证
+    let profile_res = client
+        .get(format!("{}/api/user/profile", base))
+        .header("Authorization", format!("Bearer {}", new_access_token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(profile_res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_refresh_invalid_token() {
+    let base = spawn_test_server().await;
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{}/api/auth/refresh", base))
+        .json(&json!({ "refresh_token": "not-a-valid-uuid" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_refresh_after_logout() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "logout-refresh").await;
+    let access_token = auth["access_token"].as_str().unwrap();
+    let refresh_token = auth["refresh_token"].as_str().unwrap();
+
+    let client = reqwest::Client::new();
+
+    // 登出
+    let res = client
+        .post(format!("{}/api/auth/logout", base))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 登出后用旧 refresh_token 刷新应失败
+    let res = client
+        .post(format!("{}/api/auth/refresh", base))
+        .json(&json!({ "refresh_token": refresh_token }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_logout_success() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "logout-test").await;
+    let access_token = auth["access_token"].as_str().unwrap();
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{}/api/auth/logout", base))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert!(body["success"].as_bool().unwrap());
+}
+
+#[tokio::test]
+async fn test_logout_no_token() {
+    let base = spawn_test_server().await;
+
+    let client = reqwest::Client::new();
+    let res = client.post(format!("{}/api/auth/logout", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_logout_expired_token() {
+    let base = spawn_test_server().await;
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{}/api/auth/logout", base))
+        .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDAiLCJuaWNrbmFtZSI6ImZha2UiLCJleHAiOjk5OTk5OTk5OTl9.invalid-signature")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }

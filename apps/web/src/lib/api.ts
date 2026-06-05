@@ -7,17 +7,27 @@ export interface User {
 }
 
 export interface AuthResponse {
-  token: string;
+  access_token: string;
+  refresh_token: string;
   user: User;
 }
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+  return localStorage.getItem("access_token");
 }
 
 export function setToken(token: string) {
-  localStorage.setItem("token", token);
+  localStorage.setItem("access_token", token);
+}
+
+export function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("refresh_token");
+}
+
+export function setRefreshToken(token: string) {
+  localStorage.setItem("refresh_token", token);
 }
 
 export function getUser(): User | null {
@@ -37,8 +47,53 @@ export function setUser(user: User) {
 }
 
 export function logout() {
-  localStorage.removeItem("token");
+  const refreshToken = getRefreshToken();
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
   localStorage.removeItem("user");
+  // 异步撤销服务端 refresh token，不阻塞登出
+  if (refreshToken) {
+    fetch(`${API_BASE}/api/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${refreshToken}`,
+      },
+    }).catch(() => {});
+  }
+}
+
+let refreshing: Promise<string | null> | null = null;
+
+export async function refreshAccessToken(): Promise<string | null> {
+  if (refreshing) return refreshing;
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  refreshing = fetch(`${API_BASE}/api/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  })
+    .then(async (res) => {
+      if (!res.ok) throw new Error("refresh failed");
+      const data: { access_token: string } = await res.json();
+      setToken(data.access_token);
+      return data.access_token;
+    })
+    .catch(() => {
+      // Refresh token 失效，强制登出
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user");
+      return null;
+    })
+    .finally(() => {
+      refreshing = null;
+    });
+
+  return refreshing;
 }
 
 export async function register(nickname: string): Promise<AuthResponse> {
@@ -85,6 +140,19 @@ function authHeaders(): Record<string, string> {
   return headers;
 }
 
+async function authFetch(url: string, init?: RequestInit): Promise<Response> {
+  const res = await fetch(url, init);
+  if (res.status === 401 && getRefreshToken()) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      const headers = new Headers(init?.headers);
+      headers.set("Authorization", `Bearer ${newToken}`);
+      return fetch(url, { ...init, headers });
+    }
+  }
+  return res;
+}
+
 export async function createRose(data: CreateRose): Promise<Rose> {
   const { buildPlantBody } = await import("@/lib/recommend");
   const body = await buildPlantBody(
@@ -93,7 +161,7 @@ export async function createRose(data: CreateRose): Promise<Rose> {
     data.anxiety ?? null,
     data.hope ?? null,
   );
-  const res = await fetch(`${API_BASE}/api/rose`, {
+  const res = await authFetch(`${API_BASE}/api/rose`, {
     method: "POST",
     headers: authHeaders(),
     body,
@@ -103,7 +171,7 @@ export async function createRose(data: CreateRose): Promise<Rose> {
 }
 
 export async function updateRose(id: string, data: UpdateRose): Promise<Rose> {
-  const res = await fetch(`${API_BASE}/api/rose/${id}`, {
+  const res = await authFetch(`${API_BASE}/api/rose/${id}`, {
     method: "PUT",
     headers: authHeaders(),
     body: JSON.stringify(data),
@@ -113,7 +181,7 @@ export async function updateRose(id: string, data: UpdateRose): Promise<Rose> {
 }
 
 export async function deleteRose(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/rose/${id}`, {
+  const res = await authFetch(`${API_BASE}/api/rose/${id}`, {
     method: "DELETE",
     headers: authHeaders(),
   });
@@ -142,7 +210,7 @@ export async function getRose(id: string): Promise<Rose> {
 }
 
 export async function getMyRoses(page = 1, perPage = 20): Promise<PaginatedResponse<Rose>> {
-  const res = await fetch(`${API_BASE}/api/my/roses?page=${page}&per_page=${perPage}`, {
+  const res = await authFetch(`${API_BASE}/api/my/roses?page=${page}&per_page=${perPage}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch my roses");
@@ -158,7 +226,7 @@ export interface UserProfile {
 }
 
 export async function getUserProfile(): Promise<UserProfile> {
-  const res = await fetch(`${API_BASE}/api/user/profile`, {
+  const res = await authFetch(`${API_BASE}/api/user/profile`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch profile");
@@ -171,7 +239,7 @@ export interface LikeResponse {
 }
 
 export async function toggleLike(roseId: string): Promise<LikeResponse> {
-  const res = await fetch(`${API_BASE}/api/rose/${roseId}/like`, {
+  const res = await authFetch(`${API_BASE}/api/rose/${roseId}/like`, {
     method: "POST",
     headers: authHeaders(),
   });

@@ -199,7 +199,8 @@ describe("API Client", () => {
   describe("register", () => {
     it("should register a user", async () => {
       const mockResponse = {
-        token: "jwt-token",
+        access_token: "jwt-access-token",
+        refresh_token: "jwt-refresh-token",
         user: { id: "u1", nickname: "alice", created_at: "2026-05-27T00:00:00Z" },
       };
 

@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { register, setToken, setUser } from "@/lib/api";
+import { register, setToken, setRefreshToken, setUser } from "@/lib/api";
 
 function LoginForm() {
   const [nickname, setNickname] = useState("");
@@ -21,7 +21,8 @@ function LoginForm() {
 
     try {
       const res = await register(nickname.trim());
-      setToken(res.token);
+      setToken(res.access_token);
+      setRefreshToken(res.refresh_token);
       setUser(res.user);
       window.dispatchEvent(new Event("auth-change"));
       router.push(redirect);

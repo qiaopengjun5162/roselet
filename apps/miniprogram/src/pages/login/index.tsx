@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { View, Text, Input, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { register } from '@/api'
-import { setToken, setUser } from '@/utils/storage'
+import { setToken, setRefreshToken, setUser } from '@/utils/storage'
 import { NavBar, TOTAL_HEADER_HEIGHT } from '@/components/NavBar'
 import styles from './index.module.css'
 
@@ -17,7 +17,7 @@ export default function Login() {
     setLoading(true); setError('')
     try {
       const res = await register(trimmed)
-      setToken(res.token); setUser(res.user)
+      setToken(res.access_token); setRefreshToken(res.refresh_token); setUser(res.user)
       Taro.navigateBack()
     } catch {
       setError('注册失败，请重试')

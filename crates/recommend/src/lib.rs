@@ -309,8 +309,8 @@ pub fn compute_sky_params_wasm(hour: u32) -> JsValue {
 /// WASM: 生成星尘粒子配置 — 确定性伪随机 left/delay/duration/size/opacity
 #[wasm_bindgen]
 pub fn generate_star_particles_wasm(count: u32, seed: u64) -> JsValue {
-    use std::hash::{Hash, Hasher};
     use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
 
     #[derive(Serialize)]
     struct StarParticle {

@@ -14,6 +14,7 @@ jest.mock("react", () => ({
 jest.mock("@/lib/api", () => ({
   register: jest.fn(),
   setToken: jest.fn(),
+  setRefreshToken: jest.fn(),
   setUser: jest.fn(),
 }));
 

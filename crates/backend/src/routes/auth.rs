@@ -1,6 +1,6 @@
 use axum::Json;
 use axum::extract::State;
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, StatusCode};
 use serde::Serialize;
 
 use crate::auth;
@@ -11,7 +11,7 @@ use crate::state::AppState;
 pub async fn register(
     State(state): State<AppState>,
     Json(input): Json<RegisterRequest>,
-) -> Result<Json<AuthResponse>, AppError> {
+) -> Result<(StatusCode, Json<AuthResponse>), AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
     let nickname = input.nickname.trim().to_string();
@@ -23,9 +23,17 @@ pub async fn register(
     .fetch_one(&state.pool)
     .await?;
 
-    let token = auth::create_token(user.id, &user.nickname, &state.jwt_secret)?;
+    let access_token = auth::create_access_token(user.id, &user.nickname, &state.jwt_secret)?;
+    let refresh_token = auth::create_refresh_token(&state.pool, user.id).await?;
 
-    Ok(Json(AuthResponse { token, user }))
+    Ok((
+        StatusCode::CREATED,
+        Json(AuthResponse {
+            access_token,
+            refresh_token,
+            user,
+        }),
+    ))
 }
 
 #[derive(Debug, Serialize)]
