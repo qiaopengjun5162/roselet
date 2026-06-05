@@ -1272,10 +1272,10 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 - 3 个集成测试断言同步更新
 
 ### 仍开放（下次会话优先级）
-| P0 | just migrate 应用 007 → /api/feedback 可运行 |
-| P0 | register 改 Short-lived Access (15min) + Refresh (30d) 双令牌 |
-| P1 | flowers.rs (70.41%) + color.rs (64%) 补专用测试 |
-| P1 | 5 个后端路由无集成测试 (health/refresh/logout/swagger/openapi.json) |
+| ~~P0~~ | ~~just migrate 应用 007 → /api/feedback 可运行~~ ✅ 会话 #27 |
+| ~~P0~~ | ~~register 改 Short-lived Access (15min) + Refresh (30d) 双令牌~~ ✅ 会话 #27 |
+| ~~P1~~ | ~~flowers.rs (70.41%) + color.rs (64%) 补专用测试~~ ✅ 会话 #27 |
+| P1 | 5 个后端路由无集成测试 — 还剩 3 个 (health/swagger/openapi.json) |
 | P2 | packages/core 3 个零调用文件清理 |
 | P2 | Fireworks 粒子算法下沉 WASM |
 
@@ -1285,3 +1285,72 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 - clippy + fmt 干净
 
 <!-- 下次会话在此处继续记录 -->
+
+## 2026-06-05 会话 #27：P0 双令牌安全闭环 + P1 Rust 内核测试增肌
+
+### P0 — 双令牌安全闭环
+
+#### 后端 (crates/backend)
+- `models/user.rs`: AuthResponse `token: String` → `access_token: String, refresh_token: String`
+- `auth.rs`: 删除 `create_token`(30天单令牌), `create_refresh_token` 7天→30天
+- `routes/auth.rs`: register handler 用 `create_access_token`(15min) + `create_refresh_token`(30d)
+- register 返回 201 Created (REST 规范，与 create_rose 一致)
+- 认证状态码：`AppError::Auth` → 401 Unauthorized（非 403 Forbidden）
+
+#### Web 前端 (apps/web)
+- `api.ts`: AuthResponse 更新, 新增 `getRefreshToken/setRefreshToken/refreshAccessToken`
+- `api.ts`: 新增 `authFetch()` 401 拦截器 — Promise 复用锁防并发刷新（Why TS? HTTP 生命周期管理必须在 JS 运行时，WASM 无法接管 fetch）
+- `api.ts`: `logout()` 异步调 `/api/auth/logout` 撤销 refresh token
+- `login/page.tsx`: 存储双令牌
+
+#### 小程序 (apps/miniprogram)
+- `login/index.tsx`: `res.token` → `res.access_token` + `setRefreshToken(res.refresh_token)`
+- 双令牌存储和 401 拦截器已在会话 #23 就绪
+
+#### 集成测试
+- `test_app` 注册 refresh + logout 路由
+- 新增 6 个测试：refresh 成功/无效 token/登出后失效, logout 成功/无 token/无效 token
+
+### P1 — Rust WASM 内核测试增肌
+
+#### flowers.rs: 0 → 31 tests, 覆盖率 70.41% → 100%
+- 8 个花语分支全覆盖 (Gratitude/Family/Friendship/Work/Growth/Love/Health/default)
+- 优先级断言 (first match wins, second priority)
+- 全类别遍历验证 (所有 title/content/keywords 非空)
+- 4 个主题推荐分支 (first unmatched/skips matched/all matched/Gratitude不在检查范围)
+- 11 个颜色比率边界值 (零总数/高低比率/中间态/刚好 0.4 边界/float 精度/大数)
+- 3 个序列化测试
+
+#### color.rs: 3 → 11 tests, 覆盖率 64% → 96.39%
+- 空字符串/空白/大小写 fallback
+- 静态引用确定性 (两次 find("red") 指针相等)
+- WASM 导出 smoke: color_emoji/color_label/color_options 数据完整性
+- Serde 序列化验证
+- 注意: `color_options()` 内部调 `serde_wasm_bindgen::to_value`，native test 无法反序列化 JsValue。采用方案：直接对 COLORS 静态数组做 serde_json 验证，旁路绕过 wasm-bindgen 宿主依赖。
+
+### 遇到的问题及解决
+
+1. **register 返回类型变更**: handler 从 `Result<Json<AuthResponse>, AppError>` 改为 `Result<(StatusCode, Json<AuthResponse>), AppError>`。axum 的 `(StatusCode, Json<T>)` 自动设置 HTTP 状态码。
+
+2. **JWT 确定性导致 test_refresh_success 假失败**: 同一秒内 `create_access_token` 产生字节级相同的 JWT（相同 sub/nickname/exp + 相同 secret = 相同签名）。解决：改为验证新 token 可用于后续认证请求，不做 `assert_ne!`。
+
+3. **`auth1["token"]` / `auth2["token"]` 残留**: replace_all `auth["token"]` → `auth["access_token"]` 无法匹配带数字后缀的变量名。解决：额外 replace_all `auth1["token"]`, `auth2["token"]`, `res1["token"]`, `res2["token"]`。
+
+4. **`serde_wasm_bindgen::to_value` 在 native test 崩溃**: Native 环境下不存在 JS 引擎，`JsValue` 只是一个伪装句柄。`color_options()` 调用 `serde_wasm_bindgen::to_value(COLORS)` 后，反序列化 `from_value` 会 panic。这是经典的「宿主幽灵陷阱」。解决：核心数据校验走 `serde_json`，WASM 导出函数只留 smoke test。
+
+5. **`utoipa-swagger-ui` build.rs curl 失败**: HTTP2 framing 错误（代理干扰）。暂不影响测试（test profile 不需要 swagger UI 下载）。
+
+### 当前测试状态
+- Backend: 100 tests (94 原有 + 6 新 refresh/logout)
+- Rust WASM: 115 tests (76 → 115, +39)
+- Web: 86 tests
+- Miniprogram: 42 tests
+- **Total: 343 passed**
+- llvm-cov (recommend): 86.46% (81.94% → +4.52%)
+- flowers.rs: 100% | color.rs: 96.39%
+- clippy + fmt 干净
+
+### 待办 (下次会话)
+| P1 | 5 个后端路由无集成测试 (health/swagger/openapi.json) |
+| P2 | packages/core 3 个零调用文件清理 (useGardenFilter/theme/web3.ts) |
+| P2 | Fireworks 粒子算法下沉 WASM |
