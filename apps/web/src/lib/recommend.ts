@@ -8,11 +8,14 @@ interface WasmMod {
   compute_layout: (json: string) => unknown; filter_roses: (json: string, f: string) => unknown;
   validate_plant_input: (json: string) => unknown;
   parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
+  validate_feedback_input: (json: string) => unknown;
   format_date_wasm: (iso: string) => unknown;
   generate_petals_wasm: (count: number, seed: bigint) => unknown;
   rose_to_sound_params_wasm: (rose_json: string) => unknown;
   compute_sky_params_wasm: (hour: number) => unknown;
   generate_star_particles_wasm: (count: number, seed: bigint) => unknown;
+  build_garden_url: (base_url: string, page: number, per_page: number, color: string) => string;
+  build_plant_body: (color: string, gratitude: string, anxiety: string, hope: string) => string;
   color_emoji: (color: string) => string;
   color_label: (color: string) => string;
 }
@@ -59,6 +62,19 @@ export interface StarParticle { left: number; delay: number; duration: number; s
 export async function generateStarParticles(count: number, seed: bigint): Promise<StarParticle[] | null> {
   const mod = await loadWasm(); if (!mod) return null;
   try { return mod.generate_star_particles_wasm(count, seed) as StarParticle[]; } catch { return null; }
+}
+
+// Rust WASM URL/body builders — replaces TS template-literal construction
+export async function buildGardenUrl(baseUrl: string, page: number, perPage: number, color?: string): Promise<string> {
+  const mod = await loadWasm();
+  if (!mod) return `${baseUrl}/api/garden?page=${page}&per_page=${perPage}${color ? `&color=${color}` : ""}`;
+  try { return mod.build_garden_url(baseUrl, page, perPage, color ?? ""); } catch { return `${baseUrl}/api/garden?page=${page}&per_page=${perPage}${color ? `&color=${color}` : ""}`; }
+}
+
+export async function buildPlantBody(color: string, gratitude?: string | null, anxiety?: string | null, hope?: string | null): Promise<string> {
+  const mod = await loadWasm();
+  if (!mod) return JSON.stringify({ color, gratitude, anxiety, hope });
+  try { return mod.build_plant_body(color, gratitude ?? "", anxiety ?? "", hope ?? ""); } catch { return JSON.stringify({ color, gratitude, anxiety, hope }); }
 }
 
 // 颜色元数据 — 同步调用（WASM 已加载则走 Rust，否则 TS 兜底保证首屏不闪）

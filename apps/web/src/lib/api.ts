@@ -86,10 +86,17 @@ function authHeaders(): Record<string, string> {
 }
 
 export async function createRose(data: CreateRose): Promise<Rose> {
+  const { buildPlantBody } = await import("@/lib/recommend");
+  const body = await buildPlantBody(
+    data.color,
+    data.gratitude ?? null,
+    data.anxiety ?? null,
+    data.hope ?? null,
+  );
   const res = await fetch(`${API_BASE}/api/rose`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify(data),
+    body,
   });
   if (!res.ok) throw new Error("Failed to create rose");
   return res.json();
@@ -121,8 +128,8 @@ export interface PaginatedResponse<T> {
 }
 
 export async function getGarden(page = 1, perPage = 20, color?: string): Promise<PaginatedResponse<Rose>> {
-  let url = `${API_BASE}/api/garden?page=${page}&per_page=${perPage}`;
-  if (color) url += `&color=${color}`;
+  const { buildGardenUrl } = await import("@/lib/recommend");
+  const url = await buildGardenUrl(API_BASE, page, perPage, color);
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch garden");
   return res.json();

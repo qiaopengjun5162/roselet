@@ -39,4 +39,4 @@ export async function validateFeedback(content: string): Promise<FeedbackValidat
 }
 
 // 导出其他已有的 WASM 功能
-export { getRecommendation, analyzeTextWasm, getLayout, filterRosesInWasm, validatePlantInput, parseGardenResponse, parseRoseResponse, formatDate, generatePetals, roseToSoundParamsWasm, computeSkyParams, generateStarParticles, colorEmoji, colorLabel } from "./recommend";
+export { getRecommendation, analyzeTextWasm, getLayout, filterRosesInWasm, validatePlantInput, parseGardenResponse, parseRoseResponse, formatDate, generatePetals, roseToSoundParamsWasm, computeSkyParams, generateStarParticles, buildGardenUrl, buildPlantBody, colorEmoji, colorLabel } from "./recommend";
