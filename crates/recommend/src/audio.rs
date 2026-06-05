@@ -30,9 +30,21 @@ struct ColorParams {
 
 fn color_params(color: &str) -> ColorParams {
     match color {
-        "white"  => ColorParams { freq: 264.0, stroke: "#e2e8f0", glow: "rgba(226,232,240,0.4)" },
-        "yellow" => ColorParams { freq: 198.0, stroke: "#fbbf24", glow: "rgba(251,191,36,0.5)"  },
-        _        => ColorParams { freq: 220.0, stroke: "#f472b6", glow: "rgba(244,114,182,0.5)" },
+        "white" => ColorParams {
+            freq: 264.0,
+            stroke: "#e2e8f0",
+            glow: "rgba(226,232,240,0.4)",
+        },
+        "yellow" => ColorParams {
+            freq: 198.0,
+            stroke: "#fbbf24",
+            glow: "rgba(251,191,36,0.5)",
+        },
+        _ => ColorParams {
+            freq: 220.0,
+            stroke: "#f472b6",
+            glow: "rgba(244,114,182,0.5)",
+        },
     }
 }
 
@@ -41,29 +53,29 @@ fn pick_ratio(rose: &RoseAudioInput) -> (u8, u8) {
     let a = rose.anxiety.as_deref().map(|s| !s.is_empty()).unwrap_or(false);
     let h = rose.hope.as_deref().map(|s| !s.is_empty()).unwrap_or(false);
     match (g, a, h) {
-        (true, true, true)   => (3, 4),
-        (true, false, true)  => (1, 2),
-        (true, true, false)  => (2, 3),
-        (false, true, true)  => (3, 5),
+        (true, true, true) => (3, 4),
+        (true, false, true) => (1, 2),
+        (true, true, false) => (2, 3),
+        (false, true, true) => (3, 5),
         (true, false, false) => (1, 1),
         (false, false, true) => (1, 3),
         (false, true, false) => (4, 5),
-        _                    => (1, 2),
+        _ => (1, 2),
     }
 }
 
 fn pick_phase(rose: &RoseAudioInput) -> f64 {
     let total = rose.gratitude.as_deref().map(|s| s.chars().count()).unwrap_or(0)
-              + rose.anxiety.as_deref().map(|s| s.chars().count()).unwrap_or(0)
-              + rose.hope.as_deref().map(|s| s.chars().count()).unwrap_or(0);
+        + rose.anxiety.as_deref().map(|s| s.chars().count()).unwrap_or(0)
+        + rose.hope.as_deref().map(|s| s.chars().count()).unwrap_or(0);
     (total as f64 / 200.0).min(1.0) * std::f64::consts::PI
 }
 
 fn pick_waveform(rose: &RoseAudioInput) -> &'static str {
     match rose.like_count.unwrap_or(0) {
         l if l >= 10 => "sine",
-        l if l >= 3  => "triangle",
-        _            => "sawtooth",
+        l if l >= 3 => "triangle",
+        _ => "sawtooth",
     }
 }
 
@@ -86,7 +98,13 @@ mod tests {
     use super::*;
     use std::f64::consts::PI;
 
-    fn rose(color: &str, g: Option<&str>, a: Option<&str>, h: Option<&str>, likes: i64) -> RoseAudioInput {
+    fn rose(
+        color: &str,
+        g: Option<&str>,
+        a: Option<&str>,
+        h: Option<&str>,
+        likes: i64,
+    ) -> RoseAudioInput {
         RoseAudioInput {
             color: color.to_string(),
             gratitude: g.map(|s| s.to_string()),

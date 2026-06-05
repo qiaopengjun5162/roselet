@@ -3,15 +3,27 @@ use wasm_bindgen::prelude::*;
 
 #[derive(Serialize)]
 pub struct ColorMeta {
-    pub id:    &'static str,
+    pub id: &'static str,
     pub label: &'static str,
     pub emoji: &'static str,
 }
 
 const COLORS: &[ColorMeta] = &[
-    ColorMeta { id: "red",    label: "红玫瑰", emoji: "🌹" },
-    ColorMeta { id: "white",  label: "白玫瑰", emoji: "🤍" },
-    ColorMeta { id: "yellow", label: "黄玫瑰", emoji: "💛" },
+    ColorMeta {
+        id: "red",
+        label: "红玫瑰",
+        emoji: "🌹",
+    },
+    ColorMeta {
+        id: "white",
+        label: "白玫瑰",
+        emoji: "🤍",
+    },
+    ColorMeta {
+        id: "yellow",
+        label: "黄玫瑰",
+        emoji: "💛",
+    },
 ];
 
 fn find(color: &str) -> &'static ColorMeta {
@@ -39,10 +51,10 @@ mod tests {
 
     #[test]
     fn test_known_colors() {
-        assert_eq!(find("red").emoji,    "🌹");
-        assert_eq!(find("white").emoji,  "🤍");
+        assert_eq!(find("red").emoji, "🌹");
+        assert_eq!(find("white").emoji, "🤍");
         assert_eq!(find("yellow").emoji, "💛");
-        assert_eq!(find("red").label,    "红玫瑰");
+        assert_eq!(find("red").label, "红玫瑰");
     }
 
     #[test]

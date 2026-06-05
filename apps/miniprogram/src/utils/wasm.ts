@@ -4,12 +4,14 @@ import type { CreateRose } from '@roselet/core';
 
 export interface GardenLayout { card_width: number; columns: number; gap: number; padding_x: number; offset_top: number; offset_bottom: number }
 export interface ValidationResult { valid: boolean; error: string | null; cleaned: { color: string; gratitude: string | null; anxiety: string | null; hope: string | null } | null }
+export interface FeedbackValidation { valid: boolean; error: string | null }
 
 interface GlueMod {
   recommend: (json: string) => unknown; analyze_text: (text: string) => unknown;
   compute_layout: (json: string) => unknown; filter_roses: (json: string, f: string) => unknown;
   validate_plant_input: (json: string) => unknown; format_plant_request_wasm: (json: string) => string;
   parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
+  validate_feedback_input: (json: string) => unknown;
   color_emoji: (color: string) => string; color_label: (color: string) => string;
   color_options: () => unknown;
   __wbg_get_imports: () => Record<string, unknown>; default: (b: ArrayBuffer) => Promise<void>;
@@ -35,6 +37,7 @@ export async function initWasm(): Promise<boolean> {
 export function getRecommendation(roses: CreateRose[]) { if (!api) return null; try { return api.recommend(JSON.stringify(roses)); } catch { return null; } }
 export function filterRoses<T extends { color: string }>(roses: T[], f: string): T[] | null { if (!api) return null; try { return api.filter_roses(JSON.stringify(roses), f) as T[]; } catch { return null; } }
 export function validatePlant(input: CreateRose): ValidationResult | null { if (!api) return null; try { return api.validate_plant_input(JSON.stringify(input)) as ValidationResult; } catch { return null; } }
+export function validateFeedback(content: string): FeedbackValidation | null { if (!api) return null; try { return api.validate_feedback_input(JSON.stringify({ content })) as FeedbackValidation; } catch { return null; } }
 
 /// Rust 解析 API 响应 — 返回强类型验证后的数据
 export function parseGardenResponse(json: string): { items: unknown[]; total: number } | null {

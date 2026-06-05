@@ -21,7 +21,10 @@ impl ApiClient {
 
     /// 构造花圃列表请求 URL
     pub fn build_garden_url(&self, page: u32, per_page: u32, color: Option<&str>) -> String {
-        let mut url = format!("{}/api/garden?page={}&per_page={}", self.base_url, page, per_page);
+        let mut url = format!(
+            "{}/api/garden?page={}&per_page={}",
+            self.base_url, page, per_page
+        );
         if let Some(c) = color {
             if !c.is_empty() && c != "all" {
                 url.push_str(&format!("&color={}", c));
@@ -31,12 +34,30 @@ impl ApiClient {
     }
 
     /// 构造种花请求体 JSON
-    pub fn build_plant_body(&self, color: &str, gratitude: Option<&str>, anxiety: Option<&str>, hope: Option<&str>) -> String {
+    pub fn build_plant_body(
+        &self,
+        color: &str,
+        gratitude: Option<&str>,
+        anxiety: Option<&str>,
+        hope: Option<&str>,
+    ) -> String {
         let mut fields = Vec::new();
         fields.push(format!("\"color\":\"{}\"", color));
-        if let Some(g) = gratitude { if !g.is_empty() { fields.push(format!("\"gratitude\":\"{}\"", g)); } }
-        if let Some(a) = anxiety { if !a.is_empty() { fields.push(format!("\"anxiety\":\"{}\"", a)); } }
-        if let Some(h) = hope { if !h.is_empty() { fields.push(format!("\"hope\":\"{}\"", h)); } }
+        if let Some(g) = gratitude {
+            if !g.is_empty() {
+                fields.push(format!("\"gratitude\":\"{}\"", g));
+            }
+        }
+        if let Some(a) = anxiety {
+            if !a.is_empty() {
+                fields.push(format!("\"anxiety\":\"{}\"", a));
+            }
+        }
+        if let Some(h) = hope {
+            if !h.is_empty() {
+                fields.push(format!("\"hope\":\"{}\"", h));
+            }
+        }
         format!("{{{}}}", fields.join(","))
     }
 
@@ -47,7 +68,11 @@ impl ApiClient {
 
     /// 计算分页信息
     pub fn compute_pagination(&self, total: u32, page: u32, per_page: u32) -> Pagination {
-        let total_pages = if total == 0 { 1 } else { (total + per_page - 1) / per_page };
+        let total_pages = if total == 0 {
+            1
+        } else {
+            (total + per_page - 1) / per_page
+        };
         Pagination {
             has_more: (page as u64) * (per_page as u64) < total as u64,
             next_page: page + 1,

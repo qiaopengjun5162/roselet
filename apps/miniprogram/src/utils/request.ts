@@ -1,4 +1,4 @@
-import { getToken, setToken, getRefreshToken, logout } from '@/utils/storage';
+import { getToken, setToken, getRefreshToken, logout, getUser } from '@/utils/storage';
 
 const BASE_URL = 'http://localhost:3001';
 
@@ -11,6 +11,11 @@ interface RequestOptions {
 
 interface RefreshResponse {
   access_token: string;
+}
+
+interface RefreshRequest {
+  refresh_token: string;
+  user_id: string;
 }
 
 // 防止并发刷新：同一时间只有一个刷新请求
@@ -40,15 +45,18 @@ function doRequest<T>(path: string, opts: RequestOptions, token?: string | null)
 }
 
 // 用 Refresh Token 换取新 Access Token，成功返回新 token，失败返回 null
-function refreshAccessToken(): Promise<string | null> {
+function refreshAccessToken(userId?: string | null): Promise<string | null> {
   if (refreshing) return refreshing;
 
   const refreshToken = getRefreshToken();
-  if (!refreshToken) return Promise.resolve(null);
+  if (!refreshToken || !userId) return Promise.resolve(null);
 
   refreshing = doRequest<RefreshResponse>('/api/auth/refresh', {
     method: 'POST',
-    data: { refresh_token: refreshToken },
+    data: {
+      refresh_token: refreshToken,
+      user_id: userId
+    },
   }).then((res) => {
     setToken(res.access_token);
     return res.access_token;
@@ -65,6 +73,7 @@ function refreshAccessToken(): Promise<string | null> {
 
 export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const token = opts.auth ? getToken() : null;
+  const user = getUser();
 
   try {
     return await doRequest<T>(path, opts, token);
@@ -72,7 +81,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     // 401 且有 auth 要求时，尝试静默刷新
     const statusCode = (err as { statusCode?: number }).statusCode;
     if (statusCode === 401 && opts.auth) {
-      const newToken = await refreshAccessToken();
+      const newToken = await refreshAccessToken(user?.id);
       if (newToken) {
         // 用新 token 重试一次
         return doRequest<T>(path, opts, newToken);
@@ -86,7 +95,7 @@ export async function submitFeedback(content: string): Promise<boolean> {
   try {
     const token = getToken();
     const response = await wx.request({
-      url: `${API_BASE}/api/feedback`,
+      url: `${BASE_URL}/api/feedback`,
       method: 'POST',
       header: {
         'Content-Type': 'application/json',

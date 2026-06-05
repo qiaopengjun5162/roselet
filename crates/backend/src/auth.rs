@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -16,26 +16,50 @@ pub struct Claims {
 
 // ── Access Token (短生命周期 15min) ──
 
-pub fn create_access_token(user_id: Uuid, nickname: &str, secret: &[u8]) -> Result<String, AppError> {
+pub fn create_access_token(
+    user_id: Uuid,
+    nickname: &str,
+    secret: &[u8],
+) -> Result<String, AppError> {
     let exp = (Utc::now() + Duration::minutes(15)).timestamp() as usize;
-    let claims = Claims { sub: user_id, nickname: nickname.to_string(), exp };
-    encode(&Header::default(), &claims, &EncodingKey::from_secret(secret))
-        .map_err(|e| AppError::Auth(e.to_string()))
+    let claims = Claims {
+        sub: user_id,
+        nickname: nickname.to_string(),
+        exp,
+    };
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret),
+    )
+    .map_err(|e| AppError::Auth(e.to_string()))
 }
 
 // ── 向后兼容：原来的 create_token (30天) ──
 
 pub fn create_token(user_id: Uuid, nickname: &str, secret: &[u8]) -> Result<String, AppError> {
     let exp = (Utc::now() + Duration::days(30)).timestamp() as usize;
-    let claims = Claims { sub: user_id, nickname: nickname.to_string(), exp };
-    encode(&Header::default(), &claims, &EncodingKey::from_secret(secret))
-        .map_err(|e| AppError::Auth(e.to_string()))
+    let claims = Claims {
+        sub: user_id,
+        nickname: nickname.to_string(),
+        exp,
+    };
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret),
+    )
+    .map_err(|e| AppError::Auth(e.to_string()))
 }
 
 pub fn verify_token(token: &str, secret: &[u8]) -> Option<Claims> {
-    decode::<Claims>(token, &DecodingKey::from_secret(secret), &Validation::default())
-        .ok()
-        .map(|data| data.claims)
+    decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret),
+        &Validation::default(),
+    )
+    .ok()
+    .map(|data| data.claims)
 }
 
 // ── Refresh Token (长生命周期 7天，存 DB) ──
@@ -51,20 +75,21 @@ pub async fn create_refresh_token(pool: &PgPool, user_id: Uuid) -> Result<String
     let hash = hash_token(&token);
     let expires = Utc::now() + Duration::days(7);
 
-    sqlx::query(
-        "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)"
-    )
-    .bind(user_id)
-    .bind(&hash)
-    .bind(expires)
-    .execute(pool)
-    .await
-    ?;
+    sqlx::query("INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)")
+        .bind(user_id)
+        .bind(&hash)
+        .bind(expires)
+        .execute(pool)
+        .await?;
 
     Ok(token)
 }
 
-pub async fn verify_refresh_token(pool: &PgPool, token: &str, user_id: Uuid) -> Result<bool, AppError> {
+pub async fn verify_refresh_token(
+    pool: &PgPool,
+    token: &str,
+    user_id: Uuid,
+) -> Result<bool, AppError> {
     let hash = hash_token(token);
     let row = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM refresh_tokens WHERE token_hash = $1 AND user_id = $2 AND revoked = false AND expires_at > now())"
@@ -82,8 +107,7 @@ pub async fn revoke_refresh_tokens(pool: &PgPool, user_id: Uuid) -> Result<(), A
     sqlx::query("UPDATE refresh_tokens SET revoked = true WHERE user_id = $1")
         .bind(user_id)
         .execute(pool)
-        .await
-        ?;
+        .await?;
     Ok(())
 }
 

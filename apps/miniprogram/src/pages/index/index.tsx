@@ -54,6 +54,7 @@ export default function Index() {
         <View className="fade-in-up-d3" style={{ width: '100%', maxWidth: '340px' }}>
           <Button className={styles.btnPrimary} onClick={handlePlant}>种一朵玫瑰</Button>
           <Button className={styles.btnSecondary} onClick={() => Taro.navigateTo({ url: '/subpkg-garden/pages/garden/index' })}>参观花圃</Button>
+          <Button className={styles.btnSecondary} onClick={() => Taro.navigateTo({ url: '/pages/about/index' })}>关于我们</Button>
         </View>
       </View>
       {bloomsView}

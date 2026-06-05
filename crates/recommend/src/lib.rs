@@ -112,6 +112,7 @@ pub fn analyze_text(text: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
 }
 
+mod api_client;
 mod audio;
 mod color;
 mod datefmt;
@@ -119,7 +120,6 @@ mod garden;
 mod petal;
 mod plant;
 mod store;
-mod api_client;
 
 use garden::{GardenLayout, GardenState, RoseItem};
 
@@ -194,13 +194,30 @@ pub fn generate_petals_wasm(count: u32, seed: u64) -> JsValue {
 #[wasm_bindgen]
 pub fn build_garden_url(base_url: &str, page: u32, per_page: u32, color: &str) -> String {
     let client = api_client::ApiClient::new(base_url.to_string());
-    client.build_garden_url(page, per_page, if color.is_empty() { None } else { Some(color) })
+    client.build_garden_url(
+        page,
+        per_page,
+        if color.is_empty() { None } else { Some(color) },
+    )
 }
 
 #[wasm_bindgen]
 pub fn build_plant_body(color: &str, gratitude: &str, anxiety: &str, hope: &str) -> String {
     let client = api_client::ApiClient::default();
-    client.build_plant_body(color, if gratitude.is_empty() { None } else { Some(gratitude) }, if anxiety.is_empty() { None } else { Some(anxiety) }, if hope.is_empty() { None } else { Some(hope) })
+    client.build_plant_body(
+        color,
+        if gratitude.is_empty() {
+            None
+        } else {
+            Some(gratitude)
+        },
+        if anxiety.is_empty() {
+            None
+        } else {
+            Some(anxiety)
+        },
+        if hope.is_empty() { None } else { Some(hope) },
+    )
 }
 
 #[wasm_bindgen]
@@ -242,6 +259,29 @@ pub fn store_get_snapshot() -> JsValue {
 
 use plant::{PlantInput, format_plant_request, validate_plant};
 
+/// 验证反馈内容
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FeedbackInput {
+    pub content: String,
+}
+
+/// 反馈验证结果
+#[derive(Debug, Serialize)]
+pub struct FeedbackValidation {
+    pub valid: bool,
+    pub error: Option<String>,
+}
+
+impl Default for FeedbackValidation {
+    fn default() -> Self {
+        Self {
+            valid: false,
+            error: None,
+        }
+    }
+}
+
+
 /// WASM: 验证种花表单，返回 JSON (Rust 侧统一校验规则)
 #[wasm_bindgen]
 pub fn validate_plant_input(json: &str) -> JsValue {
@@ -258,13 +298,14 @@ pub fn validate_plant_input(json: &str) -> JsValue {
 /// WASM: 玫瑰属性 → 示波器音频参数（颜色/字段/长度/点赞 → fx/fy/waveform/baseFreq/phase/stroke/glow）
 #[wasm_bindgen]
 pub fn rose_to_sound_params_wasm(rose_json: &str) -> JsValue {
-    let input: audio::RoseAudioInput = serde_json::from_str(rose_json).unwrap_or(audio::RoseAudioInput {
-        color: "red".to_string(),
-        gratitude: None,
-        anxiety: None,
-        hope: None,
-        like_count: None,
-    });
+    let input: audio::RoseAudioInput =
+        serde_json::from_str(rose_json).unwrap_or(audio::RoseAudioInput {
+            color: "red".to_string(),
+            gratitude: None,
+            anxiety: None,
+            hope: None,
+            like_count: None,
+        });
     serde_wasm_bindgen::to_value(&audio::rose_to_sound_params_internal(&input)).unwrap()
 }
 
@@ -278,6 +319,205 @@ pub fn format_plant_request_wasm(json: &str) -> String {
         hope: None,
     });
     format_plant_request(&input)
+}
+
+/// WASM: 验证反馈内容，返回 JSON (统一校验规则)
+#[wasm_bindgen]
+pub fn validate_feedback_input(json: &str) -> JsValue {
+    let input: FeedbackInput = serde_json::from_str(json).unwrap_or(FeedbackInput {
+        content: String::new(),
+    });
+
+    let mut validation = FeedbackValidation::default();
+
+    // 验证逻辑
+    let trimmed = input.content.trim();
+
+    if trimmed.is_empty() {
+        validation.error = Some("请输入反馈内容".to_string());
+        return serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL);
+    }
+
+    if trimmed.len() < 5 {
+        validation.error = Some("反馈内容至少需要 5 个字符".to_string());
+        return serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL);
+    }
+
+    if trimmed.len() > 500 {
+        validation.error = Some("反馈内容不能超过 500 个字符".to_string());
+        return serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL);
+    }
+
+    validation.valid = true;
+    serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL)
+}
+
+/// WASM: 处理文本内容（清理、截断等）
+#[wasm_bindgen]
+pub fn process_text_content(original: &str, max_length: Option<u32>) -> JsValue {
+    let mut cleaned = original.trim().to_string();
+    let original_len = cleaned.len();
+
+    // 处理最大长度限制
+    if let Some(max) = max_length {
+        if cleaned.len() > max as usize {
+            cleaned = cleaned.chars().take(max as usize).collect();
+        }
+    }
+
+    let result = serde_json::json!({
+        "original": original,
+        "cleaned": cleaned,
+        "original_length": original_len,
+        "cleaned_length": cleaned.len(),
+        "is_empty": cleaned.is_empty(),
+        "truncated": max_length.is_some() && original_len != cleaned.len()
+    });
+
+    match serde_wasm_bindgen::to_value(&result) {
+        Ok(value) => value,
+        Err(_) => JsValue::NULL,
+    }
+}
+
+/// WASM: 检查字符串是否包含敏感词（简单版本）
+#[wasm_bindgen]
+pub fn check_sensitive_words(text: &str, sensitive_words: JsValue) -> JsValue {
+    let sensitive_words: Vec<String> = match serde_wasm_bindgen::from_value(sensitive_words) {
+        Ok(words) => words,
+        Err(_) => return JsValue::NULL,
+    };
+
+    let mut found_words = Vec::new();
+
+    for word in &sensitive_words {
+        if text.contains(word) {
+            found_words.push(word.to_string());
+        }
+    }
+
+    let result = serde_json::json!({
+        "has_sensitive": !found_words.is_empty(),
+        "found_words": found_words,
+        "count": found_words.len()
+    });
+
+    match serde_wasm_bindgen::to_value(&result) {
+        Ok(value) => value,
+        Err(_) => JsValue::NULL,
+    }
+}
+
+/// WASM: 字符串规范化（统一大小写、去除特殊字符）
+#[wasm_bindgen]
+pub fn normalize_string(text: &str, to_lowercase: bool) -> JsValue {
+    let mut normalized = text.trim().to_string();
+
+    if to_lowercase {
+        normalized = normalized.to_lowercase();
+    } else {
+        normalized = normalized.to_uppercase();
+    }
+
+    // 去除常见特殊字符（保留中文字符）
+    let re = regex::Regex::new(r"[^\w一-龥]");
+    let normalized = match re {
+        Ok(re) => re.replace_all(&normalized, "").to_string(),
+        Err(_) => normalized,
+    };
+
+    let result = serde_json::json!({
+        "original": text,
+        "normalized": normalized,
+        "length": normalized.len(),
+        "is_empty": normalized.is_empty()
+    });
+
+    match serde_wasm_bindgen::to_value(&result) {
+        Ok(value) => value,
+        Err(_) => JsValue::NULL,
+    }
+}
+
+/// WASM: 字符串验证（检查是否符合特定格式）
+#[wasm_bindgen]
+pub fn validate_string_format(text: &str, pattern: &str) -> JsValue {
+    let re = regex::Regex::new(pattern);
+    let is_match = match re {
+        Ok(ref re) => re.is_match(text),
+        Err(_) => false,
+    };
+
+    let matches = if is_match {
+        re.as_ref().map(|re| re.captures(text))
+            .map(|c| {
+                let mut results = Vec::new();
+                if let Some(c) = c {
+                    for i in 0..c.len() {
+                        if let Some(mat) = c.get(i) {
+                            results.push(mat.as_str().to_string());
+                        }
+                    }
+                }
+                results
+            })
+            .unwrap_or(vec![])
+    } else {
+        vec![]
+    };
+
+    let result = serde_json::json!({
+        "text": text,
+        "pattern": pattern,
+        "is_valid": is_match,
+        "matches": matches
+    });
+
+    match serde_wasm_bindgen::to_value(&result) {
+        Ok(value) => value,
+        Err(_) => JsValue::NULL,
+    }
+}
+
+/// WASM: 字符串分割
+#[wasm_bindgen]
+pub fn split_string(text: &str, delimiter: &str) -> JsValue {
+    let parts: Vec<String> = text.split(delimiter).map(|s| s.to_string()).collect();
+
+    let result = serde_json::json!({
+        "original": text,
+        "delimiter": delimiter,
+        "parts": parts,
+        "count": parts.len()
+    });
+
+    match serde_wasm_bindgen::to_value(&result) {
+        Ok(value) => value,
+        Err(_) => JsValue::NULL,
+    }
+}
+
+/// WASM: 字符串统计信息
+#[wasm_bindgen]
+pub fn string_statistics(text: &str) -> JsValue {
+    let char_count = text.chars().count();
+    let word_count = text.split_whitespace().count();
+    let line_count = text.lines().count();
+    let byte_count = text.len();
+
+    let result = serde_json::json!({
+        "text": text,
+        "char_count": char_count,
+        "word_count": word_count,
+        "line_count": line_count,
+        "byte_count": byte_count,
+        "is_empty": text.trim().is_empty()
+    });
+
+    match serde_wasm_bindgen::to_value(&result) {
+        Ok(value) => value,
+        Err(_) => JsValue::NULL,
+    }
 }
 
 #[cfg(test)]

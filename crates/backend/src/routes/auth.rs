@@ -80,19 +80,18 @@ pub async fn refresh(
     State(state): State<AppState>,
     Json(input): Json<RefreshRequest>,
 ) -> Result<Json<RefreshResponse>, AppError> {
-    let valid = auth::verify_refresh_token(&state.pool, &input.refresh_token, input.user_id).await?;
+    let valid =
+        auth::verify_refresh_token(&state.pool, &input.refresh_token, input.user_id).await?;
     if !valid {
         return Err(AppError::Auth("invalid or expired refresh token".into()));
     }
 
     // 发行新 access token（需要查用户昵称）
-    let user = sqlx::query_as::<_, User>(
-        "SELECT * FROM users WHERE id = $1"
-    )
-    .bind(input.user_id)
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+        .bind(input.user_id)
+        .fetch_optional(&state.pool)
+        .await?
+        .ok_or(AppError::NotFound)?;
 
     let access_token = auth::create_access_token(user.id, &user.nickname, &state.jwt_secret)?;
 

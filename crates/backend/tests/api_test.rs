@@ -2,13 +2,13 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use futures_util::StreamExt;
 use http_body_util::BodyExt;
+use roselet_backend::auth::create_access_token;
 use serde_json::{Value, json};
-use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tower::ServiceExt;
 use uuid::Uuid;
-use roselet_backend::auth::create_access_token;
 
 async fn create_test_app() -> (axum::Router, PgPool) {
     let database_url = std::env::var("DATABASE_URL")
@@ -87,11 +87,15 @@ async fn create_test_app() -> (axum::Router, PgPool) {
 
 async fn spawn_test_server() -> String {
     let (app, _) = create_test_app().await;
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind to port");
     let addr = listener.local_addr().unwrap();
     tokio::spawn(async move {
-        axum::serve(listener, app).await.unwrap();
+        axum::serve(listener, app).await.expect("Failed to serve");
     });
+
+    // Give the server a moment to start
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
     format!("http://{}", addr)
 }
 
@@ -110,7 +114,9 @@ async fn register_user(base: &str, nickname: &str) -> Value {
 async fn create_test_jwt(pool: &PgPool, nickname: &str) -> String {
     let user_id = sqlx::query_scalar("INSERT INTO users (nickname) VALUES ($1) RETURNING id")
         .bind(nickname)
-        .fetch_one(pool).await.unwrap();
+        .fetch_one(pool)
+        .await
+        .unwrap();
     create_access_token(user_id, nickname, "test-secret".as_bytes()).unwrap()
 }
 
@@ -1117,7 +1123,10 @@ async fn test_feedback_authenticated() {
     // 登录用户提交反馈，返回 201 并包含 id
     let res = client
         .post(format!("{}/api/feedback", base))
-        .header("Authorization", format!("Bearer {}", auth["token"].as_str().unwrap()))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth["token"].as_str().unwrap()),
+        )
         .json(&json!({ "content": "功能很棒，期待更多特性" }))
         .send()
         .await
@@ -1142,4 +1151,108 @@ async fn test_feedback_anonymous() {
     assert_eq!(res.status(), StatusCode::CREATED);
     let body: Value = res.json().await.unwrap();
     assert!(body["id"].is_number());
+}
+
+#[tokio::test]
+async fn test_feedback_too_short() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    // 反馈内容过短
+    let res = client
+        .post(format!("{}/api/feedback", base))
+        .json(&json!({ "content": "太短" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    let body: Value = res.json().await.unwrap();
+    assert!(body["error"].is_string());
+    assert!(body["error"].as_str().unwrap().contains("至少 5 个字"));
+}
+
+#[tokio::test]
+async fn test_feedback_too_long() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    // 反馈内容过长
+    let long_content = "a".repeat(501);
+    let res = client
+        .post(format!("{}/api/feedback", base))
+        .json(&json!({ "content": long_content }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    let body: Value = res.json().await.unwrap();
+    assert!(body["error"].is_string());
+    assert!(body["error"].as_str().unwrap().contains("不超过 500 字"));
+}
+
+#[tokio::test]
+async fn test_feedback_empty_content() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    // 反馈内容为空
+    let res = client
+        .post(format!("{}/api/feedback", base))
+        .json(&json!({ "content": "" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    let body: Value = res.json().await.unwrap();
+    assert!(body["error"].is_string());
+    assert!(body["error"].as_str().unwrap().contains("至少 5 个字"));
+}
+
+#[tokio::test]
+async fn test_feedback_whitespace_only() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    // 反馈内容只有空白字符
+    let res = client
+        .post(format!("{}/api/feedback", base))
+        .json(&json!({ "content": "   \n\t  " }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    let body: Value = res.json().await.unwrap();
+    assert!(body["error"].is_string());
+    assert!(body["error"].as_str().unwrap().contains("至少 5 个字"));
+}
+
+#[tokio::test]
+async fn test_feedback_malformed_json() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    // JSON 格式错误
+    let res = client
+        .post(format!("{}/api/feedback", base))
+        .header("Content-Type", "application/json")
+        .body("{ invalid json }")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_feedback_no_content_field() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    // 缺少 content 字段
+    let res = client
+        .post(format!("{}/api/feedback", base))
+        .json(&json!({ "message": "缺少 content 字段" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }

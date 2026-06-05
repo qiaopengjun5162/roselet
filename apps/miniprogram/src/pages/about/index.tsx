@@ -4,7 +4,19 @@ import Taro from "@tarojs/taro";
 import { NavBar, TOTAL_HEADER_HEIGHT } from "@/components/NavBar";
 import { getToken, getUserId } from "@/utils/storage";
 import { submitFeedback } from "@/utils/api";
-import { validateFeedback } from "@/utils/validate";
+import { initWasm } from "@/utils/wasm";
+import type { FeedbackValidation } from "@/utils/wasm";
+
+// 统一使用 WASM 验证
+async function validateFeedbackWasm(content: string): Promise<FeedbackValidation> {
+  const mod = await initWasm();
+  if (!mod) return { valid: false, error: "WASM 加载失败" };
+  try {
+    return mod.validate_feedback_input(JSON.stringify({ content })) as FeedbackValidation;
+  } catch {
+    return { valid: false, error: "验证失败" };
+  }
+}
 import styles from "./index.module.css";
 
 export default function About() {
@@ -16,7 +28,7 @@ export default function About() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
 
-    const validation = validateFeedback(feedback);
+    const validation = await validateFeedbackWasm(feedback);
     if (!validation.valid) {
       setError(validation.error || "反馈内容格式不正确");
       return;
