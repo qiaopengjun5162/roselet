@@ -125,9 +125,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Typecheck
-        run: pnpm --filter @roselet/miniprogram typecheck
-
       - name: Init miniprogram config
         run: bash scripts/init-miniprogram.sh
 
@@ -137,6 +134,9 @@ jobs:
           wasm-pack build --target web --out-dir ../../apps/miniprogram/pkg
           cd ../..
           node scripts/patch-wasm.js
+
+      - name: Typecheck
+        run: pnpm --filter @roselet/miniprogram typecheck
 
       - name: Build miniprogram
         run: cd apps/miniprogram && pnpm build:weapp

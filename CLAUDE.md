@@ -86,6 +86,7 @@ Quality gates:
 - **reqwest 测试 502**：本地开启 Clash 代理时，加 `NO_PROXY=localhost,127.0.0.1`
 - **wasm-opt bulk-memory**：Cargo.toml 设 `wasm-opt = false`
 - **小程序 document.baseURI**：Webpack BannerPlugin 注入 document mock（非运行时 polyfill）
+- **小程序 typecheck 依赖 WASM pkg**：`src/utils/wasm.ts` / `useWasmStore.ts` 动态 import `../../pkg/roselet_recommend`；CI 干净 checkout 时必须先 `wasm-pack build --out-dir ../../apps/miniprogram/pkg` + `node scripts/patch-wasm.js`，再跑 `pnpm --filter @roselet/miniprogram typecheck`
 - **wasm-bindgen Option<&str>**：改用 `&str`，空字符串表示 None
 - **后端集成测试共享 DB**：`create_test_app()` 必须 `TRUNCATE feedbacks, refresh_tokens, likes, roses, users RESTART IDENTITY CASCADE`；nextest 用 `-j1` 避免并发清库互踩
 - **Next 构建不依赖 Google Fonts**：避免 `next/font/google` 在受限网络里拖垮 build；全局字体走系统中文字体栈

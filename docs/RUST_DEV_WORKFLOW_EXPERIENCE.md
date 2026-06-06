@@ -185,6 +185,14 @@ NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-f
 
 通用规则：受保护页面的错误态不能只看请求失败，还要区分“业务/网络失败”和“认证状态已失效”。
 
+### 18. CI typecheck 前必须生成被 import 的产物
+
+问题：小程序源码动态 import `../../pkg/roselet_recommend`，本地因为 `apps/miniprogram/pkg` 已存在而 typecheck 通过；GitHub Actions 干净 checkout 没有生成物，`tsc --noEmit` 报 TS2307。
+
+解决：把 CI miniprogram job 顺序改成先 `wasm-pack build --out-dir ../../apps/miniprogram/pkg` 并执行 patch，再跑 `pnpm --filter @roselet/miniprogram typecheck`。
+
+通用规则：任何被源码 import 的生成型 `.js` / `.d.ts`，都必须在 CI typecheck 前生成；不要依赖本地未提交的生成目录。
+
 ## 更新规则
 
 每次遇到问题，按这个顺序更新：
