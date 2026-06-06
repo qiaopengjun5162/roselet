@@ -11,4 +11,5 @@
 - 质量门禁使用 `just typecheck`、`just lint`、`just audit`、`just next-build`；`just check-all` / `just pre-commit` 已包含这些检查。
 - 每次代码或项目文档变更都要 commit 并 push。
 - 遇到问题先解决；解决后把问题、原因、处理方式、验证命令记录到 `DEVLOG.md`。
+- 可复用经验沉淀到 `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`，不要只留在会话记录里。
 - 发现新的非显然约束时，同时更新 `DEVLOG.md` 和共享项目文档。

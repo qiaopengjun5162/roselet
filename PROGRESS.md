@@ -77,6 +77,7 @@
 - [x] README.md（英文）+ README_zh.md（中文）
 - [x] CONTRIBUTING.md（英文）
 - [x] CLAUDE.md / DEVLOG.md / PROGRESS.md
+- [x] Rust Dev Workflow 经验库：`docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
 
 ## 最近完成（会话 #23–24）
 

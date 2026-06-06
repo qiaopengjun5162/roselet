@@ -148,10 +148,15 @@ POST   /api/feedback       # 提交反馈（可选 JWT，匿名/登录均可）
 | git-cliff | CHANGELOG 生成 |
 | .pre-commit-config.yaml | Git hooks |
 
+## Rust Dev Workflow 经验库
+- 经验总结文档：`docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
+- 新问题处理顺序：先修复 → `DEVLOG.md` 记录问题/根因/解决/验证 → 可复用经验提炼进经验库 → 必要时同步 `AGENTS.md` / `CLAUDE.md` / `PROGRESS.md` → commit + push
+- 能跨项目复用的经验，后续再升级到通用 `rust-dev-workflow` skill 或模板配置。
+
 ## 开发规范
 - 每次修改都要 commit 和 push（Conventional Commits）
 - 测试运行器：cargo-nextest（不是 cargo test）
 - 测试覆盖率尽可能 100%
 - 代码模块化，附必要注释
-- 遇到问题先解决，并在 `DEVLOG.md` 记录问题、原因、处理方式、验证命令
+- 遇到问题先解决，并在 `DEVLOG.md` 记录问题、原因、处理方式、验证命令；可复用经验同步到 `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
 - 及时更新文档（PROGRESS.md、CLAUDE.md；Codex 入口变更同步 AGENTS.md）

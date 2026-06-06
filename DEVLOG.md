@@ -1513,6 +1513,28 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 - [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
 - [ ] 小程序真机联调
 
+## 2026-06-06 会话 #32：Rust Dev Workflow 经验库
+
+### 会话目标
+将项目一路遇到的问题和解决方法沉淀成可复用文档，并明确以后如何更新总结。
+
+### 完成的工作
+- 新增 `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`：
+  - 总结生产路由复用、数据库测试隔离、SQLx 编译期 DB、私密模式攻击面、Rust WASM 业务逻辑下沉、覆盖率门禁、质量门禁、生成物忽略、代理命令、cargo-deny license、Next build 外部字体、WASM 绑定边界等经验。
+  - 新增“更新规则”：先修复，再记录 `DEVLOG.md`，可复用经验提炼进经验库，必要时同步入口文档，然后验证、commit、push。
+  - 新增“记录模板”和“何时升级到通用 Rust Dev Workflow”的判断标准。
+- `AGENTS.md` 增加经验库维护要求。
+- `CLAUDE.md` 增加 Rust Dev Workflow 经验库入口和更新流程。
+- `PROGRESS.md` 标记经验库文档已完成。
+
+### 验证
+- `git diff --check`
+
+### 待办
+- [ ] 后续如果相同经验在其他 Rust 项目复现，再提炼进通用 `rust-dev-workflow` skill / 模板配置。
+- [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
+- [ ] 小程序真机联调
+
 ## 2026-06-06 会话 #29：覆盖率 90%+ 收口 + 私密模式补洞
 
 ### 会话目标
