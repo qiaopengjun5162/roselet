@@ -1,17 +1,25 @@
 FROM rust:1.88-bookworm AS builder
 
 WORKDIR /app
-COPY crates/backend/Cargo.toml crates/backend/Cargo.lock ./
-COPY crates/backend/src ./src
-COPY crates/backend/migrations ./migrations
+COPY Cargo.toml Cargo.lock ./
+COPY crates/backend/Cargo.toml crates/backend/
+COPY crates/recommend/Cargo.toml crates/recommend/
 
-RUN cargo build --release
+# trick cargo to cache deps
+RUN mkdir -p crates/backend/src && echo "fn main() {}" > crates/backend/src/main.rs
+RUN mkdir -p crates/recommend/src && echo "" > crates/recommend/src/lib.rs
+RUN cargo build --release -p roselet-backend 2>/dev/null || true
+
+COPY crates/backend/src crates/backend/src
+COPY crates/backend/migrations crates/backend/migrations
+COPY crates/recommend/src crates/recommend/src
+RUN cargo build --release -p roselet-backend
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/roselet-backend /usr/local/bin/
-COPY --from=builder /app/migrations /app/migrations
+COPY --from=builder /app/crates/backend/migrations /app/migrations
 
 EXPOSE 3001
 CMD ["roselet-backend"]
