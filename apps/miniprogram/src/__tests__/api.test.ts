@@ -4,7 +4,8 @@
  */
 import {
   register, getGarden, getRose,
-  createRose, getUserProfile, toggleLike,
+  createRose, updateRose, deleteRose, getMyRoses,
+  getUserProfile, toggleLike, submitFeedback,
 } from '@/api';
 
 // Mock request module
@@ -72,6 +73,48 @@ describe('api', () => {
         { method: 'POST', data: { color: 'red', gratitude: 'thanks' }, auth: true }
       );
     });
+
+    it('preserves private flag in request data', async () => {
+      mockRequest.mockResolvedValue({ id: '1', color: 'red', is_private: true });
+      await createRose({ color: 'red', gratitude: 'secret', is_private: true });
+      expect(mockRequest).toHaveBeenCalledWith(
+        '/api/rose',
+        { method: 'POST', data: { color: 'red', gratitude: 'secret', is_private: true }, auth: true }
+      );
+    });
+  });
+
+  describe('updateRose', () => {
+    it('calls PUT /api/rose/:id with auth', async () => {
+      mockRequest.mockResolvedValue({ id: '1', color: 'yellow' });
+      await updateRose('1', { color: 'yellow', hope: 'new' });
+      expect(mockRequest).toHaveBeenCalledWith(
+        '/api/rose/1',
+        { method: 'PUT', data: { color: 'yellow', hope: 'new' }, auth: true }
+      );
+    });
+  });
+
+  describe('deleteRose', () => {
+    it('calls DELETE /api/rose/:id with auth', async () => {
+      mockRequest.mockResolvedValue(undefined);
+      await deleteRose('1');
+      expect(mockRequest).toHaveBeenCalledWith(
+        '/api/rose/1',
+        { method: 'DELETE', auth: true }
+      );
+    });
+  });
+
+  describe('getMyRoses', () => {
+    it('calls GET /api/my/roses with auth and pagination', async () => {
+      mockRequest.mockResolvedValue({ data: [], total: 0, page: 2, per_page: 5 });
+      await getMyRoses(2, 5);
+      expect(mockRequest).toHaveBeenCalledWith(
+        '/api/my/roses?page=2&per_page=5',
+        { auth: true }
+      );
+    });
   });
 
   describe('getUserProfile', () => {
@@ -93,6 +136,22 @@ describe('api', () => {
         '/api/rose/rose-1/like',
         { method: 'POST', auth: true }
       );
+    });
+  });
+
+  describe('submitFeedback', () => {
+    it('returns true when request succeeds', async () => {
+      mockRequest.mockResolvedValue({ id: 1 });
+      await expect(submitFeedback('hello')).resolves.toBe(true);
+      expect(mockRequest).toHaveBeenCalledWith(
+        '/api/feedback',
+        { method: 'POST', auth: false, data: { content: 'hello' } }
+      );
+    });
+
+    it('returns false when request fails', async () => {
+      mockRequest.mockRejectedValue(new Error('network'));
+      await expect(submitFeedback('hello')).resolves.toBe(false);
     });
   });
 });

@@ -1,11 +1,110 @@
-import { createRose, getGarden, getRose, updateRose, deleteRose, setToken, logout } from "../api";
+import {
+  createRose,
+  getGarden,
+  getRose,
+  updateRose,
+  deleteRose,
+  setToken,
+  setRefreshToken,
+  setUser,
+  getUser,
+  logout,
+  refreshAccessToken,
+  submitFeedback,
+} from "../api";
 
 global.fetch = jest.fn();
 
 describe("API Client", () => {
   beforeEach(() => {
     jest.resetAllMocks();
-    logout();
+    localStorage.clear();
+  });
+
+  describe("auth storage", () => {
+    it("returns and clears malformed stored user", () => {
+      localStorage.setItem("user", "{bad json");
+      expect(getUser()).toBeNull();
+      expect(localStorage.getItem("user")).toBeNull();
+    });
+
+    it("stores user and sends logout request with refresh token", () => {
+      setUser({ id: "u1", nickname: "alice", created_at: "2026-01-01T00:00:00Z" });
+      setRefreshToken("refresh-token");
+      (global.fetch as jest.Mock).mockRejectedValue(new Error("offline"));
+
+      expect(getUser()?.nickname).toBe("alice");
+      logout();
+
+      expect(localStorage.getItem("access_token")).toBeNull();
+      expect(localStorage.getItem("refresh_token")).toBeNull();
+      expect(localStorage.getItem("user")).toBeNull();
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/auth/logout",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            Authorization: "Bearer refresh-token",
+          }),
+        })
+      );
+    });
+  });
+
+  describe("refreshAccessToken", () => {
+    it("returns null without refresh token", async () => {
+      await expect(refreshAccessToken()).resolves.toBeNull();
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("stores a new access token after refresh", async () => {
+      setRefreshToken("refresh-token");
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({ access_token: "new-access" }),
+      });
+
+      await expect(refreshAccessToken()).resolves.toBe("new-access");
+      expect(localStorage.getItem("access_token")).toBe("new-access");
+    });
+
+    it("retries auth requests after a 401 refresh", async () => {
+      setToken("old-access");
+      setRefreshToken("refresh-token");
+      const rose = { id: "r1", color: "red", is_private: false };
+
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({ status: 401, ok: false })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: "new-access" }),
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          ok: true,
+          json: async () => rose,
+        });
+
+      await expect(getRose("r1")).resolves.toEqual(rose);
+
+      const [, retryInit] = (global.fetch as jest.Mock).mock.calls[2];
+      expect(retryInit.headers.get("Authorization")).toBe("Bearer new-access");
+    });
+
+    it("clears auth state when refresh fails", async () => {
+      setToken("old-access");
+      setRefreshToken("refresh-token");
+      setUser({ id: "u1", nickname: "alice", created_at: "2026-01-01T00:00:00Z" });
+
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({ status: 401, ok: false })
+        .mockResolvedValueOnce({ ok: false });
+
+      await expect(getRose("r1")).rejects.toThrow("Failed to fetch rose");
+      expect(localStorage.getItem("access_token")).toBeNull();
+      expect(localStorage.getItem("refresh_token")).toBeNull();
+      expect(localStorage.getItem("user")).toBeNull();
+    });
   });
 
   describe("createRose", () => {
@@ -37,6 +136,24 @@ describe("API Client", () => {
         "http://localhost:3001/api/rose",
         expect.objectContaining({ method: "POST" })
       );
+    });
+
+    it("should include private flag in request body", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({ id: "1", color: "red", is_private: true }),
+      });
+
+      await createRose({ color: "red", gratitude: "secret", is_private: true });
+
+      const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(JSON.parse(init.body)).toEqual({
+        color: "red",
+        gratitude: "secret",
+        anxiety: null,
+        hope: null,
+        is_private: true,
+      });
     });
 
     it("should send auth header when token exists", async () => {
@@ -123,7 +240,12 @@ describe("API Client", () => {
 
       const result = await getRose("123");
       expect(result).toEqual(mockRose);
-      expect(global.fetch).toHaveBeenCalledWith("http://localhost:3001/api/rose/123");
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/rose/123",
+        expect.objectContaining({
+          headers: expect.objectContaining({ "Content-Type": "application/json" }),
+        })
+      );
     });
 
     it("should throw error on failure", async () => {
@@ -192,6 +314,48 @@ describe("API Client", () => {
     it("should throw error on failure", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
       await expect(deleteRose("123")).rejects.toThrow("Failed to delete rose");
+    });
+  });
+
+  describe("submitFeedback", () => {
+    it("returns success when feedback is accepted", async () => {
+      setToken("test-token");
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({ id: 1 }),
+      });
+
+      await expect(submitFeedback("这个反馈很好")).resolves.toEqual({ success: true });
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/feedback",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            Authorization: "Bearer test-token",
+          }),
+        })
+      );
+    });
+
+    it("returns server error text when feedback is rejected", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        text: async () => "too short",
+      });
+
+      await expect(submitFeedback("bad")).resolves.toEqual({
+        success: false,
+        error: "too short",
+      });
+    });
+
+    it("returns thrown error message when feedback request fails", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error("network down"));
+
+      await expect(submitFeedback("网络失败")).resolves.toEqual({
+        success: false,
+        error: "network down",
+      });
     });
   });
 });

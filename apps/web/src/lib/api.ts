@@ -125,6 +125,7 @@ export interface CreateRose {
   gratitude?: string;
   anxiety?: string;
   hope?: string;
+  is_private?: boolean;
 }
 
 export interface UpdateRose {
@@ -161,6 +162,7 @@ export async function createRose(data: CreateRose): Promise<Rose> {
     data.gratitude ?? null,
     data.anxiety ?? null,
     data.hope ?? null,
+    data.is_private ?? false,
   );
   const res = await authFetch(`${API_BASE}/api/rose`, {
     method: "POST",
@@ -205,7 +207,9 @@ export async function getGarden(page = 1, perPage = 20, color?: string): Promise
 }
 
 export async function getRose(id: string): Promise<Rose> {
-  const res = await fetch(`${API_BASE}/api/rose/${id}`);
+  const res = await authFetch(`${API_BASE}/api/rose/${id}`, {
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error("Failed to fetch rose");
   return res.json();
 }

@@ -12,6 +12,7 @@ interface GlueMod {
   validate_plant_input: (json: string) => unknown; format_plant_request_wasm: (json: string) => string;
   parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
   validate_feedback_input: (json: string) => unknown;
+  generate_petals_wasm: (count: number, seed: number) => unknown;
   color_emoji: (color: string) => string; color_label: (color: string) => string;
   color_options: () => unknown;
   __wbg_get_imports: () => Record<string, unknown>; default: (b: ArrayBuffer) => Promise<void>;

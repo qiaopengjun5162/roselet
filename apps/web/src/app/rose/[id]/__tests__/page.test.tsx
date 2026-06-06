@@ -34,6 +34,11 @@ const { getRose, updateRose, deleteRose, getUser, toggleLike } = require("@/lib/
   getUser: jest.Mock;
   toggleLike: jest.Mock;
 };
+const { playClick, playPlant, playLike } = require("@/lib/sound") as {
+  playClick: jest.Mock;
+  playPlant: jest.Mock;
+  playLike: jest.Mock;
+};
 
 import RoseDetailPage from "../page";
 
@@ -123,6 +128,10 @@ describe("RoseDetailPage", () => {
     await waitFor(() => {
       expect(toggleLike).toHaveBeenCalledWith("rose-1");
     });
+    expect(playLike).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByText("❤️ 4")).toBeInTheDocument();
+    });
   });
 
   it("should enter edit mode", async () => {
@@ -135,6 +144,96 @@ describe("RoseDetailPage", () => {
     fireEvent.click(screen.getByText("编辑"));
     expect(screen.getByText("保存")).toBeInTheDocument();
     expect(screen.getByText("取消")).toBeInTheDocument();
+    expect(playClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("should save edits", async () => {
+    getRose.mockResolvedValue(mockRose);
+    getUser.mockReturnValue({ id: "u1", nickname: "alice" });
+    updateRose.mockResolvedValue({
+      ...mockRose,
+      color: "white",
+      gratitude: "更新感恩",
+      anxiety: null,
+      hope: "新的期待",
+    });
+
+    render(<RoseDetailPage />);
+
+    await waitFor(() => expect(screen.getByText("编辑")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("编辑"));
+    fireEvent.click(screen.getByText("🤍 白玫瑰"));
+
+    const textareas = screen.getAllByRole("textbox");
+    fireEvent.change(textareas[0], { target: { value: "更新感恩" } });
+    fireEvent.change(textareas[1], { target: { value: "" } });
+    fireEvent.change(textareas[2], { target: { value: "新的期待" } });
+    fireEvent.click(screen.getByText("保存"));
+
+    await waitFor(() => {
+      expect(updateRose).toHaveBeenCalledWith("rose-1", {
+        color: "white",
+        gratitude: "更新感恩",
+        anxiety: null,
+        hope: "新的期待",
+      });
+    });
+    expect(playPlant).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("更新感恩")).toBeInTheDocument();
+  });
+
+  it("should show save error", async () => {
+    getRose.mockResolvedValue(mockRose);
+    getUser.mockReturnValue({ id: "u1", nickname: "alice" });
+    updateRose.mockRejectedValue(new Error("nope"));
+
+    render(<RoseDetailPage />);
+
+    await waitFor(() => expect(screen.getByText("编辑")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("编辑"));
+    fireEvent.click(screen.getByText("保存"));
+
+    await waitFor(() => expect(screen.getByText("保存失败")).toBeInTheDocument());
+  });
+
+  it("should cancel delete when confirm returns false", async () => {
+    getRose.mockResolvedValue(mockRose);
+    getUser.mockReturnValue({ id: "u1", nickname: "alice" });
+    window.confirm = jest.fn().mockReturnValue(false);
+
+    render(<RoseDetailPage />);
+
+    await waitFor(() => expect(screen.getByText("删除")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("删除"));
+
+    expect(deleteRose).not.toHaveBeenCalled();
+  });
+
+  it("should show delete error", async () => {
+    getRose.mockResolvedValue(mockRose);
+    getUser.mockReturnValue({ id: "u1", nickname: "alice" });
+    deleteRose.mockRejectedValue(new Error("nope"));
+    window.confirm = jest.fn().mockReturnValue(true);
+
+    render(<RoseDetailPage />);
+
+    await waitFor(() => expect(screen.getByText("删除")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("删除"));
+
+    await waitFor(() => expect(screen.getByText("删除失败")).toBeInTheDocument());
+  });
+
+  it("should redirect anonymous likes to login", async () => {
+    getRose.mockResolvedValue({ ...mockRose, like_count: 0 });
+    getUser.mockReturnValue(null);
+
+    render(<RoseDetailPage />);
+
+    await waitFor(() => expect(screen.getByText("❤️ 点赞")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("❤️ 点赞"));
+
+    expect(mockPush).toHaveBeenCalledWith("/login?redirect=/rose/rose-1");
+    expect(toggleLike).not.toHaveBeenCalled();
   });
 
   it("should call deleteRose", async () => {

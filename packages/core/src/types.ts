@@ -29,6 +29,7 @@ export interface CreateRose {
   gratitude?: string;
   anxiety?: string;
   hope?: string;
+  is_private?: boolean;
 }
 
 export interface PaginatedResponse<T> {
@@ -49,4 +50,8 @@ export interface UserProfile {
 export interface LikeResponse {
   liked: boolean;
   like_count: number;
+}
+
+export interface FeedbackResponse {
+  id: number;
 }

@@ -52,9 +52,11 @@
 - [x] 情绪示波器：预设模式 + 文字输入实时驱动音乐（TextAnalyzer 接口）
 
 ### 测试
-- [x] 72 个后端测试（36 集成 + 36 单元）
-- [x] 120 个前端单元测试（15 套件）
-- [x] 17 个 Rust WASM 单元测试（emotion 情绪分析）
+- [x] 110 个后端测试（60 集成 + 50 单元）
+- [x] 133 个 Rust WASM/推荐模块测试
+- [x] 123 个 Web 前端测试（18 套件）
+- [x] 48 个小程序测试（5 套件）
+- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 90.45% statements / 95.23% lines；小程序 94.50% statements / 95.34% lines
 - [x] RoseCard 通用组件（消除 garden/my 重复代码）
 
 ### 部署
@@ -75,6 +77,23 @@
 - [x] CLAUDE.md / DEVLOG.md / PROGRESS.md
 
 ## 最近完成（会话 #23–24）
+
+### 覆盖率提升（会话 #29）
+- [x] 私密玫瑰后端访问控制补齐：公共花圃隐藏、详情仅 owner、非 owner 点赞返回 404、公共 WebSocket 不广播
+- [x] Web 创建玫瑰正确传递 `is_private`，详情请求带认证头
+- [x] 后端集成测试改为生产 `create_app` 路由，避免测试路由与线上路由分叉
+- [x] 后端测试清库改为 `TRUNCATE ... RESTART IDENTITY CASCADE`，清理 likes/refresh_tokens/feedbacks 残留
+- [x] Web 覆盖 RosePlayer、音频、WASM wrapper、认证刷新、反馈、Nav、Fireworks、详情编辑删除等路径
+- [x] 修复星尘粒子 `left` 随机数缺少 16-bit mask 导致越界的问题
+
+### 当前测试状态
+- Rust nextest: 243 passed
+- Web Jest: 123 passed
+- Miniprogram Jest: 48 passed
+- Total: 414 passed
+- Rust llvm-cov workspace: 90.37% 行覆盖
+- Web Jest coverage: 90.45% statements / 95.23% lines
+- Miniprogram Jest coverage: 94.50% statements / 95.34% lines
 
 ### Rust WASM 架构深化
 - [x] `audio.rs`：玫瑰属性→示波器音频参数（12 tests）

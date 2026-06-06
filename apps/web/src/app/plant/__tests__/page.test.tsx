@@ -108,6 +108,23 @@ describe("PlantPage", () => {
     });
   });
 
+  it("should submit private flag when private toggle is enabled", async () => {
+    createRose.mockResolvedValue({ id: "r1", color: "red" });
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByText("🌐 公开分享"));
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "私密感恩" } });
+    fireEvent.click(screen.getByText("确定并种下"));
+
+    await waitFor(() => {
+      expect(createRose).toHaveBeenCalledWith(expect.objectContaining({
+        gratitude: "私密感恩",
+        is_private: true,
+      }));
+    });
+  });
+
   it("should show error on submit failure", async () => {
     createRose.mockRejectedValue(new Error("fail"));
     render(<PlantPage />);

@@ -14,3 +14,8 @@ declare namespace WXWebAssembly {
     constructor(bytes: ArrayBuffer);
   }
 }
+
+declare module '*.module.css' {
+  const classes: Record<string, string>;
+  export default classes;
+}

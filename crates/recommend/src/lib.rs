@@ -204,7 +204,13 @@ pub fn build_garden_url(base_url: &str, page: u32, per_page: u32, color: &str) -
 }
 
 #[wasm_bindgen]
-pub fn build_plant_body(color: &str, gratitude: &str, anxiety: &str, hope: &str) -> String {
+pub fn build_plant_body(
+    color: &str,
+    gratitude: &str,
+    anxiety: &str,
+    hope: &str,
+    is_private: bool,
+) -> String {
     let client = api_client::ApiClient::default();
     client.build_plant_body(
         color,
@@ -219,6 +225,7 @@ pub fn build_plant_body(color: &str, gratitude: &str, anxiety: &str, hope: &str)
             Some(anxiety)
         },
         if hope.is_empty() { None } else { Some(hope) },
+        is_private,
     )
 }
 
@@ -274,6 +281,30 @@ pub struct FeedbackValidation {
     pub error: Option<String>,
 }
 
+fn validate_feedback_content(content: &str) -> FeedbackValidation {
+    let mut validation = FeedbackValidation::default();
+    let trimmed = content.trim();
+
+    if trimmed.is_empty() {
+        validation.error = Some("请输入反馈内容".to_string());
+        return validation;
+    }
+
+    let char_count = trimmed.chars().count();
+    if char_count < 5 {
+        validation.error = Some("反馈内容至少需要 5 个字符".to_string());
+        return validation;
+    }
+
+    if char_count > 500 {
+        validation.error = Some("反馈内容不能超过 500 个字符".to_string());
+        return validation;
+    }
+
+    validation.valid = true;
+    validation
+}
+
 /// WASM: 验证种花表单，返回 JSON (Rust 侧统一校验规则)
 #[wasm_bindgen]
 pub fn validate_plant_input(json: &str) -> JsValue {
@@ -308,19 +339,18 @@ pub fn compute_sky_params_wasm(hour: u32) -> JsValue {
 }
 
 /// WASM: 生成星尘粒子配置 — 确定性伪随机 left/delay/duration/size/opacity
-#[wasm_bindgen]
-pub fn generate_star_particles_wasm(count: u32, seed: u64) -> JsValue {
+#[derive(Debug, PartialEq, Serialize)]
+struct StarParticle {
+    left: f64,
+    delay: f64,
+    duration: f64,
+    size: f64,
+    opacity: f64,
+}
+
+fn generate_star_particles_internal(count: u32, seed: u64) -> Vec<StarParticle> {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-
-    #[derive(Serialize)]
-    struct StarParticle {
-        left: f64,
-        delay: f64,
-        duration: f64,
-        size: f64,
-        opacity: f64,
-    }
 
     let mut particles = Vec::with_capacity(count as usize);
     let mut h = seed;
@@ -331,7 +361,7 @@ pub fn generate_star_particles_wasm(count: u32, seed: u64) -> JsValue {
         i.hash(&mut hasher);
         let hash = hasher.finish();
 
-        let r1 = (hash >> 16) as f64 / 65535.0;
+        let r1 = ((hash >> 16) & 0xFFFF) as f64 / 65535.0;
         let r2 = ((hash >> 32) & 0xFFFF) as f64 / 65535.0;
         let r3 = (hash & 0xFFFF) as f64 / 65535.0;
         let r4 = ((hash >> 48) as u8) as f64 / 255.0;
@@ -348,7 +378,12 @@ pub fn generate_star_particles_wasm(count: u32, seed: u64) -> JsValue {
         h = hash.wrapping_add(1);
     }
 
-    serde_wasm_bindgen::to_value(&particles).unwrap()
+    particles
+}
+
+#[wasm_bindgen]
+pub fn generate_star_particles_wasm(count: u32, seed: u64) -> JsValue {
+    serde_wasm_bindgen::to_value(&generate_star_particles_internal(count, seed)).unwrap()
 }
 
 /// WASM: 格式化种花请求，返回可直接 POST 的 JSON 字符串
@@ -370,29 +405,8 @@ pub fn validate_feedback_input(json: &str) -> JsValue {
         content: String::new(),
     });
 
-    let mut validation = FeedbackValidation::default();
-
-    // 验证逻辑
-    let trimmed = input.content.trim();
-
-    if trimmed.is_empty() {
-        validation.error = Some("请输入反馈内容".to_string());
-        return serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL);
-    }
-
-    let char_count = trimmed.chars().count();
-    if char_count < 5 {
-        validation.error = Some("反馈内容至少需要 5 个字符".to_string());
-        return serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL);
-    }
-
-    if char_count > 500 {
-        validation.error = Some("反馈内容不能超过 500 个字符".to_string());
-        return serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL);
-    }
-
-    validation.valid = true;
-    serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL)
+    serde_wasm_bindgen::to_value(&validate_feedback_content(&input.content))
+        .unwrap_or(JsValue::NULL)
 }
 
 // ── Fireworks WASM exports ──
@@ -487,5 +501,63 @@ mod tests {
         let result = recommend_internal(&roses);
         // 已覆盖 gratitude 和 friendship，应推荐其他主题
         assert!(result.theme.category != "友情");
+    }
+
+    #[test]
+    fn test_positive_negative_counts_multiple_fields() {
+        let roses = vec![RoseInput {
+            color: "red".to_string(),
+            gratitude: Some("感恩幸福".to_string()),
+            anxiety: Some("焦虑压力".to_string()),
+            hope: Some("期待希望".to_string()),
+        }];
+        assert_eq!(analyze_positive_negative(&roses), (4, 2));
+    }
+
+    #[test]
+    fn test_feedback_validation_empty() {
+        let result = validate_feedback_content("   ");
+        assert!(!result.valid);
+        assert_eq!(result.error.as_deref(), Some("请输入反馈内容"));
+    }
+
+    #[test]
+    fn test_feedback_validation_too_short() {
+        let result = validate_feedback_content("四字");
+        assert!(!result.valid);
+        assert_eq!(result.error.as_deref(), Some("反馈内容至少需要 5 个字符"));
+    }
+
+    #[test]
+    fn test_feedback_validation_too_long_uses_chars() {
+        let result = validate_feedback_content(&"花".repeat(501));
+        assert!(!result.valid);
+        assert_eq!(result.error.as_deref(), Some("反馈内容不能超过 500 个字符"));
+    }
+
+    #[test]
+    fn test_feedback_validation_valid() {
+        let result = validate_feedback_content("这个反馈刚刚好");
+        assert!(result.valid);
+        assert!(result.error.is_none());
+    }
+
+    #[test]
+    fn test_star_particles_empty() {
+        assert!(generate_star_particles_internal(0, 42).is_empty());
+    }
+
+    #[test]
+    fn test_star_particles_deterministic_and_in_range() {
+        let first = generate_star_particles_internal(5, 42);
+        let second = generate_star_particles_internal(5, 42);
+        assert_eq!(first, second);
+        for particle in first {
+            assert!((0.0..=100.0).contains(&particle.left));
+            assert!((0.0..=10.0).contains(&particle.delay));
+            assert!((15.0..=25.0).contains(&particle.duration));
+            assert!((1.0..=3.0).contains(&particle.size));
+            assert!((0.15..=0.5).contains(&particle.opacity));
+        }
     }
 }

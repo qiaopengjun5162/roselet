@@ -1436,3 +1436,56 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 ### 待办
 - [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
 - [ ] 小程序真机联调
+
+## 2026-06-06 会话 #29：覆盖率 90%+ 收口 + 私密模式补洞
+
+### 会话目标
+将测试覆盖率尽可能提升到 90% 以上，并顺手修复覆盖率补测过程中暴露的私密模式问题。
+
+### 完成的工作
+
+#### P0 — 私密模式安全修复
+- `POST /api/rose`: 私密玫瑰不再通过公共 WebSocket 广播
+- `GET /api/rose/:id`: 私密玫瑰仅 owner 可查看，未认证/非 owner 返回 404
+- `POST /api/rose/:id/like`: 非 owner 点赞私密玫瑰返回 404
+- Web `createRose`: `is_private` 正确通过 Rust WASM `build_plant_body` 进入请求体
+- Web `getRose`: 改为带认证头请求，owner 可打开自己的私密玫瑰详情
+
+#### 测试隔离与生产路由复用
+- 后端测试清库从 `DELETE roses/users` 改为 `TRUNCATE feedbacks, refresh_tokens, likes, roses, users RESTART IDENTITY CASCADE`
+- 新增 `roselet_backend::create_app(state)`，生产入口和集成测试复用同一套路由组装，避免测试路由表漂移
+- 修复 `generate_star_particles_internal`: `left` 随机数缺少 16-bit mask，可能生成超过 100% 的 CSS 位置
+- clippy 修复：`flowers.rs` 测试模块后置项、`cloned_ref_to_slice_refs`
+
+#### 新增/增强测试
+- 后端私密模式集成测试：公共花圃隐藏、详情 owner 校验、WS 不广播、月配额、私密点赞权限
+- Rust WASM：plant body 私密字段、JSON 转义、反馈校验、星尘粒子确定性/边界
+- Web：认证刷新、反馈提交、WASM wrapper、音频库、RosePlayer、Nav、Fireworks、玫瑰详情编辑/删除/点赞、text-to-sound、Card slots
+- 小程序：API update/delete/my roses/feedback/private flag 测试补齐
+
+### 当前测试状态
+- Rust nextest: 243 passed
+  - Backend: 110
+  - Rust WASM/recommend: 133
+- Web Jest: 123 passed
+- Miniprogram Jest: 48 passed
+- Total: 414 passed
+
+### 覆盖率
+- Rust llvm-cov workspace: 90.37% lines / 88.41% regions
+- Web Jest coverage: 90.45% statements / 95.23% lines
+- Miniprogram Jest coverage: 94.50% statements / 95.34% lines
+
+### 验证
+- `cargo fmt --all -- --check`
+- `cargo clippy --all-targets --all-features --tests --benches -- -D warnings`
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run --all-features -j1`
+- `NO_PROXY=localhost,127.0.0.1 cargo llvm-cov nextest --all-features --summary-only -j1`
+- `./node_modules/.bin/tsc --noEmit` (apps/web)
+- `./node_modules/.bin/tsc --noEmit` (apps/miniprogram)
+- `./node_modules/.bin/jest --coverage --runInBand` (apps/web)
+- `./node_modules/.bin/jest --coverage --runInBand` (apps/miniprogram)
+
+### 待办
+- [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
+- [ ] 小程序真机联调

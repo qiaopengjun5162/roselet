@@ -59,7 +59,9 @@ pub async fn create_rose(
     let nickname = lookup_nickname(&state.pool, rose.user_id).await;
     let response = RoseResponse::from_rose(rose.clone(), nickname, 0);
 
-    let _ = state.rose_tx.send(response.clone());
+    if !is_private {
+        let _ = state.rose_tx.send(response.clone());
+    }
 
     let pool = state.pool.clone();
     let rose_id = rose.id;
@@ -89,6 +91,7 @@ pub async fn create_rose(
 
 pub async fn get_rose(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<Json<RoseResponse>, AppError> {
     let rose = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
@@ -96,6 +99,13 @@ pub async fn get_rose(
         .fetch_optional(&state.pool)
         .await?
         .ok_or(AppError::NotFound)?;
+
+    if rose.is_private {
+        let user_id = auth::extract_user_id(&headers, &state.jwt_secret);
+        if user_id != rose.user_id {
+            return Err(AppError::NotFound);
+        }
+    }
 
     let nickname = lookup_nickname(&state.pool, rose.user_id).await;
     Ok(Json(RoseResponse::from_rose(rose, nickname, 0)))

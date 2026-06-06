@@ -107,6 +107,36 @@ pub fn recommend_theme(matched_categories: &[super::keywords::KeywordCategory]) 
     }
 }
 
+/// 基于情绪趋势推荐颜色
+pub fn recommend_color(positive_count: usize, negative_count: usize) -> ColorSuggestion {
+    let total = positive_count + negative_count;
+    if total == 0 {
+        return ColorSuggestion {
+            color: "red",
+            reason: "红玫瑰代表热情，适合开始新的分享".to_string(),
+        };
+    }
+
+    let positive_ratio = positive_count as f64 / total as f64;
+
+    if positive_ratio > 0.6 {
+        ColorSuggestion {
+            color: "yellow",
+            reason: "你最近心情不错，黄玫瑰代表友谊与快乐".to_string(),
+        }
+    } else if positive_ratio < 0.4 {
+        ColorSuggestion {
+            color: "red",
+            reason: "红玫瑰代表热情与治愈，愿它带给你力量".to_string(),
+        }
+    } else {
+        ColorSuggestion {
+            color: "white",
+            reason: "白玫瑰代表宁静与反思，适合沉淀心情".to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -201,7 +231,7 @@ mod tests {
             KeywordCategory::Love,
         ];
         for cat in &categories {
-            let lang = recommend_flower_language(&[cat.clone()]);
+            let lang = recommend_flower_language(std::slice::from_ref(cat));
             assert!(!lang.title.is_empty(), "empty title for {:?}", cat);
             assert!(!lang.content.is_empty(), "empty content for {:?}", cat);
             assert!(!lang.keywords.is_empty(), "empty keywords for {:?}", cat);
@@ -358,35 +388,5 @@ mod tests {
         };
         let json = serde_json::to_string(&cs).unwrap();
         assert!(json.contains("\"color\":\"red\""));
-    }
-}
-
-/// 基于情绪趋势推荐颜色
-pub fn recommend_color(positive_count: usize, negative_count: usize) -> ColorSuggestion {
-    let total = positive_count + negative_count;
-    if total == 0 {
-        return ColorSuggestion {
-            color: "red",
-            reason: "红玫瑰代表热情，适合开始新的分享".to_string(),
-        };
-    }
-
-    let positive_ratio = positive_count as f64 / total as f64;
-
-    if positive_ratio > 0.6 {
-        ColorSuggestion {
-            color: "yellow",
-            reason: "你最近心情不错，黄玫瑰代表友谊与快乐".to_string(),
-        }
-    } else if positive_ratio < 0.4 {
-        ColorSuggestion {
-            color: "red",
-            reason: "红玫瑰代表热情与治愈，愿它带给你力量".to_string(),
-        }
-    } else {
-        ColorSuggestion {
-            color: "white",
-            reason: "白玫瑰代表宁静与反思，适合沉淀心情".to_string(),
-        }
     }
 }

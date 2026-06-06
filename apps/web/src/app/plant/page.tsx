@@ -238,6 +238,7 @@ export default function PlantPage() {
                 nickname: null,
                 like_count: 0,
                 ai_reply: null,
+                is_private: isPrivate,
                 created_at: new Date().toISOString(),
               }}
               autoPlay

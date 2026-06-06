@@ -40,25 +40,33 @@ impl ApiClient {
         gratitude: Option<&str>,
         anxiety: Option<&str>,
         hope: Option<&str>,
+        is_private: bool,
     ) -> String {
-        let mut fields = Vec::new();
-        fields.push(format!("\"color\":\"{}\"", color));
-        if let Some(g) = gratitude {
-            if !g.is_empty() {
-                fields.push(format!("\"gratitude\":\"{}\"", g));
-            }
+        fn is_false(value: &bool) -> bool {
+            !*value
         }
-        if let Some(a) = anxiety {
-            if !a.is_empty() {
-                fields.push(format!("\"anxiety\":\"{}\"", a));
-            }
+
+        #[derive(Serialize)]
+        struct PlantBody<'a> {
+            color: &'a str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            gratitude: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            anxiety: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            hope: Option<&'a str>,
+            #[serde(skip_serializing_if = "is_false")]
+            is_private: bool,
         }
-        if let Some(h) = hope {
-            if !h.is_empty() {
-                fields.push(format!("\"hope\":\"{}\"", h));
-            }
-        }
-        format!("{{{}}}", fields.join(","))
+
+        serde_json::to_string(&PlantBody {
+            color,
+            gratitude: gratitude.filter(|v| !v.is_empty()),
+            anxiety: anxiety.filter(|v| !v.is_empty()),
+            hope: hope.filter(|v| !v.is_empty()),
+            is_private,
+        })
+        .unwrap_or_else(|_| "{\"color\":\"red\"}".to_string())
     }
 
     /// 计算分页信息
@@ -113,11 +121,30 @@ mod tests {
     #[test]
     fn test_build_plant_body() {
         let client = ApiClient::default();
-        let body = client.build_plant_body("red", Some("hi"), None, Some("hope"));
+        let body = client.build_plant_body("red", Some("hi"), None, Some("hope"), false);
         assert!(body.contains("\"color\":\"red\""));
         assert!(body.contains("\"gratitude\":\"hi\""));
         assert!(body.contains("\"hope\":\"hope\""));
         assert!(!body.contains("anxiety"));
+        assert!(!body.contains("is_private"));
+    }
+
+    #[test]
+    fn test_build_plant_body_private() {
+        let client = ApiClient::default();
+        let body = client.build_plant_body("white", Some("secret"), None, None, true);
+        let value: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(value["color"], "white");
+        assert_eq!(value["gratitude"], "secret");
+        assert_eq!(value["is_private"], true);
+    }
+
+    #[test]
+    fn test_build_plant_body_escapes_text() {
+        let client = ApiClient::default();
+        let body = client.build_plant_body("red", Some("quote\"slash\\"), None, None, false);
+        let value: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(value["gratitude"], "quote\"slash\\");
     }
 
     #[test]

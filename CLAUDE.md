@@ -41,18 +41,22 @@ Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请
 
 ## 测试状态
 ```
-Rust backend:   105 passed
-Rust WASM:      124 passed  (含 audio 12 + emotion 11 + color 11 + sky 7 + fireworks 10 + flowers 31)
-Web frontend:    86 passed
-Miniprogram:     42 passed
-Total:          357 passed
+Rust backend:   110 passed
+Rust WASM:      133 passed
+Web frontend:   123 passed
+Miniprogram:     48 passed
+Total:          414 passed
 
-llvm-cov (recommend): 86.46% 行覆盖
-  100%: petal, sky, keywords, flowers
-  99%+: garden (99.61%), audio (97.87%)
-  96%+: color (96.39%)
-  90%+: api_client (94.79%), plant (93.06%), emotion (91.43%), store (90.21%)
-  89%+: datefmt (89.36%)
+llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
+  100%: flowers, petal, sky, keywords, pagination, user, docs, state
+  99%+: garden (99.61%)
+  97%+: audio (97.87%), api_client (98.15%)
+  96%+: color (96.39%), fireworks (96.30%)
+  90%+: plant (93.06%), emotion (91.43%), store (90.21%), rose routes (94.87%)
+
+Jest coverage:
+  Web: 90.45% statements / 95.23% lines
+  Miniprogram: 94.50% statements / 95.34% lines
 ```
 
 ## WASM 模块清单（crates/recommend/src/）
@@ -74,6 +78,7 @@ llvm-cov (recommend): 86.46% 行覆盖
 - **wasm-opt bulk-memory**：Cargo.toml 设 `wasm-opt = false`
 - **小程序 document.baseURI**：Webpack BannerPlugin 注入 document mock（非运行时 polyfill）
 - **wasm-bindgen Option<&str>**：改用 `&str`，空字符串表示 None
+- **后端集成测试共享 DB**：`create_test_app()` 必须 `TRUNCATE feedbacks, refresh_tokens, likes, roses, users RESTART IDENTITY CASCADE`；nextest 用 `-j1` 避免并发清库互踩
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 
 ## 常用命令（justfile）

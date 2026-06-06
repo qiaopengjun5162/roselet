@@ -1,6 +1,5 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use axum::response::IntoResponse;
 use futures_util::StreamExt;
 use http_body_util::BodyExt;
 use roselet_backend::auth::create_access_token;
@@ -26,94 +25,13 @@ async fn create_test_app() -> (axum::Router, PgPool) {
         .await
         .expect("Failed to run migrations");
 
-    sqlx::query("DELETE FROM roses")
+    sqlx::query("TRUNCATE feedbacks, refresh_tokens, likes, roses, users RESTART IDENTITY CASCADE")
         .execute(&pool)
         .await
         .expect("Failed to clean test data");
 
-    sqlx::query("DELETE FROM users")
-        .execute(&pool)
-        .await
-        .expect("Failed to clean users");
-
     let state = roselet_backend::state::AppState::new(pool.clone(), "test-secret".to_string());
-    let cors = tower_http::cors::CorsLayer::new()
-        .allow_origin(tower_http::cors::Any)
-        .allow_methods(tower_http::cors::Any)
-        .allow_headers(tower_http::cors::Any);
-
-    let app = axum::Router::new()
-        .route(
-            "/api/auth/register",
-            axum::routing::post(roselet_backend::routes::auth::register),
-        )
-        .route(
-            "/api/auth/refresh",
-            axum::routing::post(roselet_backend::routes::auth::refresh),
-        )
-        .route(
-            "/api/auth/logout",
-            axum::routing::post(roselet_backend::routes::auth::logout),
-        )
-        .route(
-            "/api/garden",
-            axum::routing::get(roselet_backend::routes::garden::get_garden),
-        )
-        .route(
-            "/api/rose",
-            axum::routing::post(roselet_backend::routes::rose::create_rose),
-        )
-        .route(
-            "/api/rose/{id}",
-            axum::routing::get(roselet_backend::routes::rose::get_rose)
-                .put(roselet_backend::routes::rose::update_rose)
-                .delete(roselet_backend::routes::rose::delete_rose),
-        )
-        .route(
-            "/api/my/roses",
-            axum::routing::get(roselet_backend::routes::my::get_my_roses),
-        )
-        .route(
-            "/api/user/profile",
-            axum::routing::get(roselet_backend::routes::auth::profile),
-        )
-        .route(
-            "/api/rose/{id}/like",
-            axum::routing::post(roselet_backend::routes::like::toggle_like),
-        )
-        .route(
-            "/api/feedback",
-            axum::routing::post(roselet_backend::routes::feedback::submit_feedback),
-        )
-        .route(
-            "/api/ws",
-            axum::routing::get(roselet_backend::routes::ws::ws_handler),
-        )
-        .route(
-            "/health",
-            axum::routing::get(roselet_backend::routes::health::health_check),
-        )
-        .route(
-            "/swagger",
-            axum::routing::get(roselet_backend::routes::docs::swagger_ui),
-        )
-        .route(
-            "/api/openapi.json",
-            axum::routing::get(|| async {
-                match serde_json::from_str::<serde_json::Value>(include_str!(
-                    "../src/routes/openapi.json"
-                )) {
-                    Ok(json) => axum::response::Json(json).into_response(),
-                    Err(e) => (
-                        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to parse openapi.json: {}", e),
-                    )
-                        .into_response(),
-                }
-            }),
-        )
-        .layer(cors)
-        .with_state(state);
+    let app = roselet_backend::create_app(state);
     (app, pool)
 }
 
@@ -613,6 +531,213 @@ async fn test_websocket_receives_new_rose() {
     assert_eq!(rose["gratitude"], "ws测试");
 
     ws_stream.close(None).await.ok();
+}
+
+#[tokio::test]
+async fn test_private_rose_hidden_from_public_garden() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let auth = register_user(&base, "private-gardener").await;
+    let token = auth["access_token"].as_str().unwrap();
+
+    client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "公开玫瑰" }))
+        .send()
+        .await
+        .unwrap();
+
+    let private = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "white", "gratitude": "私密玫瑰", "is_private": true }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(private.status(), StatusCode::CREATED);
+    let private_body: Value = private.json().await.unwrap();
+    assert_eq!(private_body["is_private"], true);
+
+    let garden: Value = client
+        .get(format!("{}/api/garden", base))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(garden["total"], 1);
+    assert_eq!(garden["data"][0]["gratitude"], "公开玫瑰");
+
+    let mine: Value = client
+        .get(format!("{}/api/my/roses", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(mine["total"], 2);
+}
+
+#[tokio::test]
+async fn test_private_rose_detail_requires_owner() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let owner = register_user(&base, "private-owner").await;
+    let other = register_user(&base, "private-viewer").await;
+    let owner_token = owner["access_token"].as_str().unwrap();
+    let other_token = other["access_token"].as_str().unwrap();
+
+    let created: Value = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", owner_token))
+        .json(&json!({ "color": "yellow", "gratitude": "只给自己看", "is_private": true }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let rose_id = created["id"].as_str().unwrap();
+
+    let no_auth = client.get(format!("{}/api/rose/{}", base, rose_id)).send().await.unwrap();
+    assert_eq!(no_auth.status(), StatusCode::NOT_FOUND);
+
+    let other_res = client
+        .get(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", other_token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(other_res.status(), StatusCode::NOT_FOUND);
+
+    let owner_res = client
+        .get(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", owner_token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(owner_res.status(), StatusCode::OK);
+    let body: Value = owner_res.json().await.unwrap();
+    assert_eq!(body["gratitude"], "只给自己看");
+    assert_eq!(body["is_private"], true);
+}
+
+#[tokio::test]
+async fn test_private_rose_not_broadcast_to_public_ws() {
+    let base = spawn_test_server().await;
+    let ws_url = base.replace("http://", "ws://") + "/api/ws";
+    let (mut ws_stream, _) = tokio_tungstenite::connect_async(&ws_url)
+        .await
+        .expect("Failed to connect WebSocket");
+
+    let client = reqwest::Client::new();
+    let auth = register_user(&base, "private-ws-user").await;
+    let token = auth["access_token"].as_str().unwrap();
+
+    let private = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "ws private", "is_private": true }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(private.status(), StatusCode::CREATED);
+
+    let no_message =
+        tokio::time::timeout(std::time::Duration::from_millis(200), ws_stream.next()).await;
+    assert!(no_message.is_err());
+
+    let public = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "ws public" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(public.status(), StatusCode::CREATED);
+
+    let msg = tokio::time::timeout(std::time::Duration::from_secs(2), ws_stream.next())
+        .await
+        .expect("Timeout waiting for WS message")
+        .expect("WS stream ended")
+        .expect("WS read error");
+    let rose: Value = serde_json::from_str(msg.to_text().unwrap()).unwrap();
+    assert_eq!(rose["gratitude"], "ws public");
+
+    ws_stream.close(None).await.ok();
+}
+
+#[tokio::test]
+async fn test_private_rose_monthly_quota() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let auth = register_user(&base, "quota-user").await;
+    let token = auth["access_token"].as_str().unwrap();
+
+    for i in 0..5 {
+        let res = client
+            .post(format!("{}/api/rose", base))
+            .header("Authorization", format!("Bearer {}", token))
+            .json(&json!({ "color": "red", "gratitude": format!("private {}", i), "is_private": true }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CREATED);
+    }
+
+    let sixth = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "too much", "is_private": true }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(sixth.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_private_rose_like_requires_owner() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let owner = register_user(&base, "private-like-owner").await;
+    let other = register_user(&base, "private-like-other").await;
+    let owner_token = owner["access_token"].as_str().unwrap();
+    let other_token = other["access_token"].as_str().unwrap();
+
+    let created: Value = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", owner_token))
+        .json(&json!({ "color": "white", "gratitude": "like secret", "is_private": true }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let rose_id = created["id"].as_str().unwrap();
+
+    let other_like = client
+        .post(format!("{}/api/rose/{}/like", base, rose_id))
+        .header("Authorization", format!("Bearer {}", other_token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(other_like.status(), StatusCode::NOT_FOUND);
+
+    let owner_like = client
+        .post(format!("{}/api/rose/{}/like", base, rose_id))
+        .header("Authorization", format!("Bearer {}", owner_token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(owner_like.status(), StatusCode::OK);
+    let body: Value = owner_like.json().await.unwrap();
+    assert_eq!(body["liked"], true);
+    assert_eq!(body["like_count"], 1);
 }
 
 #[tokio::test]

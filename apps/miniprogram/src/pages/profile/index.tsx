@@ -11,7 +11,7 @@ import styles from "./index.module.css";
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const user = useWasmStore((s) => s.user);
+  const { nickname } = useWasmStore();
 
   useEffect(() => {
     if (!getToken()) {
@@ -43,7 +43,7 @@ export default function ProfilePage() {
         {/* 用户信息卡 */}
         <View className={styles.card}>
           <Text className={styles.nickname}>
-            {user?.nickname ?? getUser()?.nickname ?? "未知用户"}
+            {nickname ?? getUser()?.nickname ?? "未知用户"}
           </Text>
           <Text className={styles.joined}>
             {profile?.user?.created_at

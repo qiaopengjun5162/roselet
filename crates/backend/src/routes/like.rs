@@ -21,6 +21,18 @@ pub async fn toggle_like(
 ) -> Result<Json<LikeResponse>, AppError> {
     let user_id = auth::extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
 
+    let rose = sqlx::query_as::<_, (Option<Uuid>, bool)>(
+        "SELECT user_id, is_private FROM roses WHERE id = $1",
+    )
+    .bind(rose_id)
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    if rose.1 && rose.0 != Some(user_id) {
+        return Err(AppError::NotFound);
+    }
+
     let existing =
         sqlx::query_scalar::<_, Uuid>("SELECT id FROM likes WHERE user_id = $1 AND rose_id = $2")
             .bind(user_id)

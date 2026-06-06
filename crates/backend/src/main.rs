@@ -1,11 +1,6 @@
-use axum::Router;
-use axum::response::IntoResponse;
-use axum::routing::{get, post};
-use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::EnvFilter;
 
 use roselet_backend::config::Config;
-use roselet_backend::routes;
 use roselet_backend::state::AppState;
 
 #[tokio::main]
@@ -20,43 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sqlx::migrate!("./migrations").run(&pool).await?;
 
     let state = AppState::new(pool, config.jwt_secret);
-    let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
-
-    let app = Router::new()
-        .route("/health", get(routes::health::health_check))
-        .route("/api/auth/register", post(routes::auth::register))
-        .route("/api/auth/refresh", post(routes::auth::refresh))
-        .route("/api/auth/logout", post(routes::auth::logout))
-        .route("/api/garden", get(routes::garden::get_garden))
-        .route("/api/rose", post(routes::rose::create_rose))
-        .route(
-            "/api/rose/{id}",
-            get(routes::rose::get_rose)
-                .put(routes::rose::update_rose)
-                .delete(routes::rose::delete_rose),
-        )
-        .route("/api/my/roses", get(routes::my::get_my_roses))
-        .route("/api/user/profile", get(routes::auth::profile))
-        .route("/api/rose/{id}/like", post(routes::like::toggle_like))
-        .route("/api/feedback", post(routes::feedback::submit_feedback))
-        .route("/api/ws", get(routes::ws::ws_handler))
-        .route("/swagger", get(routes::docs::swagger_ui))
-        .route(
-            "/api/openapi.json",
-            get(|| async {
-                match serde_json::from_str::<serde_json::Value>(include_str!("routes/openapi.json"))
-                {
-                    Ok(json) => axum::response::Json(json).into_response(),
-                    Err(e) => (
-                        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to parse openapi.json: {}", e),
-                    )
-                        .into_response(),
-                }
-            }),
-        )
-        .layer(cors)
-        .with_state(state);
+    let app = roselet_backend::create_app(state);
 
     let addr = format!("0.0.0.0:{}", config.port);
     tracing::info!("Roselet backend listening on {}", addr);
