@@ -1,4 +1,10 @@
 page {
+@keyframes petalFall {
+  0%   { transform: translateY(-5vh) translateX(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.3; }
+  90%  { opacity: 0.2; }
+  100% { transform: translateY(105vh) translateX(var(--sway, 30px)) rotate(360deg); opacity: 0; }
+}
   width: 100vw;
   height: 100vh;
   overflow: hidden;

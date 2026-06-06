@@ -19,8 +19,9 @@ export function NavBar({ title }: { title: string }) {
       style={{
         paddingTop: `${STATUS_BAR_HEIGHT}px`,
         height: `${TOTAL_HEADER_HEIGHT}px`,
-        background: "rgba(10,11,20,0.88)",
+        background: 'linear-gradient(135deg, rgba(15,8,30,0.95) 0%, rgba(40,12,30,0.92) 50%, rgba(15,8,30,0.95) 100%)',
         borderBottom: '1px solid rgba(244,63,94,0.15)',
+        boxShadow: '0 1px 20px rgba(244,63,94,0.06)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -34,10 +35,10 @@ export function NavBar({ title }: { title: string }) {
     >
       <Text
         style={{
-          color: '#f9a8d4',
+          color: '#fda4af',
           fontSize: '17px',
           fontWeight: 600,
-          letterSpacing: '1px',
+          letterSpacing: '2px',
         }}
       >
         {title}
