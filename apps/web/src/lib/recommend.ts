@@ -82,3 +82,15 @@ const _CE: Record<string, string> = { red: "🌹", white: "🤍", yellow: "💛"
 const _CL: Record<string, string> = { red: "红玫瑰", white: "白玫瑰", yellow: "黄玫瑰" };
 export function colorEmoji(color: string): string { try { return wasmModule?.color_emoji(color) ?? _CE[color] ?? "🌸"; } catch { return _CE[color] ?? "🌸"; } }
 export function colorLabel(color: string): string { try { return wasmModule?.color_label(color) ?? _CL[color] ?? color; } catch { return _CL[color] ?? color; } }
+
+// Fireworks — 粒子算法全量 Rust WASM 驱动
+export async function burstFireworks(cx: number, cy: number, count: number, idOffset: number) {
+  const mod = await loadWasm();
+  if (!mod) return [];
+  try { return mod.burstFireworks(cx, cy, count, idOffset) as { id: number; x: number; y: number; color: string; tx: number; ty: number; size: number; delay: number; duration: number }[]; } catch { return []; }
+}
+export async function getFireworkLaunches() {
+  const mod = await loadWasm();
+  if (!mod) return [];
+  try { return mod.getFireworkLaunches() as { cx: number; cy: number; count: number; delay_ms: number }[]; } catch { return []; }
+}

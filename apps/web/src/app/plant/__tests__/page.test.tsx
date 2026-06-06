@@ -41,6 +41,8 @@ jest.mock("@/lib/api", () => ({
 jest.mock("@/lib/recommend", () => ({
   getRecommendation: jest.fn().mockResolvedValue(null),
   validatePlantInput: jest.fn().mockResolvedValue({ valid: true, error: null, cleaned: null }),
+  getFireworkLaunches: jest.fn().mockResolvedValue([]),
+  burstFireworks: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock("@/lib/sound", () => ({

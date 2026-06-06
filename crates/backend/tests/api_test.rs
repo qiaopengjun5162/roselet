@@ -1,5 +1,6 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use axum::response::IntoResponse;
 use futures_util::StreamExt;
 use http_body_util::BodyExt;
 use roselet_backend::auth::create_access_token;
@@ -87,6 +88,29 @@ async fn create_test_app() -> (axum::Router, PgPool) {
         .route(
             "/api/ws",
             axum::routing::get(roselet_backend::routes::ws::ws_handler),
+        )
+        .route(
+            "/health",
+            axum::routing::get(roselet_backend::routes::health::health_check),
+        )
+        .route(
+            "/swagger",
+            axum::routing::get(roselet_backend::routes::docs::swagger_ui),
+        )
+        .route(
+            "/api/openapi.json",
+            axum::routing::get(|| async {
+                match serde_json::from_str::<serde_json::Value>(
+                    include_str!("../src/routes/openapi.json"),
+                ) {
+                    Ok(json) => axum::response::Json(json).into_response(),
+                    Err(e) => (
+                        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to parse openapi.json: {}", e),
+                    )
+                        .into_response(),
+                }
+            }),
         )
         .layer(cors)
         .with_state(state);
@@ -1379,4 +1403,74 @@ async fn test_logout_expired_token() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+// ── Health / Swagger / OpenAPI 集成测试 ──
+
+#[tokio::test]
+async fn test_health_check() {
+    let (app, _) = create_test_app().await;
+    let response = app
+        .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let result: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(result["status"], "ok");
+    assert_eq!(result["database"], "healthy");
+    assert!(result["version"].as_str().is_some());
+}
+
+#[tokio::test]
+async fn test_health_check_reqwest() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let res = client.get(format!("{}/health", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["status"], "ok");
+    assert_eq!(body["database"], "healthy");
+}
+
+#[tokio::test]
+async fn test_swagger_ui_returns_html() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let res = client.get(format!("{}/swagger", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await.unwrap();
+    assert!(body.contains("<html"));
+    assert!(body.contains("swagger"));
+}
+
+#[tokio::test]
+async fn test_openapi_json() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let res = client
+        .get(format!("{}/api/openapi.json", base))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert!(body["openapi"].as_str().is_some());
+    assert!(body["info"].is_object());
+    assert!(body["paths"].is_object());
+}
+
+#[tokio::test]
+async fn test_openapi_json_paths() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let res = client
+        .get(format!("{}/api/openapi.json", base))
+        .send()
+        .await
+        .unwrap();
+    let body: Value = res.json().await.unwrap();
+    assert!(body["paths"]["/auth/register"].is_object());
+    assert!(body["paths"]["/rose"].is_object());
+    assert!(body["paths"]["/garden"].is_object());
 }

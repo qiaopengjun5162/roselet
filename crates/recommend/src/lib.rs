@@ -116,6 +116,7 @@ mod api_client;
 mod audio;
 mod color;
 mod datefmt;
+mod fireworks;
 mod garden;
 mod petal;
 mod plant;
@@ -392,6 +393,20 @@ pub fn validate_feedback_input(json: &str) -> JsValue {
 
     validation.valid = true;
     serde_wasm_bindgen::to_value(&validation).unwrap_or(JsValue::NULL)
+}
+
+// ── Fireworks WASM exports ──
+
+pub use fireworks::FireworkParticle;
+
+#[wasm_bindgen(js_name = burstFireworks)]
+pub fn burst_fireworks_wasm(cx: f64, cy: f64, count: usize, id_offset: usize) -> JsValue {
+    serde_wasm_bindgen::to_value(&fireworks::burst_js(cx, cy, count, id_offset)).unwrap()
+}
+
+#[wasm_bindgen(js_name = getFireworkLaunches)]
+pub fn get_firework_launches_wasm() -> JsValue {
+    serde_wasm_bindgen::to_value(&fireworks::get_launches()).unwrap()
 }
 
 #[cfg(test)]
