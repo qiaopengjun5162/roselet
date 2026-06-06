@@ -100,9 +100,9 @@ async fn create_test_app() -> (axum::Router, PgPool) {
         .route(
             "/api/openapi.json",
             axum::routing::get(|| async {
-                match serde_json::from_str::<serde_json::Value>(
-                    include_str!("../src/routes/openapi.json"),
-                ) {
+                match serde_json::from_str::<serde_json::Value>(include_str!(
+                    "../src/routes/openapi.json"
+                )) {
                     Ok(json) => axum::response::Json(json).into_response(),
                     Err(e) => (
                         axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -1448,11 +1448,7 @@ async fn test_swagger_ui_returns_html() {
 async fn test_openapi_json() {
     let base = spawn_test_server().await;
     let client = reqwest::Client::new();
-    let res = client
-        .get(format!("{}/api/openapi.json", base))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get(format!("{}/api/openapi.json", base)).send().await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let body: Value = res.json().await.unwrap();
     assert!(body["openapi"].as_str().is_some());
@@ -1464,11 +1460,7 @@ async fn test_openapi_json() {
 async fn test_openapi_json_paths() {
     let base = spawn_test_server().await;
     let client = reqwest::Client::new();
-    let res = client
-        .get(format!("{}/api/openapi.json", base))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get(format!("{}/api/openapi.json", base)).send().await.unwrap();
     let body: Value = res.json().await.unwrap();
     assert!(body["paths"]["/auth/register"].is_object());
     assert!(body["paths"]["/rose"].is_object());

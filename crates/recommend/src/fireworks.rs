@@ -2,8 +2,7 @@ use rand::Rng;
 use serde::Serialize;
 
 const COLORS: &[&str] = &[
-    "#f43f5e", "#fb7185", "#e879f9", "#a78bfa",
-    "#38bdf8", "#34d399", "#fbbf24", "#ffffff",
+    "#f43f5e", "#fb7185", "#e879f9", "#a78bfa", "#38bdf8", "#34d399", "#fbbf24", "#ffffff",
 ];
 
 #[derive(Debug, Clone, Serialize)]
@@ -40,8 +39,8 @@ fn burst_internal(
 ) -> Vec<FireworkParticle> {
     (0..count)
         .map(|i| {
-            let angle =
-                (i as f64 / count as f64) * std::f64::consts::PI * 2.0 + random_between(rng, -0.3, 0.3);
+            let angle = (i as f64 / count as f64) * std::f64::consts::PI * 2.0
+                + random_between(rng, -0.3, 0.3);
             let dist = random_between(rng, 60.0, 160.0);
             FireworkParticle {
                 id: id_offset + i,
@@ -60,11 +59,36 @@ fn burst_internal(
 
 fn default_launches() -> Vec<FireworkLaunch> {
     vec![
-        FireworkLaunch { cx: 30.0, cy: 30.0, count: 18, delay_ms: 0 },
-        FireworkLaunch { cx: 70.0, cy: 20.0, count: 22, delay_ms: 300 },
-        FireworkLaunch { cx: 50.0, cy: 40.0, count: 20, delay_ms: 150 },
-        FireworkLaunch { cx: 20.0, cy: 55.0, count: 16, delay_ms: 450 },
-        FireworkLaunch { cx: 80.0, cy: 45.0, count: 18, delay_ms: 600 },
+        FireworkLaunch {
+            cx: 30.0,
+            cy: 30.0,
+            count: 18,
+            delay_ms: 0,
+        },
+        FireworkLaunch {
+            cx: 70.0,
+            cy: 20.0,
+            count: 22,
+            delay_ms: 300,
+        },
+        FireworkLaunch {
+            cx: 50.0,
+            cy: 40.0,
+            count: 20,
+            delay_ms: 150,
+        },
+        FireworkLaunch {
+            cx: 20.0,
+            cy: 55.0,
+            count: 16,
+            delay_ms: 450,
+        },
+        FireworkLaunch {
+            cx: 80.0,
+            cy: 45.0,
+            count: 18,
+            delay_ms: 600,
+        },
     ]
 }
 
@@ -93,8 +117,8 @@ pub fn get_launches() -> Vec<FireworkLaunch> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::rngs::StdRng;
     use rand::SeedableRng;
+    use rand::rngs::StdRng;
 
     #[test]
     fn test_burst_count() {
@@ -133,9 +157,21 @@ mod tests {
             // tx/ty should be within [-160, 160] range
             assert!(p.tx >= -160.0 && p.tx <= 160.0, "tx out of range: {}", p.tx);
             assert!(p.ty >= -160.0 && p.ty <= 160.0, "ty out of range: {}", p.ty);
-            assert!(p.size >= 4.0 && p.size <= 9.0, "size out of range: {}", p.size);
-            assert!(p.delay >= 0.0 && p.delay <= 0.4, "delay out of range: {}", p.delay);
-            assert!(p.duration >= 0.7 && p.duration <= 1.2, "duration out of range: {}", p.duration);
+            assert!(
+                p.size >= 4.0 && p.size <= 9.0,
+                "size out of range: {}",
+                p.size
+            );
+            assert!(
+                p.delay >= 0.0 && p.delay <= 0.4,
+                "delay out of range: {}",
+                p.delay
+            );
+            assert!(
+                p.duration >= 0.7 && p.duration <= 1.2,
+                "duration out of range: {}",
+                p.duration
+            );
         }
     }
 
@@ -144,7 +180,11 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(42);
         let particles = burst_internal(&mut rng, 50.0, 50.0, 20, 0);
         for p in &particles {
-            assert!(COLORS.contains(&p.color.as_str()), "invalid color: {}", p.color);
+            assert!(
+                COLORS.contains(&p.color.as_str()),
+                "invalid color: {}",
+                p.color
+            );
         }
     }
 
@@ -158,10 +198,18 @@ mod tests {
         let mut has_pos_y = false;
         let mut has_neg_y = false;
         for p in &particles {
-            if p.tx > 10.0 { has_pos_x = true; }
-            if p.tx < -10.0 { has_neg_x = true; }
-            if p.ty > 10.0 { has_pos_y = true; }
-            if p.ty < -10.0 { has_neg_y = true; }
+            if p.tx > 10.0 {
+                has_pos_x = true;
+            }
+            if p.tx < -10.0 {
+                has_neg_x = true;
+            }
+            if p.ty > 10.0 {
+                has_pos_y = true;
+            }
+            if p.ty < -10.0 {
+                has_neg_y = true;
+            }
         }
         assert!(has_pos_x);
         assert!(has_neg_x);
