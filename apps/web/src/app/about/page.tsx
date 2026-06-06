@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#080e0c] flex flex-col">
+    <div className="relative h-full w-full overflow-hidden flex flex-col">
       <StarParticles />
 
       {/* 标题 — 浮在星座上方的毛笔字 */}

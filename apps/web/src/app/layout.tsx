@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { Nav } from "@/components/nav";
 import { CyberBackground } from "@/components/cyber-background";
+import { DayNightBackground } from "@/components/day-night-bg";
 import { FallingPetals } from "@/components/falling-petals";
 import { RoseClickBloom } from "@/components/rose-click-bloom";
 import "./globals.css";
@@ -34,6 +35,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="h-[100dvh] w-screen flex flex-col overflow-hidden overscroll-none" suppressHydrationWarning>
+        <DayNightBackground />
         <CyberBackground />
         <FallingPetals />
         <RoseClickBloom />
