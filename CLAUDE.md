@@ -94,6 +94,7 @@ Quality gates:
 - **后端 nextest 本地 DB**：沙箱内可能因本地数据库连接 `Operation not permitted` 失败；用 `NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-fail-fast`
 - **Jest 生成物冲突**：`next build` / Playwright / WASM 会生成重复 package metadata；`apps/web/jest.config.ts` 必须忽略 `.next`、`playwright/.cache`、`public/wasm`
 - **小程序云测**：必须上传体验版或线上版，开发者/管理员身份进入；本地 Jest 仍是提交前门禁，云测用于真机兼容、黑白屏、性能和 JsError 验收
+- **AIMonkey**：云测 AI Monkey 会生成可回放 Minium 代码；不支持智能化 Monkey 的前置步骤，固定账号状态优先用测试账号或 Minium 自定义用例
 - **认证状态码语义**：缺 token / token 过期 / token 无效返回 401，让前端触发静默刷新；已认证但 owner 不匹配才返回 403/404
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 
