@@ -1551,6 +1551,41 @@ src/utils/wasm.ts(26,31): error TS2307: Cannot find module '../../pkg/roselet_re
 - [ ] Web /about 页面接入 `/api/feedback`。
 - [ ] 小程序关于页面保持与 Web 反馈入口一致。
 
+## 2026-06-06 会话 #41：Web / 小程序 about 页面收口
+
+### 会话目标
+完成 Web /about 页面和小程序关于页面，保持两端功能一致：`/health` 版本/状态、帮助折叠、反馈表单、联系方式。
+
+### 完成的工作
+- Web about：
+  - 新增 `AboutHealth` 客户端组件，读取后端 `/health` 并展示服务状态、数据库状态和版本。
+  - about 左栏增加帮助折叠：种花、私密模式、反馈身份说明。
+  - 反馈表单改为调用 `lib/api.submitFeedback()`，不再请求 Next 自身的相对 `/api/feedback`。
+  - 右栏改为明确的联系方式区域，保留 GitHub / Email / 微信公众号。
+- 小程序 about：
+  - 新增 `getHealth()` API，使用统一 `wx.request` 封装读取 `/health`。
+  - 关于页展示运行状态、版本、帮助折叠、反馈表单和联系方式。
+  - 反馈提交改为统一从 `@/api` 调用，删除旧的浏览器 `fetch` 版 `utils/api.ts`。
+- 共享类型：
+  - `packages/core/src/types.ts` 新增 `HealthResponse`。
+- 测试：
+  - Web 新增 `AboutHealth` 单元测试，覆盖健康加载成功和失败重试。
+  - Web API 测试补 `getHealth()`。
+  - 小程序 API 测试补 `getHealth()`。
+
+### 验证
+- `pnpm --filter web test -- components/__tests__/about-health.test.tsx lib/__tests__/api.test.ts --runInBand` → 37 passed
+- `pnpm --filter @roselet/miniprogram test -- __tests__/api.test.ts __tests__/request.test.ts --runInBand` → 30 passed
+- `pnpm typecheck`
+- `pnpm lint` → 0 warnings / 0 errors
+- `pnpm test:coverage` → Web 146 passed，91.32% statements / 96.48% lines；Miniprogram 49 passed，98.87% statements / 100% lines
+- `pnpm --filter web build`
+- `pnpm --filter @roselet/miniprogram build:weapp` → 构建成功；仍有 WASM 体积和 Taro cache warning
+- `git diff --check`
+
+### 待办
+- [ ] 小程序真机联调 / 云测验证 about 页面、反馈提交、WASM 初始化和登录态。
+
 ## 2026-06-06 会话 #30：覆盖率门禁 + Web 构建稳定性
 
 ### 会话目标

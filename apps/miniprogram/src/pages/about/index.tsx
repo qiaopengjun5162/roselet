@@ -1,9 +1,10 @@
 import { View, Text, Textarea } from "@tarojs/components";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Taro from "@tarojs/taro";
 import { NavBar, TOTAL_HEADER_HEIGHT } from "@/components/NavBar";
-import { submitFeedback } from "@/utils/api";
+import { getHealth, submitFeedback } from "@/api";
 import { validateFeedback } from "@/utils/wasm";
+import type { HealthResponse } from "@roselet/core";
 import styles from "./index.module.css";
 
 export default function About() {
@@ -11,6 +12,21 @@ export default function About() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [healthError, setHealthError] = useState(false);
+  const [openHelp, setOpenHelp] = useState<string | null>("plant");
+
+  useEffect(() => {
+    getHealth()
+      .then((res) => {
+        setHealth(res);
+        setHealthError(false);
+      })
+      .catch(() => {
+        setHealth(null);
+        setHealthError(true);
+      });
+  }, []);
 
   const handleSubmit = async () => {
     // Rust WASM 反馈验证 (与 Web feedback-form.tsx 同源)
@@ -28,15 +44,42 @@ export default function About() {
       <NavBar title="留言" />
       <View className={styles.container} style={{ paddingTop: `${TOTAL_HEADER_HEIGHT + 16}px` }}>
 
-        {/* 左: 项目介绍 — 对应 Web StarBottle */}
         <View className={styles.bottle}>
           <Text className={styles.bottleTitle}>玫瑰源</Text>
           <Text className={styles.bottleText}>
             一个社区情绪花园。在这里种下一朵玫瑰，用颜色和文字承载感恩、期待或焦虑。AI 会为它生成专属回应，Rust 驱动的声音引擎将情感转化为波形。
           </Text>
+          <View className={styles.statusBox}>
+            <View className={styles.statusHeader}>
+              <Text className={styles.statusTitle}>运行状态</Text>
+              <Text className={health?.status === "ok" && health.database === "healthy" ? styles.statusDotOk : healthError ? styles.statusDotBad : styles.statusDotLoading} />
+            </View>
+            <Text className={styles.statusText}>
+              {health ? `服务 ${health.status} · 数据库 ${health.database}` : healthError ? "暂时无法读取后端状态" : "正在读取 /health"}
+            </Text>
+            {health ? <Text className={styles.versionInline}>版本 {health.version}</Text> : null}
+          </View>
+          <View className={styles.helpList}>
+            {[
+              { id: "plant", title: "如何种花？", text: "登录后进入种花页，填写感恩、期待或焦虑中的任意一项，选择颜色后提交。" },
+              { id: "private", title: "私密模式怎么用？", text: "打开私密开关后，玫瑰只会出现在你的个人花圃，不进入公共花圃。" },
+              { id: "feedback", title: "反馈会记录身份吗？", text: "登录状态会关联用户 id，匿名状态也可以提交，内容只用于改进产品。" },
+            ].map((item) => (
+              <View
+                key={item.id}
+                className={styles.helpItem}
+                onClick={() => setOpenHelp(openHelp === item.id ? null : item.id)}
+              >
+                <View className={styles.helpSummary}>
+                  <Text className={styles.helpTitle}>{item.title}</Text>
+                  <Text className={styles.helpMark}>{openHelp === item.id ? "−" : "+"}</Text>
+                </View>
+                {openHelp === item.id ? <Text className={styles.helpText}>{item.text}</Text> : null}
+              </View>
+            ))}
+          </View>
         </View>
 
-        {/* 中: 反馈 — 对应 Web FeedbackBottle */}
         <View className={styles.bottleHighlight}>
           {submitted ? (
             <View className={styles.successMsg}>
@@ -68,10 +111,9 @@ export default function About() {
           )}
         </View>
 
-        {/* 右: 开发者 — 对应 Web StarBottle */}
         <View className={styles.bottle}>
-          <Text className={styles.bottleTitle}>寻月隐君</Text>
-          <Text className={styles.bottleText}>全栈开发者，在虚空里用代码种花。</Text>
+          <Text className={styles.bottleTitle}>联系方式</Text>
+          <Text className={styles.bottleText}>寻月隐君，全栈开发者，在虚空里用代码种花。</Text>
           <View className={styles.highlightBox}>
             <Text className={styles.highlightText}>关注微信公众号《寻月隐君》</Text>
           </View>
@@ -91,8 +133,7 @@ export default function About() {
           </View>
         </View>
 
-        {/* 版本 */}
-        <Text className={styles.version}>Roselet v1.0.0 · MIT</Text>
+        <Text className={styles.version}>Roselet · MIT</Text>
       </View>
     </View>
   );

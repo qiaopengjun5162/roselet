@@ -5,7 +5,7 @@
 import {
   register, getGarden, getRose,
   createRose, updateRose, deleteRose, getMyRoses,
-  getUserProfile, toggleLike, submitFeedback,
+  getUserProfile, toggleLike, getHealth, submitFeedback,
 } from '@/api';
 
 // Mock request module
@@ -152,6 +152,14 @@ describe('api', () => {
     it('returns false when request fails', async () => {
       mockRequest.mockRejectedValue(new Error('network'));
       await expect(submitFeedback('hello')).resolves.toBe(false);
+    });
+  });
+
+  describe('getHealth', () => {
+    it('calls GET /health', async () => {
+      mockRequest.mockResolvedValue({ status: 'ok', database: 'healthy', version: '0.1.0' });
+      await getHealth();
+      expect(mockRequest).toHaveBeenCalledWith('/health');
     });
   });
 });

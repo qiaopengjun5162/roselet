@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { submitFeedback } from "@/lib/api";
 import { validateFeedback } from "@/lib/wasm";
 import { useEmotionSound } from "@/lib/useEmotionSound";
 
@@ -99,26 +100,16 @@ export function FeedbackForm({ onSubmitSuccess, onEmotionChange }: FeedbackFormP
     setError("");
 
     try {
-      const result = await fetch("/api/feedback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(typeof window !== "undefined" && localStorage.getItem("token")
-            ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
-            : {}),
-        },
-        body: JSON.stringify({ content: feedback.trim() }),
-      });
+      const result = await submitFeedback(feedback.trim());
 
-      if (result.ok) {
+      if (result.success) {
         setSubmitted(true);
         setFeedback("");
         onSubmitSuccess?.();
         announce('反馈提交成功！');
         setTimeout(() => setSubmitted(false), 3000);
       } else {
-        const errorData = await result.text();
-        const errorMessage = errorData || "提交失败";
+        const errorMessage = result.error || "提交失败";
         setError(errorMessage);
         announce(`错误：${errorMessage}`, true);
       }

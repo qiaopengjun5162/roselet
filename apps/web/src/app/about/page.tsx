@@ -1,14 +1,15 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { AboutHealth } from "@/components/about-health";
 import { FeedbackBottle } from "@/components/feedback-bottle";
 import { StarBottle } from "@/components/star-bottle";
 import { StarParticles } from "@/components/star-particles";
 import { SilentErrorBoundary } from "@/components/silent-error-boundary";
 
 export const metadata: Metadata = {
-  title: "留言 - Roselet",
-  description: "为花圃留下你的声音",
+  title: "关于 - Roselet",
+  description: "Roselet 状态、帮助、反馈与联系方式",
 };
 
 export default function AboutPage() {
@@ -26,7 +27,7 @@ export default function AboutPage() {
 
       {/* 三栏星轨画布 */}
       <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8 px-4 md:px-10 pt-16 pb-4 z-10">
-        {/* 左栏: 项目瓶 — 顶部对齐，微上浮 */}
+        {/* 左栏: 项目与帮助 */}
         <div className="w-full md:w-1/4 flex items-start justify-center md:self-start md:mt-6">
           <SilentErrorBoundary>
           <StarBottle
@@ -44,6 +45,25 @@ export default function AboutPage() {
               一个社区情绪花园。在这里种下一朵玫瑰，用颜色和文字承载感恩、期待或焦虑。AI
               会为它生成专属回应，Rust 驱动的声音引擎将情感转化为波形。
             </p>
+            <AboutHealth />
+            <div className="mt-4 space-y-2">
+              {[
+                ["如何种花？", "登录后进入种花页，填写感恩、期待或焦虑中的任意一项，选择颜色后提交。"],
+                ["私密模式怎么用？", "种花时打开私密开关后，玫瑰只会出现在你的个人花圃里，不进入公共花圃。"],
+                ["反馈会记录身份吗？", "登录状态下会关联用户 id，匿名状态也可以提交，内容只用于改进产品。"],
+              ].map(([summary, detail]) => (
+                <details
+                  key={summary}
+                  className="group rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-400"
+                >
+                  <summary className="cursor-pointer list-none text-slate-300">
+                    <span>{summary}</span>
+                    <span className="float-right text-slate-500 group-open:rotate-45">+</span>
+                  </summary>
+                  <p className="mt-2 leading-relaxed text-slate-500">{detail}</p>
+                </details>
+              ))}
+            </div>
           </StarBottle>
           </SilentErrorBoundary>
         </div>
@@ -67,10 +87,10 @@ export default function AboutPage() {
               className="text-base md:text-lg tracking-wider text-slate-200 mb-3"
               style={{ fontFamily: '"Ma Shan Zheng", "STXingkai", "KaiTi", cursive' }}
             >
-              寻月隐君
+              联系方式
             </h3>
             <p className="text-xs md:text-sm text-slate-400 leading-relaxed mb-3">
-              全栈开发者，在虚空里用代码种花。
+              寻月隐君，全栈开发者，在虚空里用代码种花。
             </p>
             <p className="text-[11px] md:text-xs bg-rose-500/10 border border-rose-500/20 rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-rose-300/80 leading-relaxed">
               关注微信公众号《寻月隐君》

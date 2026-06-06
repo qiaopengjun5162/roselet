@@ -286,6 +286,18 @@ export interface FeedbackResponse {
   id: number;
 }
 
+export interface HealthResponse {
+  status: string;
+  database: string;
+  version: string;
+}
+
+export async function getHealth(): Promise<HealthResponse> {
+  const res = await fetch(`${API_BASE}/health`);
+  if (!res.ok) throw new Error("Failed to fetch health");
+  return res.json();
+}
+
 export async function submitFeedback(content: string): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch(`${API_BASE}/api/feedback`, {

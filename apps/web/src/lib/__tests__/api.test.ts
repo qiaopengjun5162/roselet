@@ -29,6 +29,7 @@ import {
   getUser,
   logout,
   refreshAccessToken,
+  getHealth,
   submitFeedback,
 } from "../api";
 
@@ -447,6 +448,24 @@ describe("API Client", () => {
     it("should throw error on failure", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
       await expect((await import("../api")).register("alice")).rejects.toThrow("Failed to register");
+    });
+  });
+
+  describe("getHealth", () => {
+    it("should return backend health", async () => {
+      const mockResponse = { status: "ok", database: "healthy", version: "0.1.0" };
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      await expect(getHealth()).resolves.toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith("http://localhost:3001/health");
+    });
+
+    it("should throw when health request fails", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+      await expect(getHealth()).rejects.toThrow("Failed to fetch health");
     });
   });
 

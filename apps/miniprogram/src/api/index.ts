@@ -1,6 +1,6 @@
 import type {
   AuthResponse, Rose, CreateRose,
-  PaginatedResponse, UserProfile, LikeResponse,
+  PaginatedResponse, UserProfile, LikeResponse, HealthResponse,
 } from '@roselet/core';
 import { request } from '@/utils/request';
 
@@ -49,6 +49,11 @@ export function getUserProfile(): Promise<UserProfile> {
 /** 点赞/取消点赞（需 JWT 认证），返回当前点赞状态和计数 */
 export function toggleLike(roseId: string): Promise<LikeResponse> {
   return request<LikeResponse>(`/api/rose/${roseId}/like`, { method: 'POST', auth: true });
+}
+
+/** 后端健康状态 */
+export function getHealth(): Promise<HealthResponse> {
+  return request<HealthResponse>('/health');
 }
 
 /** 提交反馈（可选 JWT） */

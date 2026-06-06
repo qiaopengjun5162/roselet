@@ -55,3 +55,9 @@ export interface LikeResponse {
 export interface FeedbackResponse {
   id: number;
 }
+
+export interface HealthResponse {
+  status: string;
+  database: string;
+  version: string;
+}

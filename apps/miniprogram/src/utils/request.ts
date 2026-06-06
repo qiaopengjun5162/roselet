@@ -85,12 +85,3 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     throw err;
   }
 }
-
-export async function submitFeedback(content: string): Promise<boolean> {
-  try {
-    await request<{ id: number }>('/api/feedback', { method: 'POST', auth: false, data: { content } });
-    return true;
-  } catch {
-    return false;
-  }
-}

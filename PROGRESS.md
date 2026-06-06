@@ -41,6 +41,7 @@
 - [x] 导航栏：登录状态 + 昵称显示 + 登出 + 我的花圃 + 资料链接
 - [x] 个人花圃页：/my + 只显示自己的玫瑰
 - [x] 用户资料页：/profile + 种花统计
+- [x] 关于页：/about + /health 状态 + 帮助折叠 + 反馈表单 + 联系方式
 - [x] 音效系统（Tone.js）：种植/点赞/通知/背景音乐 + 静音切换（默认开启）
 - [x] 响应式布局
 - [x] 深色星空主题（毛玻璃卡片 + 霓虹发光）
@@ -54,11 +55,11 @@
 ### 测试
 - [x] 110 个后端测试（60 集成 + 50 单元）
 - [x] 139 个 Rust WASM/推荐模块测试
-- [x] 142 个 Web 前端测试（19 套件）
-- [x] 48 个小程序测试（5 套件）
-- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 91.16% statements / 96.40% lines；小程序 94.56% statements / 95.40% lines
+- [x] 146 个 Web 前端测试（20 套件）
+- [x] 49 个小程序测试（5 套件）
+- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 91.32% statements / 96.48% lines；小程序 98.87% statements / 100% lines
 - [x] 覆盖率门禁：Web + 小程序 Jest coverage threshold 已接入本地脚本与 CI
-- [x] 质量门禁：TypeScript、ESLint、cargo-deny、Next build 已接入本地 justfile 与 CI
+- [x] 质量门禁：TypeScript、ESLint、cargo-deny、Next build、小程序 build 已接入本地 justfile 与 CI
 - [x] RoseCard 通用组件（消除 garden/my 重复代码）
 
 ### 部署
@@ -94,14 +95,14 @@
 
 ### 当前测试状态
 - Rust nextest: 249 passed
-- Web Jest: 142 passed
-- Miniprogram Jest: 48 passed
-- Total: 439 passed
+- Web Jest: 146 passed
+- Miniprogram Jest: 49 passed
+- Total: 444 passed
 - Rust llvm-cov workspace: 90.37% 行覆盖
-- Web Jest coverage: 91.16% statements / 96.40% lines
-- Miniprogram Jest coverage: 94.56% statements / 95.40% lines
+- Web Jest coverage: 91.32% statements / 96.48% lines
+- Miniprogram Jest coverage: 98.87% statements / 100% lines
 - Frontend coverage gate: `pnpm test:coverage` / `just coverage`
-- Quality gates: `just typecheck` / `just lint` / `just audit` / `just next-build`
+- Quality gates: `just typecheck` / `just lint` / `just audit` / `just next-build` / `just miniprogram-build`
 
 ### Rust WASM 架构深化
 - [x] `audio.rs`：玫瑰属性→示波器音频参数（12 tests）
@@ -125,8 +126,6 @@
 
 ## 待办
 
-- [ ] **Web /about 页面**：版本（读 /health）+ 帮助折叠 + 反馈表单 + 微信公众号联系方式
-- [ ] **小程序关于页面**：同上，主包新增页面
 - [ ] **小程序真机联调**：AppID 已有，需拉起后端验证双令牌 + WASM 花瓣
 - [ ] **多语言 Spike**：若试用反馈需要英文，再按 `docs/I18N_STRATEGY.md` 从 Rust `Locale` + WASM 文案映射开始
 - [ ] Web3 功能（已设计，待实现）
