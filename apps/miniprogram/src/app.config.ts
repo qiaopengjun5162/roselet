@@ -3,6 +3,7 @@ export default defineAppConfig({
     'pages/index/index',
     'pages/login/index',
     'pages/about/index',
+    'pages/profile/index',
   ],
   subPackages: [
     {
@@ -11,6 +12,7 @@ export default defineAppConfig({
         'pages/garden/index',
         'pages/plant/index',
         'pages/rose/index',
+        'pages/my/index',
       ],
     },
     {

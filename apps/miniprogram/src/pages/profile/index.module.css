@@ -1,0 +1,19 @@
+.page { min-height: 100vh; background: #0a0b14; color: #e2e8f0; }
+.container { padding: 0 16px; display: flex; flex-direction: column; gap: 16px; }
+.loading { display: block; text-align: center; color: #94a3b8; padding: 32px 0; }
+
+.card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; }
+.nickname { font-size: 20px; font-weight: 600; display: block; margin-bottom: 4px; }
+.joined { font-size: 13px; color: #64748b; }
+
+.statsCard { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; }
+.statsTitle { font-size: 15px; color: #94a3b8; display: block; margin-bottom: 12px; }
+.statsRow { display: flex; flex-wrap: wrap; gap: 16px; }
+.stat { flex: 1; min-width: 60px; text-align: center; }
+.statValue { font-size: 24px; font-weight: 700; color: #f43f5e; display: block; }
+.statLabel { font-size: 12px; color: #64748b; margin-top: 2px; display: block; }
+
+.actions { display: flex; flex-direction: column; gap: 10px; }
+.actionBtn { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 16px; text-align: center; font-size: 15px; color: #e2e8f0; }
+.actionBtnDanger { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.15); border-radius: 12px; padding: 14px 16px; text-align: center; }
+.dangerText { color: #f87171; font-size: 15px; }

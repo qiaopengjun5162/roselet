@@ -10,18 +10,22 @@ describe('build smoke', () => {
     }
   });
 
-  it('runtime.js has document mock', () => {
+  it('runtime.js has process + document mock', () => {
     if (!fs.existsSync(DIST_DIR)) return;
     const runtime = fs.readFileSync(path.join(DIST_DIR, 'runtime.js'), 'utf-8');
-    expect(runtime.slice(0, 200)).toContain('var document=');
+    expect(runtime).toContain('var process={');
+    // Terser 压缩: var process={...},document="undefined"...
+    expect(runtime).toContain('document="undefined"');
   });
 
-  it('all JS files have document mock', () => {
+  it('all JS files have process + document mock', () => {
     if (!fs.existsSync(DIST_DIR)) return;
+    // app.js / vendors.js 开头有 webpack license comment, banner 在后面
     const files = fs.readdirSync(DIST_DIR).filter(f => f.endsWith('.js'));
     for (const f of files) {
       const content = fs.readFileSync(path.join(DIST_DIR, f), 'utf-8');
-      expect(content.slice(0, 300)).toContain('var document=');
+      expect(content).toContain('var process={');
+      expect(content).toContain('document=');
     }
   });
 
