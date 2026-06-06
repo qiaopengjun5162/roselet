@@ -56,6 +56,9 @@ export function RoseCard({ rose, showNickname = false }: RoseCardProps) {
         <div className="flex items-center gap-2">
           <span className="text-2xl">{colorEmoji(rose.color)}</span>
           <span className="text-sm text-slate-400">{colorLabel(rose.color)}</span>
+          {rose.is_private && (
+            <span className="text-xs text-slate-600 ml-auto" title="仅自己可见">🔒</span>
+          )}
           {showNickname && rose.nickname && (
             <span className="text-xs text-slate-500 ml-auto">@{rose.nickname}</span>
           )}

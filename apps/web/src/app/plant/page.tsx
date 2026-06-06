@@ -53,6 +53,7 @@ export default function PlantPage() {
   const [error, setError] = useState("");
   const [rec, setRec] = useState<Recommendation | null>(null);
   const [recLoading, setRecLoading] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const hasContent = gratitude.trim() || anxiety.trim() || hope.trim();
 
@@ -125,7 +126,8 @@ export default function PlantPage() {
         gratitude: cleaned ? (cleaned.gratitude || undefined) : (gratitude.trim() || undefined),
         anxiety: cleaned ? (cleaned.anxiety || undefined) : (anxiety.trim() || undefined),
         hope: cleaned ? (cleaned.hope || undefined) : (hope.trim() || undefined),
-      });
+        is_private: isPrivate || undefined,
+      } as any);
       playComplete();
       setStep("success");
     } catch {
@@ -336,6 +338,21 @@ export default function PlantPage() {
 
         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
+        {/* Private toggle */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setIsPrivate(!isPrivate)}
+            className={`px-4 py-1.5 rounded-full text-xs transition-all ${
+              isPrivate
+                ? "bg-purple-500/20 border border-purple-500/40 text-purple-300"
+                : "bg-white/5 border border-white/10 text-slate-500"
+            }`}
+          >
+            {isPrivate ? "🔒 仅自己可见" : "🌐 公开分享"}
+          </button>
+        </div>
+
         {/* Submit button */}
         <div className="flex justify-center">
           <Button
@@ -358,22 +375,22 @@ export default function PlantPage() {
       {/* Dialog overlay */}
       {activeField && (
         <div
-          className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
           onClick={() => setActiveField(null)}
         >
           <div
-            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4"
+            className="glass-card rounded-2xl p-6 max-w-md w-full space-y-4 border border-white/10"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2">
               <span className="text-2xl">{FIELD_CONFIG[activeField].icon}</span>
-              <h3 className={`text-xl font-bold ${FIELD_CONFIG[activeField].color}`}>
+              <h3 className="text-xl font-bold text-slate-200">
                 {FIELD_CONFIG[activeField].label}
               </h3>
             </div>
-            <p className="text-sm text-gray-600">{FIELD_CONFIG[activeField].hint}</p>
+            <p className="text-sm text-slate-400">{FIELD_CONFIG[activeField].hint}</p>
             <textarea
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 px-4 py-3 text-sm min-h-[120px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
+              className="w-full rounded-lg border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-500 px-4 py-3 text-sm min-h-[120px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
               placeholder={FIELD_CONFIG[activeField].placeholder}
               value={getFieldValue(activeField)}
               onChange={(e) => setFieldValue(activeField, e.target.value)}
@@ -381,14 +398,14 @@ export default function PlantPage() {
               autoFocus
             />
             <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 {getFieldValue(activeField).length}/500
               </p>
               <Button
                 className="bg-rose-500 hover:bg-rose-600 rounded-full px-6"
-                onClick={() => setActiveField(null)}
+                onClick={() => { setActiveField(null); if (hasContent) handleSubmit(); }}
               >
-                确定
+                确定并种下
               </Button>
             </div>
           </div>

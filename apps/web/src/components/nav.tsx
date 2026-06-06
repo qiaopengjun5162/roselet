@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { logout, setToken, setUser } from "@/lib/api";
+import { logout, getUser } from "@/lib/api";
 import { isMuted, toggleMute, startBgMusic, stopBgMusic } from "@/lib/sound";
-import { useWasmStore } from "@/lib/useWasmStore";
 
 const MAIN_LINKS = [
   { href: "/plant", label: "种玫瑰", icon: "🌹" },
@@ -16,18 +15,30 @@ const MAIN_LINKS = [
 
 export function Nav() {
   const [muted, setMuted] = useState(false);
+  const [nickname, setNickname] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { auth, nickname, dispatch } = useWasmStore();
 
-  useEffect(() => { setMuted(isMuted()); }, []);
+  const refreshAuth = useCallback(() => {
+    const user = getUser();
+    setNickname(user?.nickname ?? null);
+  }, []);
+
+  useEffect(() => { setMuted(isMuted()); refreshAuth(); }, [refreshAuth]);
+  useEffect(() => {
+    window.addEventListener("auth-change", refreshAuth);
+    return () => window.removeEventListener("auth-change", refreshAuth);
+  }, [refreshAuth]);
 
   function handleLogout() {
     logout();
-    dispatch({ type: "clear_auth" });
+    setNickname(null);
+    setMenuOpen(false);
     router.push("/");
   }
 
+  const authed = !!nickname;
   const isActive = (href: string) => pathname.startsWith(href);
 
   return (
@@ -48,26 +59,45 @@ export function Nav() {
 
       <span className="w-px h-5 bg-white/8 mx-1.5" />
 
-      {auth ? (
-        <>
-          <Link
-            href="/my"
+      {authed ? (
+        <div className="relative">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
             className={`text-[13px] px-3 py-1.5 rounded-full transition-all duration-200 ${
-              isActive("/my") ? "bg-rose-500/15 text-rose-300 font-medium" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+              menuOpen ? "bg-rose-500/15 text-rose-300" : "text-amber-300/80 hover:text-amber-200 hover:bg-amber-500/5"
             }`}
           >
-            🌺 我的
-          </Link>
-          <Link
-            href="/profile"
-            className="text-[13px] px-3 py-1.5 rounded-full transition-all duration-200 text-amber-300/80 hover:text-amber-200 hover:bg-amber-500/5"
-          >
-            ✨ {nickname}
-          </Link>
-          <button onClick={handleLogout} className="text-[12px] text-slate-500 hover:text-slate-300 px-2 py-1 transition-colors ml-1">
-            登出
+            ✨ {nickname} ▾
           </button>
-        </>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-full mt-1.5 w-36 py-1 rounded-xl bg-[#0f081e]/95 border border-white/10 backdrop-blur-xl shadow-xl z-50">
+                <Link
+                  href="/my"
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-4 py-2 text-[13px] text-slate-300 hover:bg-white/5 hover:text-rose-300 transition-colors"
+                >
+                  🌺 我的花圃
+                </Link>
+                <Link
+                  href="/profile"
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-4 py-2 text-[13px] text-slate-300 hover:bg-white/5 hover:text-rose-300 transition-colors"
+                >
+                  👤 个人资料
+                </Link>
+                <div className="border-t border-white/8 my-1" />
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-[13px] text-slate-500 hover:bg-white/5 hover:text-red-400 transition-colors"
+                >
+                  登出
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       ) : (
         <Link
           href="/login"

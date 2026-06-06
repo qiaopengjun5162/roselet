@@ -20,6 +20,7 @@ export interface Rose {
   nickname: string | null;
   like_count: number;
   ai_reply: string | null;
+  is_private: boolean;
   created_at: string;
 }
 

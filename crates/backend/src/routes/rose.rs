@@ -29,14 +29,30 @@ pub async fn create_rose(
     let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
         .ok_or(AppError::Auth("请先登录再种花".into()))?;
 
+    let is_private = input.is_private.unwrap_or(false);
+
+    // 私有模式配额：每月最多 5 朵
+    if is_private {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM roses WHERE user_id = $1 AND is_private = true AND date_trunc('month', created_at) = date_trunc('month', now())",
+        )
+        .bind(user_id)
+        .fetch_one(&state.pool)
+        .await?;
+        if count >= 5 {
+            return Err(AppError::BadRequest("本月私有名额已用完 (5/5)".into()));
+        }
+    }
+
     let rose = sqlx::query_as::<_, Rose>(
-        "INSERT INTO roses (color, gratitude, anxiety, hope, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+        "INSERT INTO roses (color, gratitude, anxiety, hope, user_id, is_private) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
     )
     .bind(&input.color)
     .bind(&input.gratitude)
     .bind(&input.anxiety)
     .bind(&input.hope)
     .bind(user_id)
+    .bind(is_private)
     .fetch_one(&state.pool)
     .await?;
 
