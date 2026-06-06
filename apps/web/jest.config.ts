@@ -4,6 +4,14 @@ const config: Config = {
   testEnvironment: "jsdom",
   testPathIgnorePatterns: ["\.pw\.tsx$"],
   coveragePathIgnorePatterns: ["\.pw\.tsx$", "/node_modules/"],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 85,
+      lines: 90,
+      statements: 90,
+    },
+  },
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },

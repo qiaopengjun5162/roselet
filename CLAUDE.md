@@ -57,6 +57,8 @@ llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
 Jest coverage:
   Web: 90.45% statements / 95.23% lines
   Miniprogram: 94.50% statements / 95.34% lines
+Coverage gates:
+  pnpm test:coverage  # Web + Miniprogram coverage threshold
 ```
 
 ## WASM 模块清单（crates/recommend/src/）
@@ -79,6 +81,7 @@ Jest coverage:
 - **小程序 document.baseURI**：Webpack BannerPlugin 注入 document mock（非运行时 polyfill）
 - **wasm-bindgen Option<&str>**：改用 `&str`，空字符串表示 None
 - **后端集成测试共享 DB**：`create_test_app()` 必须 `TRUNCATE feedbacks, refresh_tokens, likes, roses, users RESTART IDENTITY CASCADE`；nextest 用 `-j1` 避免并发清库互踩
+- **Next 构建不依赖 Google Fonts**：避免 `next/font/google` 在受限网络里拖垮 build；全局字体走系统中文字体栈
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 
 ## 常用命令（justfile）
@@ -93,6 +96,7 @@ just db-reset         # 数据库重置
 just migrate          # 运行数据库迁移
 just fmt              # 格式化代码
 just clippy           # clippy lint
+just coverage         # Web + 小程序覆盖率门禁
 just audit            # 依赖审计
 just changelog        # 生成 CHANGELOG
 just wasm              # 构建 WASM 推荐模块

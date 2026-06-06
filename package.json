@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
-    "test": "pnpm --filter web test"
+    "test": "pnpm --filter web test",
+    "test:coverage": "pnpm --filter web test:coverage && pnpm --filter @roselet/miniprogram test:coverage"
   },
   "devDependencies": {
     "playwright": "^1.60.0"

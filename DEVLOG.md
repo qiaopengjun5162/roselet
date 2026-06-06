@@ -1437,6 +1437,33 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 - [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
 - [ ] 小程序真机联调
 
+## 2026-06-06 会话 #30：覆盖率门禁 + Web 构建稳定性
+
+### 会话目标
+继续项目审核、优化和完善；评估是否需要安装额外 skill。
+
+### 完成的工作
+- 确认无需安装新 skill：现有 `rust-dev-workflow` 已覆盖本轮 Rust/CI/测试/提交流程。
+- Web / 小程序新增 `test:coverage` 脚本，根目录新增 `pnpm test:coverage` 聚合命令。
+- Jest 接入 coverage threshold：
+  - Web: statements/lines 90%，functions 85%，branches 70%
+  - Miniprogram: statements/lines/functions/branches 90%
+- GitHub Actions 改为运行 coverage 门禁：
+  - Frontend job: `pnpm --filter web test:coverage`
+  - Miniprogram job: `pnpm test:coverage`
+- justfile 新增 `just coverage`。
+- Web `layout.tsx` 移除 `next/font/google`，避免受限网络下 Google Fonts 下载影响生产构建。
+
+### 验证
+- `pnpm exec tsc --noEmit` (apps/web)
+- `pnpm exec tsc --noEmit` (apps/miniprogram)
+- `pnpm test:coverage` (root) → Web 123 passed，Miniprogram 48 passed
+- `pnpm build` (apps/web) → Next production build passed
+
+### 待办
+- [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
+- [ ] 小程序真机联调
+
 ## 2026-06-06 会话 #29：覆盖率 90%+ 收口 + 私密模式补洞
 
 ### 会话目标

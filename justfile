@@ -23,6 +23,10 @@ test:
     cd apps/web && pnpm test
     cd apps/miniprogram && pnpm test
 
+# 前端覆盖率门禁
+coverage:
+    pnpm test:coverage
+
 # 快速检查
 check:
     cargo check --all-features

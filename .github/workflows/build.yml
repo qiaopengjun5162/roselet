@@ -86,7 +86,7 @@ jobs:
         run: pnpm build
 
       - name: Test
-        run: pnpm test
+        run: pnpm --filter web test:coverage
 
   miniprogram:
     name: Miniprogram Build
@@ -127,4 +127,4 @@ jobs:
         run: cd apps/miniprogram && pnpm build:weapp
 
       - name: Test miniprogram
-        run: cd apps/miniprogram && pnpm test
+        run: cd apps/miniprogram && pnpm test:coverage

@@ -57,6 +57,7 @@
 - [x] 123 个 Web 前端测试（18 套件）
 - [x] 48 个小程序测试（5 套件）
 - [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 90.45% statements / 95.23% lines；小程序 94.50% statements / 95.34% lines
+- [x] 覆盖率门禁：Web + 小程序 Jest coverage threshold 已接入本地脚本与 CI
 - [x] RoseCard 通用组件（消除 garden/my 重复代码）
 
 ### 部署
@@ -94,6 +95,7 @@
 - Rust llvm-cov workspace: 90.37% 行覆盖
 - Web Jest coverage: 90.45% statements / 95.23% lines
 - Miniprogram Jest coverage: 94.50% statements / 95.34% lines
+- Frontend coverage gate: `pnpm test:coverage` / `just coverage`
 
 ### Rust WASM 架构深化
 - [x] `audio.rs`：玫瑰属性→示波器音频参数（12 tests）

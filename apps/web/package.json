@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
+    "test:coverage": "jest --coverage --runInBand",
     "test:watch": "jest --watch",
     "test:pw": "playwright test -c playwright-ct.config.ts"
   },
