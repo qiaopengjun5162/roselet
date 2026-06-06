@@ -19,7 +19,8 @@ export default function Plant() {
 
   useEffect(() => {
     if (!getToken()) { Taro.navigateTo({ url: '/pages/login/index' }); return }
-    initWasm().then(ok => { if (ok) { const rec = getRecommendation([]); if (rec) setRecColor((rec as any).color_suggestion.color) } })
+    const load = async () => { try { await initWasm(); const rec = getRecommendation([]); if (rec) setRecColor((rec as any).color_suggestion.color); } catch {} };
+    load();
   }, [])
 
   async function handleSubmit() {

@@ -48,7 +48,7 @@ export function useWasmStore(initialFilter = 'all') {
   const [snap, setSnap] = useState<StoreSnapshot | null>(null)
   const [localFilter, setLocalFilter] = useState(initialFilter)
 
-  useEffect(() => { initStore().then(setReady) }, [])
+  useEffect(() => { const load = async () => { try { await initStore(); setReady(true); } catch {} }; load(); }, [])
 
   const dispatch = useCallback((action: StoreAction) => {
     if (ready && wasmDispatch) {
