@@ -13,7 +13,10 @@ export const NAV_BAR_HEIGHT = (menuButton.top - STATUS_BAR_HEIGHT) * 2 + menuBut
 /** 顶部安全区总高度 — 状态栏 + 导航栏 */
 export const TOTAL_HEADER_HEIGHT = STATUS_BAR_HEIGHT + NAV_BAR_HEIGHT
 
-export function NavBar({ title }: { title: string }) {
+export function NavBar({ title, showBack = true }: { title: string; showBack?: boolean }) {
+  const pages = Taro.getCurrentPages()
+  const canBack = showBack && pages.length > 1
+
   return (
     <View
       style={{
@@ -33,6 +36,23 @@ export function NavBar({ title }: { title: string }) {
         backdropFilter: 'blur(20px)',
       }}
     >
+      {canBack && (
+        <View
+          onClick={() => Taro.navigateBack()}
+          style={{
+            position: 'absolute',
+            left: 12,
+            paddingTop: `${STATUS_BAR_HEIGHT}px`,
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            paddingLeft: '4px',
+            paddingRight: '4px',
+          }}
+        >
+          <Text style={{ fontSize: '20px', color: '#fda4af' }}>←</Text>
+        </View>
+      )}
       <Text
         style={{
           color: '#fda4af',
