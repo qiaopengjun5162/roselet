@@ -133,4 +133,4 @@ POST   /api/feedback       # 提交反馈（可选 JWT，匿名/登录均可）
 - 测试运行器：cargo-nextest（不是 cargo test）
 - 测试覆盖率尽可能 100%
 - 代码模块化，附必要注释
-- 及时更新文档（PROGRESS.md、CLAUDE.md）
+- 及时更新文档（PROGRESS.md、CLAUDE.md；Codex 入口变更同步 AGENTS.md）

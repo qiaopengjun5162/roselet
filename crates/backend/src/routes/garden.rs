@@ -34,10 +34,12 @@ pub async fn get_garden(
             )));
         }
 
-        let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE color = $1 AND is_private = false")
-            .bind(color)
-            .fetch_one(&state.pool)
-            .await?;
+        let total: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM roses WHERE color = $1 AND is_private = false",
+        )
+        .bind(color)
+        .fetch_one(&state.pool)
+        .await?;
 
         let roses = sqlx::query_as::<_, Rose>(
             "SELECT * FROM roses WHERE color = $1 AND is_private = false ORDER BY created_at DESC LIMIT $2 OFFSET $3",
@@ -50,8 +52,9 @@ pub async fn get_garden(
 
         (total, roses)
     } else {
-        let total: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE is_private = false").fetch_one(&state.pool).await?;
+        let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE is_private = false")
+            .fetch_one(&state.pool)
+            .await?;
 
         let roses = sqlx::query_as::<_, Rose>(
             "SELECT * FROM roses WHERE is_private = false ORDER BY created_at DESC LIMIT $1 OFFSET $2",
