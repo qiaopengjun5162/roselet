@@ -102,6 +102,12 @@ describe('request', () => {
     expect(lastOpts()?.method).toBe('GET');
   });
 
+  it('passes prebuilt JSON string body without double encoding', async () => {
+    enqueue({ statusCode: 201, data: { id: '1' } });
+    await request('/api/rose', { method: 'POST', data: '{"color":"red"}' });
+    expect(lastOpts()?.data).toBe('{"color":"red"}');
+  });
+
   // ── 双令牌静默刷新 ─────────────────────────────────────
   it('silently refreshes and retries on 401 with valid refresh token', async () => {
     mockStorage['roselet_token'] = 'expired-access';

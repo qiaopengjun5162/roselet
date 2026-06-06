@@ -3,6 +3,14 @@ import type {
   PaginatedResponse, UserProfile, LikeResponse, HealthResponse,
 } from '@roselet/core';
 import { request } from '@/utils/request';
+import { getUser } from '@/utils/storage';
+import { buildPlantBody } from '@/utils/wasm';
+import {
+  cacheGardenPage,
+  confirmOptimisticGardenRose,
+  createOptimisticGardenRose,
+  rejectOptimisticGardenRose,
+} from '@/utils/garden-cache';
 
 /** 用户注册（昵称即账号），返回双令牌 + 用户信息 */
 export function register(nickname: string): Promise<AuthResponse> {
@@ -10,10 +18,12 @@ export function register(nickname: string): Promise<AuthResponse> {
 }
 
 /** 获取花圃玫瑰列表，支持分页和颜色筛选 */
-export function getGarden(page = 1, perPage = 20, color?: string): Promise<PaginatedResponse<Rose>> {
+export async function getGarden(page = 1, perPage = 20, color?: string): Promise<PaginatedResponse<Rose>> {
   let path = `/api/garden?page=${page}&per_page=${perPage}`;
   if (color) path += `&color=${color}`;
-  return request<PaginatedResponse<Rose>>(path);
+  const response = await request<PaginatedResponse<Rose>>(path);
+  if (page === 1 && !color) await cacheGardenPage(response);
+  return response;
 }
 
 /** 获取单朵玫瑰详情 */
@@ -22,8 +32,18 @@ export function getRose(id: string): Promise<Rose> {
 }
 
 /** 种一朵玫瑰（需 JWT 认证） */
-export function createRose(data: CreateRose): Promise<Rose> {
-  return request<Rose>('/api/rose', { method: 'POST', data, auth: true });
+export async function createRose(data: CreateRose): Promise<Rose> {
+  const body = await buildPlantBody(data);
+  const tempId = await createOptimisticGardenRose(body, getUser()?.nickname ?? '');
+
+  try {
+    const rose = await request<Rose>('/api/rose', { method: 'POST', data: body, auth: true });
+    await confirmOptimisticGardenRose(tempId, rose);
+    return rose;
+  } catch (error) {
+    await rejectOptimisticGardenRose(tempId);
+    throw error;
+  }
 }
 
 /** 编辑玫瑰（需 JWT，仅 owner） */

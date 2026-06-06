@@ -4,6 +4,7 @@ import Taro from '@tarojs/taro'
 import { getGarden } from '@/api'
 import { RoseCard } from '@/components/RoseCard'
 import { NavBar, TOTAL_HEADER_HEIGHT } from '@/components/NavBar'
+import { loadGardenCache } from '@/utils/garden-cache'
 import { useWasmStore } from '@/utils/useWasmStore'
 import styles from './index.module.css'
 
@@ -15,8 +16,18 @@ const FILTERS = [
 export default function Garden() {
   const { items, total, hasMore, loading, error, filter, dispatch, ready } = useWasmStore()
 
+  function restoreCache(color?: string) {
+    if (color) return
+    const cache = loadGardenCache()
+    if (!cache) return
+    dispatch({ type: 'set_roses', roses: cache.roses as unknown[], total: cache.total, page: cache.page })
+  }
+
   function load(p: number, color?: string) {
-    if (p === 1) dispatch({ type: 'set_loading', loading: true })
+    if (p === 1) {
+      restoreCache(color)
+      dispatch({ type: 'set_loading', loading: true })
+    }
     getGarden(p, 20, color)
       .then(res => {
         if (p === 1) dispatch({ type: 'set_roses', roses: res.data as unknown[], total: res.total, page: res.page })
@@ -25,7 +36,9 @@ export default function Garden() {
       .catch(() => dispatch({ type: 'set_error', error: '加载失败' }))
   }
 
-  useEffect(() => { load(1, filter === 'all' ? undefined : filter) }, [filter])
+  useEffect(() => {
+    if (ready) load(1, filter === 'all' ? undefined : filter)
+  }, [ready, filter])
   Taro.useDidShow(() => { load(1, filter === 'all' ? undefined : filter) })
 
   return (
@@ -42,7 +55,7 @@ export default function Garden() {
           ))}
           {ready && <Text style={{ color: '#10b981', fontSize: '11px', alignSelf: 'center' }}>⚡Rust</Text>}
         </View>
-        {loading ? <Text className={styles.hint}>加载中...</Text>
+        {loading && items.length === 0 ? <Text className={styles.hint}>加载中...</Text>
           : error ? <Text className={styles.hint} style={{ color: '#f87171' }}>{error}</Text>
           : items.length === 0 ? <Text className={styles.hint}>花圃还是空的</Text>
           : (

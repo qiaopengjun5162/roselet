@@ -20,12 +20,13 @@ function doRequest<T>(path: string, opts: RequestOptions, token?: string | null)
   const { method = 'GET', data } = opts;
   const header: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) header['Authorization'] = `Bearer ${token}`;
+  const body = typeof data === 'string' ? data : data ? JSON.stringify(data) : undefined;
 
   return new Promise((resolve, reject) => {
     wx.request({
       url: `${BASE_URL}${path}`,
       method,
-      data: data ? JSON.stringify(data) : undefined,
+      data: body,
       header,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {

@@ -5,6 +5,9 @@ jest.mock('@/utils/wasm', () => ({
   filterRoses: jest.fn().mockReturnValue(null),
   validatePlant: jest.fn().mockReturnValue(null),
   formatPlantRequest: jest.fn().mockReturnValue(null),
+  buildPlantBody: jest.fn().mockResolvedValue('{"color":"red"}'),
+  buildOptimisticRose: jest.fn().mockResolvedValue(null),
+  applyGardenCacheAction: jest.fn().mockResolvedValue(null),
 }));
 
 import { getRecommendation } from '@/utils/wasm';

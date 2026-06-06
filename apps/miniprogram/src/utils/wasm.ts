@@ -10,8 +10,11 @@ interface GlueMod {
   recommend: (json: string) => unknown; analyze_text: (text: string) => unknown;
   compute_layout: (json: string) => unknown; filter_roses: (json: string, f: string) => unknown;
   validate_plant_input: (json: string) => unknown; format_plant_request_wasm: (json: string) => string;
+  build_plant_body: (color: string, gratitude: string, anxiety: string, hope: string, is_private: boolean) => string;
   parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
   validate_feedback_input: (json: string) => unknown;
+  build_optimistic_rose_wasm: (plant_body_json: string, temp_id: string, now_iso: string, nickname: string) => unknown;
+  apply_garden_cache_action_wasm: (cache_json: string, action_json: string) => string;
   generate_petals_wasm: (count: number, seed: number) => unknown;
   color_emoji: (color: string) => string; color_label: (color: string) => string;
   color_options: () => unknown;
@@ -39,6 +42,46 @@ export function getRecommendation(roses: CreateRose[]) { if (!api) return null; 
 export function filterRoses<T extends { color: string }>(roses: T[], f: string): T[] | null { if (!api) return null; try { return api.filter_roses(JSON.stringify(roses), f) as T[]; } catch { return null; } }
 export function validatePlant(input: CreateRose): ValidationResult | null { if (!api) return null; try { return api.validate_plant_input(JSON.stringify(input)) as ValidationResult; } catch { return null; } }
 export function validateFeedback(content: string): FeedbackValidation | null { if (!api) return null; try { return api.validate_feedback_input(JSON.stringify({ content })) as FeedbackValidation; } catch { return null; } }
+
+export async function buildPlantBody(input: CreateRose): Promise<string> {
+  const fallback = () => JSON.stringify({
+    color: input.color,
+    gratitude: input.gratitude ?? null,
+    anxiety: input.anxiety ?? null,
+    hope: input.hope ?? null,
+    ...(input.is_private ? { is_private: true } : {}),
+  });
+  if (!api) await initWasm();
+  if (!api) return fallback();
+  try {
+    return api.build_plant_body(
+      input.color,
+      input.gratitude ?? '',
+      input.anxiety ?? '',
+      input.hope ?? '',
+      input.is_private ?? false,
+    );
+  } catch {
+    return fallback();
+  }
+}
+
+export async function buildOptimisticRose(
+  plantBodyJson: string,
+  tempId: string,
+  nowIso: string,
+  nickname = '',
+): Promise<unknown | null> {
+  if (!api) await initWasm();
+  if (!api) return null;
+  try { return api.build_optimistic_rose_wasm(plantBodyJson, tempId, nowIso, nickname); } catch { return null; }
+}
+
+export async function applyGardenCacheAction(cacheJson: string, actionJson: string): Promise<string | null> {
+  if (!api) await initWasm();
+  if (!api) return null;
+  try { return api.apply_garden_cache_action_wasm(cacheJson, actionJson); } catch { return null; }
+}
 
 /// Rust 解析 API 响应 — 返回强类型验证后的数据
 export function parseGardenResponse(json: string): { items: unknown[]; total: number } | null {

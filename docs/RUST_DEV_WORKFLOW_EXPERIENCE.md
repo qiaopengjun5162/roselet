@@ -193,6 +193,17 @@ NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-f
 
 通用规则：任何被源码 import 的生成型 `.js` / `.d.ts`，都必须在 CI typecheck 前生成；不要依赖本地未提交的生成目录。
 
+### 19. 离线缓存只让平台层持久化，冲突规则仍归核心层
+
+问题：Web 用 IndexedDB、小程序用 wx storage，如果两端各自写缓存合并、乐观创建、确认和回滚规则，私密数据过滤和冲突处理会很快分叉。
+
+解决：
+- Rust `offline.rs` 暴露 `build_optimistic_rose_wasm` 和 `apply_garden_cache_action_wasm`。
+- Web / 小程序只负责读取本地存储、构造 action、保存 Rust 返回的新快照。
+- 小程序 `request.ts` 支持原样发送 Rust `build_plant_body` 生成的 JSON 字符串，避免请求体和乐观缓存输入不一致。
+
+通用规则：跨端离线能力要区分“存在哪里”和“如何合并”；前者属于宿主平台，后者属于可测试的核心业务层。
+
 ## 更新规则
 
 每次遇到问题，按这个顺序更新：

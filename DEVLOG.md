@@ -1618,6 +1618,53 @@ src/utils/wasm.ts(26,31): error TS2307: Cannot find module '../../pkg/roselet_re
 - [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
 - [ ] 小程序真机联调
 
+## 2026-06-06 会话 #42：小程序 wx storage 接入 Rust offline 缓存规则
+
+### 会话目标
+把小程序公共花圃缓存接入 Rust `offline.rs`，让 Web IndexedDB 和小程序 wx storage 复用同一套乐观更新、确认、回滚和私密过滤规则。
+
+### 完成的工作
+- `apps/miniprogram/src/utils/wasm.ts` 暴露：
+  - `buildPlantBody`
+  - `buildOptimisticRose`
+  - `applyGardenCacheAction`
+- 新增 `apps/miniprogram/src/utils/garden-cache.ts`：
+  - wx storage key：`roselet_garden_cache_public`
+  - 只负责 load/save 平台持久化。
+  - `set / optimistic_create / confirm_create / reject_create` 全部调用 Rust `apply_garden_cache_action_wasm`。
+  - Rust 返回错误或坏 JSON 时保留旧缓存，不写入损坏状态。
+- 小程序 `getGarden()`：
+  - 第 1 页且无颜色筛选时写入公共花圃缓存。
+  - 筛选页和后续分页不覆盖公共缓存。
+- 小程序 `createRose()`：
+  - 用 Rust `build_plant_body` 生成 POST JSON。
+  - 请求前写 optimistic cache，请求成功 confirm，请求失败 reject。
+  - 私密玫瑰是否进入公共缓存由 Rust `offline.rs` 判断。
+- 小程序花圃页：
+  - 首屏从 wx storage 恢复公共缓存，再发网络请求刷新。
+  - 网络刷新时若已有缓存内容，不再显示空 loading 态。
+- `request.ts` 支持字符串 body 原样传给 `wx.request`，避免 Rust 预构建 JSON 被二次编码。
+
+### 测试与覆盖率
+- 新增 `garden-cache.test.ts` 覆盖 wx storage 读写、坏缓存清理、Rust action 调用、非第一页/筛选不覆盖、optimistic/confirm/reject、Rust 错误/坏 JSON/null 返回。
+- 更新 `api.test.ts` 覆盖 `getGarden` 缓存编排、`createRose` 乐观缓存、未登录昵称、缓存不可用仍可提交、失败回滚。
+- 更新 `request.test.ts` 覆盖字符串 JSON body 不二次编码。
+
+### 遇到的问题及解决
+1. **pnpm 沙箱 `[ERROR] fetch failed`**：沙箱内 `pnpm --filter @roselet/miniprogram typecheck/test` 失败。解决：按审批在外部环境运行同一命令。
+2. **TS 类型收窄失败**：`GardenCache | { error?: string }` 不能直接传给 `saveGardenCache`。解决：JSON parse 后先按 `unknown` 处理，排除 `{ error }` 后再收窄为 `GardenCache`。
+3. **coverage 与 build 并行读到半生成 dist**：并行跑 coverage 和 `build:weapp` 时，`build-smoke` 看到 `dist/weapp` 存在但文件尚未完整生成。解决：构建和 coverage 串行执行。
+4. **新增缓存模块拉低 branch coverage**：`garden-cache.ts` 异常分支未覆盖，global branches 一度降到 88.15%。解决：补 wx storage 抛错、Rust action 坏 JSON/null、乐观对象 null、空 temp id 等边界测试。
+
+### 验证
+- `pnpm --filter @roselet/miniprogram typecheck`
+- `pnpm --filter @roselet/miniprogram test -- __tests__/garden-cache.test.ts __tests__/api.test.ts __tests__/request.test.ts --runInBand` → 47 passed
+- `pnpm --filter @roselet/miniprogram test:coverage` → 66 passed，99.33% statements / 100% lines / 96.05% branches
+- `pnpm --filter @roselet/miniprogram build:weapp` → build passed；仅 WASM 体积和 Taro cache warning
+
+### 经验
+离线缓存要把“平台存储”和“业务合并规则”分开：IndexedDB / wx storage 只负责持久化，乐观更新、私密过滤、确认/回滚统一放 Rust WASM。
+
 ## 2026-06-06 会话 #31：私密模式补齐 + 质量门禁
 
 ### 会话目标

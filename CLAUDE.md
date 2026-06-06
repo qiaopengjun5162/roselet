@@ -45,8 +45,8 @@ Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请
 Rust backend:   110 passed
 Rust WASM:      139 passed
 Web frontend:   146 passed
-Miniprogram:     49 passed
-Total:          444 passed
+Miniprogram:     66 passed
+Total:          461 passed
 
 llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   100%: flowers, petal, sky, keywords, pagination, user, docs, state
@@ -57,7 +57,7 @@ llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
 
 Jest coverage:
   Web: 91.32% statements / 96.48% lines
-  Miniprogram: 98.87% statements / 100% lines
+  Miniprogram: 99.33% statements / 100% lines / 96.05% branches
 Coverage gates:
   pnpm test:coverage  # Web + Miniprogram coverage threshold
 Quality gates:
@@ -88,6 +88,8 @@ Quality gates:
 - **wasm-opt bulk-memory**：Cargo.toml 设 `wasm-opt = false`
 - **小程序 document.baseURI**：Webpack BannerPlugin 注入 document mock（非运行时 polyfill）
 - **小程序 typecheck 依赖 WASM pkg**：`src/utils/wasm.ts` / `useWasmStore.ts` 动态 import `../../pkg/roselet_recommend`；CI 干净 checkout 时必须先 `wasm-pack build --out-dir ../../apps/miniprogram/pkg` + `node scripts/patch-wasm.js`，再跑 `pnpm --filter @roselet/miniprogram typecheck`
+- **小程序离线花圃缓存**：wx storage 只保存公共花圃快照；`set/optimistic_create/confirm_create/reject_create` 必须经 `offline.rs` 的 `apply_garden_cache_action_wasm`，不要在 TS 复制合并规则
+- **小程序预构建 JSON 请求体**：`createRose()` 使用 Rust `build_plant_body` 的 JSON 字符串；`request.ts` 必须识别字符串 body 并原样传给 `wx.request`，避免二次 JSON 编码
 - **wasm-bindgen Option<&str>**：改用 `&str`，空字符串表示 None
 - **后端集成测试共享 DB**：`create_test_app()` 必须 `TRUNCATE feedbacks, refresh_tokens, likes, roses, users RESTART IDENTITY CASCADE`；nextest 用 `-j1` 避免并发清库互踩
 - **Next 构建不依赖 Google Fonts**：避免 `next/font/google` 在受限网络里拖垮 build；全局字体走系统中文字体栈

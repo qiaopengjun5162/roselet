@@ -8,14 +8,41 @@ import {
   getUserProfile, toggleLike, getHealth, submitFeedback,
 } from '@/api';
 
-// Mock request module
 const mockRequest = jest.fn();
+const mockBuildPlantBody = jest.fn();
+const mockCacheGardenPage = jest.fn();
+const mockCreateOptimisticGardenRose = jest.fn();
+const mockConfirmOptimisticGardenRose = jest.fn();
+const mockRejectOptimisticGardenRose = jest.fn();
+const mockGetUser = jest.fn();
+
 jest.mock('@/utils/request', () => ({
   request: (...args: unknown[]) => mockRequest(...args),
 }));
 
+jest.mock('@/utils/storage', () => ({
+  getUser: () => mockGetUser(),
+}));
+
+jest.mock('@/utils/wasm', () => ({
+  buildPlantBody: (...args: unknown[]) => mockBuildPlantBody(...args),
+}));
+
+jest.mock('@/utils/garden-cache', () => ({
+  cacheGardenPage: (...args: unknown[]) => mockCacheGardenPage(...args),
+  createOptimisticGardenRose: (...args: unknown[]) => mockCreateOptimisticGardenRose(...args),
+  confirmOptimisticGardenRose: (...args: unknown[]) => mockConfirmOptimisticGardenRose(...args),
+  rejectOptimisticGardenRose: (...args: unknown[]) => mockRejectOptimisticGardenRose(...args),
+}));
+
 beforeEach(() => {
   mockRequest.mockReset();
+  mockBuildPlantBody.mockReset().mockResolvedValue('{"color":"red","gratitude":"thanks"}');
+  mockCacheGardenPage.mockReset().mockResolvedValue(null);
+  mockCreateOptimisticGardenRose.mockReset().mockResolvedValue('temp-1');
+  mockConfirmOptimisticGardenRose.mockReset().mockResolvedValue(undefined);
+  mockRejectOptimisticGardenRose.mockReset().mockResolvedValue(undefined);
+  mockGetUser.mockReset().mockReturnValue({ id: 'u1', nickname: 'alice', created_at: '' });
 });
 
 describe('api', () => {
@@ -32,21 +59,25 @@ describe('api', () => {
 
   describe('getGarden', () => {
     it('calls GET with default pagination', async () => {
-      mockRequest.mockResolvedValue({ data: [], total: 0, page: 1, per_page: 20 });
+      const response = { data: [], total: 0, page: 1, per_page: 20 };
+      mockRequest.mockResolvedValue(response);
       await getGarden();
       expect(mockRequest).toHaveBeenCalledWith('/api/garden?page=1&per_page=20');
+      expect(mockCacheGardenPage).toHaveBeenCalledWith(response);
     });
 
     it('appends color filter when provided', async () => {
       mockRequest.mockResolvedValue({ data: [], total: 0, page: 1, per_page: 20 });
       await getGarden(1, 20, 'red');
       expect(mockRequest).toHaveBeenCalledWith('/api/garden?page=1&per_page=20&color=red');
+      expect(mockCacheGardenPage).not.toHaveBeenCalled();
     });
 
     it('uses custom page and perPage', async () => {
       mockRequest.mockResolvedValue({ data: [], total: 0, page: 3, per_page: 10 });
       await getGarden(3, 10);
       expect(mockRequest).toHaveBeenCalledWith('/api/garden?page=3&per_page=10');
+      expect(mockCacheGardenPage).not.toHaveBeenCalled();
     });
 
     it('omits color when undefined', async () => {
@@ -66,21 +97,48 @@ describe('api', () => {
 
   describe('createRose', () => {
     it('calls POST /api/rose with auth', async () => {
-      mockRequest.mockResolvedValue({ id: '1', color: 'red' });
+      const created = { id: '1', color: 'red' };
+      mockRequest.mockResolvedValue(created);
       await createRose({ color: 'red', gratitude: 'thanks' });
+      expect(mockBuildPlantBody).toHaveBeenCalledWith({ color: 'red', gratitude: 'thanks' });
+      expect(mockCreateOptimisticGardenRose).toHaveBeenCalledWith('{"color":"red","gratitude":"thanks"}', 'alice');
       expect(mockRequest).toHaveBeenCalledWith(
         '/api/rose',
-        { method: 'POST', data: { color: 'red', gratitude: 'thanks' }, auth: true }
+        { method: 'POST', data: '{"color":"red","gratitude":"thanks"}', auth: true }
       );
+      expect(mockConfirmOptimisticGardenRose).toHaveBeenCalledWith('temp-1', created);
     });
 
     it('preserves private flag in request data', async () => {
       mockRequest.mockResolvedValue({ id: '1', color: 'red', is_private: true });
+      mockBuildPlantBody.mockResolvedValue('{"color":"red","gratitude":"secret","is_private":true}');
       await createRose({ color: 'red', gratitude: 'secret', is_private: true });
       expect(mockRequest).toHaveBeenCalledWith(
         '/api/rose',
-        { method: 'POST', data: { color: 'red', gratitude: 'secret', is_private: true }, auth: true }
+        { method: 'POST', data: '{"color":"red","gratitude":"secret","is_private":true}', auth: true }
       );
+    });
+
+    it('rejects optimistic cache when create request fails', async () => {
+      mockRequest.mockRejectedValue(new Error('network'));
+      await expect(createRose({ color: 'red', gratitude: 'thanks' })).rejects.toThrow('network');
+      expect(mockRejectOptimisticGardenRose).toHaveBeenCalledWith('temp-1');
+      expect(mockConfirmOptimisticGardenRose).not.toHaveBeenCalled();
+    });
+
+    it('uses empty nickname when user is not logged in', async () => {
+      mockGetUser.mockReturnValue(null);
+      mockRequest.mockResolvedValue({ id: '1', color: 'red' });
+      await createRose({ color: 'red', gratitude: 'thanks' });
+      expect(mockCreateOptimisticGardenRose).toHaveBeenCalledWith('{"color":"red","gratitude":"thanks"}', '');
+    });
+
+    it('still creates rose when optimistic cache is unavailable', async () => {
+      const created = { id: '1', color: 'red' };
+      mockCreateOptimisticGardenRose.mockResolvedValue(null);
+      mockRequest.mockResolvedValue(created);
+      await expect(createRose({ color: 'red', gratitude: 'thanks' })).resolves.toEqual(created);
+      expect(mockConfirmOptimisticGardenRose).toHaveBeenCalledWith(null, created);
     });
   });
 

@@ -96,18 +96,18 @@
 ### 当前测试状态
 - Rust nextest: 249 passed
 - Web Jest: 146 passed
-- Miniprogram Jest: 49 passed
-- Total: 444 passed
+- Miniprogram Jest: 66 passed
+- Total: 461 passed
 - Rust llvm-cov workspace: 90.37% 行覆盖
 - Web Jest coverage: 91.32% statements / 96.48% lines
-- Miniprogram Jest coverage: 98.87% statements / 100% lines
+- Miniprogram Jest coverage: 99.33% statements / 100% lines / 96.05% branches
 - Frontend coverage gate: `pnpm test:coverage` / `just coverage`
 - Quality gates: `just typecheck` / `just lint` / `just audit` / `just next-build` / `just miniprogram-build`
 
 ### Rust WASM 架构深化
 - [x] `audio.rs`：玫瑰属性→示波器音频参数（12 tests）
 - [x] `color.rs`：颜色元数据单一事实来源（3 tests），Web + 小程序同源
-- [x] `offline.rs`：乐观更新和 IndexedDB 花圃缓存合并规则（Web 已接入）
+- [x] `offline.rs`：乐观更新和花圃缓存合并规则（Web IndexedDB + 小程序 wx storage 已接入）
 - [x] 双令牌静默刷新拦截器（小程序 request.ts，Promise 并发锁）
 - [x] storage.ts 新增 getRefreshToken/setRefreshToken/logout 清除 refresh key
 
