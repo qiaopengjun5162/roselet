@@ -1437,6 +1437,28 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 - [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
 - [ ] 小程序真机联调
 
+## 2026-06-06 会话 #37：多语言支持评估
+
+### 问题
+是否现在就为 Roselet 增加中英文多语言支持。
+
+### 判断
+- 当前不建议立即产品化完整中英文切换，默认产品语言仍为中文。
+- Roselet 的运行时文案不是普通按钮翻译，已经深入到中文关键词、花语、情绪标签、日期格式、AI prompt、Web 页面和小程序页面。
+- 只在 Web 或小程序加 `en.json` 会违反 90/10 Rust-TS 架构，后续两端很容易分叉。
+
+### 解决
+- 新增 `docs/I18N_STRATEGY.md`，明确启动双语的触发条件、Rust WASM / TS / 后端分层、迁移顺序、测试策略和非目标。
+- 更新 `AGENTS.md` / `CLAUDE.md`，把跨端文案和可测试本地化逻辑优先放 Rust WASM 写成项目约束。
+- 更新 `PROGRESS.md`，记录多语言策略已完成，并把多语言 Spike 放入待办。
+- 更新 `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`，沉淀“多端 i18n 先定所有权，再翻译文案”的经验。
+
+### 验证
+- `git diff --check`
+
+### 待办
+- [ ] 如果 5 人试用或后续 App / Tauri 产品化出现英文需求，再按 `docs/I18N_STRATEGY.md` 从 Rust `Locale` + WASM 本地化映射开始做最小竖切。
+
 ## 2026-06-06 会话 #30：覆盖率门禁 + Web 构建稳定性
 
 ### 会话目标

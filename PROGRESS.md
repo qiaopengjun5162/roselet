@@ -80,6 +80,7 @@
 - [x] Rust Dev Workflow 经验库：`docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
 - [x] 小程序云测验收流程：`docs/MINIPROGRAM_CLOUD_TEST.md`（含 AIMonkey / AI 自定义测试）
 - [x] Tauri Spike 方案：`docs/TAURI_SPIKE.md`
+- [x] 多语言策略：`docs/I18N_STRATEGY.md`（当前默认中文，后续 i18n 优先 Rust WASM 单一事实来源）
 
 ## 最近完成（会话 #23–24）
 
@@ -127,6 +128,7 @@
 - [ ] **Web /about 页面**：版本（读 /health）+ 帮助折叠 + 反馈表单 + 微信公众号联系方式
 - [ ] **小程序关于页面**：同上，主包新增页面
 - [ ] **小程序真机联调**：AppID 已有，需拉起后端验证双令牌 + WASM 花瓣
+- [ ] **多语言 Spike**：若试用反馈需要英文，再按 `docs/I18N_STRATEGY.md` 从 Rust `Locale` + WASM 文案映射开始
 - [ ] Web3 功能（已设计，待实现）
   - Ethereum Solidity + Solana Anchor 双链，ChainAdapter trait
   - 上链内容：精选一句话（≤200字）+ 颜色，完整内容留链下

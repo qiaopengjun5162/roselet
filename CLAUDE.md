@@ -35,6 +35,7 @@ roselet/
 - **TS 仅拥有**：`fetch()` / `localStorage`、Web Audio API / Tone.js 扬声器、Taro API / wx.request、React/Taro 组件渲染、Tailwind CSS 样式
 - **判断标准**：凡是可以写 Rust 单元测试的逻辑，一律不留在 TS 里。新增功能必须先问"这个逻辑能不能放进 `crates/recommend/src/`？"
 - **TS 文件里的 `if/switch/for/while` 必须能解释为什么不能是 Rust WASM 调用**
+- **多语言原则**：当前默认中文，暂不产品化完整中英文切换；若启动 i18n，跨端文案、日期、颜色、情绪、花语、主题推荐、AI prompt 等可测试本地化逻辑优先放 Rust WASM，策略见 `docs/I18N_STRATEGY.md`
 
 认证：双令牌 (Access 15min + Refresh 30天，DB 存 SHA-256 哈希)，令牌桶限流 30req/60s。
 Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请求重试。
@@ -97,6 +98,7 @@ Quality gates:
 - **AIMonkey**：云测 AI Monkey 会生成可回放 Minium 代码；不支持智能化 Monkey 的前置步骤，固定账号状态优先用测试账号或 Minium 自定义用例
 - **AI 自定义测试**：适合把明确业务路径写成自然语言用例；成功结果仍需人工核对报告截图和生成的 Minium 代码，再沉淀为确定性回归
 - **认证状态码语义**：缺 token / token 过期 / token 无效返回 401，让前端触发静默刷新；已认证但 owner 不匹配才返回 403/404
+- **i18n 不要前端分叉**：当前不做完整双语；后续若加中英文，先加 Rust `Locale` 和 WASM 本地化表，再让 Web / 小程序读取同一套结果
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 
 ## 常用命令（justfile）
@@ -157,6 +159,7 @@ POST   /api/feedback       # 提交反馈（可选 JWT，匿名/登录均可）
 
 ## Rust Dev Workflow 经验库
 - 经验总结文档：`docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
+- 多语言策略文档：`docs/I18N_STRATEGY.md`
 - 新问题处理顺序：先修复 → `DEVLOG.md` 记录问题/根因/解决/验证 → 可复用经验提炼进经验库 → 必要时同步 `AGENTS.md` / `CLAUDE.md` / `PROGRESS.md` → commit + push
 - 能跨项目复用的经验，后续再升级到通用 `rust-dev-workflow` skill 或模板配置。
 
