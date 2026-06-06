@@ -1601,4 +1601,5 @@ async fn test_openapi_json_paths() {
     assert!(body["paths"]["/auth/register"].is_object());
     assert!(body["paths"]["/rose"].is_object());
     assert!(body["paths"]["/garden"].is_object());
+    assert!(body["paths"]["/feedback"].is_object());
 }

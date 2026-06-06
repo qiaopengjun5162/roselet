@@ -1523,6 +1523,34 @@ src/utils/wasm.ts(26,31): error TS2307: Cannot find module '../../pkg/roselet_re
 ### 经验
 生成型 TypeScript 模块如果被源码 import，CI 必须在 typecheck 前生成对应 `.d.ts`；本地存在生成物不能代表干净 CI checkout 可通过。
 
+## 2026-06-06 会话 #40：收口 feedback 后端路由与文档状态
+
+### 问题
+`PROGRESS.md` 仍标记 `routes/feedback.rs` 未注册，并把 `feedback 路由注册` 留在 P0 待办里。
+
+### 核查
+- `routes/mod.rs` 已有 `pub mod feedback;`。
+- `create_app()` 已注册 `POST /api/feedback`。
+- `migrations/007_create_feedbacks.sql` 已创建 feedbacks 表。
+- 后端已有 8 个 feedback 集成测试，覆盖匿名提交、登录提交、过短、过长、空内容、纯空白、畸形 JSON、缺 content 字段。
+
+### 解决
+- 补充 OpenAPI `/feedback` path、`FeedbackRequest`、`FeedbackResponse` schema。
+- 在 `test_openapi_json_paths` 中断言 `/feedback` 存在。
+- 更新 `PROGRESS.md`，把 feedback 后端路由从 P0 待办移到已完成。
+
+### 验证
+- `just migrate`
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend -j1 feedback` → 8 passed
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend -j1 openapi` → 2 passed
+- `cargo fmt --all -- --check`
+- `cargo clippy -p roselet-backend --all-features -- -D warnings`
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend -j1` → 110 passed
+
+### 待办
+- [ ] Web /about 页面接入 `/api/feedback`。
+- [ ] 小程序关于页面保持与 Web 反馈入口一致。
+
 ## 2026-06-06 会话 #30：覆盖率门禁 + Web 构建稳定性
 
 ### 会话目标

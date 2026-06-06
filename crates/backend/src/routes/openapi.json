@@ -121,6 +121,22 @@
           "403": { "description": "未认证" }
         }
       }
+    },
+    "/feedback": {
+      "post": {
+        "tags": ["Feedback"],
+        "summary": "提交反馈",
+        "description": "匿名和登录用户均可提交反馈；登录用户会自动关联 user_id。",
+        "security": [{ "Bearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FeedbackRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "提交成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FeedbackResponse" } } } },
+          "400": { "description": "参数错误" }
+        }
+      }
     }
   },
   "components": {
@@ -197,6 +213,19 @@
         "properties": {
           "liked": { "type": "boolean" },
           "like_count": { "type": "integer" }
+        }
+      },
+      "FeedbackRequest": {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+          "content": { "type": "string", "minLength": 5, "maxLength": 500 }
+        }
+      },
+      "FeedbackResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" }
         }
       },
       "PaginatedRoseResponse": {

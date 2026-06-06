@@ -118,13 +118,13 @@
 - [x] 删 52 个 TS 算法测试（Rust 侧已覆盖）
 - [x] Web rose-card.tsx + rose/[id]/page.tsx：COLOR_MAP → colorEmoji/colorLabel
 
-### 关于&反馈功能（部分）
+### 关于&反馈功能
 - [x] `migrations/007_create_feedbacks.sql`：feedbacks 表
-- [x] `routes/feedback.rs`：POST /api/feedback（未注册，待完成）
+- [x] `routes/feedback.rs`：POST /api/feedback（匿名/登录均可提交，登录用户关联 user_id）
+- [x] `/api/feedback` 后端路由注册 + OpenAPI 文档 + 8 个集成测试
 
 ## 待办
 
-- [ ] **feedback 路由注册**：mod.rs + main.rs + sqlx migrate run + 2 集成测试
 - [ ] **Web /about 页面**：版本（读 /health）+ 帮助折叠 + 反馈表单 + 微信公众号联系方式
 - [ ] **小程序关于页面**：同上，主包新增页面
 - [ ] **小程序真机联调**：AppID 已有，需拉起后端验证双令牌 + WASM 花瓣
