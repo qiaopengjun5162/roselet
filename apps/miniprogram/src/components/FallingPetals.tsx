@@ -16,9 +16,8 @@ export function FallingPetals() {
   const [petals, setPetals] = useState<PetalConfig[]>([]);
 
   useEffect(() => {
-    generatePetals(12, 42)
-      .then((p) => { if (p && p.length > 0) setPetals(p as PetalConfig[]); else setPetals(FALLBACK); })
-      .catch(() => setPetals(FALLBACK));
+    const p = generatePetals(12, 42);
+    setPetals(p && p.length > 0 ? (p as PetalConfig[]) : FALLBACK);
   }, []);
 
   if (petals.length === 0) return null;
