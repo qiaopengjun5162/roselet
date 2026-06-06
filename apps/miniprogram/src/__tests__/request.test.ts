@@ -130,6 +130,7 @@ describe('request', () => {
     enqueue({ statusCode: 401, data: { error: 'unauthorized' } });
 
     await expect(request('/api/my/roses', { auth: true })).rejects.toThrow('HTTP 401');
+    expect(mockStorage['roselet_token']).toBeUndefined();
   });
 
   it('logs out and rejects when refresh token is expired', async () => {

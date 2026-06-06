@@ -1,8 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+const mockPush = jest.fn();
+
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 jest.mock("@/components/rose-card", () => ({
@@ -34,18 +36,19 @@ const { getMyRoses, getToken } = require("@/lib/api") as {
 import MyPage from "../page";
 
 describe("MyPage", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    getToken.mockReturnValue("jwt-token");
+    getMyRoses.mockResolvedValue({ data: [], total: 0, page: 1, per_page: 20 });
+  });
 
   it("should show loading state", () => {
-    getToken.mockReturnValue("jwt-token");
     getMyRoses.mockReturnValue(new Promise(() => {}));
     render(<MyPage />);
     expect(screen.getByText("加载中...")).toBeInTheDocument();
   });
 
   it("should show empty state", async () => {
-    getToken.mockReturnValue("jwt-token");
-    getMyRoses.mockResolvedValue({ data: [], total: 0, page: 1, per_page: 20 });
     render(<MyPage />);
     await waitFor(() => {
       expect(screen.getByText("你还没有种过玫瑰")).toBeInTheDocument();
@@ -53,7 +56,6 @@ describe("MyPage", () => {
   });
 
   it("should display roses", async () => {
-    getToken.mockReturnValue("jwt-token");
     getMyRoses.mockResolvedValue({
       data: [
         { id: "r1", color: "red", gratitude: "感恩", anxiety: null, hope: null, user_id: "u1", nickname: "alice", like_count: 0, ai_reply: null, created_at: "" },
@@ -65,6 +67,33 @@ describe("MyPage", () => {
     render(<MyPage />);
     await waitFor(() => {
       expect(screen.getByText("感恩")).toBeInTheDocument();
+    });
+  });
+
+  it("should redirect to login when no token exists", async () => {
+    getToken.mockReturnValue(null);
+    render(<MyPage />);
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/login");
+    });
+    expect(getMyRoses).not.toHaveBeenCalled();
+  });
+
+  it("should redirect to login when auth state is cleared after failure", async () => {
+    getToken.mockReturnValueOnce("jwt-token").mockReturnValueOnce(null);
+    getMyRoses.mockRejectedValue(new Error("auth failed"));
+    render(<MyPage />);
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/login");
+    });
+    expect(screen.queryByText("加载花圃失败")).not.toBeInTheDocument();
+  });
+
+  it("should show error on non-auth failure", async () => {
+    getMyRoses.mockRejectedValue(new Error("network failed"));
+    render(<MyPage />);
+    await waitFor(() => {
+      expect(screen.getByText("加载花圃失败")).toBeInTheDocument();
     });
   });
 });

@@ -80,6 +80,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
         // 用新 token 重试一次
         return doRequest<T>(path, opts, newToken);
       }
+      logout();
     }
     throw err;
   }

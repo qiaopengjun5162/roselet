@@ -1459,6 +1459,36 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 ### 待办
 - [ ] 如果 5 人试用或后续 App / Tauri 产品化出现英文需求，再按 `docs/I18N_STRATEGY.md` 从 Rust `Locale` + WASM 本地化映射开始做最小竖切。
 
+## 2026-06-06 会话 #38：修复我的花圃 stale auth 错误态
+
+### 问题
+Web / 小程序打开“我的花圃”时可能显示“加载花圃失败”或“加载失败，请重试”。
+
+### 根因
+- Web `/my` 页面在 `getMyRoses()` 失败后一律显示“加载花圃失败”，没有像 `/profile` 一样检查 `authFetch()` 是否已经因为 401 清理本地登录态。
+- 小程序 request 在 401 且没有 refresh token 时会抛出错误，但不会主动清理过期 access token，页面无法判断应该回登录页。
+
+### 解决
+- Web `/my`：请求失败后如果 `getToken()` 已为空，跳转 `/login`；非认证失败才显示“加载花圃失败”。
+- Web `/my`：将 `loadRoses` 改为 `useCallback`，消除 React hooks lint warning。
+- 小程序 request：受保护请求 401 且刷新失败/不可刷新时调用 `logout()` 清理本地认证态。
+- 小程序“我的花圃”：请求失败后若 token 已清理，提示登录并跳转登录页。
+- 补 Web `/my` 页面测试：无 token 初始跳转、认证失败后跳转、非认证失败显示错误。
+- 补小程序 request 测试：无 refresh token 的 401 会清理 stale access token。
+
+### 验证
+- `pnpm --filter web test -- app/my/__tests__/page.test.tsx --runInBand` → 6 passed
+- `pnpm --filter web test -- app/my/__tests__/page.test.tsx lib/__tests__/api.test.ts --runInBand` → 39 passed
+- `pnpm --filter miniprogram test -- __tests__/request.test.ts __tests__/api.test.ts --runInBand` → 29 passed
+- `pnpm typecheck`
+- `pnpm lint` → 0 warnings / 0 errors
+- `pnpm test:coverage` → Web 142 passed，91.16% statements / 96.40% lines；Miniprogram 48 passed，94.56% statements / 95.40% lines
+- `pnpm --filter web build`
+- `git diff --check`
+
+### 经验
+受保护页面请求失败后要重新读取认证态：如果 token 已被刷新层清理，就应回登录页；只有 token 仍存在时才展示普通加载失败。
+
 ## 2026-06-06 会话 #30：覆盖率门禁 + Web 构建稳定性
 
 ### 会话目标

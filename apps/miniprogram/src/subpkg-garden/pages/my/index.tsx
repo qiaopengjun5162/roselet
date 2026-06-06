@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { View, Text, ScrollView } from "@tarojs/components";
 import Taro, { useDidShow } from "@tarojs/taro";
 import { getMyRoses } from "@/api";
@@ -29,6 +29,11 @@ export default function MyPage() {
       setPage(pageNum);
       setHasMore(pageNum * 20 < res.total);
     } catch {
+      if (!getToken()) {
+        Taro.showToast({ title: "请先登录", icon: "none" });
+        Taro.navigateTo({ url: "/pages/login/index" });
+        return;
+      }
       setError("加载失败，请重试");
     } finally {
       setLoading(false);

@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { RoseCard } from "@/components/rose-card";
 import { getMyRoses, getToken, type Rose } from "@/lib/api";
-
 
 export default function MyGardenPage() {
   const [roses, setRoses] = useState<Rose[]>([]);
@@ -17,17 +16,10 @@ export default function MyGardenPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  useEffect(() => {
-    if (!getToken()) {
-      router.push("/login");
-      return;
-    }
-    loadRoses(1);
-  }, [router]);
-
-  function loadRoses(p: number) {
+  const loadRoses = useCallback((p: number) => {
     if (p === 1) setLoading(true);
     else setLoadingMore(true);
+    setError("");
 
     getMyRoses(p)
       .then((res) => {
@@ -35,12 +27,26 @@ export default function MyGardenPage() {
         setTotal(res.total);
         setPage(p);
       })
-      .catch(() => setError("加载花圃失败"))
+      .catch(() => {
+        if (!getToken()) {
+          router.push("/login");
+          return;
+        }
+        setError("加载花圃失败");
+      })
       .finally(() => {
         setLoading(false);
         setLoadingMore(false);
       });
-  }
+  }, [router]);
+
+  useEffect(() => {
+    if (!getToken()) {
+      router.push("/login");
+      return;
+    }
+    loadRoses(1);
+  }, [loadRoses, router]);
 
   return (
     <main className="relative h-full px-4 pb-4 pt-16 z-10">
