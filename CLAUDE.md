@@ -74,7 +74,7 @@ llvm-cov (recommend): 86.46% 行覆盖
 - **wasm-opt bulk-memory**：Cargo.toml 设 `wasm-opt = false`
 - **小程序 document.baseURI**：Webpack BannerPlugin 注入 document mock（非运行时 polyfill）
 - **wasm-bindgen Option<&str>**：改用 `&str`，空字符串表示 None
-- **git push**：必须用 `https_proxy=http://127.0.0.1:7897 git push`
+- **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 
 ## 常用命令（justfile）
 ```bash

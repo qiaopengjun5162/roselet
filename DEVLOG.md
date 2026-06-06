@@ -795,7 +795,7 @@ UI 修复 + 代码质量审计 + 文档全量更新
 
 #### 2. 后端集成测试大量 502
 - **现象**：`cargo nextest run` 时约 24 个使用 `reqwest` 的集成测试返回 502
-- **根本原因**：macOS 系统代理设置为 `127.0.0.1:7897`（Clash）。reqwest 默认遵守系统代理，将本地临时端口请求路由给代理，代理无法转发，返回 502。用 Tower `oneshot()` 的测试不经过 HTTP 网络层，不受影响。
+- **根本原因**：macOS 系统代理设置为 `127.0.0.1:7890`（Clash）。reqwest 默认遵守系统代理，将本地临时端口请求路由给代理，代理无法转发，返回 502。用 Tower `oneshot()` 的测试不经过 HTTP 网络层，不受影响。
 - **解决**：justfile `test` 任务前置 `NO_PROXY=localhost,127.0.0.1`。
 - **规律**：本地代理（Clash 等）开启时，Rust reqwest 测试均需加此变量。
 
@@ -1420,6 +1420,7 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 - 确认后端 `3001` 正在运行，`/health` 返回 `status=ok` 且数据库 healthy
 - 恢复精简版 `AGENTS.md` 作为 Codex 入口，避免与完整 `CLAUDE.md` 长文档重复漂移
 - `CLAUDE.md` 文档维护规则补充：Codex 入口变更同步 `AGENTS.md`
+- 修正本机 GitHub 推送代理端口：`7897` → `7890`
 - 将待办里的“WASM 级乐观更新”改成“Rust WASM 层乐观更新”，避免误读成“微格做”
 - 清理 `CreateRose` 单元测试重复 `#[test]`，并运行 rustfmt 修正后端格式
 
