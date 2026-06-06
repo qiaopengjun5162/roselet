@@ -1354,3 +1354,59 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 | P1 | 5 个后端路由无集成测试 (health/swagger/openapi.json) |
 | P2 | packages/core 3 个零调用文件清理 (useGardenFilter/theme/web3.ts) |
 | P2 | Fireworks 粒子算法下沉 WASM |
+
+## 2026-06-06 会话 #27 续：P1 路由测试补齐 + P2 死代码清理 + Fireworks WASM
+
+### P1 — 剩余 3 个路由集成测试
+- test_app 注册 health / swagger / openapi.json 路由
+- 新增 5 个测试: health(oneshot + reqwest 双模式) + swagger HTML + openapi.json + paths 验证
+- 注意: openapi.json 路径不含 `/api` 前缀 (/auth/register 非 /api/auth/register)
+- Backend: 100 → 105 tests
+
+### P2 — packages/core 死代码清理
+- 删除 `useGardenFilter.ts`: 零引用，且 filter 逻辑应在 Rust WASM (garden.rs filter_roses)
+- 删除 `theme/index.ts`: 零引用，CSS 变量已在两端内联
+- 删除 `web3.ts`: 零引用，接口定义占位未实现
+- `index.ts`: 4 行 re-export → `export * from './types'`
+
+### P2 — Fireworks 粒子算法下沉 WASM
+- 新增 `crates/recommend/src/fireworks.rs`: 203 行，10 个单元测试
+  - `burst_internal(rng, cx, cy, count, id_offset)`: 确定性粒子生成，可种子测试
+  - `burst_js()`: 用 `thread_rng()` (WASM 环境走 `js_sys::Math::random()`)
+  - 测试: count/offset/deterministic/range/color/angle_coverage/empty/serialization/launches
+- `fireworks.tsx`: burst() 全量替换为 WASM `burstFireworks(cx,cy,count,offset)`
+  - TS 层仅剩 React lifecycle (useEffect/setTimeout/setState/DOM render)
+  - 原 97 行 → 76 行 (-22%)
+- `lib.rs`: 新增 burstFireworks + getFireworkLaunches WASM 导出
+- `recommend.ts`: 新增 burstFireworks + getFireworkLaunches WASM loader
+
+### 遇到的问题及解决
+
+1. **`rand::Rng::random()` 不存在**: rand 0.8 API 是 `rng.gen::<f64>()` 和 `rng.gen_range()`。`random()` 和 `random_range()` 是 rand 0.9 的 API。
+
+2. **Fireworks 分批定时**: 原 TS 用 `setTimeout` 错开 5 轮爆炸。WASM 改 batch API (`burstFireworks(cx, cy, count, offset)`)，TS 负责定时调度，Rust 负责粒子计算。
+
+3. **Plant 测试 mock 遗漏**: `@/lib/recommend` mock 缺少 `getFireworkLaunches`/`burstFireworks`。补回两条 mock。
+
+### 全部 7 项完成状态
+| ✅ P0 | feedback 路由 |
+| ✅ P0 | register 双令牌 |
+| ✅ P1 | flowers.rs 100% + color.rs 96.39% |
+| ✅ P1 | 5 个后端路由集成测试全补齐 |
+| ✅ P2 | packages/core 死代码清理 |
+| ✅ P2 | Fireworks 粒子下沉 WASM |
+
+### 当前测试状态
+- Backend: 105 tests (was 94 in session #26)
+- Rust WASM: 124 tests (was 76)
+- Web: 86 tests
+- Miniprogram: 42 tests
+- **Total: 357 passed** (was 291)
+- llvm-cov (recommend): 86.46%
+- flowers.rs: 100% | color.rs: 96.39% | fireworks.rs: 新建 10 tests
+- clippy + fmt 干净
+
+### 待办 (下次会话)
+- [ ] Web3 功能实现 (设计已完成，待 Solana/Ethereum 接入)
+- [ ] WASM 级乐观更新 + IndexedDB 持久化
+- [ ] 小程序真机联调
