@@ -18,6 +18,8 @@ interface WasmMod {
   build_plant_body: (color: string, gratitude: string, anxiety: string, hope: string) => string;
   color_emoji: (color: string) => string;
   color_label: (color: string) => string;
+  burstFireworks: (cx: number, cy: number, count: number, id_offset: number) => unknown;
+  getFireworkLaunches: () => unknown;
 }
 
 let wasmModule: WasmMod | null = null;
