@@ -78,7 +78,7 @@
 - [x] CONTRIBUTING.md（英文）
 - [x] CLAUDE.md / DEVLOG.md / PROGRESS.md
 - [x] Rust Dev Workflow 经验库：`docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
-- [x] 小程序云测验收流程：`docs/MINIPROGRAM_CLOUD_TEST.md`（含 AIMonkey）
+- [x] 小程序云测验收流程：`docs/MINIPROGRAM_CLOUD_TEST.md`（含 AIMonkey / AI 自定义测试）
 - [x] Tauri Spike 方案：`docs/TAURI_SPIKE.md`
 
 ## 最近完成（会话 #23–24）

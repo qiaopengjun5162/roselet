@@ -95,6 +95,7 @@ Quality gates:
 - **Jest 生成物冲突**：`next build` / Playwright / WASM 会生成重复 package metadata；`apps/web/jest.config.ts` 必须忽略 `.next`、`playwright/.cache`、`public/wasm`
 - **小程序云测**：必须上传体验版或线上版，开发者/管理员身份进入；本地 Jest 仍是提交前门禁，云测用于真机兼容、黑白屏、性能和 JsError 验收
 - **AIMonkey**：云测 AI Monkey 会生成可回放 Minium 代码；不支持智能化 Monkey 的前置步骤，固定账号状态优先用测试账号或 Minium 自定义用例
+- **AI 自定义测试**：适合把明确业务路径写成自然语言用例；成功结果仍需人工核对报告截图和生成的 Minium 代码，再沉淀为确定性回归
 - **认证状态码语义**：缺 token / token 过期 / token 无效返回 401，让前端触发静默刷新；已认证但 owner 不匹配才返回 403/404
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 
