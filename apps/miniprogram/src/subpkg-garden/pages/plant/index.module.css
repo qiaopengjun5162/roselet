@@ -16,3 +16,7 @@
 .successEmoji { font-size: 72px; text-align: center; display: block; margin-top: 40px; }
 .successTitle { color: #f9a8d4; font-size: 22px; font-weight: bold; text-align: center; display: block; margin-top: 24px; }
 .successSub { color: #64748b; font-size: 14px; text-align: center; display: block; margin-top: 8px; margin-bottom: 28px; }
+
+.privateToggle { margin-top: 8px; text-align: center; padding: 8px; }
+.privateOn { font-size: 12px; color: #c084fc; }
+.privateOff { font-size: 12px; color: #64748b; }

@@ -16,6 +16,7 @@ export default function Plant() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]         = useState('')
   const [recColor, setRecColor]   = useState<string | null>(null)
+  const [isPrivate, setIsPrivate] = useState(false)
 
   useEffect(() => {
     if (!getToken()) { Taro.navigateTo({ url: '/pages/login/index' }); return }
@@ -31,7 +32,7 @@ export default function Plant() {
       const result = validatePlant(input)
       if (result && !result.valid) { setError(result.error || '校验失败'); setSubmitting(false); return }
       const c = result?.cleaned
-      await createRose({ color: c?.color || color, gratitude: c?.gratitude || undefined, anxiety: c?.anxiety || undefined, hope: c?.hope || undefined })
+      await createRose({ color: c?.color || color, gratitude: c?.gratitude || undefined, anxiety: c?.anxiety || undefined, hope: c?.hope || undefined, is_private: isPrivate || undefined } as any)
       setStep('success')
     } catch { setError('提交失败，请重试') } finally { setSubmitting(false) }
   }
@@ -81,6 +82,11 @@ export default function Plant() {
         <Text className={styles.fieldLabel}>🌱 期待</Text>
         <Textarea className={styles.textarea} placeholder="你现在期待的事情..." maxlength={500} value={hope} onInput={e => setHope(e.detail.value)} />
         {error ? <Text className={styles.error}>{error}</Text> : null}
+        <View className={styles.privateToggle} onClick={() => setIsPrivate(!isPrivate)}>
+          <Text className={isPrivate ? styles.privateOn : styles.privateOff}>
+            {isPrivate ? '🔒 仅自己可见' : '🌐 公开分享'}
+          </Text>
+        </View>
         <Button className={styles.btn} loading={submitting} disabled={submitting} onClick={handleSubmit}>种下玫瑰</Button>
         <Text className={styles.back} onClick={() => setStep('color')}>← 换颜色</Text>
       </View>

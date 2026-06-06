@@ -10,6 +10,7 @@ export function RoseCard({ rose }: { rose: Rose }) {
       <View className={styles.header}>
         <Text className={styles.emoji}>{colorEmoji(rose.color)}</Text>
         <Text className={styles.color}>{colorLabel(rose.color)}</Text>
+        {rose.is_private ? <Text className={styles.lock}>🔒</Text> : null}
         {rose.nickname ? <Text className={styles.nick}>@{rose.nickname}</Text> : null}
       </View>
       {rose.gratitude ? <Text className={styles.field}>🌹 {rose.gratitude}</Text> : null}
