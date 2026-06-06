@@ -4,7 +4,7 @@
 
 ### 基础架构
 - [x] Rust workspace + Axum 后端框架
-- [x] Next.js 15 前端 + shadcn UI
+- [x] Next.js 16 前端 + shadcn UI
 - [x] pnpm monorepo 结构
 - [x] PostgreSQL 数据库 + SQLx 迁移
 - [x] GitHub Actions CI/CD
@@ -53,10 +53,10 @@
 
 ### 测试
 - [x] 110 个后端测试（60 集成 + 50 单元）
-- [x] 133 个 Rust WASM/推荐模块测试
-- [x] 123 个 Web 前端测试（18 套件）
+- [x] 139 个 Rust WASM/推荐模块测试
+- [x] 136 个 Web 前端测试（19 套件）
 - [x] 48 个小程序测试（5 套件）
-- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 90.45% statements / 95.23% lines；小程序 94.50% statements / 95.34% lines
+- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 90.86% statements / 96.06% lines；小程序 94.50% statements / 95.34% lines
 - [x] 覆盖率门禁：Web + 小程序 Jest coverage threshold 已接入本地脚本与 CI
 - [x] 质量门禁：TypeScript、ESLint、cargo-deny、Next build 已接入本地 justfile 与 CI
 - [x] RoseCard 通用组件（消除 garden/my 重复代码）
@@ -78,6 +78,8 @@
 - [x] CONTRIBUTING.md（英文）
 - [x] CLAUDE.md / DEVLOG.md / PROGRESS.md
 - [x] Rust Dev Workflow 经验库：`docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
+- [x] 小程序云测验收流程：`docs/MINIPROGRAM_CLOUD_TEST.md`
+- [x] Tauri Spike 方案：`docs/TAURI_SPIKE.md`
 
 ## 最近完成（会话 #23–24）
 
@@ -90,12 +92,12 @@
 - [x] 修复星尘粒子 `left` 随机数缺少 16-bit mask 导致越界的问题
 
 ### 当前测试状态
-- Rust nextest: 243 passed
-- Web Jest: 123 passed
+- Rust nextest: 249 passed
+- Web Jest: 136 passed
 - Miniprogram Jest: 48 passed
-- Total: 414 passed
+- Total: 433 passed
 - Rust llvm-cov workspace: 90.37% 行覆盖
-- Web Jest coverage: 90.45% statements / 95.23% lines
+- Web Jest coverage: 90.86% statements / 96.06% lines
 - Miniprogram Jest coverage: 94.50% statements / 95.34% lines
 - Frontend coverage gate: `pnpm test:coverage` / `just coverage`
 - Quality gates: `just typecheck` / `just lint` / `just audit` / `just next-build`
@@ -103,6 +105,7 @@
 ### Rust WASM 架构深化
 - [x] `audio.rs`：玫瑰属性→示波器音频参数（12 tests）
 - [x] `color.rs`：颜色元数据单一事实来源（3 tests），Web + 小程序同源
+- [x] `offline.rs`：乐观更新和 IndexedDB 花圃缓存合并规则（Web 已接入）
 - [x] 双令牌静默刷新拦截器（小程序 request.ts，Promise 并发锁）
 - [x] storage.ts 新增 getRefreshToken/setRefreshToken/logout 清除 refresh key
 

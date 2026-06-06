@@ -108,7 +108,12 @@ export function Nav() {
       )}
 
       <button
-        onClick={() => { const now = toggleMute(); setMuted(now); now ? stopBgMusic() : startBgMusic(); }}
+        onClick={() => {
+          const now = toggleMute();
+          setMuted(now);
+          if (now) stopBgMusic();
+          else startBgMusic();
+        }}
         className="text-[13px] text-slate-500 hover:text-slate-300 px-2 py-1 transition-colors ml-1"
         title={muted ? "开启声音" : "关闭声音"}
       >

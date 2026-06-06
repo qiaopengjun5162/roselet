@@ -23,7 +23,7 @@ export default function MyGardenPage() {
       return;
     }
     loadRoses(1);
-  }, []);
+  }, [router]);
 
   function loadRoses(p: number) {
     if (p === 1) setLoading(true);

@@ -157,6 +157,11 @@ async function authFetch(url: string, init?: RequestInit): Promise<Response> {
 
 export async function createRose(data: CreateRose): Promise<Rose> {
   const { buildPlantBody } = await import("@/lib/recommend");
+  const {
+    createOptimisticGardenRose,
+    confirmOptimisticGardenRose,
+    rejectOptimisticGardenRose,
+  } = await import("@/lib/garden-cache");
   const body = await buildPlantBody(
     data.color,
     data.gratitude ?? null,
@@ -164,13 +169,22 @@ export async function createRose(data: CreateRose): Promise<Rose> {
     data.hope ?? null,
     data.is_private ?? false,
   );
-  const res = await authFetch(`${API_BASE}/api/rose`, {
-    method: "POST",
-    headers: authHeaders(),
-    body,
-  });
-  if (!res.ok) throw new Error("Failed to create rose");
-  return res.json();
+  const tempId = await createOptimisticGardenRose(body, getUser()?.nickname ?? "");
+
+  try {
+    const res = await authFetch(`${API_BASE}/api/rose`, {
+      method: "POST",
+      headers: authHeaders(),
+      body,
+    });
+    if (!res.ok) throw new Error("Failed to create rose");
+    const rose: Rose = await res.json();
+    await confirmOptimisticGardenRose(tempId, rose);
+    return rose;
+  } catch (error) {
+    await rejectOptimisticGardenRose(tempId);
+    throw error;
+  }
 }
 
 export async function updateRose(id: string, data: UpdateRose): Promise<Rose> {
@@ -203,7 +217,12 @@ export async function getGarden(page = 1, perPage = 20, color?: string): Promise
   const url = await buildGardenUrl(API_BASE, page, perPage, color);
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch garden");
-  return res.json();
+  const data: PaginatedResponse<Rose> = await res.json();
+  if (page === 1 && !color) {
+    const { cacheGardenPage } = await import("@/lib/garden-cache");
+    await cacheGardenPage(data);
+  }
+  return data;
 }
 
 export async function getRose(id: string): Promise<Rose> {
@@ -272,7 +291,6 @@ export async function submitFeedback(content: string): Promise<{ success: boolea
     });
 
     if (res.ok) {
-      const data: FeedbackResponse = await res.json();
       return { success: true };
     } else {
       const error = await res.text();

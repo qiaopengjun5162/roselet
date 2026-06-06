@@ -10,11 +10,6 @@ import { playClick, playPlant, playLike } from "@/lib/sound";
 import { RosePlayer } from "@/components/rose-player";
 import { colorEmoji, colorLabel } from "@/lib/recommend";
 
-// bg 是 Web 专属 Tailwind 渐变，留 TS；emoji/label 来自 color.rs
-const COLOR_BG: Record<string, string> = {
-  red: "from-red-50 to-white", white: "from-gray-50 to-white", yellow: "from-amber-50 to-white",
-};
-
 const COLORS = ["red", "white", "yellow"];
 
 export default function RoseDetailPage() {
@@ -115,8 +110,6 @@ export default function RoseDetailPage() {
       </main>
     );
   }
-
-  const colorBg = COLOR_BG[rose.color] ?? "from-rose-50 to-white";
 
   return (
     <main className="relative h-full px-4 pb-8 pt-10 z-10">

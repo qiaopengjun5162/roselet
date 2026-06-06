@@ -21,6 +21,8 @@ interface WasmMod {
   color_label: (color: string) => string;
   burstFireworks: (cx: number, cy: number, count: number, id_offset: number) => unknown;
   getFireworkLaunches: () => unknown;
+  build_optimistic_rose_wasm: (plant_body_json: string, temp_id: string, now_iso: string, nickname: string) => unknown;
+  apply_garden_cache_action_wasm: (cache_json: string, action_json: string) => string;
 }
 
 let wasmModule: WasmMod | null = null;
@@ -37,6 +39,16 @@ export async function validatePlantInput(input: RoseInput): Promise<ValidationRe
 
 export async function parseGardenResponse(json: string): Promise<{ items: unknown[]; total: number } | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.parse_garden_response_wasm(json) as { items: unknown[]; total: number }; } catch { return null; } }
 export async function parseRoseResponse(json: string): Promise<unknown | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.parse_rose_response_wasm(json) as unknown; } catch { return null; } }
+
+export async function buildOptimisticRose(plantBodyJson: string, tempId: string, nowIso: string, nickname = ""): Promise<unknown | null> {
+  const mod = await loadWasm(); if (!mod) return null;
+  try { return mod.build_optimistic_rose_wasm(plantBodyJson, tempId, nowIso, nickname) as unknown; } catch { return null; }
+}
+
+export async function applyGardenCacheAction(cacheJson: string, actionJson: string): Promise<string | null> {
+  const mod = await loadWasm(); if (!mod) return null;
+  try { return mod.apply_garden_cache_action_wasm(cacheJson, actionJson); } catch { return null; }
+}
 
 export async function formatDate(iso: string): Promise<{ full_cn: string; short_cn: string; iso: string; weekday_cn: string; relative: string } | null> {
   const mod = await loadWasm(); if (!mod) return null;

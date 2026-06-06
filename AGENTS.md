@@ -6,6 +6,7 @@
 
 ## 必须遵守
 - 业务逻辑优先放进 `crates/recommend/src/` 的 Rust WASM 层；TS 只保留平台调用和 UI 渲染。
+- 乐观更新、缓存合并、状态冲突处理属于 Rust WASM；IndexedDB / wx storage 只负责平台持久化。
 - 修改后按风险运行对应检查；Rust 测试使用 `cargo-nextest`。
 - 前端/小程序覆盖率门禁使用 `just coverage` 或根目录 `pnpm test:coverage`。
 - 质量门禁使用 `just typecheck`、`just lint`、`just audit`、`just next-build`；`just check-all` / `just pre-commit` 已包含这些检查。

@@ -1,6 +1,7 @@
 mod emotion;
 mod flowers;
 mod keywords;
+mod offline;
 
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -175,6 +176,27 @@ pub fn parse_rose_response_wasm(json: &str) -> JsValue {
     match parse_rose_response(json) {
         Ok(rose) => serde_wasm_bindgen::to_value(&rose).unwrap(),
         Err(e) => serde_wasm_bindgen::to_value(&serde_json::json!({ "error": e })).unwrap(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn build_optimistic_rose_wasm(
+    plant_body_json: &str,
+    temp_id: &str,
+    now_iso: &str,
+    nickname: &str,
+) -> JsValue {
+    match offline::build_optimistic_rose(plant_body_json, temp_id, now_iso, nickname) {
+        Ok(rose) => serde_wasm_bindgen::to_value(&rose).unwrap_or(JsValue::NULL),
+        Err(e) => serde_wasm_bindgen::to_value(&serde_json::json!({ "error": e })).unwrap(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn apply_garden_cache_action_wasm(cache_json: &str, action_json: &str) -> String {
+    match offline::apply_cache_action(cache_json, action_json) {
+        Ok(cache) => serde_json::to_string(&cache).unwrap_or_else(|_| "{}".into()),
+        Err(e) => serde_json::json!({ "roses": [], "total": 0, "page": 1, "filter": "", "updated_at": "", "error": e }).to_string(),
     }
 }
 

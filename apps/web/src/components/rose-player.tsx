@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { roseToSoundParams, playWithParams, type RoseSoundParams } from "@/lib/rose-sound";
+import { roseToSoundParams, type RoseSoundParams } from "@/lib/rose-sound";
 import type { Rose } from "@/lib/api";
 
 interface RosePlayerProps {

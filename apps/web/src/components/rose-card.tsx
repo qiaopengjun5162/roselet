@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useState, useEffect } from "react";
 import { formatDate, colorEmoji, colorLabel } from "@/lib/recommend";
 import type { Rose } from "@/lib/api";
-import { roseToSoundParams, playWithParams, type RoseSoundParams } from "@/lib/rose-sound";
+import { roseToSoundParams, type RoseSoundParams } from "@/lib/rose-sound";
 
 // CSS 样式是 Web 专属，保留在 TS；emoji/label 来自 color.rs
 const COLOR_CSS: Record<string, { border: string; glow: string }> = {

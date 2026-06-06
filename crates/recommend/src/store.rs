@@ -171,7 +171,10 @@ mod tests {
             nickname: None,
             like_count: 0,
             ai_reply: None,
+            user_id: None,
             created_at: String::new(),
+            is_private: false,
+            sync_status: "synced".into(),
         }
     }
 

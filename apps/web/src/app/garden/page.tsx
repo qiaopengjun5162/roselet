@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { RoseCard } from "@/components/rose-card";
 import { getGarden, type Rose } from "@/lib/api";
+import { loadGardenCache } from "@/lib/garden-cache";
 import { connectGardenWs } from "@/lib/ws";
 import { playNotify } from "@/lib/sound";
 
@@ -20,6 +21,16 @@ export default function GardenPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    loadGardenCache().then((cache) => {
+      if (!cache || cache.filter || cache.roses.length === 0) return;
+      setRoses(cache.roses);
+      setTotal(cache.total);
+      setPage(cache.page);
+      setLoading(false);
+    });
+  }, []);
 
   function loadRoses(pageNum: number, color?: string) {
     setLoading(true);

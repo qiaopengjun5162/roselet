@@ -1,3 +1,22 @@
+const mockBuildPlantBody = jest.fn();
+const mockBuildGardenUrl = jest.fn();
+const mockCreateOptimisticGardenRose = jest.fn();
+const mockConfirmOptimisticGardenRose = jest.fn();
+const mockRejectOptimisticGardenRose = jest.fn();
+const mockCacheGardenPage = jest.fn();
+
+jest.mock("@/lib/recommend", () => ({
+  buildPlantBody: (...args: unknown[]) => mockBuildPlantBody(...args),
+  buildGardenUrl: (...args: unknown[]) => mockBuildGardenUrl(...args),
+}));
+
+jest.mock("@/lib/garden-cache", () => ({
+  createOptimisticGardenRose: (...args: unknown[]) => mockCreateOptimisticGardenRose(...args),
+  confirmOptimisticGardenRose: (...args: unknown[]) => mockConfirmOptimisticGardenRose(...args),
+  rejectOptimisticGardenRose: (...args: unknown[]) => mockRejectOptimisticGardenRose(...args),
+  cacheGardenPage: (...args: unknown[]) => mockCacheGardenPage(...args),
+}));
+
 import {
   createRose,
   getGarden,
@@ -19,6 +38,22 @@ describe("API Client", () => {
   beforeEach(() => {
     jest.resetAllMocks();
     localStorage.clear();
+    mockBuildPlantBody.mockImplementation(
+      async (color: string, gratitude: string | null, anxiety: string | null, hope: string | null, isPrivate: boolean) => JSON.stringify({
+        color,
+        gratitude,
+        anxiety,
+        hope,
+        is_private: isPrivate,
+      }),
+    );
+    mockBuildGardenUrl.mockImplementation(
+      async (baseUrl: string, page: number, perPage: number, color?: string) => `${baseUrl}/api/garden?page=${page}&per_page=${perPage}${color ? `&color=${color}` : ""}`,
+    );
+    mockCreateOptimisticGardenRose.mockResolvedValue("temp-1");
+    mockConfirmOptimisticGardenRose.mockResolvedValue(undefined);
+    mockRejectOptimisticGardenRose.mockResolvedValue(undefined);
+    mockCacheGardenPage.mockResolvedValue(null);
   });
 
   describe("auth storage", () => {
@@ -132,6 +167,17 @@ describe("API Client", () => {
       });
 
       expect(result).toEqual(mockRose);
+      expect(mockCreateOptimisticGardenRose).toHaveBeenCalledWith(
+        JSON.stringify({
+          color: "red",
+          gratitude: "感谢",
+          anxiety: "焦虑",
+          hope: "期待",
+          is_private: false,
+        }),
+        "",
+      );
+      expect(mockConfirmOptimisticGardenRose).toHaveBeenCalledWith("temp-1", mockRose);
       expect(global.fetch).toHaveBeenCalledWith(
         "http://localhost:3001/api/rose",
         expect.objectContaining({ method: "POST" })
@@ -179,6 +225,7 @@ describe("API Client", () => {
     it("should throw error on failure", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
       await expect(createRose({ color: "red" })).rejects.toThrow("Failed to create rose");
+      expect(mockRejectOptimisticGardenRose).toHaveBeenCalledWith("temp-1");
     });
   });
 
@@ -204,6 +251,7 @@ describe("API Client", () => {
       expect(global.fetch).toHaveBeenCalledWith(
         "http://localhost:3001/api/garden?page=1&per_page=20"
       );
+      expect(mockCacheGardenPage).toHaveBeenCalledWith(mockResponse);
     });
 
     it("should accept page and perPage params", async () => {
@@ -216,6 +264,20 @@ describe("API Client", () => {
       expect(global.fetch).toHaveBeenCalledWith(
         "http://localhost:3001/api/garden?page=2&per_page=10"
       );
+      expect(mockCacheGardenPage).not.toHaveBeenCalled();
+    });
+
+    it("should accept color filter without caching filtered results", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: [], total: 0, page: 1, per_page: 20 }),
+      });
+
+      await getGarden(1, 20, "red");
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/garden?page=1&per_page=20&color=red"
+      );
+      expect(mockCacheGardenPage).not.toHaveBeenCalled();
     });
 
     it("should throw error on failure", async () => {

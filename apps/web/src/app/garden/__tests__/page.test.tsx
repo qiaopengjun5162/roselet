@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { act, render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 jest.mock("next/navigation", () => ({
@@ -20,12 +20,22 @@ jest.mock("next/link", () =>
 const mockGetGarden = jest.fn().mockResolvedValue({ data: [], total: 0, page: 1, per_page: 20 });
 jest.mock("@/lib/api", () => ({ getGarden: mockGetGarden }));
 
-jest.mock("@/lib/ws", () => ({ connectGardenWs: jest.fn().mockReturnValue(() => {}) }));
-jest.mock("@/lib/sound", () => ({ playNotify: jest.fn() }));
+const mockLoadGardenCache = jest.fn().mockResolvedValue(null);
+jest.mock("@/lib/garden-cache", () => ({ loadGardenCache: mockLoadGardenCache }));
+
+const mockConnectGardenWs = jest.fn();
+jest.mock("@/lib/ws", () => ({ connectGardenWs: mockConnectGardenWs }));
+const mockPlayNotify = jest.fn();
+jest.mock("@/lib/sound", () => ({ playNotify: mockPlayNotify }));
 
 import GardenPage from "../page";
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockGetGarden.mockResolvedValue({ data: [], total: 0, page: 1, per_page: 20 });
+  mockLoadGardenCache.mockResolvedValue(null);
+  mockConnectGardenWs.mockReturnValue(() => {});
+});
 
 describe("GardenPage", () => {
   it("shows loading state", () => {
@@ -48,6 +58,21 @@ describe("GardenPage", () => {
     });
   });
 
+  it("hydrates from IndexedDB cache before network result", async () => {
+    mockLoadGardenCache.mockResolvedValue({
+      roses: [{ id: "cached", color: "yellow", gratitude: "缓存玫瑰", is_private: false }],
+      total: 1,
+      page: 1,
+      filter: "",
+      updated_at: "2026-06-06T00:00:00Z",
+    });
+    mockGetGarden.mockReturnValue(new Promise(() => {}));
+    render(<GardenPage />);
+    await waitFor(() => {
+      expect(screen.getByText("缓存玫瑰")).toBeInTheDocument();
+    });
+  });
+
   it("calls getGarden with color filter", async () => {
     render(<GardenPage />);
     await waitFor(() => expect(screen.queryByText("加载中...")).not.toBeInTheDocument());
@@ -55,5 +80,45 @@ describe("GardenPage", () => {
     await waitFor(() => {
       expect(mockGetGarden).toHaveBeenCalledWith(1, 20, "red");
     });
+  });
+
+  it("appends roses received from WebSocket", async () => {
+    let onRose: ((rose: { id: string; color: string; gratitude: string; is_private: boolean }) => void) | null = null;
+    mockConnectGardenWs.mockImplementation((callback: typeof onRose) => {
+      onRose = callback;
+      return () => {};
+    });
+
+    render(<GardenPage />);
+    await waitFor(() => expect(screen.queryByText("加载中...")).not.toBeInTheDocument());
+    act(() => {
+      onRose?.({ id: "ws-1", color: "white", gratitude: "实时玫瑰", is_private: false });
+    });
+
+    expect(screen.getByText("实时玫瑰")).toBeInTheDocument();
+    expect(mockPlayNotify).toHaveBeenCalled();
+  });
+
+  it("loads more roses", async () => {
+    mockGetGarden
+      .mockResolvedValueOnce({
+        data: [{ id: "1", color: "red", gratitude: "第一页", is_private: false }],
+        total: 21,
+        page: 1,
+        per_page: 20,
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: "2", color: "yellow", gratitude: "第二页", is_private: false }],
+        total: 21,
+        page: 2,
+        per_page: 20,
+      });
+
+    render(<GardenPage />);
+    await waitFor(() => expect(screen.getByText("第一页")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("加载更多"));
+
+    await waitFor(() => expect(screen.getByText("第二页")).toBeInTheDocument());
+    expect(mockGetGarden).toHaveBeenCalledWith(2, 20, undefined);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { analyzeTextAsync, type SoundParams } from "@/lib/text-to-sound";
 
 const PRESETS = [
@@ -53,11 +53,17 @@ export default function OscilloscopePage() {
   const [volume, setVolume] = useState(0.3);
   const [manualColor, setManualColor] = useState<ColorKey | null>(null);
 
-  // 当前生效的音乐参数：文字模式优先
-  const activeParams = mode === "text" && textParams
-    ? { fx: textParams.fx, fy: textParams.fy, waveform: textParams.waveform as Waveform,
-        baseFreq: textParams.baseFreq, phase: textParams.phase }
-    : { fx: preset.fx, fy: preset.fy, waveform, baseFreq, phase };
+  const activeParams = useMemo(() => (
+    mode === "text" && textParams
+      ? {
+          fx: textParams.fx,
+          fy: textParams.fy,
+          waveform: textParams.waveform as Waveform,
+          baseFreq: textParams.baseFreq,
+          phase: textParams.phase,
+        }
+      : { fx: preset.fx, fy: preset.fy, waveform, baseFreq, phase }
+  ), [baseFreq, mode, phase, preset, textParams, waveform]);
 
   // 当前光束颜色
   const autoColor = mode === "text" && textParams
@@ -105,7 +111,6 @@ export default function OscilloscopePage() {
     merger.connect(ctx.destination);
     leftOsc.start(); rightOsc.start();
     setPlaying(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeParams, volume]);
 
   const stop = useCallback(() => {

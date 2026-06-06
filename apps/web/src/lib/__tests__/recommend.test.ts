@@ -24,6 +24,8 @@ function mockWasm(overrides: Record<string, unknown> = {}) {
     color_label: jest.fn().mockReturnValue("Red"),
     burstFireworks: jest.fn().mockReturnValue([{ id: 1 }]),
     getFireworkLaunches: jest.fn().mockReturnValue([{ cx: 50 }]),
+    build_optimistic_rose_wasm: jest.fn().mockReturnValue({ id: "temp-1", sync_status: "pending" }),
+    apply_garden_cache_action_wasm: jest.fn().mockReturnValue('{"roses":[],"total":0,"page":1,"filter":"","updated_at":"now"}'),
     ...overrides,
   };
   jest.doMock(wasmPath, () => wasm);
@@ -72,6 +74,8 @@ describe("recommend WASM wrappers", () => {
     expect(recommend.colorLabel("red")).toBe("Red");
     await expect(recommend.burstFireworks(50, 50, 1, 0)).resolves.toEqual([{ id: 1 }]);
     await expect(recommend.getFireworkLaunches()).resolves.toEqual([{ cx: 50 }]);
+    await expect(recommend.buildOptimisticRose("{}", "temp-1", "now", "alice")).resolves.toEqual({ id: "temp-1", sync_status: "pending" });
+    await expect(recommend.applyGardenCacheAction("", "{}")).resolves.toBe('{"roses":[],"total":0,"page":1,"filter":"","updated_at":"now"}');
 
     expect(wasm.default).toHaveBeenCalledTimes(1);
     expect(wasm.compute_layout).toHaveBeenCalledWith(JSON.stringify({
@@ -82,6 +86,7 @@ describe("recommend WASM wrappers", () => {
       is_web: true,
     }));
     expect(wasm.build_plant_body).toHaveBeenCalledWith("red", "g", "", "", true);
+    expect(wasm.build_optimistic_rose_wasm).toHaveBeenCalledWith("{}", "temp-1", "now", "alice");
   });
 
   it("uses TS fallbacks when selected WASM calls throw", async () => {

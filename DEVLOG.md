@@ -1535,6 +1535,57 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 - [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
 - [ ] 小程序真机联调
 
+## 2026-06-06 会话 #33：Rust WASM 乐观缓存 + 小程序云测/Tauri Spike 文档
+
+### 会话目标
+推进 Rust WASM 层乐观更新 + IndexedDB 持久化，并把小程序云测和 Tauri App 方向记录成可执行方案。
+
+### 完成的工作
+- 阅读微信官方小程序云测快速开始文档：
+  - 云测要求体验版或线上版小程序。
+  - 用户需要是小程序开发者或管理员。
+  - 云测只支持小程序，不支持小游戏。
+  - 可从微信开发者工具安装“云测”插件进入，也可打开云测 Web 地址扫码登录。
+- 新增 `docs/MINIPROGRAM_CLOUD_TEST.md`，记录 Roselet 小程序云测提测前检查、重点关注项和经验规则。
+- 新增 `docs/TAURI_SPIKE.md`，明确 Tauri 只做 Spike，不马上产品化。
+- Rust WASM 新增 `offline.rs`：
+  - `build_optimistic_rose_wasm`：由 Rust 根据种花请求生成临时玫瑰。
+  - `apply_garden_cache_action_wasm`：由 Rust 处理 IndexedDB 花圃缓存的 set / optimistic_create / confirm_create / reject_create / upsert。
+  - 私密玫瑰不会进入公共花圃缓存。
+- Web 新增 `garden-cache.ts`：TS 只负责 IndexedDB 读写，缓存合并和乐观更新规则交给 Rust WASM。
+- Web `createRose()` 接入乐观写入、成功确认、失败回滚。
+- Web `getGarden()` 缓存第一页公共花圃；花圃页启动时先读取 IndexedDB 缓存提升恢复速度。
+
+### 测试与门禁补齐
+- 修复 `GardenPage` 测试污染：缓存恢复测试把 `mockGetGarden` 设成永不 resolve 的 Promise，`beforeEach` 未恢复默认值，导致后续筛选测试停在 loading。
+- 补 `garden-cache.test.ts` IndexedDB 成功路径，覆盖 object store upgrade、put/get 和 close。
+- 补 `api.test.ts` 对 `createRose()` 乐观写入、成功确认、失败回滚，以及 `getGarden()` 只缓存第一页公共花圃的编排测试。
+- 补花圃页 WebSocket 新玫瑰和“加载更多”测试，将 Web coverage 重新拉过阈值。
+- 清理 Web ESLint warnings：hook 依赖、未用导入/变量、事件处理表达式、Separator ARIA。
+
+### 遇到的问题及解决
+1. **Jest 异步 mock 污染**：单个测试留下永不 resolve 的 `mockGetGarden`，后续测试误判为页面仍在加载。解决：`beforeEach` 恢复默认 resolvedValue。
+2. **Web coverage functions 差 0.12%**：新增 `garden-cache.ts` 后函数覆盖率从 85% 阈值下滑。解决：补真实用户行为测试和 IndexedDB 成功路径测试。
+3. **pnpm 沙箱 `[ERROR] fetch failed`**：沙箱内跑 pnpm 测试失败。解决：按审批外部执行同一命令。
+4. **cargo-deny advisory DB lock 只读**：沙箱内无法写 `~/.cargo/advisory-dbs/db.lock`。解决：外部执行 `cargo deny check`。
+5. **workspace nextest 本地 DB 连接被沙箱拦截**：报 `Operation not permitted`。解决：外部执行 `NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-fail-fast`。
+6. **虚拟 Cargo workspace clippy 覆盖不足**：不显式 `--workspace` 时检查口径容易不完整。解决：门禁使用 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`。
+
+### 验证
+- `cargo fmt --all -- --check`
+- `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-fail-fast` → 249 passed
+- `cargo deny check` → advisories/bans/licenses/sources ok
+- `pnpm typecheck`
+- `pnpm lint` → 0 warnings / 0 errors
+- `pnpm test:coverage` → Web 136 passed，90.86% statements / 96.06% lines；Miniprogram 48 passed，94.50% statements / 95.34% lines
+- `pnpm --filter web build`
+
+### 待办
+- [ ] 将同一套 Rust 乐观缓存规则接入小程序 storage。
+- [ ] 小程序云测体验版验收。
+- [ ] Tauri Spike。
+
 ## 2026-06-06 会话 #29：覆盖率 90%+ 收口 + 私密模式补洞
 
 ### 会话目标

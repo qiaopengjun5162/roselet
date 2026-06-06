@@ -136,6 +136,27 @@
 
 通用规则：WASM 导出层保持薄，核心逻辑放在普通 Rust 函数中测试。
 
+### 13. 虚拟 Cargo workspace 的门禁要显式覆盖 workspace
+
+问题：根目录是虚拟 workspace 时，直接跑 `cargo clippy --all-targets ...` 的覆盖口径可能不够直观，容易误以为所有成员都检查了。
+
+解决：质量门禁使用显式 workspace 命令：
+
+```bash
+cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings
+NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-fail-fast
+```
+
+通用规则：多 crate 项目的门禁命令要把 `--workspace` 写出来，不依赖 Cargo 默认选择。
+
+### 14. 前端异步测试要恢复默认 mock
+
+问题：某个测试把 API mock 设置成永不 resolve 的 Promise，用于验证缓存首屏；如果 `beforeEach` 不恢复默认 resolvedValue，后续测试会一直停在 loading。
+
+解决：所有共享 mock 在 `beforeEach` 中明确恢复默认行为；需要挂起 Promise 的测试只在单个用例里覆盖。
+
+通用规则：测试可以制造“永不完成”的异步状态，但必须保证用例结束后不会污染下一条测试。
+
 ## 更新规则
 
 每次遇到问题，按这个顺序更新：
@@ -188,4 +209,3 @@
 - **默认配置**：给出推荐的 `Cargo.toml` / `deny.toml` / `justfile` / workflow 片段。
 - **验证命令**：给出最小可跑命令。
 - **反例**：说明常见错误配置会导致什么问题。
-

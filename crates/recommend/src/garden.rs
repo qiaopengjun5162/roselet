@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+fn synced_status() -> String {
+    "synced".into()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoseItem {
     pub id: String,
@@ -7,10 +11,16 @@ pub struct RoseItem {
     pub gratitude: Option<String>,
     pub anxiety: Option<String>,
     pub hope: Option<String>,
+    #[serde(default)]
+    pub user_id: Option<String>,
     pub nickname: Option<String>,
     pub like_count: u32,
     pub ai_reply: Option<String>,
+    #[serde(default)]
+    pub is_private: bool,
     pub created_at: String,
+    #[serde(default = "synced_status")]
+    pub sync_status: String,
 }
 
 /// 屏幕环境参数（由前端传入）
@@ -151,10 +161,13 @@ mod tests {
                 gratitude: None,
                 anxiety: None,
                 hope: None,
+                user_id: None,
                 nickname: None,
                 like_count: 0,
                 ai_reply: None,
+                is_private: false,
                 created_at: "".into(),
+                sync_status: "synced".into(),
             },
             RoseItem {
                 id: "2".into(),
@@ -162,10 +175,13 @@ mod tests {
                 gratitude: None,
                 anxiety: None,
                 hope: None,
+                user_id: None,
                 nickname: None,
                 like_count: 0,
                 ai_reply: None,
+                is_private: false,
                 created_at: "".into(),
+                sync_status: "synced".into(),
             },
         ]);
         state.set_filter("all".into());
@@ -182,10 +198,13 @@ mod tests {
                 gratitude: None,
                 anxiety: None,
                 hope: None,
+                user_id: None,
                 nickname: None,
                 like_count: 0,
                 ai_reply: None,
+                is_private: false,
                 created_at: "".into(),
+                sync_status: "synced".into(),
             },
             RoseItem {
                 id: "2".into(),
@@ -193,10 +212,13 @@ mod tests {
                 gratitude: None,
                 anxiety: None,
                 hope: None,
+                user_id: None,
                 nickname: None,
                 like_count: 0,
                 ai_reply: None,
+                is_private: false,
                 created_at: "".into(),
+                sync_status: "synced".into(),
             },
         ]);
         state.set_filter("red".into());

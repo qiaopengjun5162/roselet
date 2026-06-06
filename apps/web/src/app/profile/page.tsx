@@ -22,7 +22,7 @@ export default function ProfilePage() {
       .then(setProfile)
       .catch(() => setError("加载资料失败"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [router]);
 
   if (loading) {
     return (
