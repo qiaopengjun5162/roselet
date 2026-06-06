@@ -738,6 +738,17 @@ async fn test_private_rose_like_requires_owner() {
     let body: Value = owner_like.json().await.unwrap();
     assert_eq!(body["liked"], true);
     assert_eq!(body["like_count"], 1);
+
+    let owner_detail = client
+        .get(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", owner_token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(owner_detail.status(), StatusCode::OK);
+    let body: Value = owner_detail.json().await.unwrap();
+    assert_eq!(body["is_private"], true);
+    assert_eq!(body["like_count"], 1);
 }
 
 #[tokio::test]

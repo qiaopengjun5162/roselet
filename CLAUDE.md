@@ -59,6 +59,11 @@ Jest coverage:
   Miniprogram: 94.50% statements / 95.34% lines
 Coverage gates:
   pnpm test:coverage  # Web + Miniprogram coverage threshold
+Quality gates:
+  pnpm typecheck      # Web + Miniprogram tsc
+  pnpm lint           # Web ESLint
+  cargo deny check    # Rust dependency audit
+  cd apps/web && pnpm build  # Next production build
 ```
 
 ## WASM 模块清单（crates/recommend/src/）
@@ -83,6 +88,8 @@ Coverage gates:
 - **后端集成测试共享 DB**：`create_test_app()` 必须 `TRUNCATE feedbacks, refresh_tokens, likes, roses, users RESTART IDENTITY CASCADE`；nextest 用 `-j1` 避免并发清库互踩
 - **Next 构建不依赖 Google Fonts**：避免 `next/font/google` 在受限网络里拖垮 build；全局字体走系统中文字体栈
 - **pnpm 沙箱 fetch failed**：Codex 沙箱内 `pnpm exec` / `pnpm test:*` 可能触发 `[ERROR] fetch failed`；优先用已安装依赖重跑，必要时按审批走外部执行
+- **cargo deny advisory DB**：沙箱内可能因 `~/.cargo` 只读或网络失败不能更新 advisory DB；本地用 `https_proxy=http://127.0.0.1:7890 cargo deny check`
+- **Jest 生成物冲突**：`next build` / Playwright / WASM 会生成重复 package metadata；`apps/web/jest.config.ts` 必须忽略 `.next`、`playwright/.cache`、`public/wasm`
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 
 ## 常用命令（justfile）
@@ -97,8 +104,11 @@ just db-reset         # 数据库重置
 just migrate          # 运行数据库迁移
 just fmt              # 格式化代码
 just clippy           # clippy lint
+just typecheck        # Web + 小程序 TypeScript 类型检查
+just lint             # Web ESLint 检查
 just coverage         # Web + 小程序覆盖率门禁
 just audit            # 依赖审计
+just next-build       # Web Next 生产构建
 just changelog        # 生成 CHANGELOG
 just wasm              # 构建 WASM 推荐模块
 just wasm-mini         # 为小程序构建 WASM（编译 + WXWebAssembly 补丁）

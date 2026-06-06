@@ -121,13 +121,14 @@ export default function PlantPage() {
       }
 
       const cleaned = result?.cleaned;
-      await createRose({
+      const payload: Parameters<typeof createRose>[0] = {
         color: cleaned?.color || color,
         gratitude: cleaned ? (cleaned.gratitude || undefined) : (gratitude.trim() || undefined),
         anxiety: cleaned ? (cleaned.anxiety || undefined) : (anxiety.trim() || undefined),
         hope: cleaned ? (cleaned.hope || undefined) : (hope.trim() || undefined),
         is_private: isPrivate || undefined,
-      } as any);
+      };
+      await createRose(payload);
       playComplete();
       setStep("success");
     } catch {

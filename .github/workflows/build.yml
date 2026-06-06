@@ -40,6 +40,12 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-features -- -D warnings
 
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+
+      - name: Audit dependencies
+        run: cargo deny check
+
       - name: Run migrations
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost/roselet_test
@@ -82,7 +88,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build
+      - name: Typecheck
+        run: pnpm --filter web typecheck
+
+      - name: ESLint
+        run: pnpm --filter web lint
+
+      - name: Next build
         run: pnpm build
 
       - name: Test
@@ -112,6 +124,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Typecheck
+        run: pnpm --filter @roselet/miniprogram typecheck
 
       - name: Init miniprogram config
         run: bash scripts/init-miniprogram.sh

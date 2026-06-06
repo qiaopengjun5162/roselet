@@ -2,6 +2,7 @@ export interface RoseInput { color: string; gratitude?: string | null; anxiety?:
 export interface Recommendation { flower_language: { title: string; content: string; keywords: string[] }; theme: { title: string; content: string; category: string }; color_suggestion: { color: string; reason: string } }
 export interface GardenLayout { card_width: number; columns: number; gap: number; padding_x: number; offset_top: number; offset_bottom: number }
 export interface ValidationResult { valid: boolean; error: string | null; cleaned: { color: string; gratitude: string | null; anxiety: string | null; hope: string | null } | null }
+export interface FormattedDate { full_cn: string; short_cn: string; iso: string; weekday_cn: string; relative: string }
 
 interface WasmMod {
   recommend: (json: string) => unknown; analyze_text: (text: string) => unknown;
@@ -39,7 +40,7 @@ export async function parseRoseResponse(json: string): Promise<unknown | null> {
 
 export async function formatDate(iso: string): Promise<{ full_cn: string; short_cn: string; iso: string; weekday_cn: string; relative: string } | null> {
   const mod = await loadWasm(); if (!mod) return null;
-  try { return mod.format_date_wasm(iso) as any; } catch { return null; }
+  try { return mod.format_date_wasm(iso) as FormattedDate; } catch { return null; }
 }
 
 export async function generatePetals(count: number, seed: bigint) {

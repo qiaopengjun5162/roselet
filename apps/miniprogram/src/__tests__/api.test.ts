@@ -57,10 +57,10 @@ describe('api', () => {
   });
 
   describe('getRose', () => {
-    it('calls GET /api/rose/:id', async () => {
+    it('calls GET /api/rose/:id with auth for private rose owner access', async () => {
       mockRequest.mockResolvedValue({ id: 'abc', color: 'red' });
       await getRose('abc');
-      expect(mockRequest).toHaveBeenCalledWith('/api/rose/abc');
+      expect(mockRequest).toHaveBeenCalledWith('/api/rose/abc', { auth: true });
     });
   });
 

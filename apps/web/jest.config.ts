@@ -3,6 +3,11 @@ import type { Config } from "jest";
 const config: Config = {
   testEnvironment: "jsdom",
   testPathIgnorePatterns: ["\.pw\.tsx$"],
+  modulePathIgnorePatterns: [
+    "<rootDir>/.next",
+    "<rootDir>/playwright/.cache",
+    "<rootDir>/public/wasm",
+  ],
   coveragePathIgnorePatterns: ["\.pw\.tsx$", "/node_modules/"],
   coverageThreshold: {
     global: {

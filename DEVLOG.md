@@ -1469,6 +1469,50 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 - [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
 - [ ] 小程序真机联调
 
+## 2026-06-06 会话 #31：私密模式补齐 + 质量门禁
+
+### 会话目标
+先修私密模式，再把 `tsc` / `eslint` / `cargo deny` / `next build` 纳入可通过门禁。
+
+### 完成的工作
+- 私密模式补洞：
+  - 后端 `GET /api/rose/:id` 返回真实 `like_count`，私密玫瑰 owner 详情不再固定显示 0。
+  - 小程序 `getRose()` 改为带 auth 请求，owner 可查看自己的私密玫瑰详情。
+  - 后端私密点赞测试补 owner 详情 `like_count=1` 断言。
+  - 小程序 API 测试补详情页 auth 断言。
+- 质量门禁：
+  - Web / 小程序新增 `typecheck` 脚本，根目录新增 `pnpm typecheck`。
+  - 根目录新增 `pnpm lint`，Web ESLint 纳入门禁。
+  - justfile 新增 `typecheck` / `lint` / `next-build`，`check-all` 和 `pre-commit` 纳入 typecheck、lint、cargo-deny、Next build。
+  - GitHub Actions 后端 job 新增 `cargo deny check`；前端 job 新增 typecheck、ESLint、Next build 明确步骤；小程序 job 新增 typecheck。
+  - `deny.toml` 补允许 `BSD-3-Clause` / `ISC` / `Zlib`，两个 Rust crate 声明 `license = "MIT"`。
+  - Web ESLint 忽略生成物：coverage、Playwright cache、WASM 生成包；测试文件放宽 CommonJS mock 规则。
+  - Web Jest 忽略 `.next`、`playwright/.cache`、`public/wasm`，避免生成物 package metadata 冲突。
+
+### 遇到的问题及解决
+1. **小程序私密详情 404**：后端私密详情要求 owner JWT，但小程序 `getRose()` 未带 auth。解决：`request(..., { auth: true })`。
+2. **私密详情点赞数固定 0**：`get_rose` 未查询 likes。解决：详情接口按 rose_id 查询 `COUNT(*)` 后返回。
+3. **SQLx 宏在沙箱内访问 DB 被拒**：后端测试/Clippy 编译期需要数据库。解决：按审批外部执行，并保持 `NO_PROXY=localhost,127.0.0.1`。
+4. **cargo-deny advisory DB 失败**：沙箱内 `~/.cargo` 只读，直接网络又拉取 RustSec advisory DB 失败。解决：用 `https_proxy=http://127.0.0.1:7890 cargo deny check`。
+5. **cargo-deny license 失败**：依赖使用 `BSD-3-Clause` / `ISC` / `Zlib`，workspace crate 缺 license。解决：收窄补充允许列表，crate 声明 MIT。
+6. **ESLint 扫描生成物**：coverage、Playwright cache、WASM 生成 JS 被当源码 lint。解决：在 `eslint.config.mjs` 全局忽略生成目录。
+7. **Jest haste collision**：`next build` / Playwright / WASM 生成重复 package metadata。解决：`jest.config.ts` 忽略 `.next`、`playwright/.cache`、`public/wasm`。
+
+### 验证
+- `cargo fmt --all -- --check`
+- `cargo clippy --all-targets --all-features --tests --benches -- -D warnings`
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend -j1 private_rose` → 5 passed
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run --all-features -j1` → 243 passed
+- `https_proxy=http://127.0.0.1:7890 cargo deny check` → advisories/bans/licenses/sources ok
+- `pnpm typecheck`
+- `pnpm lint` → 0 errors
+- `cd apps/web && pnpm build`
+- `pnpm test:coverage` → Web 123 passed，Miniprogram 48 passed
+
+### 待办
+- [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
+- [ ] 小程序真机联调
+
 ## 2026-06-06 会话 #29：覆盖率 90%+ 收口 + 私密模式补洞
 
 ### 会话目标

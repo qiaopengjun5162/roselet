@@ -18,7 +18,7 @@ export function getGarden(page = 1, perPage = 20, color?: string): Promise<Pagin
 
 /** 获取单朵玫瑰详情 */
 export function getRose(id: string): Promise<Rose> {
-  return request<Rose>(`/api/rose/${id}`);
+  return request<Rose>(`/api/rose/${id}`, { auth: true });
 }
 
 /** 种一朵玫瑰（需 JWT 认证） */

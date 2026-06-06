@@ -27,6 +27,18 @@ test:
 coverage:
     pnpm test:coverage
 
+# TypeScript 类型检查
+typecheck:
+    pnpm typecheck
+
+# Web ESLint 检查
+lint:
+    pnpm lint
+
+# Web Next 生产构建
+next-build:
+    cd apps/web && pnpm build
+
 # 快速检查
 check:
     cargo check --all-features
@@ -104,12 +116,19 @@ check-all:
     cargo fmt --all -- --check
     cargo clippy --all-features -- -D warnings
     cargo deny check
+    pnpm typecheck
+    pnpm lint
+    cd apps/web && pnpm build
     cargo nextest run --all-features -j1
 
 # 提交前检查
 pre-commit:
     cargo fmt --all -- --check
     cargo clippy --all-features -- -D warnings
+    cargo deny check
+    pnpm typecheck
+    pnpm lint
+    cd apps/web && pnpm build
     just test
 # 构建 WASM 推荐模块
 wasm:

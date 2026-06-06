@@ -12,7 +12,23 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "coverage/**",
+    "playwright/.cache/**",
+    "public/pkg/**",
+    "public/wasm/**",
   ]),
+  {
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
+  {
+    files: ["**/__tests__/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+      "react/display-name": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
