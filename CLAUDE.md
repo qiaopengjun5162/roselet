@@ -36,23 +36,23 @@ roselet/
 - **判断标准**：凡是可以写 Rust 单元测试的逻辑，一律不留在 TS 里。新增功能必须先问"这个逻辑能不能放进 `crates/recommend/src/`？"
 - **TS 文件里的 `if/switch/for/while` 必须能解释为什么不能是 Rust WASM 调用**
 
-认证：双令牌 (Access 15min + Refresh 7天，DB 存 SHA-256 哈希)，令牌桶限流 30req/60s。
-小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请求重试。
+认证：双令牌 (Access 15min + Refresh 30天，DB 存 SHA-256 哈希)，令牌桶限流 30req/60s。
+Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请求重试。
 
 ## 测试状态
 ```
-Rust backend:    87 passed  (76 passing; 11 需 DB 启动)
-Rust WASM:       76 passed  (含 audio 12 + emotion 11 + color 3 + sky 7)
+Rust backend:   105 passed
+Rust WASM:      124 passed  (含 audio 12 + emotion 11 + color 11 + sky 7 + fireworks 10 + flowers 31)
 Web frontend:    86 passed
 Miniprogram:     42 passed
-Total:          291 passed
+Total:          357 passed
 
-llvm-cov (recommend): 81.94% 行覆盖
-  100%: petal, sky, keywords
+llvm-cov (recommend): 86.46% 行覆盖
+  100%: petal, sky, keywords, flowers
   99%+: garden (99.61%), audio (97.87%)
+  96%+: color (96.39%)
   90%+: api_client (94.79%), plant (93.06%), emotion (91.43%), store (90.21%)
-  70%+: datefmt (89.36%), flowers (70.41% - 无专用测试)
-  64%:  color (无专用测试)
+  89%+: datefmt (89.36%)
 ```
 
 ## WASM 模块清单（crates/recommend/src/）
@@ -67,6 +67,7 @@ llvm-cov (recommend): 81.94% 行覆盖
 | `plant.rs` | 种花表单校验 | `validate_plant_input`, `format_plant_request_wasm` |
 | `store.rs` | 全局状态机 | `store_dispatch`, `store_get_snapshot` |
 | `api_client.rs` | URL/请求体构造 | `build_garden_url`, `build_plant_body` |
+| `fireworks.rs` | 烟花粒子生成（seed RNG） | `burstFireworks`, `getFireworkLaunches` |
 
 ## 已知坑（勿重踩）
 - **reqwest 测试 502**：本地开启 Clash 代理时，加 `NO_PROXY=localhost,127.0.0.1`
@@ -97,7 +98,7 @@ just miniprogram-build # 小程序生产构建
 
 ## API
 ```
-POST   /api/auth/register  # 用户注册（JWT）【注意：仍用 30 天单令牌，待改双令牌】
+POST   /api/auth/register  # 用户注册 → 201, 返回 access_token(15min) + refresh_token(30d)
 POST   /api/auth/refresh   # 刷新 Access Token
 POST   /api/auth/logout    # 注销（撤销 Refresh Token）
 GET    /health             # 健康检查（数据库连接 + 版本信息）
