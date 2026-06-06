@@ -96,20 +96,6 @@ pub fn burst_js(cx: f64, cy: f64, count: usize, id_offset: usize) -> Vec<Firewor
     burst_internal(&mut rand::thread_rng(), cx, cy, count, id_offset)
 }
 
-pub fn burst_all() -> Vec<FireworkParticle> {
-    let mut rng = rand::thread_rng();
-    let mut id_counter = 0usize;
-    let mut all_particles: Vec<FireworkParticle> = Vec::new();
-
-    for launch in &default_launches() {
-        let particles = burst_internal(&mut rng, launch.cx, launch.cy, launch.count, id_counter);
-        id_counter += launch.count;
-        all_particles.extend(particles);
-    }
-
-    all_particles
-}
-
 pub fn get_launches() -> Vec<FireworkLaunch> {
     default_launches()
 }
