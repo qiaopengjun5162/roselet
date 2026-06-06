@@ -1460,6 +1460,11 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 - `pnpm test:coverage` (root) → Web 123 passed，Miniprogram 48 passed
 - `pnpm build` (apps/web) → Next production build passed
 
+### 遇到的问题及解决
+1. **Codex 沙箱内 pnpm fetch failed**：`pnpm exec tsc --noEmit` 和 `pnpm test:coverage` 在沙箱内返回 `[ERROR] fetch failed`，不是 TypeScript/Jest 失败。解决：按审批改用外部执行，复用项目已安装依赖完成验证。
+2. **覆盖率达标但无门禁**：Web / 小程序已有 90%+ 覆盖率，但 CI 只跑普通测试，覆盖率下降不会失败。解决：新增 `test:coverage` 脚本、Jest `coverageThreshold` 和 CI coverage 步骤。
+3. **Next build 潜在网络依赖**：`next/font/google` 会让构建受 Google Fonts 网络影响。解决：移除 Google 字体加载，使用系统中文字体栈，并用生产构建验证。
+
 ### 待办
 - [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
 - [ ] 小程序真机联调

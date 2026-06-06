@@ -9,4 +9,5 @@
 - 修改后按风险运行对应检查；Rust 测试使用 `cargo-nextest`。
 - 前端/小程序覆盖率门禁使用 `just coverage` 或根目录 `pnpm test:coverage`。
 - 每次代码或项目文档变更都要 commit 并 push。
+- 遇到问题先解决；解决后把问题、原因、处理方式、验证命令记录到 `DEVLOG.md`。
 - 发现新的非显然约束时，同时更新 `DEVLOG.md` 和共享项目文档。
