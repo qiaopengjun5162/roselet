@@ -43,9 +43,9 @@ Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请
 ```
 Rust backend:   110 passed
 Rust WASM:      139 passed
-Web frontend:   136 passed
+Web frontend:   139 passed
 Miniprogram:     48 passed
-Total:          433 passed
+Total:          436 passed
 
 llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   100%: flowers, petal, sky, keywords, pagination, user, docs, state
@@ -55,7 +55,7 @@ llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   90%+: plant (93.06%), emotion (91.43%), store (90.21%), rose routes (94.87%)
 
 Jest coverage:
-  Web: 90.86% statements / 96.06% lines
+  Web: 90.88% statements / 96.07% lines
   Miniprogram: 94.50% statements / 95.34% lines
 Coverage gates:
   pnpm test:coverage  # Web + Miniprogram coverage threshold
@@ -94,6 +94,7 @@ Quality gates:
 - **后端 nextest 本地 DB**：沙箱内可能因本地数据库连接 `Operation not permitted` 失败；用 `NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-fail-fast`
 - **Jest 生成物冲突**：`next build` / Playwright / WASM 会生成重复 package metadata；`apps/web/jest.config.ts` 必须忽略 `.next`、`playwright/.cache`、`public/wasm`
 - **小程序云测**：必须上传体验版或线上版，开发者/管理员身份进入；本地 Jest 仍是提交前门禁，云测用于真机兼容、黑白屏、性能和 JsError 验收
+- **认证状态码语义**：缺 token / token 过期 / token 无效返回 401，让前端触发静默刷新；已认证但 owner 不匹配才返回 403/404
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 
 ## 常用命令（justfile）

@@ -20,7 +20,13 @@ export default function ProfilePage() {
     }
     getUserProfile()
       .then(setProfile)
-      .catch(() => setError("加载资料失败"))
+      .catch(() => {
+        if (!getToken()) {
+          router.push("/login");
+          return;
+        }
+        setError("加载资料失败");
+      })
       .finally(() => setLoading(false));
   }, [router]);
 

@@ -1586,6 +1586,35 @@ TS 逻辑全量下沉 Rust WASM — 前端降到纯调用层（90% Rust + 10% TS
 - [ ] 小程序云测体验版验收。
 - [ ] Tauri Spike。
 
+## 2026-06-06 会话 #34：修复个人资料认证刷新
+
+### 问题
+Web 端打开“个人资料”时显示“加载资料失败”。
+
+### 根因
+- `/api/user/profile` 在缺 token / token 无效时返回 403。
+- Web `authFetch()` 只在 401 时触发 refresh token 静默刷新。
+- 用户本地如果留有过期 access token，个人资料请求不会刷新，直接进入错误态。
+
+### 解决
+- 后端受保护接口统一语义：缺 token / token 过期 / token 无效返回 401；已认证但 owner 不匹配继续返回 403；私密资源隐藏仍按既有策略返回 404。
+- 修复接口：`/api/user/profile`、`/api/my/roses`、`POST /api/rose/:id/like`、`PUT /api/rose/:id`、`DELETE /api/rose/:id`。
+- Web `authFetch()` 在 401 且刷新失败/无 refresh token 时清理本地登录态。
+- Profile 页面在认证状态被清理后跳转 `/login`，不再停留在“加载资料失败”。
+- Web 测试补 profile 401 刷新重试、stale auth 清理和跳登录。
+
+### 验证
+- `cargo fmt --all -- --check`
+- `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend --no-fail-fast` → 110 passed
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test:coverage` → Web 139 passed，90.88% statements / 96.07% lines；Miniprogram 48 passed，94.50% statements / 95.34% lines
+- `pnpm --filter web build`
+
+### 经验
+认证失败和授权失败必须分开：401 用来驱动客户端刷新/重新登录，403 只表示“你已经是谁，但你不能做这件事”。
+
 ## 2026-06-06 会话 #29：覆盖率 90%+ 收口 + 私密模式补洞
 
 ### 会话目标

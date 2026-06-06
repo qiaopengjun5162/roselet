@@ -1,8 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+const mockPush = jest.fn();
+
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -48,6 +50,15 @@ describe("ProfilePage", () => {
     render(<ProfilePage />);
     await waitFor(() => {
       expect(screen.getByText("加载资料失败")).toBeInTheDocument();
+    });
+  });
+
+  it("should redirect to login when auth state is cleared after failure", async () => {
+    getToken.mockReturnValueOnce("jwt-token").mockReturnValueOnce(null);
+    getUserProfile.mockRejectedValue(new Error("auth failed"));
+    render(<ProfilePage />);
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/login");
     });
   });
 });

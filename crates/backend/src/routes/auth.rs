@@ -49,7 +49,8 @@ pub async fn profile(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<UserProfile>, AppError> {
-    let user_id = auth::extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
+        .ok_or_else(|| AppError::Auth("missing or invalid token".into()))?;
 
     let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
         .bind(user_id)

@@ -54,9 +54,9 @@
 ### 测试
 - [x] 110 个后端测试（60 集成 + 50 单元）
 - [x] 139 个 Rust WASM/推荐模块测试
-- [x] 136 个 Web 前端测试（19 套件）
+- [x] 139 个 Web 前端测试（19 套件）
 - [x] 48 个小程序测试（5 套件）
-- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 90.86% statements / 96.06% lines；小程序 94.50% statements / 95.34% lines
+- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 90.88% statements / 96.07% lines；小程序 94.50% statements / 95.34% lines
 - [x] 覆盖率门禁：Web + 小程序 Jest coverage threshold 已接入本地脚本与 CI
 - [x] 质量门禁：TypeScript、ESLint、cargo-deny、Next build 已接入本地 justfile 与 CI
 - [x] RoseCard 通用组件（消除 garden/my 重复代码）
@@ -93,11 +93,11 @@
 
 ### 当前测试状态
 - Rust nextest: 249 passed
-- Web Jest: 136 passed
+- Web Jest: 139 passed
 - Miniprogram Jest: 48 passed
-- Total: 433 passed
+- Total: 436 passed
 - Rust llvm-cov workspace: 90.37% 行覆盖
-- Web Jest coverage: 90.86% statements / 96.06% lines
+- Web Jest coverage: 90.88% statements / 96.07% lines
 - Miniprogram Jest coverage: 94.50% statements / 95.34% lines
 - Frontend coverage gate: `pnpm test:coverage` / `just coverage`
 - Quality gates: `just typecheck` / `just lint` / `just audit` / `just next-build`

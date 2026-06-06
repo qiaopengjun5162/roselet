@@ -124,7 +124,8 @@ pub async fn update_rose(
 ) -> Result<Json<RoseResponse>, AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
-    let user_id = auth::extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
+        .ok_or_else(|| AppError::Auth("missing or invalid token".into()))?;
 
     let existing = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
         .bind(id)
@@ -175,7 +176,8 @@ pub async fn delete_rose(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<(), AppError> {
-    let user_id = auth::extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
+        .ok_or_else(|| AppError::Auth("missing or invalid token".into()))?;
 
     let existing = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
         .bind(id)

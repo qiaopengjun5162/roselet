@@ -19,7 +19,8 @@ pub async fn toggle_like(
     headers: HeaderMap,
     Path(rose_id): Path<Uuid>,
 ) -> Result<Json<LikeResponse>, AppError> {
-    let user_id = auth::extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
+        .ok_or_else(|| AppError::Auth("missing or invalid token".into()))?;
 
     let rose = sqlx::query_as::<_, (Option<Uuid>, bool)>(
         "SELECT user_id, is_private FROM roses WHERE id = $1",

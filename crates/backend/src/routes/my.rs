@@ -15,7 +15,8 @@ pub async fn get_my_roses(
     headers: HeaderMap,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<PaginatedResponse<RoseResponse>>, AppError> {
-    let user_id = auth::extract_user_id(&headers, &state.jwt_secret).ok_or(AppError::Forbidden)?;
+    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
+        .ok_or_else(|| AppError::Auth("missing or invalid token".into()))?;
 
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE user_id = $1")
         .bind(user_id)

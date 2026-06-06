@@ -46,11 +46,15 @@ export function setUser(user: User) {
   localStorage.setItem("user", JSON.stringify(user));
 }
 
-export function logout() {
-  const refreshToken = getRefreshToken();
+function clearAuthState() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
   localStorage.removeItem("user");
+}
+
+export function logout() {
+  const refreshToken = getRefreshToken();
+  clearAuthState();
   // 异步撤销服务端 refresh token，不阻塞登出
   if (refreshToken) {
     fetch(`${API_BASE}/api/auth/logout`, {
@@ -83,10 +87,7 @@ export async function refreshAccessToken(): Promise<string | null> {
       return data.access_token;
     })
     .catch(() => {
-      // Refresh token 失效，强制登出
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("user");
+      clearAuthState();
       return null;
     })
     .finally(() => {
@@ -142,16 +143,22 @@ function authHeaders(): Record<string, string> {
   return headers;
 }
 
+function retryHeaders(headers: HeadersInit | undefined, token: string): Record<string, string> {
+  return {
+    ...Object.fromEntries(new Headers(headers).entries()),
+    Authorization: `Bearer ${token}`,
+  };
+}
+
 async function authFetch(url: string, init?: RequestInit): Promise<Response> {
   const res = await fetch(url, init);
   if (res.status === 401 && getRefreshToken()) {
     const newToken = await refreshAccessToken();
     if (newToken) {
-      const headers = new Headers(init?.headers);
-      headers.set("Authorization", `Bearer ${newToken}`);
-      return fetch(url, { ...init, headers });
+      return fetch(url, { ...init, headers: retryHeaders(init?.headers, newToken) });
     }
   }
+  if (res.status === 401) clearAuthState();
   return res;
 }
 

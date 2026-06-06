@@ -839,7 +839,7 @@ async fn test_update_rose_no_auth() {
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -929,7 +929,7 @@ async fn test_my_roses_requires_auth() {
     let base = spawn_test_server().await;
     let client = reqwest::Client::new();
     let res = client.get(format!("{}/api/my/roses", base)).send().await.unwrap();
-    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -1200,7 +1200,7 @@ async fn test_user_profile_no_auth() {
     let base = spawn_test_server().await;
     let client = reqwest::Client::new();
     let res = client.get(format!("{}/api/user/profile", base)).send().await.unwrap();
-    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -1253,7 +1253,7 @@ async fn test_like_no_auth() {
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

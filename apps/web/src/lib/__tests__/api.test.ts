@@ -122,8 +122,13 @@ describe("API Client", () => {
 
       await expect(getRose("r1")).resolves.toEqual(rose);
 
-      const [, retryInit] = (global.fetch as jest.Mock).mock.calls[2];
-      expect(retryInit.headers.get("Authorization")).toBe("Bearer new-access");
+      const roseCalls = (global.fetch as jest.Mock).mock.calls.filter(
+        ([url]) => url === "http://localhost:3001/api/rose/r1",
+      );
+      const [, retryInit] = roseCalls.at(-1);
+      expect(retryInit.headers).toEqual(expect.objectContaining({
+        Authorization: "Bearer new-access",
+      }));
     });
 
     it("clears auth state when refresh fails", async () => {
@@ -500,6 +505,54 @@ describe("API Client", () => {
 
       const result = await getUserProfile();
       expect(result).toEqual(mockProfile);
+    });
+
+    it("should refresh access token before retrying profile after 401", async () => {
+      const { setToken, setRefreshToken, getUserProfile } = await import("../api");
+      setToken("old-access");
+      setRefreshToken("refresh-token");
+      const mockProfile = {
+        user: { id: "u1", nickname: "alice", created_at: "" },
+        total_roses: 0,
+        red_count: 0,
+        white_count: 0,
+        yellow_count: 0,
+      };
+
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({ status: 401, ok: false })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: "new-access" }),
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          ok: true,
+          json: async () => mockProfile,
+        });
+
+      await expect(getUserProfile()).resolves.toEqual(mockProfile);
+
+      const profileCalls = (global.fetch as jest.Mock).mock.calls.filter(
+        ([url]) => url === "http://localhost:3001/api/user/profile",
+      );
+      const [, retryInit] = profileCalls.at(-1);
+      expect(retryInit.headers).toEqual(expect.objectContaining({
+        Authorization: "Bearer new-access",
+      }));
+    });
+
+    it("should clear stale auth when profile returns 401 without refresh token", async () => {
+      const { setToken, setUser, getUserProfile } = await import("../api");
+      setToken("stale-access");
+      setUser({ id: "u1", nickname: "alice", created_at: "2026-01-01T00:00:00Z" });
+      (global.fetch as jest.Mock).mockResolvedValue({ status: 401, ok: false });
+
+      await expect(getUserProfile()).rejects.toThrow("Failed to fetch profile");
+
+      expect(localStorage.getItem("access_token")).toBeNull();
+      expect(localStorage.getItem("refresh_token")).toBeNull();
+      expect(localStorage.getItem("user")).toBeNull();
     });
 
     it("should throw error on failure", async () => {
