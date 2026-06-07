@@ -12,7 +12,6 @@
 ### 后端功能
 - [x] POST /api/rose - 创建玫瑰（后台异步生成 AI 回复）
 - [x] GET /health - 健康检查（数据库连接 + 版本信息）
-- [x] GET /health - 健康检查（数据库连接 + 版本信息）
 - [x] GET /api/garden - 获取花圃（分页 + 颜色筛选）
 - [x] GET /api/rose/:id - 获取单朵玫瑰
 - [x] PUT /api/rose/:id - 编辑玫瑰（仅创建者）
@@ -30,7 +29,6 @@
 - [x] JWT 认证（jsonwebtoken v9）
 - [x] tracing 结构化日志（tracing-subscriber）
 - [x] Swagger API 文档（/swagger）
-- [x] tracing 结构化日志（tracing-subscriber）
 
 ### 前端功能
 - [x] 首页：规则介绍 + "种一朵玫瑰"按钮
@@ -56,8 +54,8 @@
 - [x] 110 个后端测试（60 集成 + 50 单元）
 - [x] 139 个 Rust WASM/推荐模块测试
 - [x] 146 个 Web 前端测试（20 套件）
-- [x] 49 个小程序测试（5 套件）
-- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 91.32% statements / 96.48% lines；小程序 98.87% statements / 100% lines
+- [x] 66 个小程序测试（6 套件）
+- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 91.32% statements / 96.48% lines；小程序 99.33% statements / 100% lines / 96.05% branches
 - [x] 覆盖率门禁：Web + 小程序 Jest coverage threshold 已接入本地脚本与 CI
 - [x] 质量门禁：TypeScript、ESLint、cargo-deny、Next build、小程序 build 已接入本地 justfile 与 CI
 - [x] RoseCard 通用组件（消除 garden/my 重复代码）
@@ -83,7 +81,7 @@
 - [x] Tauri Spike 方案：`docs/TAURI_SPIKE.md`
 - [x] 多语言策略：`docs/I18N_STRATEGY.md`（当前默认中文，后续 i18n 优先 Rust WASM 单一事实来源）
 
-## 最近完成（会话 #23–24）
+## 最近完成（会话 #29–43）
 
 ### 覆盖率提升（会话 #29）
 - [x] 私密玫瑰后端访问控制补齐：公共花圃隐藏、详情仅 owner、非 owner 点赞返回 404、公共 WebSocket 不广播

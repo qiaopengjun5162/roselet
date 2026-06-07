@@ -1665,6 +1665,21 @@ src/utils/wasm.ts(26,31): error TS2307: Cannot find module '../../pkg/roselet_re
 ### 经验
 离线缓存要把“平台存储”和“业务合并规则”分开：IndexedDB / wx storage 只负责持久化，乐观更新、私密过滤、确认/回滚统一放 Rust WASM。
 
+## 2026-06-07 会话 #43：收口进度文档小瑕疵
+
+### 会话目标
+清理项目进度文档中的重复条目和旧测试数字，避免后续判断项目状态时被旧信息干扰。
+
+### 完成的工作
+- `PROGRESS.md` 删除重复的 `GET /health` 后端功能条目。
+- `PROGRESS.md` 删除重复的 tracing 结构化日志条目。
+- `PROGRESS.md` 将小程序测试状态从 49 tests / 5 suites 更新为 66 tests / 6 suites。
+- `PROGRESS.md` 将小程序覆盖率更新为 99.33% statements / 100% lines / 96.05% branches。
+- `PROGRESS.md` 将“最近完成”标题从会话 #23–24 调整为 #29–43。
+
+### 验证
+- `git diff --check`
+
 ## 2026-06-06 会话 #31：私密模式补齐 + 质量门禁
 
 ### 会话目标
