@@ -1,7 +1,8 @@
 use axum::Router;
+use axum::http::HeaderValue;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 pub mod ai;
 pub mod auth;
@@ -16,7 +17,20 @@ pub mod state;
 use state::AppState;
 
 pub fn create_app(state: AppState) -> Router {
-    let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
+    let origins: Vec<HeaderValue> = state
+        .config
+        .allowed_origins
+        .iter()
+        .filter_map(|o| o.parse::<HeaderValue>().ok())
+        .collect();
+    let cors = if origins.is_empty() {
+        CorsLayer::permissive()
+    } else {
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(origins))
+            .allow_methods(Any)
+            .allow_headers(Any)
+    };
 
     Router::new()
         .route("/health", get(routes::health::health_check))

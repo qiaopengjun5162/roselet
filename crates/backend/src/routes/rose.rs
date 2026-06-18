@@ -29,6 +29,11 @@ pub async fn create_rose(
     let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
         .ok_or(AppError::Auth("请先登录再种花".into()))?;
 
+    let rate_key = format!("plant:{}", user_id);
+    if !state.rate_limiter.check(&rate_key) {
+        return Err(AppError::BadRequest("种花太频繁了，休息一下再来吧".into()));
+    }
+
     let is_private = input.is_private.unwrap_or(false);
 
     // 私有模式配额：每月最多 5 朵

@@ -33,6 +33,10 @@ pub async fn register(
     input.validate().map_err(AppError::BadRequest)?;
 
     let nickname = input.nickname.trim().to_string();
+    let rate_key = format!("register:{}", nickname);
+    if !state.rate_limiter.check(&rate_key) {
+        return Err(AppError::BadRequest("请求太频繁，请稍后再试".into()));
+    }
     let passphrase = input.passphrase.as_deref().map(|p| p.trim()).filter(|p| !p.is_empty());
 
     // 查用户是否已存在

@@ -1,9 +1,12 @@
 use std::env;
 
+#[derive(Clone)]
 pub struct Config {
     pub database_url: String,
     pub port: u16,
     pub jwt_secret: String,
+    pub allowed_origins: Vec<String>,
+    pub is_production: bool,
 }
 
 impl Config {
@@ -18,11 +21,28 @@ impl Config {
             eprintln!("WARNING: JWT_SECRET is too short (< 32 bytes), security risk!");
         }
 
+        let is_production = env::var("NODE_ENV")
+            .map(|v| v == "production")
+            .unwrap_or(false);
+
+        if is_production && jwt_secret == "roselet-dev-secret" {
+            panic!("PRODUCTION SAFETY: JWT_SECRET must be set to a strong random value. Do NOT use the default secret in production.");
+        }
+
+        let allowed_origins = env::var("ALLOWED_ORIGINS")
+            .unwrap_or_else(|_| "http://localhost:3000,http://127.0.0.1:3000".to_string())
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+
         Self {
             database_url: env::var("DATABASE_URL")
                 .unwrap_or_else(|_| "postgres://localhost/roselet".to_string()),
             port: env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(3001),
             jwt_secret,
+            allowed_origins,
+            is_production,
         }
     }
 }
@@ -33,15 +53,18 @@ mod tests {
 
     #[test]
     fn test_from_env_defaults() {
-        // Clear env vars to test defaults
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
         std::env::remove_var("JWT_SECRET");
+        std::env::remove_var("NODE_ENV");
+        std::env::remove_var("ALLOWED_ORIGINS");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://localhost/roselet");
         assert_eq!(config.port, 3001);
         assert_eq!(config.jwt_secret, "roselet-dev-secret");
+        assert!(!config.is_production);
+        assert!(config.allowed_origins.contains(&"http://localhost:3000".to_string()));
     }
 
     #[test]
@@ -49,17 +72,26 @@ mod tests {
         std::env::set_var("DATABASE_URL", "postgres://custom/testdb");
         std::env::set_var("PORT", "8080");
         std::env::set_var("JWT_SECRET", "my-secret-key-with-sufficient-length-32bytes");
+        std::env::set_var("ALLOWED_ORIGINS", "https://roselet.example.com");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://custom/testdb");
         assert_eq!(config.port, 8080);
-        assert_eq!(
-            config.jwt_secret,
-            "my-secret-key-with-sufficient-length-32bytes"
-        );
+        assert_eq!(config.jwt_secret, "my-secret-key-with-sufficient-length-32bytes");
+        assert_eq!(config.allowed_origins, vec!["https://roselet.example.com"]);
 
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
         std::env::remove_var("JWT_SECRET");
+        std::env::remove_var("ALLOWED_ORIGINS");
+    }
+
+    #[test]
+    #[should_panic(expected = "JWT_SECRET must be set")]
+    fn test_production_rejects_default_jwt() {
+        std::env::set_var("NODE_ENV", "production");
+        std::env::remove_var("JWT_SECRET");
+        let _ = Config::from_env();
+        std::env::remove_var("NODE_ENV");
     }
 }

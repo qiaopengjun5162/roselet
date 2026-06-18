@@ -10,14 +10,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let config = Config::from_env();
+    let port = config.port;
     let pool = roselet_backend::db::create_pool(&config.database_url).await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
-    let state = AppState::new(pool, config.jwt_secret);
+    let state = AppState::new(pool, config);
     let app = roselet_backend::create_app(state);
 
-    let addr = format!("0.0.0.0:{}", config.port);
+    let addr = format!("0.0.0.0:{}", port);
     tracing::info!("Roselet backend listening on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;

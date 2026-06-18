@@ -3,6 +3,7 @@ use axum::http::{Request, StatusCode};
 use futures_util::StreamExt;
 use http_body_util::BodyExt;
 use roselet_backend::auth::create_access_token;
+use roselet_backend::config::Config;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -30,7 +31,14 @@ async fn create_test_app() -> (axum::Router, PgPool) {
         .await
         .expect("Failed to clean test data");
 
-    let state = roselet_backend::state::AppState::new(pool.clone(), "test-secret".to_string());
+    let config = Config {
+        database_url: database_url.clone(),
+        port: 3001,
+        jwt_secret: "test-secret".to_string(),
+        allowed_origins: vec!["http://localhost:3000".to_string()],
+        is_production: false,
+    };
+    let state = roselet_backend::state::AppState::new(pool.clone(), config);
     let app = roselet_backend::create_app(state);
     (app, pool)
 }
