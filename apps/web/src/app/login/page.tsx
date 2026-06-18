@@ -6,6 +6,7 @@ import { register, setToken, setRefreshToken, setUser } from "@/lib/api";
 
 function LoginForm() {
   const [nickname, setNickname] = useState("");
+  const [passphrase, setPassphrase] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -20,14 +21,21 @@ function LoginForm() {
     setError("");
 
     try {
-      const res = await register(nickname.trim());
+      const res = await register(nickname.trim(), passphrase || undefined);
       setToken(res.access_token);
       setRefreshToken(res.refresh_token);
       setUser(res.user);
       window.dispatchEvent(new Event("auth-change"));
       router.push(redirect);
-    } catch {
-      setError("昵称已被占用，换一个试试？");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("密码错误")) {
+        setError("密码错误");
+      } else if (msg.includes("已设置密码")) {
+        setError("该昵称已设置密码，请输入密码");
+      } else {
+        setError("登录失败，请重试");
+      }
     } finally {
       setLoading(false);
     }
@@ -51,6 +59,16 @@ function LoginForm() {
               maxLength={50}
               className="w-full px-4 py-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
               autoFocus
+            />
+          </div>
+          <div>
+            <input
+              type="password"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              placeholder="密码（可选，设了更安全）"
+              maxLength={100}
+              className="w-full px-4 py-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
 

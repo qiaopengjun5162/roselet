@@ -90,7 +90,7 @@ describe("PlantPage", () => {
     fireEvent.click(screen.getByText("红玫瑰"));
     fireEvent.click(screen.getByRole("button", { name: "🌹" }));
     // Dialog should appear with textarea
-    const textarea = screen.getByRole("textbox");
+    const textarea = screen.getAllByRole("textbox")[1];
     expect(textarea).toBeInTheDocument();
     expect(screen.getByText("玫瑰")).toBeInTheDocument(); // dialog title
   });
@@ -100,7 +100,7 @@ describe("PlantPage", () => {
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
     fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "感恩测试" } });
+    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "感恩测试" } });
     fireEvent.click(screen.getByText("确定并种下"));
     await waitFor(() => {
       expect(createRose).toHaveBeenCalled();
@@ -114,7 +114,7 @@ describe("PlantPage", () => {
     fireEvent.click(screen.getByText("红玫瑰"));
     fireEvent.click(screen.getByText("🌐 公开分享"));
     fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "私密感恩" } });
+    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "私密感恩" } });
     fireEvent.click(screen.getByText("确定并种下"));
 
     await waitFor(() => {
@@ -130,7 +130,7 @@ describe("PlantPage", () => {
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
     fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "感恩" } });
+    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "感恩" } });
     fireEvent.click(screen.getByText("确定并种下"));
     await waitFor(() => {
       expect(screen.getByText("提交失败，请重试")).toBeInTheDocument();
@@ -149,7 +149,7 @@ describe("PlantPage", () => {
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
     fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "感恩" } });
+    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "感恩" } });
     fireEvent.click(screen.getByText("确定并种下"));
     await waitFor(() => {
       expect(screen.getByText("再种一朵")).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe("PlantPage", () => {
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
     fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "感恩" } });
+    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "感恩" } });
     fireEvent.click(screen.getByText("确定并种下"));
     await waitFor(() => {
       expect(screen.getByText("查看花圃")).toBeInTheDocument();

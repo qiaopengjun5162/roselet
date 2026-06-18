@@ -54,8 +54,10 @@ export default function PlantPage() {
   const [rec, setRec] = useState<Recommendation | null>(null);
   const [recLoading, setRecLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [recipientNickname, setRecipientNickname] = useState("");
 
   const hasContent = gratitude.trim() || anxiety.trim() || hope.trim();
+  const isGift = recipientNickname.trim().length > 0;
 
   // 未登录跳转登录页，登录后跳回种花页
   useEffect(() => {
@@ -127,6 +129,7 @@ export default function PlantPage() {
         anxiety: cleaned ? (cleaned.anxiety || undefined) : (anxiety.trim() || undefined),
         hope: cleaned ? (cleaned.hope || undefined) : (hope.trim() || undefined),
         is_private: isPrivate || undefined,
+        recipient_nickname: recipientNickname.trim() || undefined,
       };
       await createRose(payload);
       playComplete();
@@ -241,6 +244,8 @@ export default function PlantPage() {
                 ai_reply: null,
                 is_private: isPrivate,
                 created_at: new Date().toISOString(),
+                recipient_nickname: recipientNickname.trim() || null,
+                is_gift: recipientNickname.trim().length > 0,
               }}
               autoPlay
               durationMs={12000}
@@ -261,6 +266,7 @@ export default function PlantPage() {
                 setGratitude("");
                 setAnxiety("");
                 setHope("");
+                setRecipientNickname("");
                 setStep("color");
               }}
             >
@@ -340,8 +346,8 @@ export default function PlantPage() {
 
         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
-        {/* Private toggle */}
-        <div className="flex justify-center">
+        {/* Private toggle + Recipient */}
+        <div className="flex flex-col items-center gap-3">
           <button
             type="button"
             onClick={() => setIsPrivate(!isPrivate)}
@@ -353,6 +359,18 @@ export default function PlantPage() {
           >
             {isPrivate ? "🔒 仅自己可见" : "🌐 公开分享"}
           </button>
+
+          {/* Recipient nickname input */}
+          <div className="w-full max-w-xs">
+            <input
+              type="text"
+              value={recipientNickname}
+              onChange={(e) => setRecipientNickname(e.target.value)}
+              placeholder="送给谁？（留空=为自己种花）"
+              maxLength={50}
+              className="w-full rounded-full border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-500 px-4 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-rose-400"
+            />
+          </div>
         </div>
 
         {/* Submit button */}
@@ -362,7 +380,7 @@ export default function PlantPage() {
             onClick={handleSubmit}
             disabled={submitting || !hasContent}
           >
-            {submitting ? "种下中..." : "种下玫瑰吧"}
+            {submitting ? "种下中..." : isGift ? "送出这朵玫瑰吧" : "种下玫瑰吧"}
           </Button>
         </div>
 

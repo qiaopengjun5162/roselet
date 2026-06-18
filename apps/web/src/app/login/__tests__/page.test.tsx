@@ -43,7 +43,7 @@ describe("LoginPage", () => {
     });
     fireEvent.click(screen.getByText("进入花圃"));
     await waitFor(() => {
-      expect(screen.getByText("昵称已被占用，换一个试试？")).toBeInTheDocument();
+      expect(screen.getByText("登录失败，请重试")).toBeInTheDocument();
     });
   });
 
@@ -58,7 +58,7 @@ describe("LoginPage", () => {
     });
     fireEvent.click(screen.getByText("进入花圃"));
     await waitFor(() => {
-      expect(register).toHaveBeenCalledWith("alice");
+      expect(register).toHaveBeenCalledWith("alice", undefined);
     });
   });
 });

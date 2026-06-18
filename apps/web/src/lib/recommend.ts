@@ -16,7 +16,7 @@ interface WasmMod {
   compute_sky_params_wasm: (hour: number) => unknown;
   generate_star_particles_wasm: (count: number, seed: bigint) => unknown;
   build_garden_url: (base_url: string, page: number, per_page: number, color: string) => string;
-  build_plant_body: (color: string, gratitude: string, anxiety: string, hope: string, is_private: boolean) => string;
+  build_plant_body: (color: string, gratitude: string, anxiety: string, hope: string, is_private: boolean, recipient_nickname: string) => string;
   color_emoji: (color: string) => string;
   color_label: (color: string) => string;
   burstFireworks: (cx: number, cy: number, count: number, id_offset: number) => unknown;
@@ -86,11 +86,11 @@ export async function buildGardenUrl(baseUrl: string, page: number, perPage: num
   try { return mod.build_garden_url(baseUrl, page, perPage, color ?? ""); } catch { return `${baseUrl}/api/garden?page=${page}&per_page=${perPage}${color ? `&color=${color}` : ""}`; }
 }
 
-export async function buildPlantBody(color: string, gratitude?: string | null, anxiety?: string | null, hope?: string | null, isPrivate = false): Promise<string> {
+export async function buildPlantBody(color: string, gratitude?: string | null, anxiety?: string | null, hope?: string | null, isPrivate = false, recipientNickname?: string): Promise<string> {
   const mod = await loadWasm();
-  const fallback = () => JSON.stringify({ color, gratitude, anxiety, hope, ...(isPrivate ? { is_private: true } : {}) });
+  const fallback = () => JSON.stringify({ color, gratitude, anxiety, hope, ...(isPrivate ? { is_private: true } : {}), ...(recipientNickname ? { recipient_nickname: recipientNickname } : {}) });
   if (!mod) return fallback();
-  try { return mod.build_plant_body(color, gratitude ?? "", anxiety ?? "", hope ?? "", isPrivate); } catch { return fallback(); }
+  try { return mod.build_plant_body(color, gratitude ?? "", anxiety ?? "", hope ?? "", isPrivate, recipientNickname ?? ""); } catch { return fallback(); }
 }
 
 // 颜色元数据 — 同步调用（WASM 已加载则走 Rust，否则 TS 兜底保证首屏不闪）

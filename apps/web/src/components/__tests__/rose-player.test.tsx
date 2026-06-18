@@ -32,6 +32,8 @@ const rose: Rose = {
   ai_reply: null,
   is_private: false,
   created_at: "2026-01-01T00:00:00Z",
+  recipient_nickname: null,
+  is_gift: false,
 };
 
 const canvasContext = {

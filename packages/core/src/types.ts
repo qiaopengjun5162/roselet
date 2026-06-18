@@ -22,6 +22,8 @@ export interface Rose {
   ai_reply: string | null;
   is_private: boolean;
   created_at: string;
+  recipient_nickname: string | null;
+  is_gift: boolean;
 }
 
 export interface CreateRose {
@@ -30,6 +32,7 @@ export interface CreateRose {
   anxiety?: string;
   hope?: string;
   is_private?: boolean;
+  recipient_nickname?: string;
 }
 
 export interface PaginatedResponse<T> {

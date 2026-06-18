@@ -232,6 +232,7 @@ pub fn build_plant_body(
     anxiety: &str,
     hope: &str,
     is_private: bool,
+    recipient_nickname: &str,
 ) -> String {
     let client = api_client::ApiClient::default();
     client.build_plant_body(
@@ -248,6 +249,11 @@ pub fn build_plant_body(
         },
         if hope.is_empty() { None } else { Some(hope) },
         is_private,
+        if recipient_nickname.is_empty() {
+            None
+        } else {
+            Some(recipient_nickname)
+        },
     )
 }
 

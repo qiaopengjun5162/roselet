@@ -44,8 +44,39 @@ pub async fn create_rose(
         }
     }
 
+    // 处理接收人
+    let recipient_user_id = if let Some(ref nickname) = input.recipient_nickname {
+        let trimmed = nickname.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            let sender_nickname: Option<String> = sqlx::query_scalar(
+                "SELECT nickname FROM users WHERE id = $1",
+            )
+            .bind(user_id)
+            .fetch_optional(&state.pool)
+            .await?;
+
+            // 不能送给自己
+            if sender_nickname.as_deref() == Some(trimmed) {
+                return Err(AppError::BadRequest("花是送人的哦，送给自己直接种花就好".into()));
+            }
+
+            // 查找或创建接收人用户
+            let recipient: (Uuid,) = sqlx::query_as(
+                "INSERT INTO users (nickname) VALUES ($1) ON CONFLICT (nickname) DO UPDATE SET nickname = EXCLUDED.nickname RETURNING id",
+            )
+            .bind(trimmed)
+            .fetch_one(&state.pool)
+            .await?;
+            Some(recipient.0)
+        }
+    } else {
+        None
+    };
+
     let rose = sqlx::query_as::<_, Rose>(
-        "INSERT INTO roses (color, gratitude, anxiety, hope, user_id, is_private) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+        "INSERT INTO roses (color, gratitude, anxiety, hope, user_id, is_private, recipient_nickname, recipient_user_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
     )
     .bind(&input.color)
     .bind(&input.gratitude)
@@ -53,6 +84,8 @@ pub async fn create_rose(
     .bind(&input.hope)
     .bind(user_id)
     .bind(is_private)
+    .bind(input.recipient_nickname.as_deref().map(|n| n.trim()).filter(|n| !n.is_empty()))
+    .bind(recipient_user_id)
     .fetch_one(&state.pool)
     .await?;
 
@@ -102,7 +135,9 @@ pub async fn get_rose(
 
     if rose.is_private {
         let user_id = auth::extract_user_id(&headers, &state.jwt_secret);
-        if user_id != rose.user_id {
+        // 允许创建者和接收人查看私有玫瑰
+        let is_recipient = user_id.is_some() && rose.recipient_user_id.is_some() && user_id == rose.recipient_user_id;
+        if user_id != rose.user_id && !is_recipient {
             return Err(AppError::NotFound);
         }
     }

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roselet 项目分享</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    background: #080e0c;
+    color: #e2e8f0;
+    line-height: 1.6;
+    padding: 2rem;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 {
+    font-family: "STKaiti", "KaiTi", "STXingkai", cursive;
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    text-align: center;
+    margin-bottom: 0.5rem;
+    color: #fbbf24;
+    letter-spacing: 0.04em;
+  }
+  .tagline { text-align: center; color: #94a3b8; margin-bottom: 3rem; font-size: 1.1rem; }
+  .section { margin-bottom: 3rem; }
+  .section h2 {
+    font-family: "STKaiti", "KaiTi", "STXingkai", cursive;
+    color: #e2e8f0;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .section p { margin-bottom: 1rem; color: #94a3b8; }
+  .section img {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 1.5rem;
+  }
+  .footer {
+    text-align: center;
+    color: #64748b;
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .footer a { color: #fb7185; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Roselet</h1>
+<p class="tagline">为社区种一朵玫瑰吧 —— 情绪仪式的数字花圃</p>
+
+<div class="section">
+  <h2>灵感：Rose, Bud, Thorn 破冰游戏</h2>
+  <p>一个经典的团队破冰方法——玫���代表感恩、尖刺代表焦虑、花苞代表期待。把它数字化，让社区在异步时空中持续「情绪破冰」。</p>
+</div>
+
+<div class="section">
+  <h2>第一屏：规则介绍</h2>
+  <p>用户扫码进入，看到规则说明，点击「种一朵玫瑰」。</p>
+  <img src="01-home.png" alt="首页">
+</div>
+
+<div class="section">
+  <h2>第二屏：种花交互</h2>
+  <p>选颜色（红/白/黄），依次填写三种情绪，点击「种下玫瑰吧」。</p>
+  <img src="03-plant.png" alt="种花页">
+</div>
+
+<div class="section">
+  <h2>第三屏：社区花圃</h2>
+  <p>玫瑰种入花圃，各色玫瑰共同生长。AI 后台异步生成个性化回复。</p>
+  <img src="04-garden.png" alt="花圃页">
+</div>
+
+<div class="section">
+  <h2>玫瑰详情</h2>
+  <p>点击任意一朵玫瑰查看详情，编辑/删除/点赞。</p>
+  <img src="05-rose-detail.png" alt="玫瑰详情">
+</div>
+
+<div class="section">
+  <h2>90/10 Rust-TypeScript 架构</h2>
+  <p>全部业务逻辑（情绪分析、推荐引擎、表单校验、状态机、粒子动画）在 Rust WASM 里，TypeScript 只是平台调用层 + 渲染壳。同一份 WASM 跨 Web 和小程序复用。461 个测试，90%+ 覆盖率。</p>
+</div>
+
+<div class="footer">
+  <p>GitHub: <a href="https://github.com/qiaopengjun5162/roselet">github.com/qiaopengjun5162/roselet</a></p>
+  <p>设计系统: <a href="../DESIGN.md">DESIGN.md</a> · 产品愿景: <a href="../PRODUCT.md">PRODUCT.md</a></p>
+</div>
+
+</div>
+</body>
+</html>

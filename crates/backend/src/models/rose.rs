@@ -13,6 +13,8 @@ pub struct Rose {
     pub ai_reply: Option<String>,
     pub is_private: bool,
     pub created_at: DateTime<Utc>,
+    pub recipient_nickname: Option<String>,
+    pub recipient_user_id: Option<Uuid>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -28,10 +30,13 @@ pub struct RoseResponse {
     pub ai_reply: Option<String>,
     pub is_private: bool,
     pub created_at: DateTime<Utc>,
+    pub recipient_nickname: Option<String>,
+    pub is_gift: bool,
 }
 
 impl RoseResponse {
     pub fn from_rose(rose: Rose, nickname: Option<String>, like_count: i64) -> Self {
+        let is_gift = rose.recipient_nickname.is_some();
         Self {
             id: rose.id,
             color: rose.color,
@@ -44,6 +49,8 @@ impl RoseResponse {
             ai_reply: rose.ai_reply,
             is_private: rose.is_private,
             created_at: rose.created_at,
+            recipient_nickname: rose.recipient_nickname,
+            is_gift,
         }
     }
 }
@@ -55,6 +62,7 @@ pub struct CreateRose {
     pub anxiety: Option<String>,
     pub hope: Option<String>,
     pub is_private: Option<bool>,
+    pub recipient_nickname: Option<String>,
 }
 
 impl CreateRose {
@@ -82,6 +90,15 @@ impl CreateRose {
         if let Some(ref text) = self.hope {
             if text.len() > 500 {
                 return Err("Hope text too long (max 500 chars)".to_string());
+            }
+        }
+        if let Some(ref nickname) = self.recipient_nickname {
+            let trimmed = nickname.trim();
+            if trimmed.is_empty() {
+                return Err("Recipient nickname cannot be empty".to_string());
+            }
+            if trimmed.len() > 50 {
+                return Err("Recipient nickname too long (max 50 chars)".to_string());
             }
         }
         Ok(())
@@ -138,6 +155,7 @@ mod tests {
             anxiety: None,
             hope: None,
             is_private: None,
+            recipient_nickname: None,
         };
         assert!(r.validate().is_ok());
     }
@@ -149,6 +167,7 @@ mod tests {
             anxiety: None,
             hope: None,
             is_private: None,
+            recipient_nickname: None,
         };
         assert!(r.validate().is_err());
     }
@@ -160,6 +179,7 @@ mod tests {
             anxiety: None,
             hope: None,
             is_private: None,
+            recipient_nickname: None,
         };
         assert!(r.validate().is_err());
     }
@@ -171,6 +191,7 @@ mod tests {
             anxiety: None,
             hope: None,
             is_private: None,
+            recipient_nickname: None,
         };
         assert!(r.validate().is_ok());
     }
@@ -182,6 +203,7 @@ mod tests {
             anxiety: None,
             hope: None,
             is_private: None,
+            recipient_nickname: None,
         };
         assert!(r.validate().is_err());
     }
@@ -193,6 +215,7 @@ mod tests {
             anxiety: Some("a".repeat(501)),
             hope: None,
             is_private: None,
+            recipient_nickname: None,
         };
         assert!(r.validate().is_err());
     }
@@ -204,6 +227,7 @@ mod tests {
             anxiety: None,
             hope: Some("a".repeat(501)),
             is_private: None,
+            recipient_nickname: None,
         };
         assert!(r.validate().is_err());
     }

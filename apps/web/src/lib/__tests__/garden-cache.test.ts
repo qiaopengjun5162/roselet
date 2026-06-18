@@ -157,6 +157,8 @@ describe("garden-cache", () => {
       ai_reply: null,
       is_private: false,
       created_at: "2026-06-06T00:00:00Z",
+      recipient_nickname: null,
+      is_gift: false,
     };
     const cache = await cacheGardenPage({ data: [rose], total: 1, page: 1, per_page: 20 });
     expect(cache?.roses[0].id).toBe("r1");
@@ -203,6 +205,8 @@ describe("garden-cache", () => {
       ai_reply: null,
       is_private: false,
       created_at: "2026-06-06T00:00:00Z",
+      recipient_nickname: null,
+      is_gift: false,
     };
     await confirmOptimisticGardenRose("temp-1", rose);
     await rejectOptimisticGardenRose("temp-2");

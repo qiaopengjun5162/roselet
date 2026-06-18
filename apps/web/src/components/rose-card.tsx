@@ -59,6 +59,9 @@ export function RoseCard({ rose, showNickname = false }: RoseCardProps) {
           {rose.is_private && (
             <span className="text-xs text-slate-600 ml-auto" title="仅自己可见">🔒</span>
           )}
+          {rose.is_gift && rose.recipient_nickname && (
+            <span className="text-xs text-purple-400/80 ml-auto" title={`送给 ${rose.recipient_nickname}`}>💝 {rose.recipient_nickname}</span>
+          )}
           {showNickname && rose.nickname && (
             <span className="text-xs text-slate-500 ml-auto">@{rose.nickname}</span>
           )}

@@ -10,7 +10,7 @@ interface GlueMod {
   recommend: (json: string) => unknown; analyze_text: (text: string) => unknown;
   compute_layout: (json: string) => unknown; filter_roses: (json: string, f: string) => unknown;
   validate_plant_input: (json: string) => unknown; format_plant_request_wasm: (json: string) => string;
-  build_plant_body: (color: string, gratitude: string, anxiety: string, hope: string, is_private: boolean) => string;
+  build_plant_body: (color: string, gratitude: string, anxiety: string, hope: string, is_private: boolean, recipient_nickname: string) => string;
   parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
   validate_feedback_input: (json: string) => unknown;
   build_optimistic_rose_wasm: (plant_body_json: string, temp_id: string, now_iso: string, nickname: string) => unknown;
@@ -50,6 +50,7 @@ export async function buildPlantBody(input: CreateRose): Promise<string> {
     anxiety: input.anxiety ?? null,
     hope: input.hope ?? null,
     ...(input.is_private ? { is_private: true } : {}),
+    ...(input.recipient_nickname ? { recipient_nickname: input.recipient_nickname } : {}),
   });
   if (!api) await initWasm();
   if (!api) return fallback();
@@ -60,6 +61,7 @@ export async function buildPlantBody(input: CreateRose): Promise<string> {
       input.anxiety ?? '',
       input.hope ?? '',
       input.is_private ?? false,
+      input.recipient_nickname ?? '',
     );
   } catch {
     return fallback();

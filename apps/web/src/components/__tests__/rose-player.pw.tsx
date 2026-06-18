@@ -5,7 +5,7 @@ import type { Rose } from '@/lib/api';
 const mockRose: Rose = {
   id: 'test-1', color: 'red', gratitude: '感谢阳光',
   anxiety: null, hope: null, user_id: 'u1', nickname: 'test',
-  like_count: 3, ai_reply: 'hello', is_private: false, created_at: '2026-06-04T00:00:00Z',
+  like_count: 3, ai_reply: 'hello', is_private: false, created_at: '2026-06-04T00:00:00Z', recipient_nickname: null, is_gift: false,
 };
 
 test.describe('RosePlayer', () => {

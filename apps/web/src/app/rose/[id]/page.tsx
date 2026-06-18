@@ -213,6 +213,18 @@ export default function RoseDetailPage() {
                     <p className="text-base leading-relaxed bg-green-900/20 border border-green-500/20 p-4 rounded-lg text-slate-200">{rose.hope}</p>
                   </div>
                 )}
+                {rose.is_gift && rose.recipient_nickname && (
+                  <div className="space-y-2 pt-4 border-t border-pink-500/20">
+                    <p className="text-sm text-purple-400">
+                      {rose.user_id && user && rose.user_id === user.id
+                        ? `💝 你送给了 ${rose.recipient_nickname}`
+                        : rose.recipient_nickname && user && rose.recipient_nickname === user.nickname
+                          ? `💝 ${rose.nickname || "匿名"} 送给了你`
+                          : `💝 ${rose.nickname || "匿名"} 送给了 ${rose.recipient_nickname}`
+                      }
+                    </p>
+                  </div>
+                )}
                 {rose.ai_reply && (
                   <div className="space-y-2 pt-4 border-t border-white/10">
                     <h3 className="font-medium text-purple-600">AI 回复</h3>

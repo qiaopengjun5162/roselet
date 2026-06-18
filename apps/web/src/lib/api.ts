@@ -97,13 +97,17 @@ export async function refreshAccessToken(): Promise<string | null> {
   return refreshing;
 }
 
-export async function register(nickname: string): Promise<AuthResponse> {
+export async function register(nickname: string, passphrase?: string): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE}/api/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nickname }),
+    body: JSON.stringify({ nickname, passphrase: passphrase || null }),
   });
-  if (!res.ok) throw new Error("Failed to register");
+  if (!res.ok) {
+    let body: { error?: string } = {};
+    try { body = await res.json(); } catch { /* ignore parse errors */ }
+    throw new Error(body.error || "Failed to register");
+  }
   return res.json();
 }
 
@@ -119,6 +123,8 @@ export interface Rose {
   ai_reply: string | null;
   is_private: boolean;
   created_at: string;
+  recipient_nickname: string | null;
+  is_gift: boolean;
 }
 
 export interface CreateRose {
@@ -127,6 +133,7 @@ export interface CreateRose {
   anxiety?: string;
   hope?: string;
   is_private?: boolean;
+  recipient_nickname?: string;
 }
 
 export interface UpdateRose {
@@ -175,6 +182,7 @@ export async function createRose(data: CreateRose): Promise<Rose> {
     data.anxiety ?? null,
     data.hope ?? null,
     data.is_private ?? false,
+    data.recipient_nickname ?? undefined,
   );
   const tempId = await createOptimisticGardenRose(body, getUser()?.nickname ?? "");
 

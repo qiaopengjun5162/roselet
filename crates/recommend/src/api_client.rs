@@ -41,6 +41,7 @@ impl ApiClient {
         anxiety: Option<&str>,
         hope: Option<&str>,
         is_private: bool,
+        recipient_nickname: Option<&str>,
     ) -> String {
         fn is_false(value: &bool) -> bool {
             !*value
@@ -57,6 +58,8 @@ impl ApiClient {
             hope: Option<&'a str>,
             #[serde(skip_serializing_if = "is_false")]
             is_private: bool,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            recipient_nickname: Option<&'a str>,
         }
 
         serde_json::to_string(&PlantBody {
@@ -65,6 +68,7 @@ impl ApiClient {
             anxiety: anxiety.filter(|v| !v.is_empty()),
             hope: hope.filter(|v| !v.is_empty()),
             is_private,
+            recipient_nickname: recipient_nickname.filter(|v| !v.is_empty()),
         })
         .unwrap_or_else(|_| "{\"color\":\"red\"}".to_string())
     }
@@ -121,18 +125,19 @@ mod tests {
     #[test]
     fn test_build_plant_body() {
         let client = ApiClient::default();
-        let body = client.build_plant_body("red", Some("hi"), None, Some("hope"), false);
+        let body = client.build_plant_body("red", Some("hi"), None, Some("hope"), false, None);
         assert!(body.contains("\"color\":\"red\""));
         assert!(body.contains("\"gratitude\":\"hi\""));
         assert!(body.contains("\"hope\":\"hope\""));
         assert!(!body.contains("anxiety"));
         assert!(!body.contains("is_private"));
+        assert!(!body.contains("recipient_nickname"));
     }
 
     #[test]
     fn test_build_plant_body_private() {
         let client = ApiClient::default();
-        let body = client.build_plant_body("white", Some("secret"), None, None, true);
+        let body = client.build_plant_body("white", Some("secret"), None, None, true, None);
         let value: serde_json::Value = serde_json::from_str(&body).unwrap();
         assert_eq!(value["color"], "white");
         assert_eq!(value["gratitude"], "secret");
@@ -142,9 +147,17 @@ mod tests {
     #[test]
     fn test_build_plant_body_escapes_text() {
         let client = ApiClient::default();
-        let body = client.build_plant_body("red", Some("quote\"slash\\"), None, None, false);
+        let body = client.build_plant_body("red", Some("quote\"slash\\"), None, None, false, None);
         let value: serde_json::Value = serde_json::from_str(&body).unwrap();
         assert_eq!(value["gratitude"], "quote\"slash\\");
+    }
+
+    #[test]
+    fn test_build_plant_body_with_recipient() {
+        let client = ApiClient::default();
+        let body = client.build_plant_body("red", Some("感谢"), None, None, false, Some("小红"));
+        let value: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(value["recipient_nickname"], "小红");
     }
 
     #[test]
