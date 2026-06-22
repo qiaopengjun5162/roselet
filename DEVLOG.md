@@ -1931,3 +1931,53 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 待办
 - [ ] Rust WASM 层乐观更新 + IndexedDB 持久化
 - [ ] 小程序真机联调
+
+## 2026-06-17 ~ 2026-06-22 会话 #37：送玫瑰 + 可选密码 + 生产就绪
+
+### 会话目标
+上线前功能补全和生产安全加固。
+
+### 完成的工作
+
+#### 送玫瑰功能（docs/GIFT_ROSE.md）
+- DB 迁移 `009_add_recipient.sql`：roses 表加 `recipient_nickname` + `recipient_user_id`
+- 后端：CreateRose 加 recipient 字段，种花时查/建接收人（ON CONFLICT），不能送自己
+- 后端：`get_rose` 允许接收人查看私密玫瑰
+- 后端：`GET /api/my/roses?view=received` 查看收到的玫瑰
+- WASM：`build_plant_body` 加 recipient_nickname 参数
+- 前端种花页：加「送给谁？」输入框，填了后按钮变「送出这朵玫瑰吧」
+- 前端 RoseCard：显示 💝 礼物标识
+- 前端玫瑰详情页：根据登录者身份显示赠送关系
+
+#### 可选密码（Argon2id）
+- DB 迁移 `010_add_passphrase.sql`：users 表加 `passphrase_hash`
+- 后端：RegisterRequest 加 `passphrase` 可选字段，校验 4-100 字符
+- 后端：三态路由 —— 新用户创建 / 无密码老用户登录（可补设）/ 有密码用户验证
+- 后端：SHA-256 → Argon2id（OWASP 推荐，19MB 内存硬度，防 GPU 爆破）
+- 前端登录页：加「密码（可选，设了更安全）」输入框
+- 保留 SHA-256 用于 refresh token 哈希（UUID 无需内存硬度）
+
+#### 生产就绪（安全加固）
+- CORS：`allow_origin(Any)` → `ALLOWED_ORIGINS` 环境变量控制（默认 localhost）
+- 速率限制：RateLimiter 接入 register + create_rose 路由（30req/60s）
+- JWT 强制：`NODE_ENV=production` 时用默认密钥直接 panic 拒绝启动
+- Config 结构重构：加 `allowed_origins` + `is_production`，存入 AppState
+- docker-compose.yml：加 `NODE_ENV` + `ALLOWED_ORIGINS` 环境变量
+
+#### 文档
+- `docs/PRESENTATION.md`：完整分享讲稿（30秒版 + 详细版）
+- `docs/GIFT_ROSE.md`：送玫瑰功能需求文档
+- `docs/screenshots/`：6 张界面截图 + index.html 可视化预览
+
+#### 退出状态
+- Rust nextest：251 passed
+- Web Jest：146 passed
+- Miniprogram Jest：66 passed
+- 总计：463 passed
+
+### 下一步（新会话）
+- [ ] 部署：选 VPS / Cloudflare Tunnel 方案并执行上线
+- [ ] 小程序微信登录：`wx.login()` + `/api/auth/wechat-login`
+- [ ] 注销账号：软删除 + 30 天冷却期
+- [ ] 真机联调：小程序 AppID 已有，拉起后端验证
+- [ ] 找 5 个真实用户试用

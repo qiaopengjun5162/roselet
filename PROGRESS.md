@@ -122,9 +122,36 @@
 - [x] `routes/feedback.rs`：POST /api/feedback（匿名/登录均可提交，登录用户关联 user_id）
 - [x] `/api/feedback` 后端路由注册 + OpenAPI 文档 + 8 个集成测试
 
+### 送玫瑰功能（会话 #37）
+- [x] `migrations/009_add_recipient.sql`：roses 表加 `recipient_nickname` + `recipient_user_id`
+- [x] CreateRose 加 recipient 字段，种花时查/建接收人，防止送给自己
+- [x] `GET /api/my/roses?view=received` 查看收到的玫瑰
+- [x] get_rose 允许接收人查看私密玫瑰
+- [x] WASM `build_plant_body` 支持 recipient_nickname
+- [x] 前端种花页加「送给谁？」输入框，按钮文案联动
+- [x] RoseCard + 详情页显示赠送关系
+
+### 可选密码 + 生产安全加固（会话 #37）
+- [x] `migrations/010_add_passphrase.sql`：users 表加 `passphrase_hash`
+- [x] 三态认证路由：新用户 / 无密码老用户 / 有密码验证
+- [x] 密码哈希：SHA-256 → Argon2id（OWASP 推荐，内存硬度防 GPU 爆破）
+- [x] CORS：`AllowOrigin` 改为 `ALLOWED_ORIGINS` 环境变量
+- [x] 速率限制：接入 register + create_rose 路由
+- [x] JWT 强制：生产环境用默认密钥拒绝启动
+- [x] docker-compose.yml 加 `NODE_ENV` + `ALLOWED_ORIGINS`
+
+### 文档
+- [x] `docs/PRESENTATION.md`：分享讲稿
+- [x] `docs/GIFT_ROSE.md`：送玫瑰需求文档
+- [x] `docs/screenshots/`：6 张界面截图
+
 ## 待办
 
-- [ ] **小程序真机联调**：AppID 已有，需拉起后端验证双令牌 + WASM 花瓣
+- [ ] **部署上线**：选 VPS / Cloudflare Tunnel 方案，Web 端先上
+- [ ] **小程序微信登录**：`wx.login()` → `/api/auth/wechat-login`，零成本
+- [ ] **注销账号**：软删除 + 30 天冷却期，过期后用户名匿名化、玫瑰保留
+- [ ] **真机联调**：AppID 已有，拉起后端验证双令牌 + WASM 花瓣
+- [ ] **找 5 个真实用户试用**
 - [ ] **多语言 Spike**：若试用反馈需要英文，再按 `docs/I18N_STRATEGY.md` 从 Rust `Locale` + WASM 文案映射开始
 - [ ] Web3 功能（已设计，待实现）
   - Ethereum Solidity + Solana Anchor 双链，ChainAdapter trait
