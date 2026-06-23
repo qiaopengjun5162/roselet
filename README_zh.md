@@ -54,6 +54,17 @@ Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的"玫瑰、
 
 详细见 [docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md](docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md)。
 
+### 当前最低成本推荐
+
+如果以“最快上线 + 最少改造 + 充分利用免费资源”为目标，当前更推荐：
+
+1. 主应用 Web：`Vercel`
+2. 后端：保留现有 Rust 服务
+3. 数据库：保留现有 PostgreSQL
+4. 文档/介绍页：`GitHub Pages`
+
+详细对比见 [docs/DEPLOYMENT_OPTIONS_COMPARISON.md](docs/DEPLOYMENT_OPTIONS_COMPARISON.md)。
+
 ## 游戏规则
 
 | 图标 | 名称 | 含义 |

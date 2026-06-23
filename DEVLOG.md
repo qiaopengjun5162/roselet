@@ -2104,3 +2104,48 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - [ ] 继续细化 Web-first 的 Cloudflare 部署执行清单
 - [ ] 产出第一版配置草案
 - [ ] 明确 v1 / v2 部署边界
+
+## 2026-06-23 会话 #47：部署平台横向对比
+
+### 会话目标
+把 Cloudflare、Vercel、GitHub Pages 等可利用的免费/低成本资源放到一起比较，给出当前阶段综合成本最低的推荐方案。
+
+### 完成的工作
+
+#### 新增部署对比文档
+- 新增 `docs/DEPLOYMENT_OPTIONS_COMPARISON.md`
+- 从以下维度对比：
+  - 适配度
+  - 平台直接成本
+  - 工程改造成本
+  - 上线速度
+
+#### 当前结论
+- GitHub Pages：
+  - 适合文档页、介绍页、landing page
+  - 不适合当前主应用
+- Vercel：
+  - 对当前 Next.js Web 层最友好
+  - 改造最少，最适合先拿到线上可访问版本
+- Cloudflare：
+  - 长期潜力很好
+  - 但当前 Rust Axum 后端迁移成本更高，不是最低综合成本路线
+
+#### 当前推荐组合
+- `Vercel + Rust backend + PostgreSQL + GitHub Pages`
+
+#### 文档同步
+- `PROGRESS.md` 增加“当前最低成本部署判断”
+- `README_zh.md` 增加最低成本推荐入口
+
+### 当前判断
+- 如果目标是“最快拿到真实可访问版本”，当前最值得优先做的是先把 Web 放到 Vercel
+- Cloudflare 更像后续的 v2 / 中长期架构优化方向，而不是当前最小成本上线方案
+
+### 验证
+- 人工检查 `docs/DEPLOYMENT_OPTIONS_COMPARISON.md`、`PROGRESS.md`、`README_zh.md` 结论一致
+
+### 下一步
+- [ ] 开始整理 Vercel Web 部署执行清单
+- [ ] 明确后端临时部署方案
+- [ ] 决定 GitHub Pages 是否用于项目介绍页/文档页

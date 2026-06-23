@@ -85,6 +85,11 @@
 - 当前结论：`可以部署，但推荐 Web 先上 Cloudflare，后端分阶段迁移`
 - 详细路线图：`docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md`
 
+### 当前最低成本部署判断
+
+- 当前推荐：`Vercel + Rust backend + PostgreSQL + GitHub Pages`
+- 对比文档：`docs/DEPLOYMENT_OPTIONS_COMPARISON.md`
+
 ## 已完成
 
 ### 基础架构
