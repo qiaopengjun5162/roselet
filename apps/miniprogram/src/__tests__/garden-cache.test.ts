@@ -39,6 +39,8 @@ const rose = {
   like_count: 0,
   ai_reply: null,
   is_private: false,
+  recipient_nickname: null,
+  is_gift: false,
   created_at: '2026-06-06T00:00:00Z',
 };
 

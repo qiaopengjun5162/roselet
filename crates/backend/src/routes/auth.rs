@@ -66,7 +66,6 @@ pub async fn register(
             if auth::deletion_is_restorable(deleted_at, Utc::now()) {
                 if let Some(stored_hash) = passphrase_hash {
                     let is_valid = passphrase
-                        .as_deref()
                         .map(|p| verify_passphrase(p, &stored_hash))
                         .unwrap_or(false);
                     if !is_valid {
@@ -100,7 +99,7 @@ pub async fn register(
             } else {
                 auth::finalize_deleted_user(&state.pool, id).await?;
 
-                let hash = passphrase.as_deref().map(hash_passphrase);
+                let hash = passphrase.map(hash_passphrase);
                 sqlx::query_as::<_, User>(
                     "INSERT INTO users (nickname, passphrase_hash) VALUES ($1, $2) RETURNING *",
                 )
@@ -117,7 +116,6 @@ pub async fn register(
             deleted_at: None,
         }) => {
             let is_valid = passphrase
-                .as_deref()
                 .map(|p| verify_passphrase(p, &stored_hash))
                 .unwrap_or(false);
             if !is_valid {
@@ -141,7 +139,7 @@ pub async fn register(
             passphrase_hash: None,
             deleted_at: None,
         }) => {
-            if let Some(ref p) = passphrase {
+            if let Some(p) = passphrase {
                 sqlx::query("UPDATE users SET passphrase_hash = $1 WHERE id = $2")
                     .bind(hash_passphrase(p))
                     .bind(id)
@@ -155,7 +153,7 @@ pub async fn register(
         }
         // 新用户
         None => {
-            let hash = passphrase.as_deref().map(hash_passphrase);
+            let hash = passphrase.map(hash_passphrase);
             sqlx::query_as::<_, User>(
                 "INSERT INTO users (nickname, passphrase_hash) VALUES ($1, $2) RETURNING *",
             )
