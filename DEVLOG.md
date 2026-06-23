@@ -2261,3 +2261,39 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - [ ] 实际登录 Neon / Render / Vercel
 - [ ] 创建免费资源并回填环境变量
 - [ ] 开始真正部署
+
+## 2026-06-23 会话 #51：Neon 连通性验证 + SQLx TLS 修复
+
+### 会话目标
+在真正部署前，先确认 Neon 数据库不是“拿到连接串但实际上连不上”，并修掉当前后端连接托管 Postgres 的 TLS 阻塞。
+
+### 完成的工作
+
+#### Neon 连通性验证
+- 使用用户提供的 Neon `DATABASE_URL` 对远端数据库执行迁移
+- 11 个 SQLx migration 全部成功应用到 Neon
+
+#### SQLx TLS 修复
+- `crates/backend/Cargo.toml`
+  - `sqlx` feature 从 `runtime-tokio` 改为 `runtime-tokio-rustls`
+- 原因：
+  - Neon 强制 TLS
+  - 当前后端使用 `sqlx::query!` / `query_scalar!` 宏，编译期也会尝试连库
+  - 只开 `runtime-tokio` 时会报：
+    - `TLS upgrade required by connect options but SQLx was built without TLS support enabled`
+
+#### 文档同步
+- `CLAUDE.md` 记录“托管 Postgres 需要 sqlx rustls runtime”这个非显然约束
+
+### 验证
+- `env DATABASE_URL='<Neon URL>' ~/.cargo/bin/sqlx migrate run --source crates/backend/migrations`
+- `cargo check -p roselet-backend`
+
+### 当前判断
+- Neon 数据库这一步已经真正打通，不再只是“理论可用”
+- 当前免费部署主线已经推进到：数据库可用，后端依赖也已适配 TLS
+
+### 下一步
+- [ ] 提交 SQLx TLS 修复
+- [ ] 开始准备 Render 后端实际部署
+- [ ] 开始准备 Vercel 前端环境变量回填
