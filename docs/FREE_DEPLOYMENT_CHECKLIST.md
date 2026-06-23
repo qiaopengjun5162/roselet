@@ -10,6 +10,10 @@
 3. 再部署前端 `Vercel`
 4. 最后决定要不要加 `GitHub Pages` 介绍页
 
+配变量时可直接参考：
+
+- [docs/DEPLOYMENT_ENV_TEMPLATE.md](docs/DEPLOYMENT_ENV_TEMPLATE.md)
+
 ---
 
 ## 0. 上线前先确认
@@ -60,6 +64,7 @@
 - 当前仓库已经有 Docker 化路径
 - 比直接在 Render 上手搓 Rust 构建命令更稳
 - 更接近本地已有部署模型
+- 仓库已补 `render.yaml`，可作为 Render Blueprint/配置参考
 
 ### Render 上需要配置
 
@@ -114,6 +119,7 @@ Render 需要设置这些：
 
 - [ ] 导入 GitHub 仓库
 - [ ] Root Directory 选择 `apps/web`
+- [ ] 仓库根目录已补 `vercel.json`，可作为默认构建配置参考
 
 ### Build 配置
 

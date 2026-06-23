@@ -2224,3 +2224,40 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - [ ] 开始按清单实际部署 Neon / Render / Vercel
 - [ ] 优先验证 Vercel WASM 构建
 - [ ] 优先验证 Render WebSocket 可用性
+
+## 2026-06-23 会话 #50：部署配置入仓
+
+### 会话目标
+在真正连平台账号前，先把 Render / Vercel 所需的仓库内配置补齐，减少后续部署时的手工配置量。
+
+### 完成的工作
+
+#### 平台配置文件
+- 新增 `render.yaml`
+  - 预设 `roselet-backend` Web Service
+  - 默认使用 `Dockerfile.backend`
+  - 预设健康检查和环境变量键
+- 新增 `vercel.json`
+  - 预设 `pnpm install` / `pnpm build`
+  - 声明 `nextjs` framework
+
+#### 环境变量示例
+- 更新 `.env.example`
+  - 补 `ALLOWED_ORIGINS`
+  - 补 `NEXT_PUBLIC_WS_URL`
+  - 将默认模型调整为 `gpt-4o-mini`
+
+#### 文档同步
+- `docs/FREE_DEPLOYMENT_CHECKLIST.md` 补充 `render.yaml` / `vercel.json` 已存在的说明
+
+### 当前判断
+- 仓库已经从“有部署想法”推进到“平台登录后可以直接接入”
+- 当前真正缺的已经不是代码，而是平台账号与实际资源创建
+
+### 验证
+- 人工检查 `render.yaml`、`vercel.json`、`.env.example` 与部署清单一致
+
+### 下一步
+- [ ] 实际登录 Neon / Render / Vercel
+- [ ] 创建免费资源并回填环境变量
+- [ ] 开始真正部署

@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: roselet-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.backend
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PORT
+        value: "3001"
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: RUST_LOG
+        value: roselet=info
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
