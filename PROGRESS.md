@@ -94,6 +94,7 @@
 
 - 当前推荐：`Vercel Hobby + Render Free + Neon Free + GitHub Pages`
 - 详细方案：`docs/FREE_DEPLOYMENT_PLAN.md`
+- 执行清单：`docs/FREE_DEPLOYMENT_CHECKLIST.md`
 
 ## 已完成
 

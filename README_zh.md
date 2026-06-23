@@ -76,6 +76,10 @@ Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的"玫瑰、
 
 详细见 [docs/FREE_DEPLOYMENT_PLAN.md](docs/FREE_DEPLOYMENT_PLAN.md)。
 
+如果要直接开干，按这份清单走：
+
+- [docs/FREE_DEPLOYMENT_CHECKLIST.md](docs/FREE_DEPLOYMENT_CHECKLIST.md)
+
 ## 游戏规则
 
 | 图标 | 名称 | 含义 |
