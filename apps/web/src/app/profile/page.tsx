@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getToken, getUserProfile, type UserProfile } from "@/lib/api";
+import { deactivateAccount, getToken, getUserProfile, type UserProfile } from "@/lib/api";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deactivating, setDeactivating] = useState(false);
+  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
 
@@ -66,6 +68,12 @@ export default function ProfilePage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
+            {notice ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                {notice}
+              </div>
+            ) : null}
+
             <div className="text-center py-4">
               <p className="text-5xl font-bold text-rose-600">{profile.total_roses}</p>
               <p className="text-muted-foreground">朵玫瑰</p>
@@ -96,6 +104,39 @@ export default function ProfilePage() {
               <Link href="/plant">
                 <Button className="bg-rose-500 hover:bg-rose-600">种一朵玫瑰</Button>
               </Link>
+            </div>
+
+            <div className="rounded-xl border border-red-200 bg-red-50/80 p-4 space-y-3">
+              <div className="space-y-1">
+                <h2 className="text-sm font-semibold text-red-700">注销账号</h2>
+                <p className="text-sm text-red-900/80">
+                  注销后会立即退出登录，30 天内可用原昵称重新登录恢复账号；过期后昵称会被释放，已种下的玫瑰会保留但昵称匿名化。
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-100"
+                disabled={deactivating}
+                onClick={async () => {
+                  if (!window.confirm("确认注销账号吗？30 天内可用原昵称恢复。")) return;
+                  setDeactivating(true);
+                  setError("");
+                  setNotice("");
+                  try {
+                    const result = await deactivateAccount("user_requested");
+                    setNotice(
+                      `账号已进入冷却期，可在 ${new Date(result.restore_deadline).toLocaleDateString("zh-CN")} 前恢复。`,
+                    );
+                    router.push("/login");
+                  } catch {
+                    setError("注销失败，请稍后再试");
+                  } finally {
+                    setDeactivating(false);
+                  }
+                }}
+              >
+                {deactivating ? "注销中..." : "注销账号"}
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -21,12 +21,12 @@ impl Config {
             eprintln!("WARNING: JWT_SECRET is too short (< 32 bytes), security risk!");
         }
 
-        let is_production = env::var("NODE_ENV")
-            .map(|v| v == "production")
-            .unwrap_or(false);
+        let is_production = env::var("NODE_ENV").map(|v| v == "production").unwrap_or(false);
 
         if is_production && jwt_secret == "roselet-dev-secret" {
-            panic!("PRODUCTION SAFETY: JWT_SECRET must be set to a strong random value. Do NOT use the default secret in production.");
+            panic!(
+                "PRODUCTION SAFETY: JWT_SECRET must be set to a strong random value. Do NOT use the default secret in production."
+            );
         }
 
         let allowed_origins = env::var("ALLOWED_ORIGINS")
@@ -77,7 +77,10 @@ mod tests {
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://custom/testdb");
         assert_eq!(config.port, 8080);
-        assert_eq!(config.jwt_secret, "my-secret-key-with-sufficient-length-32bytes");
+        assert_eq!(
+            config.jwt_secret,
+            "my-secret-key-with-sufficient-length-32bytes"
+        );
         assert_eq!(config.allowed_origins, vec!["https://roselet.example.com"]);
 
         std::env::remove_var("DATABASE_URL");

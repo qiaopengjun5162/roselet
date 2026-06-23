@@ -8,11 +8,13 @@ jest.mock("next/navigation", () => ({
 }));
 
 jest.mock("@/lib/api", () => ({
+  deactivateAccount: jest.fn(),
   getUserProfile: jest.fn(),
   getToken: jest.fn().mockReturnValue("jwt-token"),
 }));
 
-const { getUserProfile, getToken } = require("@/lib/api") as {
+const { deactivateAccount, getUserProfile, getToken } = require("@/lib/api") as {
+  deactivateAccount: jest.Mock;
   getUserProfile: jest.Mock;
   getToken: jest.Mock;
 };
@@ -20,7 +22,10 @@ const { getUserProfile, getToken } = require("@/lib/api") as {
 import ProfilePage from "../page";
 
 describe("ProfilePage", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    window.confirm = jest.fn().mockReturnValue(true);
+  });
 
   it("should show loading state", () => {
     getToken.mockReturnValue("jwt-token");
@@ -58,6 +63,31 @@ describe("ProfilePage", () => {
     getUserProfile.mockRejectedValue(new Error("auth failed"));
     render(<ProfilePage />);
     await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/login");
+    });
+  });
+
+  it("should deactivate account and redirect to login", async () => {
+    getToken.mockReturnValue("jwt-token");
+    getUserProfile.mockResolvedValue({
+      user: { id: "u1", nickname: "alice", created_at: "2026-01-01" },
+      total_roses: 5,
+      red_count: 2,
+      white_count: 2,
+      yellow_count: 1,
+    });
+    deactivateAccount.mockResolvedValue({
+      success: true,
+      restore_deadline: "2026-07-23T00:00:00Z",
+    });
+
+    render(<ProfilePage />);
+
+    const button = await screen.findByRole("button", { name: "注销账号" });
+    button.click();
+
+    await waitFor(() => {
+      expect(deactivateAccount).toHaveBeenCalledWith("user_requested");
       expect(mockPush).toHaveBeenCalledWith("/login");
     });
   });

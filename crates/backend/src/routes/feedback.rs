@@ -32,7 +32,8 @@ pub async fn submit_feedback(
         return Err(AppError::BadRequest("反馈内容不超过 500 字".into()));
     }
 
-    let user_id: Option<Uuid> = auth::extract_user_id(&headers, &state.jwt_secret);
+    let user_id: Option<Uuid> =
+        auth::get_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
 
     let id = sqlx::query_scalar!(
         "INSERT INTO feedbacks (user_id, content) VALUES ($1, $2) RETURNING id",

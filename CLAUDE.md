@@ -39,6 +39,7 @@ roselet/
 
 认证：双令牌 (Access 15min + Refresh 30天，DB 存 SHA-256 哈希)，令牌桶限流 30req/60s。
 Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请求重试。
+账号注销：软删除 + 30 天冷却期；冷却期内同昵称登录恢复原账号，过期后旧账号昵称匿名化并释放。
 
 ## 测试状态
 ```
@@ -102,6 +103,8 @@ Quality gates:
 - **AIMonkey**：云测 AI Monkey 会生成可回放 Minium 代码；不支持智能化 Monkey 的前置步骤，固定账号状态优先用测试账号或 Minium 自定义用例
 - **AI 自定义测试**：适合把明确业务路径写成自然语言用例；成功结果仍需人工核对报告截图和生成的 Minium 代码，再沉淀为确定性回归
 - **认证状态码语义**：缺 token / token 过期 / token 无效返回 401，让前端触发静默刷新；已认证但 owner 不匹配才返回 403/404
+- **账号软删除**：所有需要登录身份的后端路由都必须校验 `users.deleted_at IS NULL`；否则旧 access token 在 15 分钟有效期内会继续操作已注销账号
+- **注销撤销 token**：Web 端 `/api/auth/logout` 发送的是 refresh token，后端不能只按 access token 解析，必须支持按 refresh token 哈希撤销
 - **i18n 不要前端分叉**：当前不做完整双语；后续若加中英文，先加 Rust `Locale` 和 WASM 本地化表，再让 Web / 小程序读取同一套结果
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 
@@ -134,6 +137,7 @@ just miniprogram-build # 小程序生产构建
 POST   /api/auth/register  # 用户注册 → 201, 返回 access_token(15min) + refresh_token(30d)
 POST   /api/auth/refresh   # 刷新 Access Token
 POST   /api/auth/logout    # 注销（撤销 Refresh Token）
+POST   /api/auth/deactivate # 注销账号（软删除 + 30 天冷却期）
 GET    /health             # 健康检查（数据库连接 + 版本信息）
 POST   /api/rose           # 种一朵玫瑰（后台异步生成 AI 回复）→ 201 Created
 PUT    /api/rose/:id       # 编辑玫瑰（仅 owner）

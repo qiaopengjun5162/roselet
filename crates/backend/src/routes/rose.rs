@@ -11,7 +11,7 @@ use crate::state::AppState;
 
 async fn lookup_nickname(pool: &PgPool, user_id: Option<Uuid>) -> Option<String> {
     let uid = user_id?;
-    sqlx::query_scalar("SELECT nickname FROM users WHERE id = $1")
+    sqlx::query_scalar("SELECT nickname FROM users WHERE id = $1 AND deleted_at IS NULL")
         .bind(uid)
         .fetch_optional(pool)
         .await
@@ -26,8 +26,12 @@ pub async fn create_rose(
 ) -> Result<(StatusCode, Json<RoseResponse>), AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
-    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
-        .ok_or(AppError::Auth("请先登录再种花".into()))?;
+    let user_id = match auth::require_active_user_id(&state.pool, &headers, &state.jwt_secret).await
+    {
+        Ok(user_id) => user_id,
+        Err(AppError::Auth(_)) => return Err(AppError::Auth("请先登录再种花".into())),
+        Err(other) => return Err(other),
+    };
 
     let rate_key = format!("plant:{}", user_id);
     if !state.rate_limiter.check(&rate_key) {
@@ -56,7 +60,7 @@ pub async fn create_rose(
             None
         } else {
             let sender_nickname: Option<String> = sqlx::query_scalar(
-                "SELECT nickname FROM users WHERE id = $1",
+                "SELECT nickname FROM users WHERE id = $1 AND deleted_at IS NULL",
             )
             .bind(user_id)
             .fetch_optional(&state.pool)
@@ -64,17 +68,55 @@ pub async fn create_rose(
 
             // 不能送给自己
             if sender_nickname.as_deref() == Some(trimmed) {
-                return Err(AppError::BadRequest("花是送人的哦，送给自己直接种花就好".into()));
+                return Err(AppError::BadRequest(
+                    "花是送人的哦，送给自己直接种花就好".into(),
+                ));
             }
 
             // 查找或创建接收人用户
-            let recipient: (Uuid,) = sqlx::query_as(
-                "INSERT INTO users (nickname) VALUES ($1) ON CONFLICT (nickname) DO UPDATE SET nickname = EXCLUDED.nickname RETURNING id",
+            #[derive(sqlx::FromRow)]
+            struct RecipientUser {
+                id: Uuid,
+                deleted_at: Option<chrono::DateTime<chrono::Utc>>,
+            }
+
+            let recipient = sqlx::query_as::<_, RecipientUser>(
+                "SELECT id, deleted_at FROM users WHERE nickname = $1 LIMIT 1",
             )
             .bind(trimmed)
-            .fetch_one(&state.pool)
+            .fetch_optional(&state.pool)
             .await?;
-            Some(recipient.0)
+
+            match recipient {
+                Some(RecipientUser {
+                    id,
+                    deleted_at: Some(deleted_at),
+                }) => {
+                    if auth::deletion_is_restorable(deleted_at, chrono::Utc::now()) {
+                        Some(id)
+                    } else {
+                        auth::finalize_deleted_user(&state.pool, id).await?;
+                        let created: (Uuid,) =
+                            sqlx::query_as("INSERT INTO users (nickname) VALUES ($1) RETURNING id")
+                                .bind(trimmed)
+                                .fetch_one(&state.pool)
+                                .await?;
+                        Some(created.0)
+                    }
+                }
+                Some(RecipientUser {
+                    id,
+                    deleted_at: None,
+                }) => Some(id),
+                None => {
+                    let created: (Uuid,) =
+                        sqlx::query_as("INSERT INTO users (nickname) VALUES ($1) RETURNING id")
+                            .bind(trimmed)
+                            .fetch_one(&state.pool)
+                            .await?;
+                    Some(created.0)
+                }
+            }
         }
     } else {
         None
@@ -139,9 +181,11 @@ pub async fn get_rose(
         .ok_or(AppError::NotFound)?;
 
     if rose.is_private {
-        let user_id = auth::extract_user_id(&headers, &state.jwt_secret);
+        let user_id = auth::get_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
         // 允许创建者和接收人查看私有玫瑰
-        let is_recipient = user_id.is_some() && rose.recipient_user_id.is_some() && user_id == rose.recipient_user_id;
+        let is_recipient = user_id.is_some()
+            && rose.recipient_user_id.is_some()
+            && user_id == rose.recipient_user_id;
         if user_id != rose.user_id && !is_recipient {
             return Err(AppError::NotFound);
         }
@@ -164,8 +208,7 @@ pub async fn update_rose(
 ) -> Result<Json<RoseResponse>, AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
-    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
-        .ok_or_else(|| AppError::Auth("missing or invalid token".into()))?;
+    let user_id = auth::require_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
 
     let existing = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
         .bind(id)
@@ -216,8 +259,7 @@ pub async fn delete_rose(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<(), AppError> {
-    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
-        .ok_or_else(|| AppError::Auth("missing or invalid token".into()))?;
+    let user_id = auth::require_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
 
     let existing = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
         .bind(id)

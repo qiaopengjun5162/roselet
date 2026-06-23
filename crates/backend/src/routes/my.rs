@@ -23,8 +23,7 @@ pub async fn get_my_roses(
     headers: HeaderMap,
     Query(query): Query<MyRosesQuery>,
 ) -> Result<Json<PaginatedResponse<RoseResponse>>, AppError> {
-    let user_id = auth::extract_user_id(&headers, &state.jwt_secret)
-        .ok_or_else(|| AppError::Auth("missing or invalid token".into()))?;
+    let user_id = auth::require_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
 
     let pagination = Pagination {
         page: query.page,
@@ -35,12 +34,11 @@ pub async fn get_my_roses(
 
     let (total, roses) = if is_received {
         // 别人送给我的玫瑰
-        let total: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM roses WHERE recipient_user_id = $1",
-        )
-        .bind(user_id)
-        .fetch_one(&state.pool)
-        .await?;
+        let total: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM roses WHERE recipient_user_id = $1")
+                .bind(user_id)
+                .fetch_one(&state.pool)
+                .await?;
 
         let roses = sqlx::query_as::<_, Rose>(
             "SELECT * FROM roses WHERE recipient_user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3",

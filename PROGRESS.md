@@ -17,6 +17,7 @@
 - [x] PUT /api/rose/:id - 编辑玫瑰（仅创建者）
 - [x] DELETE /api/rose/:id - 删除玫瑰（仅创建者）
 - [x] POST /api/auth/register - 用户注册（JWT）
+- [x] POST /api/auth/deactivate - 注销账号（软删除 + 30 天冷却期恢复）
 - [x] GET /api/my/roses - 获取个人花圃（需 JWT，分页）
 - [x] GET /api/user/profile - 用户资料 + 种花统计（需 JWT）
 - [x] POST /api/rose/:id/like - 点赞/取消点赞（需 JWT）
@@ -36,9 +37,11 @@
 - [x] 花圃页：分页加载 + 卡片展示 + WebSocket 实时更新 + 颜色筛选
 - [x] 玫瑰详情页：/rose/[id] + 编辑/删除（owner）+ 点赞 + AI 回复展示
 - [x] 登录页：昵称注册 + JWT 存储
+- [x] 登录页：支持冷却期账号恢复提示
 - [x] 导航栏：登录状态 + 昵称显示 + 登出 + 我的花圃 + 资料链接
 - [x] 个人花圃页：/my + 只显示自己的玫瑰
 - [x] 用户资料页：/profile + 种花统计
+- [x] 资料页：注销账号入口 + 冷却期说明
 - [x] 关于页：/about + /health 状态 + 帮助折叠 + 反馈表单 + 联系方式
 - [x] 音效系统（Tone.js）：种植/点赞/通知/背景音乐 + 静音切换（默认开启）
 - [x] 响应式布局

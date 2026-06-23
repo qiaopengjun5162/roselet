@@ -1512,12 +1512,12 @@ async fn test_refresh_after_logout() {
 async fn test_logout_success() {
     let base = spawn_test_server().await;
     let auth = register_user(&base, "logout-test").await;
-    let access_token = auth["access_token"].as_str().unwrap();
+    let refresh_token = auth["refresh_token"].as_str().unwrap();
 
     let client = reqwest::Client::new();
     let res = client
         .post(format!("{}/api/auth/logout", base))
-        .header("Authorization", format!("Bearer {}", access_token))
+        .header("Authorization", format!("Bearer {}", refresh_token))
         .send()
         .await
         .unwrap();
@@ -1547,6 +1547,108 @@ async fn test_logout_expired_token() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_deactivate_account_revokes_access_and_hides_profile() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "deactivate-me").await;
+    let access_token = auth["access_token"].as_str().unwrap();
+    let refresh_token = auth["refresh_token"].as_str().unwrap();
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{}/api/auth/deactivate", base))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .json(&json!({ "reason": "user_requested" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["success"], true);
+    assert!(body["restore_deadline"].as_str().is_some());
+
+    let profile_res = client
+        .get(format!("{}/api/user/profile", base))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(profile_res.status(), StatusCode::UNAUTHORIZED);
+
+    let refresh_res = client
+        .post(format!("{}/api/auth/refresh", base))
+        .json(&json!({ "refresh_token": refresh_token }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(refresh_res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_register_restores_deleted_user_within_cooldown() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "phoenix").await;
+    let user_id = auth["user"]["id"].as_str().unwrap().to_string();
+    let access_token = auth["access_token"].as_str().unwrap();
+
+    let client = reqwest::Client::new();
+    let deactivate = client
+        .post(format!("{}/api/auth/deactivate", base))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .json(&json!({ "reason": "user_requested" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(deactivate.status(), StatusCode::OK);
+
+    let restored = client
+        .post(format!("{}/api/auth/register", base))
+        .json(&json!({ "nickname": "phoenix" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(restored.status(), StatusCode::CREATED);
+    let body: Value = restored.json().await.unwrap();
+    assert_eq!(body["user"]["id"], user_id);
+    assert!(body["user"]["deleted_at"].is_null());
+}
+
+#[tokio::test]
+async fn test_register_creates_new_user_after_cooldown_finalization() {
+    let (app, pool) = create_test_app().await;
+    let old_id: Uuid = sqlx::query_scalar("INSERT INTO users (nickname, deleted_at) VALUES ($1, now() - interval '31 days') RETURNING id")
+        .bind("expired-user")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/auth/register")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&json!({ "nickname": "expired-user" })).unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let auth: Value = serde_json::from_slice(&body).unwrap();
+    let new_id = Uuid::parse_str(auth["user"]["id"].as_str().unwrap()).unwrap();
+    assert_ne!(new_id, old_id);
+
+    let renamed: String = sqlx::query_scalar("SELECT nickname FROM users WHERE id = $1")
+        .bind(old_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert!(renamed.starts_with("匿名用户-"));
 }
 
 // ── Health / Swagger / OpenAPI 集成测试 ──

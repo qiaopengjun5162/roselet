@@ -204,6 +204,29 @@ NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-f
 
 通用规则：跨端离线能力要区分“存在哪里”和“如何合并”；前者属于宿主平台，后者属于可测试的核心业务层。
 
+### 20. 账号软删除不能只打时间戳
+
+问题：如果只给用户表加 `deleted_at`，但认证路由仍只信 JWT，自带 15 分钟有效期的旧 access token 还能继续种花、点赞、查看个人资料；另外，冷却期结束后如果直接重用原昵称，也会和唯一约束、赠送关系、历史玫瑰归属语义打架。
+
+解决：
+- 所有需要登录态的后端路由统一改用“活跃用户”校验：JWT 解析成功后，还要确认 `users.deleted_at IS NULL`。
+- `POST /api/auth/deactivate` 只做软删除并撤销 refresh token。
+- 冷却期内同昵称重新注册时恢复原账号；超过 30 天先把旧账号昵称匿名化，再释放昵称给新账号。
+- 送礼查接收人时也要识别冷却期账号，避免把同昵称误插成第二个用户。
+
+通用规则：账号注销是身份生命周期问题，不只是用户表字段变更；认证链路、昵称唯一性、关联数据保留策略必须一起设计。
+
+### 21. 登出接口要和客户端携带的 token 类型一致
+
+问题：前端为了不依赖短生命周期 access token，常会直接用 refresh token 调登出接口；如果后端只按 access token 解析 `Authorization`，本地看似“退出成功”，实际上服务端 refresh token 并没有被撤销。
+
+解决：
+- 明确 Web `logout()` 使用 refresh token 调 `/api/auth/logout`。
+- 后端优先按 access token 撤销整组 refresh token；若 JWT 解析失败，再回退为按 refresh token 哈希撤销单个 refresh token。
+- 测试里同时覆盖 access token 登出、refresh token 登出、登出后 refresh 失败。
+
+通用规则：登出语义要先约定“客户端实际会带什么 token”，后端按这个契约实现，不要默认它一定是 access token。
+
 ## 更新规则
 
 每次遇到问题，按这个顺序更新：

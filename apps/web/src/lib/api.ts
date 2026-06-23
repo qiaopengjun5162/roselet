@@ -4,6 +4,8 @@ export interface User {
   id: string;
   nickname: string;
   created_at: string;
+  deleted_at?: string | null;
+  deletion_reason?: string | null;
 }
 
 export interface AuthResponse {
@@ -65,6 +67,11 @@ export function logout() {
       },
     }).catch(() => {});
   }
+}
+
+export interface DeactivateAccountResponse {
+  success: boolean;
+  restore_deadline: string;
 }
 
 let refreshing: Promise<string | null> | null = null;
@@ -270,6 +277,18 @@ export async function getUserProfile(): Promise<UserProfile> {
   });
   if (!res.ok) throw new Error("Failed to fetch profile");
   return res.json();
+}
+
+export async function deactivateAccount(reason?: string): Promise<DeactivateAccountResponse> {
+  const res = await authFetch(`${API_BASE}/api/auth/deactivate`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ reason: reason || null }),
+  });
+  if (!res.ok) throw new Error("Failed to deactivate account");
+  const data: DeactivateAccountResponse = await res.json();
+  clearAuthState();
+  return data;
 }
 
 export interface LikeResponse {

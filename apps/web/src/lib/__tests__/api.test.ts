@@ -19,6 +19,7 @@ jest.mock("@/lib/garden-cache", () => ({
 
 import {
   createRose,
+  deactivateAccount,
   getGarden,
   getRose,
   updateRose,
@@ -579,6 +580,47 @@ describe("API Client", () => {
       setToken("test-token");
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
       await expect(getUserProfile()).rejects.toThrow("Failed to fetch profile");
+    });
+  });
+
+  describe("deactivateAccount", () => {
+    it("should deactivate account and clear auth state", async () => {
+      setToken("access-token");
+      setRefreshToken("refresh-token");
+      setUser({ id: "u1", nickname: "alice", created_at: "2026-01-01T00:00:00Z" });
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          restore_deadline: "2026-07-23T00:00:00Z",
+        }),
+      });
+
+      await expect(deactivateAccount("user_requested")).resolves.toEqual({
+        success: true,
+        restore_deadline: "2026-07-23T00:00:00Z",
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/auth/deactivate",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            Authorization: "Bearer access-token",
+          }),
+          body: JSON.stringify({ reason: "user_requested" }),
+        }),
+      );
+      expect(localStorage.getItem("access_token")).toBeNull();
+      expect(localStorage.getItem("refresh_token")).toBeNull();
+      expect(localStorage.getItem("user")).toBeNull();
+    });
+
+    it("should throw error when deactivation fails", async () => {
+      setToken("access-token");
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+      await expect(deactivateAccount()).rejects.toThrow("Failed to deactivate account");
     });
   });
 

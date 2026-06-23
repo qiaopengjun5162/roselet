@@ -7,6 +7,8 @@ pub struct User {
     pub id: Uuid,
     pub nickname: String,
     pub created_at: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub deletion_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -45,6 +47,12 @@ pub struct AuthResponse {
     pub access_token: String,
     pub refresh_token: String,
     pub user: User,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DeactivateAccountResponse {
+    pub success: bool,
+    pub restore_deadline: DateTime<Utc>,
 }
 
 #[cfg(test)]

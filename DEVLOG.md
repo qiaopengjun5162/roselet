@@ -1981,3 +1981,57 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - [ ] 注销账号：软删除 + 30 天冷却期
 - [ ] 真机联调：小程序 AppID 已有，拉起后端验证
 - [ ] 找 5 个真实用户试用
+
+## 2026-06-23 会话 #44：账号注销软删除 + 冷却期恢复
+
+### 会话目标
+补齐账号注销生命周期，避免“已注销账号仍可用旧 token 操作”与“昵称释放策略不清晰”。
+
+### 完成的工作
+
+#### 后端：账号软删除与恢复
+- 新增迁移 `011_soft_delete_users.sql`：`users` 表增加 `deleted_at`、`deletion_reason`
+- 新增 `POST /api/auth/deactivate`：已登录用户发起注销，进入 30 天冷却期并返回恢复截止时间
+- `auth.rs` 增加活跃用户校验、冷却期判断、到期匿名化旧账号、按 refresh token 撤销能力
+- `register` 改为支持两种路径：
+  - 冷却期内同昵称重新登录：恢复原账号
+  - 冷却期超过 30 天：先匿名化旧账号，再创建新账号占用原昵称
+- 所有需要登录身份的后端路由改为校验 `deleted_at IS NULL`，防止旧 access token 在有效期内继续操作
+- 送玫瑰接收人查找改为识别冷却期账号，避免昵称唯一约束冲突
+
+#### 前端：资料页注销入口
+- `apps/web/src/lib/api.ts` 新增 `deactivateAccount()`
+- `apps/web/src/app/profile/page.tsx` 新增“注销账号”入口和 30 天恢复说明
+- 登录页补充冷却期恢复提示文案
+- 保留前端 `logout()` 用 refresh token 登出的约定，同时修复后端仅接受 access token 的不一致
+
+#### 测试
+- 后端新增覆盖：
+  - 注销后资料页访问 401
+  - 注销后 refresh token 刷新失败
+  - 冷却期内同昵称恢复原账号
+  - 冷却期过后匿名化旧账号并释放昵称
+- 前端新增覆盖：
+  - `deactivateAccount()` 清理本地认证态
+  - 资料页点击注销后调用接口并跳转登录页
+
+### 遇到的问题及解决
+
+1. **后端 logout 语义与前端不一致**：前端发 refresh token，后端原本只解析 access token，导致服务端 token 实际未撤销。解决：后端先尝试按 access token 撤销整组 refresh token，失败后回退为按 refresh token 哈希撤销。
+2. **软删除后旧 JWT 仍可继续操作**：如果只在用户表记录 `deleted_at`，JWT 有效期内仍能通过原有 `extract_user_id()`。解决：新增 `require_active_user_id()`，所有需要登录态的路由统一校验 `users.deleted_at IS NULL`。
+3. **送礼接收人命中冷却期昵称会撞唯一约束**：直接“查活跃用户，没有就插入”会和尚未匿名化的冷却期用户冲突。解决：接收人查询改为识别冷却期账号；未过期则复用该账号，已过期则先匿名化再新建。
+4. **pnpm 沙箱签名校验失败**：`pnpm --filter web test` 在当前环境报 registry signature fetch failed。解决：改用 `apps/web/./node_modules/.bin/jest` 直接运行目标测试。
+
+### 验证
+- `cargo test -p roselet-backend auth::tests --lib`
+- `cargo test -p roselet-backend --test api_test test_deactivate_account_revokes_access_and_hides_profile`
+- `cargo test -p roselet-backend --test api_test test_register_restores_deleted_user_within_cooldown`
+- `cargo test -p roselet-backend --test api_test test_register_creates_new_user_after_cooldown_finalization`
+- `cargo test -p roselet-backend --test api_test test_logout_success`
+- `cd apps/web && ./node_modules/.bin/jest --runInBand src/app/profile/__tests__/page.test.tsx src/lib/__tests__/api.test.ts`
+
+### 下一步
+- [ ] 部署：选 VPS / Cloudflare Tunnel 方案并执行上线
+- [ ] 小程序微信登录：`wx.login()` + `/api/auth/wechat-login`
+- [ ] 真机联调：小程序 AppID 已有，拉起后端验证
+- [ ] 找 5 个真实用户试用

@@ -31,6 +31,8 @@ function LoginForm() {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("密码错误")) {
         setError("密码错误");
+      } else if (msg.includes("正在冷却期内")) {
+        setError("这个昵称正在 30 天冷却期内，如要恢复账号请输入原密码");
       } else if (msg.includes("已设置密码")) {
         setError("该昵称已设置密码，请输入密码");
       } else {
@@ -46,7 +48,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-bold text-center mb-2">给自己取个名字</h1>
         <p className="text-muted-foreground text-center mb-6">
-          起个昵称就能开始种花，已有昵称直接进入
+          起个昵称就能开始种花，已有昵称直接进入；注销后 30 天内也能用原昵称恢复
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">

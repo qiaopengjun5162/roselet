@@ -9,6 +9,8 @@
 - 跨端文案、本地化业务映射、日期/颜色/情绪/花语/AI prompt 等可测试 i18n 逻辑优先放 Rust WASM；不要让 Web 和小程序各维护一套。
 - 乐观更新、缓存合并、状态冲突处理属于 Rust WASM；IndexedDB / wx storage 只负责平台持久化。
 - 小程序 `createRose()` 发送 Rust `build_plant_body` 产出的 JSON 字符串；`request.ts` 必须原样传字符串 body，不能二次 `JSON.stringify`。
+- 账号注销使用软删除：`deleted_at` 冷却 30 天内允许原昵称恢复；超过 30 天先匿名化旧账号再释放昵称，不能直接硬删用户和玫瑰。
+- Web `logout()` 用 refresh token 调 `/api/auth/logout`；后端必须支持按 refresh token 撤销，不能只接受 access token。
 - 修改后按风险运行对应检查；Rust 测试使用 `cargo-nextest`。
 - 前端/小程序覆盖率门禁使用 `just coverage` 或根目录 `pnpm test:coverage`。
 - 质量门禁使用 `just typecheck`、`just lint`、`just audit`、`just next-build`；`just check-all` / `just pre-commit` 已包含这些检查。

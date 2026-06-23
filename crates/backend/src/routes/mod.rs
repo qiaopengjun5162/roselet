@@ -22,13 +22,15 @@ async fn resolve_nicknames(pool: &PgPool, roses: Vec<Rose>) -> Vec<RoseResponse>
     let nicknames: HashMap<Uuid, String> = if user_ids.is_empty() {
         HashMap::new()
     } else {
-        sqlx::query_as::<_, (Uuid, String)>("SELECT id, nickname FROM users WHERE id = ANY($1)")
-            .bind(&user_ids)
-            .fetch_all(pool)
-            .await
-            .ok()
-            .map(|rows| rows.into_iter().collect())
-            .unwrap_or_default()
+        sqlx::query_as::<_, (Uuid, String)>(
+            "SELECT id, nickname FROM users WHERE id = ANY($1) AND deleted_at IS NULL",
+        )
+        .bind(&user_ids)
+        .fetch_all(pool)
+        .await
+        .ok()
+        .map(|rows| rows.into_iter().collect())
+        .unwrap_or_default()
     };
 
     let like_counts: HashMap<Uuid, i64> = if rose_ids.is_empty() {
