@@ -2459,12 +2459,26 @@ Web 端打开“个人资料”时显示“加载资料失败”。
   - 先起 Worker API 外壳
   - 分阶段迁只读 API、认证/写接口、实时层
 
+#### Worker API 起步进展
+- `apps/worker-api/src/index.ts`
+  - 保留 `/health`
+  - `/api/garden` 从占位实现升级为真实查询入口
+- `apps/worker-api/src/garden.ts`
+  - 使用 `@neondatabase/serverless`
+  - 对齐当前 Rust `GET /api/garden` 的基础行为：
+    - 分页
+    - 颜色过滤
+    - nickname 补全
+    - like_count 聚合
+    - gift 标记
+
 ### 验证
 - 浏览器实测 Vercel 部署成功并访问首页
 - 浏览器实测 Render 被 `Add Card` 拦截
 - 浏览器实测 Koyeb 被 `Pro plan + payment information` 拦截
 - 人工检查 `apps/worker-api`、`docs/CLOUDFLARE_MIGRATION_PLAN.md`、`docs/CLOUDFLARE_WORKER_API.md` 与当前部署结论一致
 - `apps/worker-api/node_modules/.bin/tsc --noEmit -p apps/worker-api/tsconfig.json`
+- 新增 `@neondatabase/serverless` 后再次运行 `apps/worker-api/node_modules/.bin/tsc --noEmit -p apps/worker-api/tsconfig.json`
 
 ### 当前判断
 - “免费部署”这件事现在已经从理论阶段进入真实约束阶段
@@ -2472,5 +2486,5 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 下一步
 - [x] 起一个最小 Cloudflare Worker API 骨架
-- [ ] 明确 v1 先迁哪些 API
+- [x] 明确 v1 先迁哪些 API
 - [ ] 补充 Cloudflare 本地开发 / 部署说明

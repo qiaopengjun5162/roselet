@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { getGarden } from "./garden";
 
 type Bindings = {
   APP_NAME: string;
@@ -32,13 +33,15 @@ app.get("/health", (c) => {
   });
 });
 
-app.get("/api/garden", (c) => {
-  return c.json({
-    items: [],
-    total: 0,
-    source: "worker-placeholder",
-    next_step: "migrate read-only garden API from Rust backend",
-  });
+app.get("/api/garden", async (c) => {
+  try {
+    const data = await getGarden(c.env, c.req.url);
+    return c.json(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "服务器内部错误";
+    const status = message.startsWith("Invalid color") ? 400 : 500;
+    return c.json({ error: message }, status);
+  }
 });
 
 app.notFound((c) => {

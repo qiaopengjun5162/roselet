@@ -20,8 +20,16 @@
   - 返回 Worker 运行状态
   - 返回关键环境变量是否已配置
 - `GET /api/garden`
-  - 当前是占位实现
-  - 用于明确迁移入口，而不是维持空目录
+  - 当前已接到 `Neon serverless driver`
+  - 支持：
+    - `page`
+    - `per_page`
+    - `color`
+  - 当前会返回：
+    - 公开花圃分页数据
+    - nickname
+    - like_count
+    - gift 标记
 
 ### CORS
 
@@ -40,11 +48,10 @@
 
 ## 下一步迁移顺序
 
-1. 真正迁移 `GET /api/garden`
-2. 迁移 `GET /api/rose/:id`
-3. 迁移认证接口
-4. 迁移写接口
-5. 最后再处理 WebSocket / Durable Objects
+1. 迁移 `GET /api/rose/:id`
+2. 迁移认证接口
+3. 迁移写接口
+4. 最后再处理 WebSocket / Durable Objects
 
 ## 本地命令
 
