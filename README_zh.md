@@ -65,6 +65,17 @@ Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的"玫瑰、
 
 详细对比见 [docs/DEPLOYMENT_OPTIONS_COMPARISON.md](docs/DEPLOYMENT_OPTIONS_COMPARISON.md)。
 
+### 当前免费方案
+
+如果现在明确目标是“**不买服务器，先走免费方案**”，我当前推荐：
+
+1. Web：`Vercel Hobby`
+2. 后端：`Render Free`
+3. 数据库：`Neon Free`
+4. 文档页：`GitHub Pages`
+
+详细见 [docs/FREE_DEPLOYMENT_PLAN.md](docs/FREE_DEPLOYMENT_PLAN.md)。
+
 ## 游戏规则
 
 | 图标 | 名称 | 含义 |

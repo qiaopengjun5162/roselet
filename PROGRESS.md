@@ -90,6 +90,11 @@
 - 当前推荐：`Vercel + Rust backend + PostgreSQL + GitHub Pages`
 - 对比文档：`docs/DEPLOYMENT_OPTIONS_COMPARISON.md`
 
+### 当前免费部署方案
+
+- 当前推荐：`Vercel Hobby + Render Free + Neon Free + GitHub Pages`
+- 详细方案：`docs/FREE_DEPLOYMENT_PLAN.md`
+
 ## 已完成
 
 ### 基础架构
