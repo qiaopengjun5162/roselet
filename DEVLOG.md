@@ -2370,6 +2370,22 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - 免费部署链路已经比前一轮更接近真实可部署状态，因为这次验证直接覆盖到了 `Vercel` 最关键的 `next build`
 - 当前最有价值的后续动作，仍然是继续把部署中实际会失败的点在本地先撞出来并修掉，而不是停留在平台比较
 
+### 补充阻塞
+
+#### 问题 4：Vercel CLI 登录态检查被 TLS/网络环境阻塞
+- 现象：
+  - `npx vercel --version` 可以正常运行
+  - `npx vercel whoami` 失败，报：
+    - `request to https://vercel.com/.well-known/openid-configuration failed`
+    - `Client network socket disconnected before secure TLS connection was established`
+- 根因：
+  - 当前本机/网络环境下，Vercel CLI 访问其 OpenID 配置时 TLS 握手失败
+  - 这说明 CLI 二进制可用，但“读取账号登录态/走登录流程”不稳定，不能把当前部署主线继续押在 CLI 上
+- 解决：
+  - 先保留 `npx vercel` 作为可选入口
+  - 当前部署执行优先切回浏览器已有登录态或平台网页操作
+  - 若后续继续走 CLI，再单独排查代理/TLS 证书链问题
+
 ### 下一步
 - [ ] 提交并推送本轮 rustfmt + Web 构建修复
 - [ ] 继续检查 Vercel/Render 真实部署还缺哪些环境或构建约束
