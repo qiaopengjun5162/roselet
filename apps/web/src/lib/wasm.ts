@@ -1,6 +1,7 @@
 interface FeedbackValidation { valid: boolean; error?: string }
 
 interface WasmMod {
+  default?: (input?: unknown) => Promise<unknown>;
   recommend: (json: string) => unknown; analyze_text: (text: string) => unknown;
   compute_layout: (json: string) => unknown; filter_roses: (json: string, f: string) => unknown;
   validate_plant_input: (json: string) => unknown;
@@ -19,9 +20,9 @@ let wasmModule: WasmMod | null = null;
 async function loadWasm(): Promise<WasmMod | null> {
   if (wasmModule) return wasmModule;
   try {
-    const mod = await import("../../public/pkg/roselet_recommend.js");
-    await mod.default();
-    wasmModule = mod as unknown as WasmMod;
+    const mod = (await import("../../public/pkg/roselet_recommend.js")) as unknown as WasmMod;
+    if (typeof mod.default === "function") await mod.default();
+    wasmModule = mod;
     return wasmModule;
   } catch {
     return null;

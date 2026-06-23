@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { generatePetals } from "@/lib/recommend";
 
 interface PetalConfig { emoji: string; left: number; size: number; duration: number; delay: number; sway: number; opacity: number; }
 
@@ -11,9 +12,7 @@ const FALLBACK: PetalConfig[] = ["🌸","🌺","🌷","💮","🏵️","🌼","�
 
 async function loadPetals(): Promise<PetalConfig[]> {
   try {
-    const mod = await import("../../public/pkg/roselet_recommend.js");
-    await mod.default();
-    return (mod.generate_petals_wasm(12, BigInt(42)) as PetalConfig[]) || FALLBACK;
+    return (await generatePetals(12, BigInt(42))) || FALLBACK;
   } catch { return FALLBACK; }
 }
 

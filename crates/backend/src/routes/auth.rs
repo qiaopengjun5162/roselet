@@ -65,9 +65,8 @@ pub async fn register(
         }) => {
             if auth::deletion_is_restorable(deleted_at, Utc::now()) {
                 if let Some(stored_hash) = passphrase_hash {
-                    let is_valid = passphrase
-                        .map(|p| verify_passphrase(p, &stored_hash))
-                        .unwrap_or(false);
+                    let is_valid =
+                        passphrase.map(|p| verify_passphrase(p, &stored_hash)).unwrap_or(false);
                     if !is_valid {
                         return Err(AppError::Auth(
                             if passphrase.is_some() {
@@ -115,9 +114,7 @@ pub async fn register(
             passphrase_hash: Some(stored_hash),
             deleted_at: None,
         }) => {
-            let is_valid = passphrase
-                .map(|p| verify_passphrase(p, &stored_hash))
-                .unwrap_or(false);
+            let is_valid = passphrase.map(|p| verify_passphrase(p, &stored_hash)).unwrap_or(false);
             if !is_valid {
                 return Err(AppError::Auth(
                     if passphrase.is_some() {

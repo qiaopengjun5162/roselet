@@ -2297,3 +2297,79 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - [ ] 提交 SQLx TLS 修复
 - [ ] 开始准备 Render 后端实际部署
 - [ ] 开始准备 Vercel 前端环境变量回填
+
+## 2026-06-23 会话 #52：CI rustfmt 修复 + Web 生产构建排障
+
+### 会话目标
+修掉当前剩余的 CI 风格失败，并验证免费部署主线里的 Web 生产构建是否已经真的可上线。
+
+### 完成的工作
+
+#### Rust fmt 门禁修复
+- `crates/backend/src/routes/auth.rs`
+  - 按 `rustfmt` 输出重排两处 `let is_valid = ...` 的换行
+- 这次问题不是逻辑错误，而是手工改写 `clippy` 修复后没有再跑一次格式门禁，导致 CI `cargo fmt --all -- --check` 失败
+
+#### Web 生产构建排障
+- `apps/web/src/components/falling-petals.tsx`
+  - 去掉组件内直接动态导入 `roselet_recommend.js` 并手动调用 `mod.default()`
+  - 改为复用 `@/lib/recommend` 里的 `generatePetals()` 封装
+- `apps/web/src/lib/recommend.ts`
+- `apps/web/src/lib/wasm.ts`
+- `apps/web/src/lib/useWasmStore.ts`
+  - WASM 模块导入统一兼容两种形态：
+    - 本地 `ensure-wasm.mjs` 生成的 stub（带 `default`）
+    - 真实 `wasm-pack` 产物（无 `default`）
+- `docs/FREE_DEPLOYMENT_CHECKLIST.md`
+  - 把 “Vercel WASM 构建待实操确认” 更新为 “本地 `next build` 已验证通过，但线上完整启用真实 WASM 仍建议在构建前执行 `just wasm`”
+- 原因：
+  - `next build` 的 TypeScript 检查会把动态导入模块推断成整个模块类型
+  - 组件里直接写 `await mod.default()` 时，类型系统无法确认默认导出是可调用初始化函数，导致生产构建失败
+  - 统一走已有 WASM 封装后，组件只依赖稳定接口，不再重复承担模块加载细节
+
+### 问题记录
+
+#### 问题 1：CI `cargo fmt --all -- --check` 失败
+- 现象：
+  - GitHub Actions 在 `crates/backend/src/routes/auth.rs` 报格式 diff
+- 根因：
+  - 前一轮为通过 `clippy::needless_option_as_deref` 手工改写表达式后，没有再按 `rustfmt` 结果收口
+- 解决：
+  - 直接按 `rustfmt` 认可的单行/换行形式调整
+
+#### 问题 2：Web 生产构建并不能直接通过
+- 现象：
+  - 本地执行 `cd apps/web && pnpm build` 时，`next build` 在 `src/components/falling-petals.tsx:15` 报：
+    - `This expression is not callable`
+- 根因：
+  - 组件绕过现有 `recommend.ts` WASM 封装，自己动态 import 生成物并调用默认导出
+  - 这条路径在 Jest/开发态不明显，但会在 Next 生产构建的类型检查阶段暴露
+- 解决：
+  - 复用统一的 `generatePetals()` 封装，避免组件层重复处理 WASM 初始化约束
+
+#### 问题 3：WASM 封装对生成物默认导出的假设不成立
+- 现象：
+  - 修完 `falling-petals.tsx` 后，`next build` 继续在 `src/lib/recommend.ts:31` 报同类错误
+- 根因：
+  - 当前真实 `wasm-pack` 生成的 `apps/web/public/pkg/roselet_recommend.js` 没有默认导出初始化函数
+  - 现有封装里无条件 `await mod.default()`，其实只对本地 stub 成立，对真实产物并不成立
+- 解决：
+  - `recommend.ts`、`wasm.ts`、`useWasmStore.ts` 统一改为：
+    - 先动态导入模块
+    - 仅当 `default` 真的是函数时才调用
+    - 并把导入结果显式收窄到本地定义的模块接口，避免 TypeScript 继续按生成物模块声明拒绝调用
+  - 这样同时兼容：
+    - 本地 `ensure-wasm.mjs` 生成的 stub
+    - 真实 `wasm-pack` 产物
+
+### 验证
+- `cargo fmt --all -- --check`
+- `cd apps/web && pnpm build`
+
+### 当前判断
+- 免费部署链路已经比前一轮更接近真实可部署状态，因为这次验证直接覆盖到了 `Vercel` 最关键的 `next build`
+- 当前最有价值的后续动作，仍然是继续把部署中实际会失败的点在本地先撞出来并修掉，而不是停留在平台比较
+
+### 下一步
+- [ ] 提交并推送本轮 rustfmt + Web 构建修复
+- [ ] 继续检查 Vercel/Render 真实部署还缺哪些环境或构建约束

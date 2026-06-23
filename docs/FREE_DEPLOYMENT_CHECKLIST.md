@@ -161,7 +161,16 @@ just wasm
 - 要么仓库里已经有可用 WASM 产物
 - 要么构建命令前先生成一次 WASM
 
-这部分是下一步部署时最需要实操确认的点。
+当前状态：
+
+- 本地已验证 `cd apps/web && pnpm build` 可以通过
+- 当前仓库依赖 `apps/web/scripts/ensure-wasm.mjs` 在缺少真实产物时生成 stub，保证 `next build` 不会因为缺文件直接失败
+- 但如果线上要启用真实 WASM 推荐/粒子能力，平台构建前仍应补一次 `just wasm`
+
+也就是说：
+
+- 第一版上线：当前配置已足够先部署
+- 要求线上完整启用真实 WASM 产物：后续再把 Vercel 构建命令升级为包含 `just wasm`
 
 ### 前端上线后要验证
 

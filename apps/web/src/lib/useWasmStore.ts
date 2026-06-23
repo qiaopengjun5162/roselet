@@ -20,13 +20,19 @@ interface StoreAction {
   [key: string]: unknown;
 }
 
+interface WasmStoreMod {
+  default?: (input?: unknown) => Promise<unknown>;
+  store_dispatch: (action: string) => StoreSnapshot;
+  store_get_snapshot: () => StoreSnapshot;
+}
+
 let wasmStore: { dispatch: (action: string) => StoreSnapshot; snapshot: () => StoreSnapshot } | null = null;
 
 async function initStore() {
   if (wasmStore) return true;
   try {
-    const mod = await import("../../public/pkg/roselet_recommend.js");
-    await mod.default();
+    const mod = (await import("../../public/pkg/roselet_recommend.js")) as unknown as WasmStoreMod;
+    if (typeof mod.default === "function") await mod.default();
     wasmStore = { dispatch: mod.store_dispatch, snapshot: mod.store_get_snapshot };
     return true;
   } catch {
