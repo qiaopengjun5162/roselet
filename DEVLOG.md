@@ -2389,3 +2389,88 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 下一步
 - [ ] 提交并推送本轮 rustfmt + Web 构建修复
 - [ ] 继续检查 Vercel/Render 真实部署还缺哪些环境或构建约束
+
+## 2026-06-23 会话 #53：真实部署验证 + 无绑卡路线切换
+
+### 会话目标
+把“免费部署”从文档判断推进到真实平台验证，并在不绑卡约束下收敛出还能继续走的后端路线。
+
+### 完成的工作
+
+#### Vercel 前端上线成功
+- 使用 Vercel 导入 GitHub 仓库 `qiaopengjun5162/roselet`
+- 项目名：`roselet-web`
+- Root Directory：`apps/web`
+- 实际部署成功后可访问：
+  - `https://roselet-web.vercel.app`
+
+#### Render 真实阻塞确认
+- 登录 Render 后，真实流程被信用卡验证拦住
+- 即使后台 URL 已进入仓库/蓝图相关流程，前景仍被 `Add Card` 验证弹窗覆盖
+- 在“不绑卡”约束下，Render 路线不能继续作为免费后端方案
+
+#### Koyeb 真实阻塞确认
+- 改测 Koyeb 作为后端托管备选
+- 登录后实际进入：
+  - `To get started deploying, add your payment information`
+  - `Pro plan is $29 per month`
+- 这意味着 Koyeb 当前也不满足“先免费、先不绑卡”的目标
+
+#### 路线切换
+- 新增 `docs/CLOUDFLARE_MIGRATION_PLAN.md`
+- 新增 `docs/CLOUDFLARE_WORKER_API.md`
+- 新增 `apps/worker-api`
+  - `package.json`
+  - `tsconfig.json`
+  - `wrangler.jsonc`
+  - `src/index.ts`
+- 把当前无绑卡部署路线正式更新为：
+  - Web：`Vercel`
+  - DB：`Neon Free`
+  - API：`Cloudflare Workers（迁移中）`
+- 同步更新：
+  - `PROGRESS.md`
+  - `README_zh.md`
+  - `package.json`
+  - `pnpm-workspace.yaml`
+  - `justfile`
+
+### 问题记录
+
+#### 问题 1：文档里的免费后端方案在真实平台注册时并不成立
+- 现象：
+  - Vercel 可正常建站
+  - Render 要求信用卡验证
+  - Koyeb 直接要求进入付费计划并绑定支付方式
+- 根因：
+  - 平台能力文档和定价页不足以替代真实注册/部署路径验证
+  - “有免费档”不等于“当前这条部署链路无需支付验证”
+- 解决：
+  - 把无绑卡约束提升为一等前提
+  - 放弃继续试通用后端托管平台
+  - 正式切到 Cloudflare Workers 分阶段迁移路线
+
+#### 问题 2：当前 Rust 后端不能直接无损搬到 Cloudflare
+- 现象：
+  - 当前后端依赖 `TcpListener + axum::serve + sqlx::PgPool + tokio::broadcast`
+- 根因：
+  - 这些都不是 Worker 运行时的原生模型
+- 解决：
+  - 先起 Worker API 外壳
+  - 分阶段迁只读 API、认证/写接口、实时层
+
+### 验证
+- 浏览器实测 Vercel 部署成功并访问首页
+- 浏览器实测 Render 被 `Add Card` 拦截
+- 浏览器实测 Koyeb 被 `Pro plan + payment information` 拦截
+- 人工检查 `apps/worker-api`、`docs/CLOUDFLARE_MIGRATION_PLAN.md`、`docs/CLOUDFLARE_WORKER_API.md` 与当前部署结论一致
+- `apps/worker-api/node_modules/.bin/tsc --noEmit -p apps/worker-api/tsconfig.json`
+
+### 当前判断
+- “免费部署”这件事现在已经从理论阶段进入真实约束阶段
+- 在不绑卡前提下，后端路线必须从平台托管切换到 Cloudflare Workers 迁移
+
+### 下一步
+- [x] 起一个最小 Cloudflare Worker API 骨架
+- [ ] 明确 v1 先迁哪些 API
+- [ ] 补充 Cloudflare 本地开发 / 部署说明

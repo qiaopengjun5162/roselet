@@ -8,7 +8,10 @@
     "lint": "pnpm --filter web lint",
     "typecheck": "pnpm --filter web typecheck && pnpm --filter @roselet/miniprogram typecheck",
     "test": "pnpm --filter web test",
-    "test:coverage": "pnpm --filter web test:coverage && pnpm --filter @roselet/miniprogram test:coverage"
+    "test:coverage": "pnpm --filter web test:coverage && pnpm --filter @roselet/miniprogram test:coverage",
+    "worker:dev": "pnpm --filter @roselet/worker-api dev",
+    "worker:typecheck": "pnpm --filter @roselet/worker-api typecheck",
+    "worker:deploy": "pnpm --filter @roselet/worker-api deploy"
   },
   "devDependencies": {
     "playwright": "^1.60.0"

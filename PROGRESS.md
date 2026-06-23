@@ -92,9 +92,18 @@
 
 ### 当前免费部署方案
 
-- 当前推荐：`Vercel Hobby + Render Free + Neon Free + GitHub Pages`
+- 当前推荐：`Vercel + Neon Free + Cloudflare Workers（后端迁移中）`
 - 详细方案：`docs/FREE_DEPLOYMENT_PLAN.md`
 - 执行清单：`docs/FREE_DEPLOYMENT_CHECKLIST.md`
+- 无绑卡迁移计划：`docs/CLOUDFLARE_MIGRATION_PLAN.md`
+
+### 当前真实上线状态
+
+- `Vercel` 前端已成功创建并可访问
+- 当前线上地址：`https://roselet-web.vercel.app`
+- `Render` 与 `Koyeb` 在真实部署中都被支付验证拦住
+- 因此当前后端路线已切换为：`Cloudflare Workers 分阶段迁移`
+- Worker API 起点：`apps/worker-api`
 
 ## 已完成
 

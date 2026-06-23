@@ -67,18 +67,19 @@ Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的"玫瑰、
 
 ### 当前免费方案
 
-如果现在明确目标是“**不买服务器，先走免费方案**”，我当前推荐：
+如果现在明确目标是“**不买服务器，先走免费方案，而且不绑卡**”，当前路线已经调整为：
 
-1. Web：`Vercel Hobby`
-2. 后端：`Render Free`
-3. 数据库：`Neon Free`
-4. 文档页：`GitHub Pages`
+1. Web：`Vercel`
+2. 数据库：`Neon Free`
+3. 后端：`Cloudflare Workers（迁移中）`
 
 详细见 [docs/FREE_DEPLOYMENT_PLAN.md](docs/FREE_DEPLOYMENT_PLAN.md)。
 
 如果要直接开干，按这份清单走：
 
 - [docs/FREE_DEPLOYMENT_CHECKLIST.md](docs/FREE_DEPLOYMENT_CHECKLIST.md)
+- [docs/CLOUDFLARE_MIGRATION_PLAN.md](docs/CLOUDFLARE_MIGRATION_PLAN.md)
+- [docs/CLOUDFLARE_WORKER_API.md](docs/CLOUDFLARE_WORKER_API.md)
 
 ## 游戏规则
 

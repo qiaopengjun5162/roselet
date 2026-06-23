@@ -39,6 +39,14 @@ lint:
 next-build:
     cd apps/web && pnpm build
 
+# Cloudflare Worker API 类型检查
+worker-typecheck:
+    pnpm worker:typecheck
+
+# Cloudflare Worker API 本地开发
+worker-dev:
+    pnpm worker:dev
+
 # 快速检查
 check:
     cargo check --all-features
