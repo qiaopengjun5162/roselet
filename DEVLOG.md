@@ -2064,3 +2064,43 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - [ ] 输出 Cloudflare 部署路线图
 - [ ] 把部署目标拆成更细的执行清单
 - [ ] 先完成 Web 端最小上线路径
+
+## 2026-06-23 会话 #46：Cloudflare 可行性判断
+
+### 会话目标
+回答“能不能部署到 Cloudflare”，并把结论固定成项目内可引用的正式路线图。
+
+### 完成的工作
+
+#### Cloudflare 路线图
+- 新增 `docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md`
+- 明确结论：
+  - 可以部署到 Cloudflare
+  - 但不推荐把当前 Rust Axum 后端原封不动塞进单个 Worker
+  - 推荐路线是 `Web 先上 Cloudflare，后端分阶段迁移`
+
+#### 结合当前代码的判断
+- 当前 `apps/web` 是 Next.js 16，适合优先走 Cloudflare Workers / OpenNext 路线
+- 当前后端依赖：
+  - `TcpListener + axum::serve`
+  - `sqlx::PgPool`
+  - `tokio::broadcast`
+- 这三类能力都不适合直接照搬为“单 Worker 零改造部署”
+- WebSocket 若要边缘化，后续应考虑 Durable Objects
+- 数据库若保留 Postgres，可继续评估 Hyperdrive 路线
+
+#### 文档同步
+- `PROGRESS.md` 添加 Cloudflare 当前判断和路线图入口
+- `README_zh.md` 添加面向对外介绍的 Cloudflare 说明
+
+### 当前判断
+- 现在最值得做的不是立刻重写后端，而是先落地 `v1: Web 在 Cloudflare，后端保留 Rust 独立服务`
+- 等第一版线上环境稳定后，再评估 `v2: 实时能力和部分 API 边缘化`
+
+### 验证
+- 人工检查 `docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md`、`PROGRESS.md`、`README_zh.md` 结论一致
+
+### 下一步
+- [ ] 继续细化 Web-first 的 Cloudflare 部署执行清单
+- [ ] 产出第一版配置草案
+- [ ] 明确 v1 / v2 部署边界

@@ -42,6 +42,18 @@ Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的"玫瑰、
 
 下一步会先完成一份正式的 Cloudflare 部署路线图，把“最终目标、阶段目标、当前阻塞、落地顺序”写清楚，再按最小可行路径推进上线。
 
+### 关于 Cloudflare
+
+当前判断是：`能上，但不建议把当前 Rust 后端原封不动塞进单个 Worker`。
+
+更合适的路径是：
+
+1. 先把 Next.js Web 端部署到 Cloudflare
+2. 后端暂时保留独立服务
+3. 再按阶段评估是否把 API / 实时能力迁到 Cloudflare 原生能力
+
+详细见 [docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md](docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md)。
+
 ## 游戏规则
 
 | 图标 | 名称 | 含义 |

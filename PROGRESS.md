@@ -80,6 +80,11 @@
   
   这些信息固定到仓库里，后面推进、介绍项目、写文章都会更顺。
 
+### Cloudflare 判断
+
+- 当前结论：`可以部署，但推荐 Web 先上 Cloudflare，后端分阶段迁移`
+- 详细路线图：`docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md`
+
 ## 已完成
 
 ### 基础架构
