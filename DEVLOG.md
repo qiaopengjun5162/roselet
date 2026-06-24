@@ -2976,3 +2976,70 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 当前状态
 - `/stats` 已按管理员后台设计
 - 生产部署时必须配置 `ADMIN_USER_IDS`
+
+## 2026-06-24 会话 #61：AWS Lightsail 部署 Rust 后端
+
+### 会话目标
+改用 AWS Lightsail 免费试用/低成本服务器部署 Rust Axum 后端，先让线上 Vercel Web 可以连接真实后端，不再扩大 Cloudflare Worker 迁移范围。
+
+### 部署决策
+- 当前主线：Vercel 托管 Web，AWS Lightsail 托管 Rust 后端 + Postgres。
+- Lightsail 实例：
+  - 区域：`ap-southeast-1`
+  - 实例名：`roselet-prod`
+  - 系统：Ubuntu 24.04
+  - 套餐：`micro_3_0`
+  - 静态 IP：`47.131.238.0`
+- 暂时不在 Lightsail 上跑前端，避免 1GB 内存机器同时承担 Next.js 构建/运行。
+- 暂时使用服务器内 Docker Postgres，后续如需迁 Neon/RDS，只切 `DATABASE_URL`。
+
+### 已完成的服务器准备
+- 通过 AWS CloudShell 创建 Lightsail 实例、开放 `22/80/443`，并绑定静态 IP。
+- 将本机部署公钥加入服务器 `ubuntu` 用户的 `authorized_keys`。
+- 本机可通过 `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0` 登录。
+- 服务器已安装 Docker / Docker Compose。
+- 增加 2G swap，降低 Rust 镜像构建时 OOM 风险。
+- UFW 已开放 `OpenSSH`、`80/tcp`、`443/tcp`、临时调试用 `3001/tcp`。
+
+### 问题记录
+
+#### 问题 1：本地 AWS CLI 没有凭据
+- 现象：
+  - 本机已安装 AWS CLI，但没有 AWS Access Key，不能直接管理 Lightsail。
+- 根因：
+  - AWS 控制台/CloudShell 已登录，CloudShell 自带临时凭据；本机 CLI 没有配置凭据。
+- 解决：
+  - 先由 CloudShell 完成实例创建和初始 SSH 公钥注入。
+  - 后续部署操作改走 SSH，不再依赖本机 AWS CLI。
+
+#### 问题 2：生产镜像构建缺少 SQLx 离线缓存
+- 现象：
+  - 后端使用 `sqlx::query_scalar!`，Docker 构建环境没有数据库连接时，编译期 SQLx 查询校验可能失败。
+- 根因：
+  - `Dockerfile.backend` 没有把仓库根目录 `.sqlx/` 查询缓存复制进构建阶段，也没有显式启用 `SQLX_OFFLINE=true`。
+- 解决：
+  - `Dockerfile.backend` 增加 `COPY .sqlx .sqlx`。
+  - 后端镜像构建命令改为 `SQLX_OFFLINE=true cargo build --release -p roselet-backend`。
+
+#### 问题 3：本机 Docker 未启动，不能本地验证镜像
+- 现象：
+  - `docker build -f Dockerfile.backend -t roselet-backend:deploy-check .` 失败：
+    - `failed to connect to the docker API`
+    - OrbStack Docker socket 不存在。
+- 根因：
+  - 本机 Docker/OrbStack 没有运行。
+- 解决：
+  - 本地先运行 `git diff --check` 做补丁静态检查。
+  - 镜像构建验证改到 Lightsail 服务器上执行。
+
+### 验证
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'docker --version; docker compose version; free -h; sudo ufw status'`
+- `git diff --check`
+
+### 下一步
+- [ ] 提交并推送 `Dockerfile.backend` 部署构建修复。
+- [ ] 服务器拉取最新 main。
+- [ ] 在服务器创建只包含 `db + backend` 的生产 compose 和 `.env`。
+- [ ] 构建并启动 Rust 后端。
+- [ ] 冒烟验证 `http://47.131.238.0:3001/health`、`/api/garden`、注册/种花。
+- [ ] 将 Vercel 生产环境变量切到 `http://47.131.238.0:3001` 后重新部署。
