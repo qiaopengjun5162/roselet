@@ -3,17 +3,19 @@
 ![Rust](https://img.shields.io/badge/Rust-1.88.0-orange?logo=rust)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![License](https://img.shields.io/badge/License-MIT-blue)
+![Live](https://img.shields.io/badge/Live-roselet--web.vercel.app-brightgreen)
 
 > 种下一朵玫瑰，分享你的情绪，等待宇宙的回响。
 
-Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的"玫瑰、花苞、尖刺"（Rose, Bud, Thorn）破冰游戏。用户通过种下玫瑰来分享感恩、焦虑和期待，形成一个随时间生长的温暖社区花圃。
+Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的”玫瑰、花苞、尖刺”（Rose, Bud, Thorn）破冰游戏。用户通过种下玫瑰来分享感恩、焦虑和期待，形成一个随时间生长的温暖社区花圃。
 
-[English](README.md)
+[English](README.md) | **线上试用：** [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
 
 ## 当前项目位置
 
-- 当前阶段：`Beta 准备上线`
-- 当前判断：`核心产品已经完成，工程质量也基本到位，当前重点不再是“补功能”，而是“上线、试用、验证”`
+- 当前阶段：`Beta 已上线`
+- 线上地址：[https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+- 当前判断：`Web 端核心产品已可公开试用，正在收集真实用户反馈`
 
 ### 进度概览
 
@@ -21,65 +23,31 @@ Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的"玫瑰、
 总体进度        [########--] 75%
 产品功能        [#########-] 90%
 工程质量        [#########-] 90%
-生产部署        [###-------] 30%
+生产部署        [##########] 98%
 小程序落地      [#####-----] 50%
-真实用户验证    [#---------] 10%
+真实用户验证    [##--------] 20%
 ```
 
-### 当前目标
+### 当前生产架构
 
-1. 先把 Web 端稳定上线，能给别人直接访问和体验。
-2. 再补齐小程序登录与真机闭环。
-3. 最后通过真实用户试用，验证这个产品是否值得继续扩展。
+- **Web 前端**：Vercel — [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+- **Rust 后端**：AWS Lightsail（Docker + Axum）
+- **数据库**：Docker PostgreSQL on Lightsail
+- **HTTPS**：Caddy + `roselet.47.131.238.0.sslip.io` 临时域名
+- **自动部署**：GitHub Actions 构建 GHCR 镜像 → SSH 部署到 Lightsail
+
+详细部署文档：[docs/AWS_LIGHTSAIL_DEPLOYMENT.md](docs/AWS_LIGHTSAIL_DEPLOYMENT.md)
 
 ### 接下来几个小目标
 
-1. 明确 Cloudflare 路线：哪些能直接上，哪些需要改造。
-2. 固化部署方案：前端、API、数据库、WebSocket、AI 分别怎么放。
-3. 跑通第一版外网环境，完成基础冒烟验证。
+1. 收集真实用户试用反馈。
+2. 观察 `/stats` 后台数据，判断是否接近 100 用户目标线。
+3. 补齐小程序真机闭环。
+4. 后续考虑正式域名、备份、监控。
 
-### 下一步要做什么
+### 历史方案
 
-下一步会先完成一份正式的 Cloudflare 部署路线图，把“最终目标、阶段目标、当前阻塞、落地顺序”写清楚，再按最小可行路径推进上线。
-
-### 关于 Cloudflare
-
-当前判断是：`能上，但不建议把当前 Rust 后端原封不动塞进单个 Worker`。
-
-更合适的路径是：
-
-1. 先把 Next.js Web 端部署到 Cloudflare
-2. 后端暂时保留独立服务
-3. 再按阶段评估是否把 API / 实时能力迁到 Cloudflare 原生能力
-
-详细见 [docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md](docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md)。
-
-### 当前最低成本推荐
-
-如果以“最快上线 + 最少改造 + 充分利用免费资源”为目标，当前更推荐：
-
-1. 主应用 Web：`Vercel`
-2. 后端：保留现有 Rust 服务
-3. 数据库：保留现有 PostgreSQL
-4. 文档/介绍页：`GitHub Pages`
-
-详细对比见 [docs/DEPLOYMENT_OPTIONS_COMPARISON.md](docs/DEPLOYMENT_OPTIONS_COMPARISON.md)。
-
-### 当前免费方案
-
-如果现在明确目标是“**不买服务器，先走免费方案，而且不绑卡**”，当前路线已经调整为：
-
-1. Web：`Vercel`
-2. 数据库：`Neon Free`
-3. 后端：`Cloudflare Workers（迁移中）`
-
-详细见 [docs/FREE_DEPLOYMENT_PLAN.md](docs/FREE_DEPLOYMENT_PLAN.md)。
-
-如果要直接开干，按这份清单走：
-
-- [docs/FREE_DEPLOYMENT_CHECKLIST.md](docs/FREE_DEPLOYMENT_CHECKLIST.md)
-- [docs/CLOUDFLARE_MIGRATION_PLAN.md](docs/CLOUDFLARE_MIGRATION_PLAN.md)
-- [docs/CLOUDFLARE_WORKER_API.md](docs/CLOUDFLARE_WORKER_API.md)
+早期曾评估 Cloudflare / Render / Neon 等免费/无绑卡方案，相关文档已标为历史参考，不再维护。当前生产主线为 AWS Lightsail。
 
 ## 游戏规则
 
@@ -116,9 +84,15 @@ Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的"玫瑰、
 | AI | OpenAI 兼容 API（异步非阻塞） |
 | WASM | Rust → wasm-bindgen → wasm-pack（112KB） |
 | 音效 | Tone.js 合成器 |
-| 部署 | Docker Compose |
+| 部署 | Vercel + AWS Lightsail + Docker + Caddy |
 
 ## 快速开始
+
+### 线上试用
+
+直接访问：[https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+
+界面截图见 [docs/screenshots/](docs/screenshots/)。
 
 ### 环境要求
 
@@ -140,7 +114,7 @@ just dev        # 启动后端（3001）+ 前端（3000）
 
 ```bash
 just dev           # 启动开发环境
-just test          # 运行所有测试（72 后端 + 20 前端）
+just test          # 运行所有测试（461 个）
 just check-all     # 格式化 + 静态分析 + 审计 + 测试
 just pre-commit    # 提交前检查
 just db-reset      # 重置数据库
@@ -158,11 +132,15 @@ just wasm          # 构建 WASM 推荐模块
 | `OPENAI_BASE_URL` | — | OpenAI 兼容 API 地址 |
 | `OPENAI_MODEL` | — | 模型名称 |
 
-### Docker 部署
+### Docker 本地部署
 
 ```bash
 docker-compose up --build
 ```
+
+### 生产部署
+
+当前生产环境使用 `Vercel Web + AWS Lightsail Rust backend + Docker Postgres + Caddy HTTPS`，详见 [docs/AWS_LIGHTSAIL_DEPLOYMENT.md](docs/AWS_LIGHTSAIL_DEPLOYMENT.md)。
 
 ## API 列表
 
@@ -223,9 +201,11 @@ roselet/
 
 | 套件 | 数量 | 命令 |
 |------|------|------|
-| 后端集成测试 | 36 | `cargo nextest run -j1` |
-| 后端单元测试 | 36 | 含于上方 |
-| 前端单元测试 | 20 | `pnpm test` |
+| 后端集成 + 单元 | 110 | `cargo nextest run --workspace --all-features -j1` |
+| Rust WASM/推荐 | 139 | 含于上方 |
+| Web 前端 | 146 | `pnpm --filter @roselet/web test` |
+| 小程序 | 66 | `pnpm --filter @roselet/miniprogram test` |
+| **总计** | **461** | `just test` |
 
 ## 贡献
 

@@ -3494,3 +3494,43 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 结论
 纯文档/Web/小程序改动不再触发生产后端镜像构建与容器重启，路径过滤生效；手动 `workflow_dispatch` 仍可强制部署。
+
+## 2026-06-24 会话 #70：归档历史部署方案并更新 README
+
+### 会话目标
+清理 Cloudflare / Render / Neon 免费迁移历史方案，更新 README 指向当前生产环境，让公开仓库与真实上线状态一致。
+
+### 完成的工作
+
+#### 历史方案归档
+- `docs/FREE_DEPLOYMENT_PLAN.md`：顶部增加历史方案说明，指向当前 Lightsail 部署文档。
+- `docs/FREE_DEPLOYMENT_CHECKLIST.md`：同上。
+- `docs/CLOUDFLARE_MIGRATION_PLAN.md`：同上。
+- `docs/CLOUDFLARE_DEPLOYMENT_ROADMAP.md`：同上。
+- `docs/CLOUDFLARE_WORKER_API.md`：同上，并说明 `apps/worker-api` 不再维护。
+- `docs/DEPLOYMENT_OPTIONS_COMPARISON.md`：增加历史方案说明。
+- `apps/worker-api/README.md`：新建，声明 Worker 代码为历史迁移试点，不参与当前 CI/CD。
+
+#### README 更新
+- `README.md` / `README_zh.md`：
+  - 顶部增加 Live 徽章和线上地址 `https://roselet-web.vercel.app`。
+  - 新增「线上试用 / Live Demo」入口。
+  - 更新当前阶段为 `Beta 已上线 / Beta live`。
+  - 更新进度条，生产部署改为 98%。
+  - 用「当前生产架构」替换旧的 Cloudflare / 免费方案说明。
+  - 新增「历史方案」说明。
+  - 更新技术栈部署行：Docker Compose → Vercel + AWS Lightsail + Docker + Caddy。
+  - 更新测试数量：461 个。
+  - 更新常用命令注释。
+
+### 验证
+- `git diff --check`
+
+### 当前状态
+- 公开仓库 README 与真实生产状态一致。
+- Cloudflare / 免费方案相关文档已标为历史参考，避免误导新用户。
+- Web 端已可公开试用，正在收集真实用户反馈。
+
+### 待办
+- [ ] 继续观察 `/stats` 后台和用户反馈。
+- [ ] 根据反馈决定下一步优先级：小程序真机闭环 / 正式域名 / 备份监控。

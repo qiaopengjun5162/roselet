@@ -1,5 +1,10 @@
 # Cloudflare 部署路线图
 
+> **历史方案说明**
+>
+> 当前 Roselet 生产环境已切换为 `Vercel Web + AWS Lightsail Rust backend + Docker Postgres + Caddy HTTPS`，详见 [AWS_LIGHTSAIL_DEPLOYMENT.md](AWS_LIGHTSAIL_DEPLOYMENT.md)。
+> 本文档记录的 Cloudflare 部署路线仅作为历史参考，不再维护。
+
 > 更新时间：2026-06-23
 
 ## 结论

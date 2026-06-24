@@ -1,5 +1,10 @@
 # 免费部署执行清单
 
+> **历史方案说明**
+>
+> 当前 Roselet 生产环境已切换为 `Vercel Web + AWS Lightsail Rust backend + Docker Postgres + Caddy HTTPS`，详见 [AWS_LIGHTSAIL_DEPLOYMENT.md](AWS_LIGHTSAIL_DEPLOYMENT.md)。
+> 本文档记录的免费部署执行清单仅作为历史参考，不再维护。
+
 > 目标：不买服务器，先把 Roselet 第一版发出去  
 > 路线：`Vercel Hobby + Render Free + Neon Free + GitHub Pages`
 

@@ -1,5 +1,10 @@
 # Cloudflare 无绑卡迁移计划
 
+> **历史方案说明**
+>
+> 当前 Roselet 生产环境已切换为 `Vercel Web + AWS Lightsail Rust backend + Docker Postgres + Caddy HTTPS`，详见 [AWS_LIGHTSAIL_DEPLOYMENT.md](AWS_LIGHTSAIL_DEPLOYMENT.md)。
+> 本文档记录的 Cloudflare 无绑卡迁移路线仅作为历史参考，不再维护。
+
 > 更新时间：2026-06-24（refresh/logout 已迁移）
 
 ## 当前结论

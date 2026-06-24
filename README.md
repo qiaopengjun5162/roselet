@@ -1,14 +1,53 @@
 # Roselet
 
 ![Rust](https://img.shields.io/badge/Rust-1.88.0-orange?logo=rust)
-![Next.js] ![Taro](https://img.shields.io/badge/Taro-4-0ab?logo=taro) ![WASM](https://img.shields.io/badge/WASM-Rust-654ff0?logo=webassembly)(https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![License](https://img.shields.io/badge/License-MIT-blue)
+![Live](https://img.shields.io/badge/Live-roselet--web.vercel.app-brightgreen)
 
 > Plant a rose, share your emotions, wait for the universe to respond.
 
 Roselet is a community icebreaker Web app inspired by the classic "Rose, Bud, Thorn" game. Users plant roses to share gratitude, anxiety, and hope — forming a living community garden that grows with every entry.
 
-[中文文档](README_zh.md)
+[中文文档](README_zh.md) | **Live demo:** [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+
+## Current Status
+
+- Stage: `Beta live`
+- Live URL: [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+- Current focus: `Core Web product is publicly usable; collecting real user feedback`
+
+### Progress
+
+```text
+Overall         [########--] 75%
+Product         [#########-] 90%
+Engineering     [#########-] 90%
+Production      [##########] 98%
+Miniprogram     [#####-----] 50%
+User validation [#---------] 20%
+```
+
+### Production Architecture
+
+- **Web frontend**: Vercel — [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+- **Rust backend**: AWS Lightsail (Docker + Axum)
+- **Database**: Docker PostgreSQL on Lightsail
+- **HTTPS**: Caddy + `roselet.47.131.238.0.sslip.io` temporary domain
+- **Auto deploy**: GitHub Actions builds GHCR image → SSH deploy to Lightsail
+
+Deployment docs: [docs/AWS_LIGHTSAIL_DEPLOYMENT.md](docs/AWS_LIGHTSAIL_DEPLOYMENT.md)
+
+### Next Steps
+
+1. Collect real user feedback.
+2. Watch `/stats` dashboard to see if we approach the 100-user milestone.
+3. Close the miniprogram real-device loop.
+4. Consider custom domain, backups, and monitoring.
+
+### Historical Deploy Paths
+
+Earlier we evaluated Cloudflare / Render / Neon free / card-less options. Those documents are now marked historical and no longer maintained. The current production line is AWS Lightsail.
 
 ## Game Rules
 
@@ -45,9 +84,15 @@ Roselet is a community icebreaker Web app inspired by the classic "Rose, Bud, Th
 | AI | OpenAI-compatible API (async, non-blocking) |
 | WASM | Rust → wasm-bindgen → wasm-pack (112KB) |
 | Sound | Tone.js synthesizer |
-| Deploy | Docker Compose |
+| Deploy | Vercel + AWS Lightsail + Docker + Caddy |
 
 ## Quick Start
+
+### Live Demo
+
+Try it now: [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+
+Screenshots: [docs/screenshots/](docs/screenshots/)
 
 ### Requirements
 
@@ -69,7 +114,7 @@ just dev        # start backend (3001) + frontend (3000)
 
 ```bash
 just dev           # start dev environment
-just test          # run all tests (72 backend + 20 frontend)
+just test          # run all tests (461 total)
 just check-all     # fmt + lint + audit + test
 just pre-commit    # pre-commit checks
 just db-reset      # reset database
@@ -92,6 +137,10 @@ just wasm          # build WASM recommendation module
 ```bash
 docker-compose up --build
 ```
+
+### Production Deploy
+
+Current production runs on `Vercel Web + AWS Lightsail Rust backend + Docker Postgres + Caddy HTTPS`. See [docs/AWS_LIGHTSAIL_DEPLOYMENT.md](docs/AWS_LIGHTSAIL_DEPLOYMENT.md).
 
 ## API
 
@@ -152,9 +201,11 @@ roselet/
 
 | Suite | Count | Command |
 |-------|-------|---------|
-| Backend integration | 36 | `cargo nextest run -j1` |
-| Backend unit | 36 | included above |
-| Frontend unit | 20 | `pnpm test` |
+| Backend integration + unit | 110 | `cargo nextest run --workspace --all-features -j1` |
+| Rust WASM / recommend | 139 | included above |
+| Web frontend | 146 | `pnpm --filter @roselet/web test` |
+| Miniprogram | 66 | `pnpm --filter @roselet/miniprogram test` |
+| **Total** | **461** | `just test` |
 
 ## Contributing
 

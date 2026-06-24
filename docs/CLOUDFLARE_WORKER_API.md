@@ -1,5 +1,10 @@
 # Cloudflare Worker API 起步说明
 
+> **历史方案说明**
+>
+> 当前 Roselet 生产环境已切换为 `Vercel Web + AWS Lightsail Rust backend + Docker Postgres + Caddy HTTPS`，详见 [AWS_LIGHTSAIL_DEPLOYMENT.md](AWS_LIGHTSAIL_DEPLOYMENT.md)。
+> `apps/worker-api` 作为 Cloudflare 迁移起点保留在仓库中，仅作为历史参考，不再维护。
+
 > 更新时间：2026-06-24（使用动态统计已接入）
 
 ## 目标
