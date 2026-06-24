@@ -3533,4 +3533,52 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 待办
 - [ ] 继续观察 `/stats` 后台和用户反馈。
+
+## 2026-06-24 会话 #71：修复 UX 问题并准备 Cloudflare Pages 国内镜像
+
+### 会话目标
+- 修复用户反馈的真实 UX 问题。
+- 让国内访问困难的用户能经由 Cloudflare Pages 镜像使用 Roselet。
+
+### 完成的工作
+
+#### UX 修复
+- `apps/web/src/components/rose-player.tsx`：
+  - 之前 WASM 音频参数加载失败时按钮永久灰掉。
+  - 改为显示“加载中...”，允许点击重试，参数未就绪时显示提示文案。
+- `apps/web/src/app/profile/page.tsx`（先前会话完成）：
+  - 移除浅色渐变背景，统一深色主题，提升文字可读性。
+  - 增加可复制 User ID。
+- `apps/web/src/app/plant/page.tsx`（先前会话完成）：
+  - 提交按钮未亮起时增加提示，告诉用户需要先填写玫瑰内容。
+
+#### Cloudflare Pages 国内镜像
+- 确认后端 `https://roselet.47.131.238.0.sslip.io/health` 在国内无需翻墙可访问。
+- 决定用子域名 `roselet.paxonqiao.com` 做 Cloudflare Pages 镜像，不影响根域名博客。
+- `apps/web/next.config.ts`：支持 `CF_PAGES=true` 时静态导出到 `dist/`，默认仍走 `standalone`（Vercel 不变）。
+- `apps/web/src/app/rose/[id]/`：拆分为服务端 `page.tsx` + 客户端 `client.tsx`，增加 `generateStaticParams`，让静态导出能预渲染玫瑰详情占位页。
+- `apps/web/public/_worker.js`：Cloudflare Pages Worker 兜底，把任意 `/rose/:id` 落到占位页壳，由客户端动态取数据。
+- `apps/web/package.json`：增加 `build:cf` 脚本。
+- `apps/web/.node-version`：指定 Node 20，供 Cloudflare Pages 构建使用。
+- `apps/web/jest.config.ts`：忽略 `dist/` 避免 haste map 冲突。
+
+#### 导航栏清理
+- `apps/web/src/components/nav.tsx`：移除“动态”入口（指向管理员 `/stats`，普通用户无权限）。
+
+### 验证
+- `pnpm test`（Web）：157 passed
+- `pnpm typecheck`：通过
+- `pnpm build`（Vercel standalone）：通过
+- `pnpm build:cf`（Cloudflare Pages static export）：通过，生成 `dist/`
+- `git diff --check`
+
+### 当前状态
+- Vercel 主入口和 Cloudflare Pages 镜像构建都已跑通。
+- Cloudflare Pages 仪表盘还未创建项目和绑定域名，下一步在 dashboard 里操作。
+
+### 待办
+- [ ] 在 Cloudflare Pages 创建项目，连接 GitHub 仓库，设置构建命令 `pnpm build:cf`、输出目录 `dist`。
+- [ ] 绑定自定义域名 `roselet.paxonqiao.com`。
+- [ ] 设置环境变量 `NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io`。
+- [ ] 让群里用户测试 `roselet.paxonqiao.com` 国内访问速度。
 - [ ] 根据反馈决定下一步优先级：小程序真机闭环 / 正式域名 / 备份监控。

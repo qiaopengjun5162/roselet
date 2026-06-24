@@ -4,7 +4,6 @@ import "@testing-library/jest-dom";
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
-  useParams: () => ({ id: "rose-1" }),
 }));
 
 jest.mock("next/link", () => {
@@ -40,7 +39,7 @@ const { playClick, playPlant, playLike } = require("@/lib/sound") as {
   playLike: jest.Mock;
 };
 
-import RoseDetailPage from "../page";
+import { RoseDetailClient } from "../client";
 
 const mockRose = {
   id: "rose-1",
@@ -61,14 +60,14 @@ describe("RoseDetailPage", () => {
   it("should show loading state", () => {
     getRose.mockReturnValue(new Promise(() => {}));
     getUser.mockReturnValue(null);
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
     expect(screen.getByText("加载中...")).toBeInTheDocument();
   });
 
   it("should show error on failure", async () => {
     getRose.mockRejectedValue(new Error("not found"));
     getUser.mockReturnValue(null);
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
     await waitFor(() => {
       expect(screen.getByText("玫瑰不存在")).toBeInTheDocument();
     });
@@ -77,7 +76,7 @@ describe("RoseDetailPage", () => {
   it("should display rose details", async () => {
     getRose.mockResolvedValue(mockRose);
     getUser.mockReturnValue({ id: "u2", nickname: "bob" });
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
     await waitFor(() => {
       expect(screen.getByText("红玫瑰")).toBeInTheDocument();
       expect(screen.getByText("感恩社区")).toBeInTheDocument();
@@ -90,7 +89,7 @@ describe("RoseDetailPage", () => {
   it("should show AI reply", async () => {
     getRose.mockResolvedValue(mockRose);
     getUser.mockReturnValue({ id: "u2" });
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
     await waitFor(() => {
       expect(screen.getByText("AI says hello")).toBeInTheDocument();
     });
@@ -99,7 +98,7 @@ describe("RoseDetailPage", () => {
   it("should show edit/delete buttons for owner", async () => {
     getRose.mockResolvedValue(mockRose);
     getUser.mockReturnValue({ id: "u1", nickname: "alice" });
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
     await waitFor(() => {
       expect(screen.getByText("编辑")).toBeInTheDocument();
       expect(screen.getByText("删除")).toBeInTheDocument();
@@ -109,7 +108,7 @@ describe("RoseDetailPage", () => {
   it("should not show edit/delete for non-owner", async () => {
     getRose.mockResolvedValue(mockRose);
     getUser.mockReturnValue({ id: "u2", nickname: "bob" });
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
     await waitFor(() => {
       expect(screen.queryByText("编辑")).not.toBeInTheDocument();
       expect(screen.queryByText("删除")).not.toBeInTheDocument();
@@ -120,7 +119,7 @@ describe("RoseDetailPage", () => {
     getRose.mockResolvedValue(mockRose);
     getUser.mockReturnValue({ id: "u2" });
     toggleLike.mockResolvedValue({ liked: true, like_count: 4 });
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
     await waitFor(() => {
       expect(screen.getByText("❤️ 3")).toBeInTheDocument();
     });
@@ -137,7 +136,7 @@ describe("RoseDetailPage", () => {
   it("should enter edit mode", async () => {
     getRose.mockResolvedValue(mockRose);
     getUser.mockReturnValue({ id: "u1", nickname: "alice" });
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
     await waitFor(() => {
       expect(screen.getByText("编辑")).toBeInTheDocument();
     });
@@ -158,7 +157,7 @@ describe("RoseDetailPage", () => {
       hope: "新的期待",
     });
 
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
 
     await waitFor(() => expect(screen.getByText("编辑")).toBeInTheDocument());
     fireEvent.click(screen.getByText("编辑"));
@@ -187,7 +186,7 @@ describe("RoseDetailPage", () => {
     getUser.mockReturnValue({ id: "u1", nickname: "alice" });
     updateRose.mockRejectedValue(new Error("nope"));
 
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
 
     await waitFor(() => expect(screen.getByText("编辑")).toBeInTheDocument());
     fireEvent.click(screen.getByText("编辑"));
@@ -201,7 +200,7 @@ describe("RoseDetailPage", () => {
     getUser.mockReturnValue({ id: "u1", nickname: "alice" });
     window.confirm = jest.fn().mockReturnValue(false);
 
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
 
     await waitFor(() => expect(screen.getByText("删除")).toBeInTheDocument());
     fireEvent.click(screen.getByText("删除"));
@@ -215,7 +214,7 @@ describe("RoseDetailPage", () => {
     deleteRose.mockRejectedValue(new Error("nope"));
     window.confirm = jest.fn().mockReturnValue(true);
 
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
 
     await waitFor(() => expect(screen.getByText("删除")).toBeInTheDocument());
     fireEvent.click(screen.getByText("删除"));
@@ -227,7 +226,7 @@ describe("RoseDetailPage", () => {
     getRose.mockResolvedValue({ ...mockRose, like_count: 0 });
     getUser.mockReturnValue(null);
 
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
 
     await waitFor(() => expect(screen.getByText("❤️ 点赞")).toBeInTheDocument());
     fireEvent.click(screen.getByText("❤️ 点赞"));
@@ -241,7 +240,7 @@ describe("RoseDetailPage", () => {
     getUser.mockReturnValue({ id: "u1", nickname: "alice" });
     deleteRose.mockResolvedValue(undefined);
     window.confirm = jest.fn().mockReturnValue(true);
-    render(<RoseDetailPage />);
+    render(<RoseDetailClient id="rose-1" />);
     await waitFor(() => {
       expect(screen.getByText("删除")).toBeInTheDocument();
     });

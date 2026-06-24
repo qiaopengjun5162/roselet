@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
+const isCloudflarePages = process.env.CF_PAGES === "true";
+
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: isCloudflarePages ? "export" : "standalone",
+  distDir: isCloudflarePages ? "dist" : ".next",
   transpilePackages: ["@roselet/core"],
   turbopack: {},
 };

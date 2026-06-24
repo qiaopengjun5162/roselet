@@ -5,6 +5,7 @@ const config: Config = {
   testPathIgnorePatterns: ["\.pw\.tsx$"],
   modulePathIgnorePatterns: [
     "<rootDir>/.next",
+    "<rootDir>/dist",
     "<rootDir>/playwright/.cache",
     "<rootDir>/public/wasm",
   ],
