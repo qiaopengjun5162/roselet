@@ -3582,3 +3582,47 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - [ ] 设置环境变量 `NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io`。
 - [ ] 让群里用户测试 `roselet.paxonqiao.com` 国内访问速度。
 - [ ] 根据反馈决定下一步优先级：小程序真机闭环 / 正式域名 / 备份监控。
+
+## 2026-06-24 会话 #72（续）
+
+### 用户反馈与根因
+- 用户报告上线后多个功能不能用：
+  - “听这朵玫瑰”在 Vercel / Cloudflare Pages 都显示“音频参数加载中，请稍后再试”。
+  - 手机导航栏文字竖排。
+  - Cloudflare 域名 `roselet.paxonqiao.com` 登录失败，提示“登录失败，请重试”。
+- 根因诊断：
+  - 生产部署的 `apps/web/public/pkg/` 是 `ensure-wasm.mjs` 生成的 stub，不是真实 wasm-bindgen 产物，`rose_to_sound_params_wasm` 不存在，导致音频参数永远加载失败。
+  - 导航栏标签没有 `whitespace-nowrap`，在窄屏下中文字符逐字换行，看起来像竖排。
+  - Cloudflare 域名还没加进 Lightsail 后端 `ALLOWED_ORIGINS`，同时 `ADMIN_USER_IDS` 没配置用户 `838fb4a6-25ba-4f1c-a7f6-96203e4741ad`。
+
+### 修复
+- 提交真实 WASM 产物到 `apps/web/public/pkg/`：
+  - 删除根 `.gitignore` 中的 `apps/web/public/pkg/`。
+  - 删除 `wasm-pack` 生成的 `apps/web/public/pkg/.gitignore`（`*` 会阻止提交）。
+  - `justfile` 的 `wasm` 任务后自动 `rm -f apps/web/public/pkg/.gitignore`。
+- `apps/web/src/components/nav.tsx`：
+  - 小屏隐藏标签只显示图标，`sm:inline` 恢复标签。
+  - 所有导航项加 `whitespace-nowrap shrink-0`，防止压缩换行。
+- `apps/web/src/app/layout.tsx`：Logo 加 `shrink-0 whitespace-nowrap`。
+- `apps/web/src/app/login/page.tsx` + `apps/web/src/lib/api.ts`：网络错误给出更明确提示。
+- `apps/web/public/_worker.js`：加 `eslint-disable` 注释消除 lint 警告。
+
+### 验证
+- `pnpm test`（Web）：157 passed
+- `pnpm typecheck`：通过
+- `pnpm lint`：通过
+- `pnpm build:cf`：通过，`dist/pkg/` 包含真实 `.wasm`（413KB）。
+- `git push` 成功。
+
+### 当前状态
+- 代码已 push，Vercel 和 Cloudflare Pages 正在重新部署。
+- 后端仍需手动改服务器 `.env.production` 并重启。
+
+### 待办
+- [ ] SSH 到 Lightsail，在 `.env.production` 中：
+  - `ALLOWED_ORIGINS` 追加 `https://roselet.paxonqiao.com`
+  - `ADMIN_USER_IDS` 追加 `838fb4a6-25ba-4f1c-a7f6-96203e4741ad`
+  - `docker compose -p roselet restart backend`
+- [ ] 等 Vercel / Cloudflare 部署完成后，验证“听这朵玫瑰”能正常播放。
+- [ ] 验证 Cloudflare 域名可登录、可访问 `/stats` 后台。
+
