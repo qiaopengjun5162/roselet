@@ -47,11 +47,67 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.meta.outputs.sha }}
+          fetch-depth: 2
+
+      - name: Detect backend deployment changes
+        id: changes
+        env:
+          DEPLOY_SHA: ${{ steps.meta.outputs.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch: deploying backend."
+            exit 0
+          fi
+
+          base="$(git rev-parse "$DEPLOY_SHA^" 2>/dev/null || true)"
+          if [ -z "$base" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "No parent commit found: deploying backend."
+            exit 0
+          fi
+
+          changed_files="$(git diff --name-only "$base" "$DEPLOY_SHA")"
+          printf '%s\n' "$changed_files"
+
+          should_deploy=false
+          while IFS= read -r path; do
+            case "$path" in
+              .github/workflows/deploy-backend.yml|\
+              Cargo.toml|\
+              Cargo.lock|\
+              Dockerfile.backend|\
+              .sqlx/*|\
+              crates/backend/*|\
+              crates/backend/**|\
+              crates/recommend/*|\
+              crates/recommend/**|\
+              deploy/lightsail/*|\
+              deploy/lightsail/**|\
+              scripts/lightsail-deploy.sh)
+                should_deploy=true
+                break
+                ;;
+            esac
+          done <<EOF
+          $changed_files
+          EOF
+
+          echo "should_deploy=$should_deploy" >> "$GITHUB_OUTPUT"
+          if [ "$should_deploy" = "true" ]; then
+            echo "Backend deployment files changed: deploying backend."
+          else
+            echo "No backend deployment files changed: skipping backend deploy."
+          fi
 
       - name: Set up Docker Buildx
+        if: steps.changes.outputs.should_deploy == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
+        if: steps.changes.outputs.should_deploy == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -59,6 +115,7 @@ jobs:
           password: ${{ github.token }}
 
       - name: Build and push backend image
+        if: steps.changes.outputs.should_deploy == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -74,6 +131,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Validate deployment secrets
+        if: steps.changes.outputs.should_deploy == 'true'
         env:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
           LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
@@ -87,6 +145,7 @@ jobs:
           test -n "$LIGHTSAIL_KNOWN_HOSTS"
 
       - name: Install SSH credentials
+        if: steps.changes.outputs.should_deploy == 'true'
         env:
           LIGHTSAIL_SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           LIGHTSAIL_KNOWN_HOSTS: ${{ secrets.LIGHTSAIL_KNOWN_HOSTS }}
@@ -99,6 +158,7 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
       - name: Pull deployment commit on Lightsail
+        if: steps.changes.outputs.should_deploy == 'true'
         env:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
           LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
@@ -114,6 +174,7 @@ jobs:
           REMOTE
 
       - name: Log in to GHCR on Lightsail
+        if: steps.changes.outputs.should_deploy == 'true'
         env:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
           LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
@@ -124,6 +185,7 @@ jobs:
             "sudo docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
 
       - name: Deploy backend on Lightsail
+        if: steps.changes.outputs.should_deploy == 'true'
         env:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
           LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
@@ -134,6 +196,7 @@ jobs:
             "cd ~/roselet && BACKEND_IMAGE='$BACKEND_IMAGE' bash scripts/lightsail-deploy.sh"
 
       - name: Public smoke test
+        if: steps.changes.outputs.should_deploy == 'true'
         env:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
         run: |
@@ -141,7 +204,7 @@ jobs:
           curl -fsS "https://roselet.$LIGHTSAIL_HOST.sslip.io/health"
 
       - name: Log out from GHCR on Lightsail
-        if: always()
+        if: always() && steps.changes.outputs.should_deploy == 'true'
         env:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
           LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}

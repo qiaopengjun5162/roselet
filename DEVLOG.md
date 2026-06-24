@@ -3426,3 +3426,45 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - 邀请真实用户试用。
 - 用 `/stats` 后台观察注册、种花、反馈数据。
 - 后续再做正式域名、备份、监控、小程序真机闭环。
+
+## 2026-06-24 会话 #68：限制文档改动触发生产后端部署
+
+### 会话目标
+减少 GitHub Actions 自动化噪音，避免纯文档提交也重新构建镜像并重启 Lightsail 生产后端。
+
+### 完成的工作
+- 确认上一轮文档提交 `4fc50de` 触发的 `CI` run `28085322960` 已成功。
+- 确认该纯文档提交也触发了 `Deploy Backend` run `28085823081`，且部署成功。
+- 更新 `.github/workflows/deploy-backend.yml`：
+  - 保留 `workflow_dispatch` 手动强制部署。
+  - `workflow_run` 自动触发时先检测 commit 变更路径。
+  - 仅当后端镜像相关路径变化时才 build/push/restart backend。
+  - 纯文档、Web、小程序变更只跑 CI，不再重启生产 Rust 后端。
+- 更新 `docs/AWS_LIGHTSAIL_DEPLOYMENT.md`，记录自动部署触发范围。
+- 更新 `AGENTS.md`，把“文档/Web/小程序改动不应触发生产后端部署”沉淀为后续约束。
+
+### 问题记录
+
+#### 问题：纯文档提交也触发生产后端部署
+- 现象：
+  - `docs: record vercel production cutover` 只修改 `DEVLOG.md`、`PROGRESS.md`、`docs/AWS_LIGHTSAIL_DEPLOYMENT.md`。
+  - CI 成功后仍触发 `Deploy Backend`，构建了新 GHCR 镜像并重启生产后端。
+- 根因：
+  - `Deploy Backend` 监听所有成功的 `CI workflow_run`，只判断分支和 CI 结果，没有判断本次 commit 是否影响后端镜像。
+- 解决：
+  - 在 deploy job checkout 后增加 `Detect backend deployment changes` 步骤。
+  - 自动触发时用 `git diff --name-only <parent> <sha>` 检查变更路径。
+  - 只有 `.github/workflows/deploy-backend.yml`、`Cargo.toml`、`Cargo.lock`、`Dockerfile.backend`、`.sqlx/`、`crates/backend/`、`crates/recommend/`、`deploy/lightsail/`、`scripts/lightsail-deploy.sh` 变化时才部署。
+  - 手动 `workflow_dispatch` 继续强制部署，避免需要紧急重启时被路径过滤挡住。
+
+### 验证
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/deploy-backend.yml"); puts "workflow yaml ok"'`
+- `git diff --check`
+- 本地模拟 `4fc50de7cd3260b93abf386a5f50ea8c321c3891` 纯文档提交，结果：`should_deploy=false`。
+- 本地模拟 `648d2747da283f3e956e44c3438e3337b980fe97` 部署 workflow 相关提交，结果：`should_deploy=true`。
+- 本地模拟 `workflow_dispatch`，结果：`manual should_deploy=true`。
+
+### 下一步
+- 提交并推送 workflow 优化。
+- 等 CI 和本次必要的 Deploy Backend 通过。
+- 后续用一次纯文档提交或下次文档改动验证 deploy job 会跳过生产后端重启。

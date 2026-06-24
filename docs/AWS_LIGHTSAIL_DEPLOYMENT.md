@@ -65,12 +65,27 @@ ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0
 ```text
 push main
   -> CI 通过
-  -> Deploy Backend workflow 构建 Docker 镜像
+  -> Deploy Backend workflow 检测后端部署相关路径
+  -> 有后端镜像相关变更时构建 Docker 镜像
   -> 推送到 GHCR
   -> SSH 到 Lightsail
   -> 服务器拉镜像并重启 backend
   -> /health 公网冒烟
 ```
+
+`workflow_dispatch` 手动触发会强制部署。普通 `workflow_run` 触发时，只有以下路径变化才会真正 build/push/restart backend：
+
+- `.github/workflows/deploy-backend.yml`
+- `Cargo.toml`
+- `Cargo.lock`
+- `Dockerfile.backend`
+- `.sqlx/`
+- `crates/backend/`
+- `crates/recommend/`
+- `deploy/lightsail/`
+- `scripts/lightsail-deploy.sh`
+
+纯文档、Web 或小程序改动仍会跑 CI，但不会重启生产 Rust 后端。
 
 相关文件：
 
