@@ -131,7 +131,7 @@ describe("API Client", () => {
       await expect(getRose("r1")).resolves.toEqual(rose);
 
       const roseCalls = (global.fetch as jest.Mock).mock.calls.filter(
-        ([url]) => url === "http://localhost:3001/api/rose/r1",
+        ([url]) => url === "http://localhost:8787/api/rose/r1",
       );
       const [, retryInit] = roseCalls.at(-1);
       expect(retryInit.headers).toEqual(expect.objectContaining({
@@ -262,7 +262,7 @@ describe("API Client", () => {
       const result = await getGarden();
       expect(result).toEqual(mockResponse);
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:3001/api/garden?page=1&per_page=20"
+        "http://localhost:8787/api/garden?page=1&per_page=20"
       );
       expect(mockCacheGardenPage).toHaveBeenCalledWith(mockResponse);
     });
@@ -275,7 +275,7 @@ describe("API Client", () => {
 
       await getGarden(2, 10);
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:3001/api/garden?page=2&per_page=10"
+        "http://localhost:8787/api/garden?page=2&per_page=10"
       );
       expect(mockCacheGardenPage).not.toHaveBeenCalled();
     });
@@ -288,7 +288,7 @@ describe("API Client", () => {
 
       await getGarden(1, 20, "red");
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:3001/api/garden?page=1&per_page=20&color=red"
+        "http://localhost:8787/api/garden?page=1&per_page=20&color=red"
       );
       expect(mockCacheGardenPage).not.toHaveBeenCalled();
     });
@@ -316,7 +316,7 @@ describe("API Client", () => {
       const result = await getRose("123");
       expect(result).toEqual(mockRose);
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:3001/api/rose/123",
+        "http://localhost:8787/api/rose/123",
         expect.objectContaining({
           headers: expect.objectContaining({ "Content-Type": "application/json" }),
         })

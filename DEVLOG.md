@@ -2739,3 +2739,62 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 下一步
 - [ ] 选择下一批切到 Worker 的前端接口
 - [ ] 决定先迁写接口还是继续迁认证接口
+
+## 2026-06-24 会话 #57：Web 只读接口切到 Worker
+
+### 会话目标
+继续扩大 Web 对 Cloudflare Worker 的真实使用范围，把已经迁移完成的只读接口切过去，进一步减少旧后端依赖。
+
+### 完成的工作
+
+#### Web：只读 API 切流
+- 更新 `apps/web/src/lib/api.ts`
+- 新增独立只读基址：
+  - `NEXT_PUBLIC_READ_API_URL`
+  - 回退 `NEXT_PUBLIC_WORKER_API_URL`
+  - 本地默认：`http://localhost:8787`
+- 当前已切到 Worker 的 Web 调用：
+  - `getGarden()`
+  - `getRose()`
+- 当前仍留在旧后端的调用：
+  - 写接口
+  - profile
+  - feedback
+  - register / deactivate 等尚未迁移接口
+
+#### 测试更新
+- 更新 `apps/web/src/lib/__tests__/api.test.ts`
+- 当前已验证：
+  - `getGarden()` 请求发往 Worker 基址
+  - `getRose()` 请求发往 Worker 基址
+  - 401 后刷新 token 再重试详情请求时，重试仍走 Worker 基址
+
+### 问题记录
+
+#### 问题 1：旧测试仍按旧后端地址过滤详情请求
+- 现象：
+  - `getRose()` 切到 Worker 后，`retries auth requests after a 401 refresh` 测试仍按 `http://localhost:3001/api/rose/r1` 查找重试请求
+  - 导致 `roseCalls.at(-1)` 为空
+- 根因：
+  - 测试断言里的 URL 过滤条件没有随只读接口切流一起更新
+- 解决：
+  - 把该断言改为匹配 `http://localhost:8787/api/rose/r1`
+
+### 验证
+- `./apps/web/node_modules/.bin/jest --config apps/web/jest.config.ts --runInBand apps/web/src/lib/__tests__/api.test.ts`
+- `cd apps/web && ./node_modules/.bin/tsc --noEmit`
+- `./apps/worker-api/node_modules/.bin/tsc --noEmit -p apps/worker-api/tsconfig.json`
+- `./apps/worker-api/node_modules/.bin/tsc --outDir apps/worker-api/.tmp-test --module NodeNext --moduleResolution NodeNext --target ES2022 apps/worker-api/src/rose.ts apps/worker-api/src/auth.ts`
+- `node --test apps/worker-api/src/*.test.mjs`
+
+### 当前状态
+- Worker 已具备：
+  - 只读接口
+  - 认证最小闭环
+- Web 已开始消费 Worker：
+  - `refresh/logout`
+  - `garden/rose detail`
+
+### 下一步
+- [ ] 配置生产 Worker 域名与 Vercel 环境变量
+- [ ] 决定先迁写接口还是继续迁剩余认证接口

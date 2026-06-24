@@ -1,5 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const AUTH_API_BASE = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || "http://localhost:8787";
+const READ_API_BASE = process.env.NEXT_PUBLIC_READ_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || "http://localhost:8787";
 
 export interface User {
   id: string;
@@ -237,7 +238,7 @@ export interface PaginatedResponse<T> {
 
 export async function getGarden(page = 1, perPage = 20, color?: string): Promise<PaginatedResponse<Rose>> {
   const { buildGardenUrl } = await import("@/lib/recommend");
-  const url = await buildGardenUrl(API_BASE, page, perPage, color);
+  const url = await buildGardenUrl(READ_API_BASE, page, perPage, color);
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch garden");
   const data: PaginatedResponse<Rose> = await res.json();
@@ -249,7 +250,7 @@ export async function getGarden(page = 1, perPage = 20, color?: string): Promise
 }
 
 export async function getRose(id: string): Promise<Rose> {
-  const res = await authFetch(`${API_BASE}/api/rose/${id}`, {
+  const res = await authFetch(`${READ_API_BASE}/api/rose/${id}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch rose");

@@ -62,9 +62,11 @@
 - Web:
   - `refreshAccessToken()`
   - `logout()`
+  - `getGarden()`
+  - `getRose()`
 - 当前策略：
-  - 只把最依赖双令牌生命周期的调用先切到 Worker
-  - 其他 Web API 继续留在原 `NEXT_PUBLIC_API_URL`
+  - 已迁移到 Worker 的只读和认证生命周期调用先切过去
+  - 写接口、profile、feedback 等尚未迁移的调用继续留在原 `NEXT_PUBLIC_API_URL`
 
 ### CORS
 
@@ -83,7 +85,7 @@
 
 ## 下一步迁移顺序
 
-1. 准备 Web 侧先切 `refresh/logout`
+1. 配置生产 Worker 域名与 Vercel 环境变量
 2. 迁移写接口
 3. 再迁 `register` / `profile` 等其余认证接口
 4. 最后再处理 WebSocket / Durable Objects
@@ -114,6 +116,12 @@ pnpm worker:deploy
 - `DATABASE_URL`
 - `JWT_SECRET`
 - `ALLOWED_ORIGINS`
+
+Web 前端切流相关变量：
+
+- `NEXT_PUBLIC_AUTH_API_URL`
+- `NEXT_PUBLIC_READ_API_URL`
+- `NEXT_PUBLIC_WORKER_API_URL`
 
 后续如果接入 Hyperdrive，再新增 Cloudflare 对应 binding。
 
