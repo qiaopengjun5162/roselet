@@ -3366,3 +3366,63 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 下一步
 - 继续配置 Vercel HTTPS 环境变量并重新部署 Web。
+
+## 2026-06-24 会话 #67：Vercel 切到 Rust HTTPS 后端并完成线上冒烟
+
+### 会话目标
+把 Vercel 生产 Web 从旧 Worker/默认本地地址切到 Lightsail Rust HTTPS 后端，并完成真实公网冒烟。
+
+### 完成的工作
+- 在 Vercel `roselet-web` Production 环境添加 4 个环境变量：
+  - `NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io`
+  - `NEXT_PUBLIC_AUTH_API_URL=https://roselet.47.131.238.0.sslip.io`
+  - `NEXT_PUBLIC_READ_API_URL=https://roselet.47.131.238.0.sslip.io`
+  - `NEXT_PUBLIC_WS_URL=wss://roselet.47.131.238.0.sslip.io`
+- Vercel 已创建并完成新的 Production deployment。
+- 抓取 `https://roselet-web.vercel.app` 的 `_next/static` JS bundle，确认：
+  - 命中新后端地址 `roselet.47.131.238.0.sslip.io`。
+  - 未命中旧 `localhost:8787` / `localhost:3001` / `workers.dev`。
+- 确认 GitHub Actions 最新状态：
+  - `CI` run `28082438931` 成功。
+  - `Deploy Backend` run `28082921658` 成功。
+- 确认生产后端当前镜像：
+  - `ghcr.io/qiaopengjun5162/roselet-backend:648d2747da283f3e956e44c3438e3337b980fe97`
+- 确认生产 backend 容器已注入：
+  - `ADMIN_USER_IDS=55be1141-8ad0-417a-bb3f-a9a3a1053287`
+- 线上 API 冒烟通过：
+  - 注册测试用户：`smoke-20260624154910`
+  - 私密种花成功：`53ed9f2a-b6cc-4094-83e8-e850f21e086e`
+  - 带 JWT 读取私密玫瑰详情返回 `200`
+  - 提交反馈返回 `201`
+  - 公共花圃总数冒烟前后均为 `1`，说明私密测试没有污染公开花圃
+
+### 问题记录
+
+#### 问题：本机直连 Vercel 偶发 DNS / HTTP2 错误
+- 现象：
+  - `curl https://roselet-web.vercel.app` 偶发 `Could not resolve host`。
+  - 抓取 Vercel JS bundle 时偶发 `Error in the HTTP2 framing layer`。
+- 根因：本机网络/DNS/HTTP2 链路波动，和 Vercel 部署结果无关。
+- 解决：
+  - 使用本地代理 `--proxy http://127.0.0.1:7890`。
+  - 对静态资源抓取加 `--http1.1` 降级验证。
+
+### 验证
+- `curl -I --max-time 20 https://roselet-web.vercel.app/`
+- `curl --http1.1 --proxy http://127.0.0.1:7890 -sS -L --max-time 30 https://roselet-web.vercel.app/`
+- 抓取 `_next/static/*.js` 并搜索 `roselet.47.131.238.0.sslip.io`、`localhost:8787`、`localhost:3001`、`workers.dev`
+- `curl -sS --max-time 20 'https://roselet.47.131.238.0.sslip.io/api/garden?page=1&per_page=3'`
+- `POST https://roselet.47.131.238.0.sslip.io/api/auth/register`
+- `POST https://roselet.47.131.238.0.sslip.io/api/rose`
+- `GET https://roselet.47.131.238.0.sslip.io/api/rose/{id}`
+- `POST https://roselet.47.131.238.0.sslip.io/api/feedback`
+
+### 当前状态
+- Roselet Web 已可通过 `https://roselet-web.vercel.app` 访问。
+- Web 生产环境已指向 Lightsail Rust HTTPS 后端。
+- 当前生产主线：`Vercel Web + AWS Lightsail Rust Axum + Docker Postgres + Caddy HTTPS`。
+
+### 下一步
+- 邀请真实用户试用。
+- 用 `/stats` 后台观察注册、种花、反馈数据。
+- 后续再做正式域名、备份、监控、小程序真机闭环。

@@ -83,10 +83,10 @@ push main
 
 | 项 | 值 |
 |----|----|
-| CI run | `28075533784` |
-| Deploy run | `28075854263` |
-| Commit | `ae3db8b1e7c0a8aaa127a10a735750b5edf5f355` |
-| Current backend image | `ghcr.io/qiaopengjun5162/roselet-backend:ae3db8b1e7c0a8aaa127a10a735750b5edf5f355` |
+| CI run | `28082438931` |
+| Deploy run | `28082921658` |
+| Commit | `648d2747da283f3e956e44c3438e3337b980fe97` |
+| Current backend image | `ghcr.io/qiaopengjun5162/roselet-backend:648d2747da283f3e956e44c3438e3337b980fe97` |
 
 验证结果：
 

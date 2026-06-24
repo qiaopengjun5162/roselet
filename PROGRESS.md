@@ -12,7 +12,7 @@
 总体进度        [########--] 75%
 产品功能        [#########-] 90%
 工程质量        [#########-] 90%
-生产部署        [#########-] 94%
+生产部署        [##########] 98%
 小程序落地      [#####-----] 50%
 真实用户验证    [##--------] 20%
 ```
@@ -49,7 +49,8 @@
   - [x] 验证 `Deploy Backend` workflow 端到端成功，服务器已运行 GHCR 后端镜像
   - [x] 配置 Caddy HTTPS 临时域名，避免 Vercel HTTPS 页面调用 HTTP API 被浏览器拦截
   - [x] 将应用统计后台迁回 Rust `/api/stats`，减少 Worker 作为生产依赖
-  - [ ] 将 Vercel 生产环境变量切到 Lightsail HTTPS 后端并重新部署
+  - [x] 将 Vercel 生产环境变量切到 Lightsail HTTPS 后端并重新部署
+  - [x] 完成线上 Web + Rust HTTPS 后端冒烟：注册、私密种花、详情、反馈、统计后台
 
 ### Phase 3：多端闭环
 
@@ -73,13 +74,13 @@
 
 ## 接下来 3 个小目标
 
-1. 将 Vercel 生产环境变量切到 `https://roselet.47.131.238.0.sslip.io`，重新部署 Web。
-2. 用线上 Web 跑完整冒烟：注册、登录、种花、花圃、详情、点赞、反馈。
+1. 邀请 5 个真实用户试用 `https://roselet-web.vercel.app`。
+2. 观察 `/stats` 后台数据，判断是否接近 100 用户目标线。
 3. 整理 Worker/免费方案遗留入口，明确 Rust Lightsail 是当前生产主线。
 
 ## 下一步
 
-- 我们下一步应该先做：`配置 Vercel 环境变量，让线上 Web 调用 Lightsail Rust 后端`
+- 我们下一步应该先做：`邀请真实用户试用线上 Web，并用 stats 后台观察是否有人在用`
 - 当前已经完成：
   - `Vercel` 前端真实上线
   - `AWS Lightsail` 服务器创建并绑定静态 IP：`47.131.238.0`
@@ -88,8 +89,11 @@
   - `Caddy` 已通过 `roselet.47.131.238.0.sslip.io` 提供 HTTPS 入口，给 Vercel 前端使用
   - `Deploy Backend` GitHub Actions 已新增：CI 绿后构建 GHCR 镜像并 SSH 部署到 Lightsail
   - `scripts/lightsail-deploy.sh` 已固定 `COMPOSE_PROJECT_NAME=roselet`，避免自动部署生成第二套 compose 项目
-  - `Deploy Backend` run `28075854263` 已成功，当前后端镜像为 `ghcr.io/qiaopengjun5162/roselet-backend:ae3db8b1e7c0a8aaa127a10a735750b5edf5f355`
+  - `Deploy Backend` run `28082921658` 已成功，当前后端镜像为 `ghcr.io/qiaopengjun5162/roselet-backend:648d2747da283f3e956e44c3438e3337b980fe97`
   - `GET /health`、`GET /api/garden`、注册、种花、详情读取均已公网冒烟通过
+  - Vercel 生产环境变量已切到 `https://roselet.47.131.238.0.sslip.io`
+  - Vercel bundle 已确认包含新后端地址，未命中旧 Worker/localhost 地址
+  - 线上冒烟通过：注册、私密种花、详情读取、反馈提交，公开花圃总数未被私密测试污染
   - `GET /api/garden` Worker 真实查 `Neon`
   - `GET /api/rose/:id` Worker 迁移完成，私有访问规则已对齐 Rust
   - `POST /api/auth/refresh` / `POST /api/auth/logout` Worker 最小闭环已迁移
@@ -98,9 +102,9 @@
   - Web 已开始把 `refresh/logout` 和 `garden/rose detail` 切到 Worker 基址
   - Web 已新增 `/stats` 使用动态后台，显示 100 用户判断线进度
 - 现在最有价值的动作变成：
-  - 在 Vercel 设置 `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_AUTH_API_URL` / `NEXT_PUBLIC_READ_API_URL` / `NEXT_PUBLIC_WS_URL`
-  - 重新部署 Vercel 并通过浏览器跑完整线上冒烟
-  - 再考虑域名、HTTPS、备份和监控
+  - 邀请真实用户试用线上 Web
+  - 观察 `/stats` 后台数据和反馈
+  - 再考虑正式域名、备份、监控和小程序上线
 
 ### Cloudflare 判断
 
@@ -128,7 +132,7 @@
 - 后端当前已切换为：`AWS Lightsail 上运行 Rust Axum + Docker Postgres`
 - 后端公网地址：`http://47.131.238.0`，仅用于 IP/服务器冒烟
 - 后端 HTTPS 地址：`https://roselet.47.131.238.0.sslip.io`，用于 Vercel 生产前端
-- 当前未完成：`Vercel 生产环境变量仍需切到 Lightsail 后端`
+- 当前未完成：`正式域名、备份策略、监控告警、小程序真机闭环`
 - Worker API 起点：`apps/worker-api`
 - Worker 当前已迁移：
   - `GET /health`
@@ -137,13 +141,8 @@
   - `GET /api/stats`
   - `POST /api/auth/refresh`
   - `POST /api/auth/logout`
-- Web 当前已切到 Worker 的调用：
-  - `refreshAccessToken()`
-  - `logout()`
-  - `getGarden()`
-  - `getRose()`
-  - `getUsageStats()` / `/stats`
-- 下一次 Vercel 环境变量切换后，上述读/认证接口应统一指向 Rust HTTPS 后端，Worker 保留为历史免费迁移参考。
+- Web 生产环境已统一指向 Rust HTTPS 后端。
+- Worker 保留为历史免费迁移参考，不再是当前生产主线。
 
 ## 已完成
 
