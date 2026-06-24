@@ -3337,6 +3337,10 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - 创建专用管理员账号用于 stats 后台权限验证。
 - 将管理员 user id 写入 Lightsail `~/roselet/.env.production` 的 `ADMIN_USER_IDS`。
 - 验证 `https://roselet.47.131.238.0.sslip.io/health` 仍返回 `200`。
+- 修复 `deploy/lightsail/docker-compose.backend.yml` 后，最终生产容器已注入 `ADMIN_USER_IDS=55be1141-8ad0-417a-bb3f-a9a3a1053287`。
+- 最终管理员账号：`roselet-admin-20260624151526`，user id：`55be1141-8ad0-417a-bb3f-a9a3a1053287`。
+- 最终验证 `GET https://roselet.47.131.238.0.sslip.io/api/stats` 携带管理员 token 返回 `200`。
+- 更新 `.github/workflows/deploy-backend.yml`：production environment URL 和部署后 smoke test 改用 HTTPS `sslip.io` 入口。
 
 ### 问题记录
 
@@ -3357,8 +3361,8 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - `curl -i --max-time 20 https://roselet.47.131.238.0.sslip.io/health`
 - `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'cd ~/roselet && grep "^ADMIN_USER_IDS=" .env.production'`
 - `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'sudo docker inspect roselet-backend-1 --format "{{range .Config.Env}}{{println .}}{{end}}" | grep "^ADMIN_USER_IDS=" || true'`
+- `curl -sS --max-time 20 https://roselet.47.131.238.0.sslip.io/api/stats -H 'authorization: Bearer <admin-access-token>'`
+- 最终 stats 响应摘要：`total_users=5`、`total_roses=1`、`public_roses=1`、`private_roses=0`、`total_feedback=0`、`user_goal.percent=5`。
 
 ### 下一步
-- 提交并推送 Compose 环境变量注入修复。
-- 等 CI + Deploy Backend 完成后，验证容器环境包含 `ADMIN_USER_IDS`，再验证管理员 token 访问 `/api/stats` 返回 `200`。
 - 继续配置 Vercel HTTPS 环境变量并重新部署 Web。

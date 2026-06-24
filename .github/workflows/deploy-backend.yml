@@ -28,7 +28,7 @@ jobs:
     timeout-minutes: 45
     environment:
       name: production
-      url: http://47.131.238.0
+      url: https://roselet.47.131.238.0.sslip.io
 
     steps:
       - name: Resolve deployment metadata
@@ -138,7 +138,7 @@ jobs:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
         run: |
           set -euo pipefail
-          curl -fsS "http://$LIGHTSAIL_HOST/health"
+          curl -fsS "https://roselet.$LIGHTSAIL_HOST.sslip.io/health"
 
       - name: Log out from GHCR on Lightsail
         if: always()
