@@ -394,6 +394,18 @@ ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
 
 通用规则：迁移后端基址前，用前端 API 清单逐项对齐主后端；管理后台接口必须有明确白名单或角色模型，不能只靠页面隐藏。
 
+### 36. Compose env-file 不等于自动注入容器环境变量
+
+问题：Lightsail `.env.production` 已设置 `ADMIN_USER_IDS`，强制重建 backend 后 `/api/stats` 仍返回 `403`。
+
+根因：Docker Compose 的 `--env-file` 只给 Compose 插值使用，不会自动把每个变量注入容器。只有写在 service `environment:` 里的变量才会进入后端进程环境。
+
+解决：
+- 在 `deploy/lightsail/docker-compose.backend.yml` 的 backend `environment` 显式增加 `ADMIN_USER_IDS: ${ADMIN_USER_IDS:-}`。
+- 手动重启时显式传当前 `.current_backend_image`，避免 Compose 使用 `BACKEND_IMAGE=roselet-backend:latest` 兜底值去拉不存在的镜像。
+
+通用规则：新增生产环境变量必须同时改 `.env` 模板、Compose/Kubernetes 注入配置和应用读取代码；只改 `.env` 文件不代表服务会读到。
+
 ## 更新规则
 
 每次遇到问题，按这个顺序更新：

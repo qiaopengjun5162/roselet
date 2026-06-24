@@ -3326,3 +3326,39 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - 在 Lightsail `.env.production` 配置真实 `ADMIN_USER_IDS` 并重启后端。
 - 在 Vercel 配置 HTTPS 环境变量并重新部署 Web。
 - 用线上 Web 跑注册、登录、种花、花圃、详情、点赞、反馈、stats 冒烟。
+
+## 2026-06-24 会话 #66：配置生产 stats 管理员权限
+
+### 会话目标
+在 Lightsail 生产环境配置 `ADMIN_USER_IDS`，让 Rust `/api/stats` 管理员后台真正可用。
+
+### 完成的工作
+- 确认当前生产后端镜像为 `ghcr.io/qiaopengjun5162/roselet-backend:1481a69826e2c872becbaed46311bd4c1581bb17`。
+- 创建专用管理员账号用于 stats 后台权限验证。
+- 将管理员 user id 写入 Lightsail `~/roselet/.env.production` 的 `ADMIN_USER_IDS`。
+- 验证 `https://roselet.47.131.238.0.sslip.io/health` 仍返回 `200`。
+
+### 问题记录
+
+#### 问题 1：手动重启 backend 时拉取了无效镜像
+- 现象：执行 `docker compose up -d backend` 时，Compose 尝试拉取 `roselet-backend:latest`，报错：
+  ```text
+  pull access denied for roselet-backend, repository does not exist or may require 'docker login'
+  ```
+- 根因：`.env.production` 中 `BACKEND_IMAGE=roselet-backend:latest` 只是本地兜底值；GitHub Actions 部署时会用 GHCR 镜像覆盖。手动执行 Compose 时如果不显式传 `BACKEND_IMAGE`，就会使用无效兜底值。
+- 解决：手动重启时从 `~/roselet/.current_backend_image` 读取当前 GHCR 镜像，并以 `BACKEND_IMAGE=<current>` 执行 Compose。
+
+#### 问题 2：ADMIN_USER_IDS 写入 .env 后 stats 仍返回 403
+- 现象：服务器 `.env.production` 已写入 `ADMIN_USER_IDS`，也重启了 backend，但管理员 token 请求 `/api/stats` 仍返回 `403`。
+- 根因：`deploy/lightsail/docker-compose.backend.yml` 没有在 backend `environment` 中显式传入 `ADMIN_USER_IDS`；`--env-file` 不会自动把所有变量注入容器。
+- 解决：更新 `deploy/lightsail/docker-compose.backend.yml`，增加 `ADMIN_USER_IDS: ${ADMIN_USER_IDS:-}`。
+
+### 验证
+- `curl -i --max-time 20 https://roselet.47.131.238.0.sslip.io/health`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'cd ~/roselet && grep "^ADMIN_USER_IDS=" .env.production'`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'sudo docker inspect roselet-backend-1 --format "{{range .Config.Env}}{{println .}}{{end}}" | grep "^ADMIN_USER_IDS=" || true'`
+
+### 下一步
+- 提交并推送 Compose 环境变量注入修复。
+- 等 CI + Deploy Backend 完成后，验证容器环境包含 `ADMIN_USER_IDS`，再验证管理员 token 访问 `/api/stats` 返回 `200`。
+- 继续配置 Vercel HTTPS 环境变量并重新部署 Web。

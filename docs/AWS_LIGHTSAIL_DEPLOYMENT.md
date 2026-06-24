@@ -429,6 +429,8 @@ BACKEND_IMAGE=roselet-backend:latest
 
 `BACKEND_IMAGE` 是本地兜底默认值；GitHub Actions 部署时会通过环境变量覆盖为 `ghcr.io/...:<sha>`。
 
+注意：手动重启 backend 时必须显式传当前 GHCR 镜像，或先从 `.current_backend_image` 读取；不要直接执行不带 `BACKEND_IMAGE` 的 `docker compose up backend`，否则 Compose 会尝试拉取不存在的 `roselet-backend:latest`。
+
 ## 已执行的 Caddy 反向代理
 
 因为公网直连 `3001` 超时，生产入口改为 Caddy 反代到 `127.0.0.1:3001`。Vercel 是 HTTPS 页面，最终浏览器访问 API 使用 `sslip.io` 临时域名获得 HTTPS 证书。
@@ -625,6 +627,17 @@ COPY Cargo.toml Cargo.lock ./
 - Rust Axum 新增 `GET /api/stats`。
 - 接口要求 JWT 登录，并通过 `ADMIN_USER_IDS` 做管理员白名单。
 - OpenAPI 已补充 `/stats` 路径和 `UsageStats` schema。
+
+### ADMIN_USER_IDS 写入 .env 后容器仍返回 403
+
+现象：服务器 `.env.production` 已写入 `ADMIN_USER_IDS`，也强制重建了 backend 容器，但管理员 token 请求 `/api/stats` 仍返回 `403`。
+
+根因：`deploy/lightsail/docker-compose.backend.yml` 的 backend `environment` 没有把 `ADMIN_USER_IDS` 传入容器；`.env.production` 只是 Compose 变量源，不会自动注入所有变量。
+
+处理：
+
+- `deploy/lightsail/docker-compose.backend.yml` 增加 `ADMIN_USER_IDS: ${ADMIN_USER_IDS:-}`。
+- 重新走 GitHub Actions `Deploy Backend` 或手动用当前 GHCR 镜像重建 backend。
 
 ### 小机器首次 Rust release 构建较慢
 

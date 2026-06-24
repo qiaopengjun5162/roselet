@@ -25,6 +25,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       RUST_LOG: ${RUST_LOG:-roselet=info}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      ADMIN_USER_IDS: ${ADMIN_USER_IDS:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}

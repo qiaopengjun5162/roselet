@@ -31,6 +31,8 @@ BACKEND_IMAGE=roselet-backend:latest
 
 GitHub Actions 自动部署时会把 `BACKEND_IMAGE` 覆盖成 `ghcr.io/qiaopengjun5162/roselet-backend:<sha>`。
 
+手动重启 backend 时不要只依赖 `BACKEND_IMAGE=roselet-backend:latest` 兜底值；应从服务器 `~/roselet/.current_backend_image` 读取当前 GHCR 镜像后再执行 Compose。
+
 GitHub repository secrets：
 
 ```env
