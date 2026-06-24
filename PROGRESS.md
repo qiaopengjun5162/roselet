@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前阶段：`Beta 准备上线（Cloudflare Worker 只读迁移推进中）`
+- 当前阶段：`Beta 准备上线（Cloudflare Worker 只读 + 认证最小闭环推进中）`
 - 项目定位：`产品内核已完成，正在从“能开发”走向“能上线、能试用、能讲清楚”`
 - 更新时间：`2026-06-23`
 
@@ -12,7 +12,7 @@
 总体进度        [########--] 75%
 产品功能        [#########-] 90%
 工程质量        [#########-] 90%
-生产部署        [####------] 40%
+生产部署        [#####-----] 50%
 小程序落地      [#####-----] 50%
 真实用户验证    [#---------] 10%
 ```
@@ -65,9 +65,9 @@
 
 ## 接下来 3 个小目标
 
-1. 继续扩 Worker 只读接口：在 `garden` 之后补齐 `rose/:id`，把私有可见性规则迁过去。
+1. 开始让前端切 Worker 认证入口：先接 `refresh/logout`。
 2. 完成第一版线上后端切换准备：确认 Web 何时开始切 Worker API 地址。
-3. 选定下一条最低风险迁移线：认证接口优先，还是写接口优先。
+3. 选定下一条最低风险迁移线：写接口优先，还是剩余认证接口优先。
 
 ## 下一步
 
@@ -76,9 +76,10 @@
   - `Vercel` 前端真实上线
   - `GET /api/garden` Worker 真实查 `Neon`
   - `GET /api/rose/:id` Worker 迁移完成，私有访问规则已对齐 Rust
+  - `POST /api/auth/refresh` / `POST /api/auth/logout` Worker 最小闭环已迁移
 - 现在最有价值的动作变成：
-  - 迁认证最小闭环
-  - 准备前端 API 切换策略
+  - 让 Web 先切 `refresh/logout`
+  - 再决定写接口和剩余认证接口的优先级
 
 ### Cloudflare 判断
 
@@ -108,6 +109,8 @@
   - `GET /health`
   - `GET /api/garden`
   - `GET /api/rose/:id`
+  - `POST /api/auth/refresh`
+  - `POST /api/auth/logout`
 
 ## 已完成
 

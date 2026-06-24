@@ -2588,3 +2588,90 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 下一步
 - [ ] 继续迁认证最小闭环
 - [ ] 准备 Web 端切换到 Worker API 的策略
+
+## 2026-06-24 会话 #55：Cloudflare Worker 迁移 refresh/logout
+
+### 会话目标
+继续把 Worker 从“只有只读接口”推进到“开始具备真实登录态生命周期能力”，优先迁移 Web / 小程序最依赖的 `refresh + logout`。
+
+### 完成的工作
+
+#### Worker API：认证最小闭环迁移
+- 新增 `apps/worker-api/src/auth.ts`
+- 新增：
+  - `POST /api/auth/refresh`
+  - `POST /api/auth/logout`
+- 当前已对齐 Rust 后端的核心契约：
+  - `refresh`：
+    - 读取 `refresh_token`
+    - 校验 token hash / revoked / expires_at
+    - 只给活跃用户签发新 access token
+    - 无效或过期 refresh token 返回 `401`
+  - `logout`：
+    - Bearer access token：撤销用户全部 refresh tokens
+    - Bearer refresh token：按 refresh token hash 撤销单个 token
+    - token 缺失或无效返回 `401`
+
+#### Worker 最小验证回路扩展
+- `apps/worker-api/package.json`
+  - `test` 脚本扩展为同时编译：
+    - `src/rose.ts`
+    - `src/auth.ts`
+  - 再统一执行 `node --test src/*.test.mjs`
+- 新增：
+  - `apps/worker-api/src/auth.test.mjs`
+- 当前新增覆盖：
+  - refresh token hash 稳定性
+  - refresh token 基础格式校验
+  - refresh body 解析
+  - 无 JWT 密钥时不误判 access token 撤销路径
+
+#### 规则与文档同步
+- 更新：
+  - `.gitignore`
+  - `PROGRESS.md`
+  - `docs/CLOUDFLARE_WORKER_API.md`
+  - `docs/CLOUDFLARE_MIGRATION_PLAN.md`
+  - `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
+  - `AGENTS.md`
+  - `CLAUDE.md`
+
+### 问题记录
+
+#### 问题 1：NodeNext 编译要求相对导入显式写 `.js`
+- 现象：
+  - `tsc --module NodeNext --moduleResolution NodeNext` 编译 `auth.ts` 时，`import "./rose"` 报缺少扩展名
+- 根因：
+  - NodeNext 模式按 ESM 运行时规则解析相对路径，不接受省略扩展名的 bundler 风格写法
+- 解决：
+  - Worker 内部跨文件相对导入显式改为 `./rose.js`
+  - 把 NodeNext 编译继续保留在本地测试脚本里，提前暴露这类问题
+
+#### 问题 2：Worker 测试依赖编译产物时，要先确认真实输出路径
+- 现象：
+  - `auth.test.mjs` / `rose.test.mjs` 都从 `.tmp-test/*.js` 导入
+  - 一旦编译失败，Node 测试会直接报找不到模块
+- 根因：
+  - 这类最小测试依赖单独 `tsc` 产物，不像 Jest/Vitest 那样隐式做 transform
+- 解决：
+  - 先用 `tsc` 验证目标文件能编译
+  - 再运行 `node --test`
+  - 将 `.tmp-test/` 加入 `.gitignore`
+
+### 验证
+- `./apps/worker-api/node_modules/.bin/tsc --noEmit -p apps/worker-api/tsconfig.json`
+- `./apps/worker-api/node_modules/.bin/tsc --outDir apps/worker-api/.tmp-test --module NodeNext --moduleResolution NodeNext --target ES2022 apps/worker-api/src/rose.ts apps/worker-api/src/auth.ts`
+- `node --test apps/worker-api/src/*.test.mjs`
+
+### 当前状态
+- Vercel 前端已上线
+- Cloudflare Worker 当前已迁移：
+  - `GET /health`
+  - `GET /api/garden`
+  - `GET /api/rose/:id`
+  - `POST /api/auth/refresh`
+  - `POST /api/auth/logout`
+
+### 下一步
+- [ ] 让 Web 端优先切 `refresh/logout` 到 Worker
+- [ ] 再决定先迁写接口还是其余认证接口

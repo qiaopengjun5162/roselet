@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { logoutUser, refreshAccessToken } from "./auth";
 import { getGarden } from "./garden";
 import { getRose } from "./rose";
 
@@ -52,6 +53,28 @@ app.get("/api/rose/:id", async (c) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "服务器内部错误";
     const status = message === "ROSE_NOT_FOUND" ? 404 : 500;
+    return c.json({ error: message }, status);
+  }
+});
+
+app.post("/api/auth/refresh", async (c) => {
+  try {
+    const data = await refreshAccessToken(c.env, c.req.raw);
+    return c.json(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "服务器内部错误";
+    const status = message === "invalid or expired refresh token" ? 401 : message === "USER_NOT_FOUND" ? 404 : 500;
+    return c.json({ error: message }, status);
+  }
+});
+
+app.post("/api/auth/logout", async (c) => {
+  try {
+    const data = await logoutUser(c.env, c.req.raw);
+    return c.json(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "服务器内部错误";
+    const status = message === "missing or invalid token" ? 401 : 500;
     return c.json({ error: message }, status);
   }
 });

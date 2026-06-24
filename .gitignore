@@ -7,6 +7,7 @@ node_modules/
 .pnpm-store/
 .next/
 out/
+apps/worker-api/.tmp-test/
 
 # Env
 .env

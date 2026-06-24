@@ -109,6 +109,7 @@ Quality gates:
 - **i18n 不要前端分叉**：当前不做完整双语；后续若加中英文，先加 Rust `Locale` 和 WASM 本地化表，再让 Web / 小程序读取同一套结果
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 - **Worker 最小测试**：`apps/worker-api` 当前把 Worker 编译和 Node 测试分开；先跑 `pnpm worker:typecheck`，再跑 `pnpm worker:test`
+- **Worker NodeNext 导入**：`apps/worker-api` 内部相对导入在可复用模块里显式写 `.js` 扩展名，避免 NodeNext 编译失败
 
 ## 常用命令（justfile）
 ```bash

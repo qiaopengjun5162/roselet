@@ -1,6 +1,6 @@
 # Cloudflare Worker API 起步说明
 
-> 更新时间：2026-06-24
+> 更新时间：2026-06-24（认证最小闭环已接入）
 
 ## 目标
 
@@ -41,6 +41,21 @@
     - nickname
     - like_count
     - recipient_user_id 仅用于 Worker 内部访问判断，不对外扩散额外语义
+- `POST /api/auth/refresh`
+  - 当前已接到 `Neon serverless driver`
+  - 当前已对齐 Rust 版的基础行为：
+    - 读取 `refresh_token`
+    - 校验 token hash / revoked / expires_at
+    - 只给活跃用户签发新 access token
+  - 当前错误语义：
+    - 无效或过期 refresh token 返回 `401`
+    - 用户已软删除返回 `404`
+- `POST /api/auth/logout`
+  - 当前支持两种撤销路径：
+    - Bearer access token：撤销该用户全部 refresh tokens
+    - Bearer refresh token：按 token hash 撤销单个 refresh token
+  - 当前错误语义：
+    - token 缺失或无效返回 `401`
 
 ### CORS
 
@@ -59,9 +74,9 @@
 
 ## 下一步迁移顺序
 
-1. 迁移认证接口的最小闭环
+1. 准备 Web 侧先切 `refresh/logout`
 2. 迁移写接口
-3. 准备 Web 侧 API 切换
+3. 再迁 `register` / `profile` 等其余认证接口
 4. 最后再处理 WebSocket / Durable Objects
 
 ## 本地命令
@@ -105,7 +120,16 @@ pnpm worker:deploy
 - 解决：
   - 业务实现继续走 Worker `tsconfig`
   - 最小行为测试改成：
-    - 先单独 `tsc` 编译 `src/rose.ts`
-    - 再用原生 `node --test` 跑 `src/rose.test.mjs`
+    - 先单独 `tsc` 编译目标文件
+    - 再用原生 `node --test` 跑 `src/*.test.mjs`
 - 当前命令：
   - `pnpm worker:test`
+
+### NodeNext 下相对导入要显式写 `.js`
+
+- 现象：
+  - `tsc --module NodeNext --moduleResolution NodeNext` 编译 `auth.ts` 时，`import "./rose"` 会报缺少扩展名
+- 根因：
+  - NodeNext 模式按 ESM 规则解析相对路径，要求显式文件扩展名
+- 解决：
+  - Worker 内部跨文件引用统一写成 `./rose.js`

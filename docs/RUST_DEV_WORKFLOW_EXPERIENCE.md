@@ -271,7 +271,17 @@ NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-f
 
 通用规则：边缘运行时项目的“生产编译目标”和“本地测试宿主”通常不是一回事；先分离验证回路，再考虑是否引入更重的统一测试框架。
 
-### 25. “有免费档”不等于“当前部署路径不需要绑卡”
+### 26. NodeNext 模式下相对导入要按运行时格式写扩展名
+
+问题：Worker 代码单独编译到 `.tmp-test` 时，如果在 TypeScript 里继续写 `import "./rose"`，`tsc --module NodeNext --moduleResolution NodeNext` 会直接报错。
+
+解决：
+- Worker 内部相对导入按最终 ESM 运行时格式写成 `./rose.js`。
+- 把 NodeNext 编译命令保留在本地测试脚本里，避免只在生产部署时才暴露这个问题。
+
+通用规则：当 TypeScript 代码同时面向边缘运行时和 Node ESM 编译链时，不要依赖 bundler 风格的隐式扩展名解析。
+
+### 27. “有免费档”不等于“当前部署路径不需要绑卡”
 
 问题：平台定价页写有免费层，只能证明“理论上存在免费额度”；真实注册或首次部署流程仍可能在身份验证、资源创建或继续使用前要求信用卡。
 
