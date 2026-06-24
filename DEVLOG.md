@@ -3117,3 +3117,66 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 验证
 - 文档变更无密钥写入。
 - `git diff --check`
+
+## 2026-06-24 会话 #63：新增 GitHub Actions 后端自动部署
+
+### 会话目标
+把 Lightsail 上的手动 Rust 构建升级为 GitHub Actions 自动构建镜像、推送 GHCR、SSH 到服务器拉镜像重启，减少小服务器编译压力，提升部署可追踪性和可回滚性。
+
+### 完成的工作
+- 新增 `.github/workflows/deploy-backend.yml`
+  - 由 `CI` workflow 成功完成后自动触发
+  - 支持 `workflow_dispatch` 手动触发
+  - 构建 `Dockerfile.backend`
+  - 推送 `ghcr.io/qiaopengjun5162/roselet-backend:<sha>` 和 `latest`
+  - SSH 到 Lightsail 执行部署脚本
+  - 部署后公网 `/health` 冒烟
+- 新增 `deploy/lightsail/docker-compose.backend.yml`
+  - 运行 Postgres + backend
+  - backend 使用 `${BACKEND_IMAGE}` 镜像，不再在服务器上 build
+  - backend 端口只绑定 `127.0.0.1:3001:3001`，公网入口仍由 Caddy `:80` 承接
+- 新增 `scripts/lightsail-deploy.sh`
+  - 检查 `.env.production` 和 compose 文件
+  - 拉取指定 backend 镜像
+  - 重启 `db + backend`
+  - 本机 `/health` 检查
+  - 记录 `.previous_backend_image` 和 `.current_backend_image`
+- 更新 `Dockerfile.backend`
+  - 增加 OCI source label
+- 已通过 `gh secret set` 配置 GitHub Actions Secrets：
+  - `LIGHTSAIL_HOST`
+  - `LIGHTSAIL_USER`
+  - `LIGHTSAIL_SSH_KEY`
+  - `LIGHTSAIL_KNOWN_HOSTS`
+- 曾短暂配置 `GHCR_READ_TOKEN`，随后删除；最终方案使用每次 workflow 的临时 `GITHUB_TOKEN` 登录 GHCR，并在部署结束后 logout。
+- 更新 `docs/AWS_LIGHTSAIL_DEPLOYMENT.md`、`docs/DEPLOYMENT_ENV_TEMPLATE.md`、`PROGRESS.md`。
+
+### 问题记录
+
+#### 问题：小服务器不适合长期承担 Rust release 构建
+- 现象：
+  - `micro_3_0` 首次 Docker release 构建耗时数分钟，依赖 swap 兜底。
+- 根因：
+  - Lightsail 1GB 内存适合运行 Rust 后端，不适合每次部署都完整编译 Rust workspace。
+- 解决：
+  - 把构建前移到 GitHub Actions。
+  - 服务器只负责拉 GHCR 镜像并重启容器。
+
+#### 问题：GHCR 拉取权限不应依赖长期 PAT
+- 现象：
+  - 初版考虑用 `GHCR_READ_TOKEN` 给服务器拉镜像。
+- 根因：
+  - 长期 PAT 需要额外轮换和权限管理；当前 deploy job 本身已经拥有 `packages: write` 的 `GITHUB_TOKEN`。
+- 解决：
+  - workflow 用临时 `GITHUB_TOKEN` 通过 SSH 管道登录服务器 Docker。
+  - 部署结束后执行 `sudo docker logout ghcr.io`。
+  - 删除 `GHCR_READ_TOKEN` secret。
+
+### 验证
+- `gh secret list --repo qiaopengjun5162/roselet | rg 'LIGHTSAIL|GHCR'`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'grep -E "^(NODE_ENV|PORT|RUST_LOG|ALLOWED_ORIGINS|OPENAI_BASE_URL|OPENAI_MODEL|BACKEND_IMAGE)=" ~/roselet/.env.production'`
+- `git diff --check`
+
+### 当前状态
+- 自动部署代码和 secrets 已准备好。
+- 需要 commit + push 后，由 GitHub Actions 真实跑一次 `Deploy Backend` 验证端到端链路。

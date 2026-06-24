@@ -23,6 +23,18 @@ ALLOWED_ORIGINS=https://roselet-web.vercel.app,http://47.131.238.0
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4o-mini
+BACKEND_IMAGE=roselet-backend:latest
+```
+
+GitHub Actions 自动部署时会把 `BACKEND_IMAGE` 覆盖成 `ghcr.io/qiaopengjun5162/roselet-backend:<sha>`。
+
+GitHub repository secrets：
+
+```env
+LIGHTSAIL_HOST=47.131.238.0
+LIGHTSAIL_USER=ubuntu
+LIGHTSAIL_SSH_KEY=<Lightsail deploy private key>
+LIGHTSAIL_KNOWN_HOSTS=<ssh-keyscan output>
 ```
 
 Vercel 前端下一步需要设置：

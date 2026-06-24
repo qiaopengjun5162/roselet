@@ -17,6 +17,7 @@ COPY crates/recommend/src crates/recommend/src
 RUN SQLX_OFFLINE=true cargo build --release -p roselet-backend
 
 FROM debian:bookworm-slim
+LABEL org.opencontainers.image.source="https://github.com/qiaopengjun5162/roselet"
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/roselet-backend /usr/local/bin/

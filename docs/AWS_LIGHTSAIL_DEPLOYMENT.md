@@ -12,6 +12,9 @@
       -> Caddy :80
       -> Rust Axum backend :3001
       -> Docker Postgres :5432
+GitHub Actions
+  -> GHCR: ghcr.io/qiaopengjun5162/roselet-backend:<sha>
+  -> SSH deploy to Lightsail
 ```
 
 当前生产后端基址：
@@ -50,6 +53,86 @@ ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0
 - 本机 AWS CLI 已安装但没有 AWS 凭据。
 - 实例创建和初始端口开放是在 AWS CloudShell 里完成的。
 - 后续部署维护主要走 SSH，不依赖本机 AWS CLI。
+
+## 自动化部署主线
+
+当前推荐部署方式已经从“在 Lightsail 上编译 Rust”升级为：
+
+```text
+push main
+  -> CI 通过
+  -> Deploy Backend workflow 构建 Docker 镜像
+  -> 推送到 GHCR
+  -> SSH 到 Lightsail
+  -> 服务器拉镜像并重启 backend
+  -> /health 公网冒烟
+```
+
+相关文件：
+
+- `.github/workflows/deploy-backend.yml`
+- `deploy/lightsail/docker-compose.backend.yml`
+- `scripts/lightsail-deploy.sh`
+- `Dockerfile.backend`
+
+### GitHub Actions Secrets
+
+已配置的 repository secrets：
+
+| Secret | 用途 |
+|--------|------|
+| `LIGHTSAIL_HOST` | Lightsail 静态 IP，当前为 `47.131.238.0` |
+| `LIGHTSAIL_USER` | SSH 用户，当前为 `ubuntu` |
+| `LIGHTSAIL_SSH_KEY` | GitHub Actions 用于 SSH 登录 Lightsail 的私钥 |
+| `LIGHTSAIL_KNOWN_HOSTS` | Lightsail SSH host key，避免关闭 host key 校验 |
+
+GHCR 登录使用每次 workflow 的临时 `GITHUB_TOKEN`，部署完成后执行 `docker logout ghcr.io`。不要为 GHCR 额外保留长期 PAT，除非后续确认包权限必须这样做。
+
+### 手动触发部署
+
+```bash
+gh workflow run deploy-backend.yml --repo qiaopengjun5162/roselet
+```
+
+查看运行：
+
+```bash
+gh run list --workflow deploy-backend.yml --repo qiaopengjun5162/roselet
+```
+
+### 服务器运行编排
+
+自动部署使用：
+
+```bash
+deploy/lightsail/docker-compose.backend.yml
+```
+
+它不再在服务器上 `build:`，而是使用：
+
+```yaml
+image: ${BACKEND_IMAGE}
+```
+
+这能避免 `micro_3_0` 服务器反复承担 Rust release 编译。
+
+### 回滚
+
+服务器会在部署前记录旧镜像：
+
+```text
+~/roselet/.previous_backend_image
+```
+
+如果新镜像有问题，可 SSH 到服务器后手动回滚：
+
+```bash
+ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'set -euo pipefail
+cd ~/roselet
+BACKEND_IMAGE=$(cat .previous_backend_image)
+bash scripts/lightsail-deploy.sh
+'
+```
 
 ## 已执行的 AWS CloudShell 操作
 
@@ -205,6 +288,8 @@ git status --short --branch
 '
 ```
 
+以下是最初手动部署记录。当前自动部署已改用 `deploy/lightsail/docker-compose.backend.yml`，这段保留用于追溯。
+
 在服务器创建 `.env.production` 和 `docker-compose.prod.yml`：
 
 ```bash
@@ -284,6 +369,25 @@ ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
 ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
   'cd ~/roselet && sudo docker compose --env-file .env.production -f docker-compose.prod.yml ps'
 ```
+
+## 当前服务器环境变量要求
+
+服务器 `.env.production` 必须包含：
+
+```env
+POSTGRES_PASSWORD=<服务器随机生成，不能入库>
+JWT_SECRET=<服务器随机生成，不能入库>
+NODE_ENV=production
+PORT=3001
+RUST_LOG=roselet=info
+ALLOWED_ORIGINS=https://roselet-web.vercel.app,http://47.131.238.0
+OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4o-mini
+BACKEND_IMAGE=roselet-backend:latest
+```
+
+`BACKEND_IMAGE` 是本地兜底默认值；GitHub Actions 部署时会通过环境变量覆盖为 `ghcr.io/...:<sha>`。
 
 ## 已执行的 Caddy 反向代理
 
@@ -376,13 +480,14 @@ ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
 更新后端：
 
 ```bash
-ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'set -euo pipefail
-cd ~/roselet
-git fetch origin main
-git pull --ff-only origin main
-sudo docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
-curl -sS http://127.0.0.1:3001/health
-'
+gh workflow run deploy-backend.yml --repo qiaopengjun5162/roselet
+```
+
+手动 SSH 部署指定镜像：
+
+```bash
+ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
+  'cd ~/roselet && BACKEND_IMAGE=ghcr.io/qiaopengjun5162/roselet-backend:<sha> bash scripts/lightsail-deploy.sh'
 ```
 
 查看资源：

@@ -12,7 +12,7 @@
 总体进度        [########--] 75%
 产品功能        [#########-] 90%
 工程质量        [#########-] 90%
-生产部署        [########--] 82%
+生产部署        [#########-] 88%
 小程序落地      [#####-----] 50%
 真实用户验证    [##--------] 20%
 ```
@@ -44,6 +44,7 @@
   - [x] 确定生产部署拓扑：Vercel Web + AWS Lightsail Rust API + Docker Postgres
   - [x] 补充部署文档、环境变量、服务器操作记录与故障处理
   - [x] 完成 Rust 后端线上环境并跑通基本冒烟检查
+  - [x] 新增 GitHub Actions 自动构建 GHCR 镜像并部署到 Lightsail
   - [ ] 将 Vercel 生产环境变量切到 Lightsail 后端并重新部署
 
 ### Phase 3：多端闭环
@@ -69,8 +70,8 @@
 ## 接下来 3 个小目标
 
 1. 将 Vercel 生产环境变量切到 `http://47.131.238.0`，重新部署 Web。
-2. 用线上 Web 跑完整冒烟：注册、登录、种花、花圃、详情、点赞、反馈。
-3. 绑定正式域名并启用 HTTPS，再邀请第一批真实用户试用。
+2. 触发一次 `Deploy Backend` workflow，确认 GHCR 镜像部署链路跑通。
+3. 用线上 Web 跑完整冒烟：注册、登录、种花、花圃、详情、点赞、反馈。
 
 ## 下一步
 
@@ -80,6 +81,7 @@
   - `AWS Lightsail` 服务器创建并绑定静态 IP：`47.131.238.0`
   - `Rust Axum backend + Docker Postgres` 已在 Lightsail 启动
   - `Caddy` 已监听 `80` 并反代到后端 `3001`
+  - `Deploy Backend` GitHub Actions 已新增：CI 绿后构建 GHCR 镜像并 SSH 部署到 Lightsail
   - `GET /health`、`GET /api/garden`、注册、种花、详情读取均已公网冒烟通过
   - `GET /api/garden` Worker 真实查 `Neon`
   - `GET /api/rose/:id` Worker 迁移完成，私有访问规则已对齐 Rust
@@ -89,6 +91,7 @@
   - Web 已新增 `/stats` 使用动态后台，显示 100 用户判断线进度
 - 现在最有价值的动作变成：
   - 在 Vercel 设置 `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_AUTH_API_URL` / `NEXT_PUBLIC_READ_API_URL` / `NEXT_PUBLIC_WS_URL`
+  - 触发并观察 `Deploy Backend` workflow，确认自动化链路实际通过
   - 重新部署 Vercel 并通过浏览器跑完整线上冒烟
   - 再考虑域名、HTTPS、备份和监控
 
