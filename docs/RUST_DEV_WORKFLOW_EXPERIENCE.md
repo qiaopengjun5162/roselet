@@ -347,6 +347,26 @@ NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-f
 
 通用规则：部署排障先分层：代码、构建、服务器、反向代理、平台账号/API；不要把平台 CLI 网络问题当成应用不可部署。
 
+### 33. 生产 Docker Compose 要固定 project name
+
+问题：同一台服务器上，手动部署用 `docker-compose.prod.yml` 创建了 `roselet` 项目；自动部署改用 `deploy/lightsail/docker-compose.backend.yml` 后，如果不固定 project name，Compose 会按目录名创建第二套 `lightsail` 项目。结果新旧 backend 同时争抢 `3001`，并且会出现 `roselet_pgdata` / `lightsail_pgdata` 两套数据卷。
+
+根因：Docker Compose 的默认 project name 依赖 compose 文件所在目录或当前目录；部署文件路径变了，项目名也可能变。
+
+解决：
+- 在部署脚本里显式传 `COMPOSE_PROJECT_NAME=roselet`。
+- 运维命令也带同一个 project name。
+- 清理失败部署产生的临时项目，不删除生产数据卷。
+
+验证：
+
+```bash
+ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
+  'sudo docker compose ls --format json && sudo docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}"'
+```
+
+通用规则：生产 compose 项目一旦承载数据卷和公网端口，后续自动部署必须固定 project name；不要让文件路径或目录名隐式决定生产资源名。
+
 ## 更新规则
 
 每次遇到问题，按这个顺序更新：

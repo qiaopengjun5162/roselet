@@ -112,6 +112,7 @@ Quality gates:
 - **Worker NodeNext 导入**：`apps/worker-api` 内部相对导入在可复用模块里显式写 `.js` 扩展名，避免 NodeNext 编译失败
 - **当前生产后端**：AWS Lightsail `47.131.238.0`，Caddy 监听 `80` 反代到 Rust Axum `3001`，操作记录见 `docs/AWS_LIGHTSAIL_DEPLOYMENT.md`
 - **生产密钥**：Lightsail `.env.production` 只留在服务器，不能把 `POSTGRES_PASSWORD` / `JWT_SECRET` / 私钥写入 Git 或文档
+- **Lightsail Compose 项目名**：自动部署必须固定 `COMPOSE_PROJECT_NAME=roselet`，复用 `roselet_pgdata`；否则会生成 `lightsail_*` 容器/卷并和旧后端抢占 `3001`
 
 ## 常用命令（justfile）
 ```bash

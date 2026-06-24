@@ -12,7 +12,7 @@
 总体进度        [########--] 75%
 产品功能        [#########-] 90%
 工程质量        [#########-] 90%
-生产部署        [#########-] 88%
+生产部署        [#########-] 89%
 小程序落地      [#####-----] 50%
 真实用户验证    [##--------] 20%
 ```
@@ -45,6 +45,7 @@
   - [x] 补充部署文档、环境变量、服务器操作记录与故障处理
   - [x] 完成 Rust 后端线上环境并跑通基本冒烟检查
   - [x] 新增 GitHub Actions 自动构建 GHCR 镜像并部署到 Lightsail
+  - [x] 修复自动部署 compose 项目名漂移，避免 `lightsail_*` 临时容器抢占端口或数据卷漂移
   - [ ] 将 Vercel 生产环境变量切到 Lightsail 后端并重新部署
 
 ### Phase 3：多端闭环
@@ -70,7 +71,7 @@
 ## 接下来 3 个小目标
 
 1. 将 Vercel 生产环境变量切到 `http://47.131.238.0`，重新部署 Web。
-2. 触发一次 `Deploy Backend` workflow，确认 GHCR 镜像部署链路跑通。
+2. 触发一次 `Deploy Backend` workflow，确认 GHCR 镜像部署链路接管旧 `roselet` compose 项目。
 3. 用线上 Web 跑完整冒烟：注册、登录、种花、花圃、详情、点赞、反馈。
 
 ## 下一步
@@ -82,6 +83,7 @@
   - `Rust Axum backend + Docker Postgres` 已在 Lightsail 启动
   - `Caddy` 已监听 `80` 并反代到后端 `3001`
   - `Deploy Backend` GitHub Actions 已新增：CI 绿后构建 GHCR 镜像并 SSH 部署到 Lightsail
+  - `scripts/lightsail-deploy.sh` 已固定 `COMPOSE_PROJECT_NAME=roselet`，避免自动部署生成第二套 compose 项目
   - `GET /health`、`GET /api/garden`、注册、种花、详情读取均已公网冒烟通过
   - `GET /api/garden` Worker 真实查 `Neon`
   - `GET /api/rose/:id` Worker 迁移完成，私有访问规则已对齐 Rust

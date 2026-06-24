@@ -116,6 +116,14 @@ image: ${BACKEND_IMAGE}
 
 这能避免 `micro_3_0` 服务器反复承担 Rust release 编译。
 
+自动部署脚本固定使用：
+
+```bash
+COMPOSE_PROJECT_NAME=roselet
+```
+
+原因是最初手动部署已经创建了 `roselet` compose 项目和 `roselet_pgdata` 数据卷。后续自动部署必须接管同一套项目，不能让 `deploy/lightsail/docker-compose.backend.yml` 按目录名生成 `lightsail_*` 容器和卷。
+
 ### 回滚
 
 服务器会在部署前记录旧镜像：
@@ -467,14 +475,14 @@ Client network socket disconnected before secure TLS connection was established
 
 ```bash
 ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
-  'cd ~/roselet && sudo docker compose --env-file .env.production -f docker-compose.prod.yml ps'
+  'cd ~/roselet && sudo COMPOSE_PROJECT_NAME=roselet docker compose --env-file .env.production -f deploy/lightsail/docker-compose.backend.yml ps'
 ```
 
 查看日志：
 
 ```bash
 ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
-  'cd ~/roselet && sudo docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=120 backend'
+  'cd ~/roselet && sudo COMPOSE_PROJECT_NAME=roselet docker compose --env-file .env.production -f deploy/lightsail/docker-compose.backend.yml logs --tail=120 backend'
 ```
 
 更新后端：
@@ -550,6 +558,35 @@ COPY Cargo.toml Cargo.lock ./
 - 加 2G swap。
 - 首次构建耐心等待。
 - 如果未来 OOM 或构建太慢，可改为 CI 构建镜像并推送 registry，服务器只拉镜像。
+
+### 自动部署生成了第二套 compose 项目
+
+现象：
+
+- `Deploy Backend` workflow 的镜像构建、GHCR 推送、SSH 登录都成功。
+- 服务器执行部署脚本失败：
+
+```text
+Bind for 0.0.0.0:3001 failed: port is already allocated
+```
+
+根因：
+
+- 手动部署阶段使用 `docker-compose.prod.yml`，compose 项目名是 `roselet`，已有 `roselet-backend-1` 绑定 `3001`。
+- 自动部署阶段改用 `deploy/lightsail/docker-compose.backend.yml`，如果不固定 project name，Docker Compose 会按目录名生成 `lightsail` 项目。
+- 新的 `lightsail-backend-1` 想再绑定同一个宿主机端口，于是和旧的 `roselet-backend-1` 冲突；同时还会产生 `lightsail_pgdata`，存在数据卷漂移风险。
+
+处理：
+
+- `scripts/lightsail-deploy.sh` 固定 `COMPOSE_PROJECT_NAME=roselet`。
+- 清理失败部署生成的临时项目：
+
+```bash
+ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'set -euo pipefail
+cd ~/roselet
+sudo COMPOSE_PROJECT_NAME=lightsail docker compose --env-file .env.production -f deploy/lightsail/docker-compose.backend.yml down --remove-orphans
+'
+```
 
 ## 安全注意
 

@@ -3180,3 +3180,67 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 当前状态
 - 自动部署代码和 secrets 已准备好。
 - 需要 commit + push 后，由 GitHub Actions 真实跑一次 `Deploy Backend` 验证端到端链路。
+
+## 2026-06-24 会话 #64：修复 Lightsail 自动部署项目名漂移
+
+### 会话目标
+验证 GitHub Actions 后端自动部署，并修复首次自动部署在 Lightsail 上接管旧服务时暴露的问题。
+
+### 完成的工作
+- 确认 `CI` run `28074833056` 已全部通过：
+  - Backend Tests：success
+  - Frontend Tests：success
+  - Miniprogram Build：success
+- 确认 `Deploy Backend` run `28075156813` 前半段成功：
+  - 构建 Rust 后端 Docker 镜像成功
+  - 推送 `ghcr.io/qiaopengjun5162/roselet-backend:b71b6f4a3aefac5d0c3b591ab489c7469bc3b077` 成功
+  - SSH 到 Lightsail 成功
+  - 服务器登录 GHCR 成功
+- 修复 `scripts/lightsail-deploy.sh`：
+  - 新增 `COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-roselet}"`
+  - 所有 `docker compose` 命令显式传入同一个 project name
+  - 自动部署后续会接管旧的 `roselet` compose 项目和 `roselet_pgdata` 数据卷
+- 清理失败部署产生的临时 `lightsail` compose 项目：
+  - 删除 `lightsail-backend-1`
+  - 删除 `lightsail-db-1`
+  - 删除 `lightsail_default` network
+  - 保留线上旧 `roselet` 服务继续运行
+- 更新文档：
+  - `AGENTS.md`
+  - `CLAUDE.md`
+  - `PROGRESS.md`
+  - `docs/AWS_LIGHTSAIL_DEPLOYMENT.md`
+  - `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
+
+### 问题记录
+
+#### 问题：自动部署生成第二套 compose 项目并抢占端口
+- 现象：
+  - `Deploy Backend` workflow 在 `Deploy backend on Lightsail` 步骤失败。
+  - 关键错误：
+    ```text
+    Bind for 0.0.0.0:3001 failed: port is already allocated
+    ```
+  - 公网 `http://47.131.238.0/health` 仍正常，说明旧后端仍在服务。
+- 根因：
+  - 旧手动部署使用 `docker-compose.prod.yml`，compose 项目名是 `roselet`，已有 `roselet-backend-1` 绑定 `3001`。
+  - 新自动部署使用 `deploy/lightsail/docker-compose.backend.yml`，如果不固定 project name，会按目录名生成 `lightsail` 项目。
+  - `lightsail-backend-1` 想再绑定宿主机 `3001`，导致端口冲突；同时创建 `lightsail_pgdata`，有数据卷漂移风险。
+- 解决：
+  - 部署脚本固定 `COMPOSE_PROJECT_NAME=roselet`。
+  - 清理失败生成的临时 `lightsail` compose 项目。
+  - 文档记录“生产 compose 必须固定 project name”。
+
+### 验证
+- `gh run view 28074833056 --repo qiaopengjun5162/roselet --json status,conclusion,jobs`
+- `gh run watch 28075156813 --repo qiaopengjun5162/roselet --exit-status`
+- `gh run view 28075156813 --repo qiaopengjun5162/roselet --log-failed`
+- `curl -sS -i http://47.131.238.0/health`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'sudo docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}"'`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'sudo docker compose ls --format json'`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'cd ~/roselet && sudo COMPOSE_PROJECT_NAME=lightsail docker compose --env-file .env.production -f deploy/lightsail/docker-compose.backend.yml down --remove-orphans || true'`
+- `bash -n scripts/lightsail-deploy.sh`
+
+### 当前状态
+- 线上旧 `roselet` 后端仍健康运行。
+- 自动部署脚本已修复，等待 commit + push 后由 CI 再次触发端到端自动部署验证。
