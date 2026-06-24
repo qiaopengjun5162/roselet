@@ -374,7 +374,7 @@ export default function PlantPage() {
         </div>
 
         {/* Submit button */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
           <Button
             className="bg-rose-500 hover:bg-rose-600 px-8 py-6 text-lg rounded-full shadow-lg disabled:opacity-50"
             onClick={handleSubmit}
@@ -382,6 +382,9 @@ export default function PlantPage() {
           >
             {submitting ? "种下中..." : isGift ? "送出这朵玫瑰吧" : "种下玫瑰吧"}
           </Button>
+          {!hasContent && (
+            <p className="text-xs text-slate-500">先点击玫瑰上的 🌹 / 🌵 / 🌱 填写内容，按钮才会亮起</p>
+          )}
         </div>
 
         {/* Back button */}
