@@ -3000,6 +3000,8 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - 服务器已安装 Docker / Docker Compose。
 - 增加 2G swap，降低 Rust 镜像构建时 OOM 风险。
 - UFW 已开放 `OpenSSH`、`80/tcp`、`443/tcp`、临时调试用 `3001/tcp`。
+- Rust 后端和 Postgres 已通过 `docker-compose.prod.yml` 在服务器启动。
+- Caddy 已安装并监听 `:80`，将公网 HTTP 请求反代到 `127.0.0.1:3001`。
 
 ### 问题记录
 
@@ -3044,15 +3046,43 @@ Web 端打开“个人资料”时显示“加载资料失败”。
   - 从 `.gitignore` 移除 `Cargo.lock` 忽略规则。
   - 强制把根目录 `Cargo.lock` 纳入版本控制。
 
+#### 问题 5：公网直连 `3001` 超时
+- 现象：
+  - 后端容器已正常监听 `0.0.0.0:3001`，但本机访问 `http://47.131.238.0:3001/health` 超时。
+  - 服务器内部访问 `http://127.0.0.1:3001/health` 正常。
+- 根因：
+  - Lightsail 公网防火墙/端口策略没有让 `3001` 从外网可达；生产也不应该依赖裸露应用端口。
+- 解决：
+  - 安装 Caddy。
+  - 配置 `:80 { reverse_proxy 127.0.0.1:3001 }`。
+  - 改用 `http://47.131.238.0/` 作为公网后端基址。
+
+#### 问题 6：Vercel CLI 当前无法访问 Vercel API
+- 现象：
+  - `vercel whoami` 和 `vercel projects ls --scope qiaopengjuns-projects` 失败：
+    - `request to https://vercel.com/.well-known/openid-configuration failed`
+    - `Client network socket disconnected before secure TLS connection was established`
+- 根因：
+  - 当前本机到 Vercel 的 CLI 网络/TLS 链路不稳定，和 Roselet 后端部署无关。
+- 解决：
+  - 已用代理环境变量重试，仍失败。
+  - 暂未能通过 CLI 写入 Vercel 环境变量；后续需在 CLI 网络恢复后设置，或通过 Vercel 控制台设置。
+
 ### 验证
 - `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'docker --version; docker compose version; free -h; sudo ufw status'`
 - `git diff --check`
 - `git check-ignore -v Cargo.lock .dockerignore Dockerfile.backend || true`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'cd ~/roselet && sudo docker compose --env-file .env.production -f docker-compose.prod.yml ps'`
+- `curl -i --max-time 15 http://47.131.238.0/health`
+- `curl -i --max-time 15 'http://47.131.238.0/api/garden?page=1&per_page=3'`
+- `POST http://47.131.238.0/api/auth/register`
+- `POST http://47.131.238.0/api/rose`
+- `GET http://47.131.238.0/api/rose/{id}`
 
 ### 下一步
-- [ ] 提交并推送 `Dockerfile.backend` 部署构建修复。
-- [ ] 服务器拉取最新 main。
-- [ ] 在服务器创建只包含 `db + backend` 的生产 compose 和 `.env`。
-- [ ] 构建并启动 Rust 后端。
-- [ ] 冒烟验证 `http://47.131.238.0:3001/health`、`/api/garden`、注册/种花。
-- [ ] 将 Vercel 生产环境变量切到 `http://47.131.238.0:3001` 后重新部署。
+- [x] 提交并推送 `Dockerfile.backend` 部署构建修复。
+- [x] 服务器拉取最新 main。
+- [x] 在服务器创建只包含 `db + backend` 的生产 compose 和 `.env`。
+- [x] 构建并启动 Rust 后端。
+- [x] 冒烟验证 `http://47.131.238.0/health`、`/api/garden`、注册/种花。
+- [ ] 将 Vercel 生产环境变量切到 `http://47.131.238.0` 后重新部署。
