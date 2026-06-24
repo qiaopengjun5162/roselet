@@ -292,6 +292,61 @@ NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-f
 
 通用规则：对“免费部署”方案，要区分三件事：有无免费档、能否真实创建项目、能否在不绑卡前提下走完整条部署链路。
 
+### 28. 可部署应用必须提交 `Cargo.lock`
+
+问题：本机存在 `Cargo.lock`，但 `.gitignore` 忽略它；服务器 clone 后执行 Docker 构建，在 `COPY Cargo.toml Cargo.lock ./` 阶段失败。
+
+解决：
+- 从 `.gitignore` 移除 `Cargo.lock`。
+- 将根目录 `Cargo.lock` 纳入版本控制。
+- Docker 构建和 CI 使用同一份锁文件，避免服务器解析到不同依赖版本。
+
+通用规则：Rust 应用和服务端项目应提交 `Cargo.lock`；只有纯库 crate 才通常不提交锁文件。
+
+### 29. SQLx 宏的 Docker 构建要显式带离线缓存
+
+问题：后端使用 `sqlx::query!` / `query_scalar!`，Docker 构建环境通常没有可连接的数据库，编译期 SQLx 校验可能失败。
+
+解决：
+- 将 `.sqlx/` 复制进 Docker build context。
+- 构建命令使用 `SQLX_OFFLINE=true cargo build --release -p roselet-backend`。
+- 修改 SQL 查询或迁移后，必须重新生成并提交 `.sqlx/` 缓存。
+
+通用规则：SQLx 宏项目如果要在无数据库的 Docker/CI 环境编译，必须把 `.sqlx` 离线缓存当成源码的一部分维护。
+
+### 30. 生产入口不要依赖裸露应用端口
+
+问题：容器后端正常监听 `0.0.0.0:3001`，服务器本机访问正常，但公网直连 `:3001` 超时。
+
+解决：
+- 不把裸应用端口当成生产入口。
+- 用 Caddy/Nginx 监听 `80/443`，反代到本机应用端口。
+- 对外基址使用 `http://<ip>` 或后续的 `https://<domain>`，不要让前端依赖 `:3001`。
+
+通用规则：公网入口应由反向代理承接，应用只负责本机端口；这让 HTTPS、域名、日志、限流和后续扩容都有统一入口。
+
+### 31. 小服务器 Rust 首次 release 构建要预留 swap 和时间
+
+问题：1GB 级别服务器首次 Docker release 构建 Rust 依赖耗时数分钟，并可能有 OOM 风险。
+
+解决：
+- 先加 2G swap。
+- 首次构建时只跑后端和数据库，不在同机同时构建 Next 前端。
+- 如果构建继续慢或 OOM，切换为 CI 构建镜像并推送 registry，服务器只拉镜像。
+
+通用规则：小规格云主机适合运行 Rust 服务，不一定适合承担首次完整编译；编译链和运行链可以拆开。
+
+### 32. 部署平台 CLI 网络失败时不要误判为项目失败
+
+问题：Vercel CLI `whoami` 和 `projects ls` 因 TLS/网络错误失败，但后端服务本身已经部署成功。
+
+解决：
+- 将“后端是否可访问”与“Vercel CLI 是否能写环境变量”分层验证。
+- 后端用 `curl /health`、核心 API 冒烟证明。
+- 平台 CLI 失败时记录错误，改走浏览器控制台或等待网络恢复，不反复改项目代码。
+
+通用规则：部署排障先分层：代码、构建、服务器、反向代理、平台账号/API；不要把平台 CLI 网络问题当成应用不可部署。
+
 ## 更新规则
 
 每次遇到问题，按这个顺序更新：

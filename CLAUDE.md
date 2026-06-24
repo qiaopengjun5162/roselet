@@ -110,6 +110,8 @@ Quality gates:
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
 - **Worker 最小测试**：`apps/worker-api` 当前把 Worker 编译和 Node 测试分开；先跑 `pnpm worker:typecheck`，再跑 `pnpm worker:test`
 - **Worker NodeNext 导入**：`apps/worker-api` 内部相对导入在可复用模块里显式写 `.js` 扩展名，避免 NodeNext 编译失败
+- **当前生产后端**：AWS Lightsail `47.131.238.0`，Caddy 监听 `80` 反代到 Rust Axum `3001`，操作记录见 `docs/AWS_LIGHTSAIL_DEPLOYMENT.md`
+- **生产密钥**：Lightsail `.env.production` 只留在服务器，不能把 `POSTGRES_PASSWORD` / `JWT_SECRET` / 私钥写入 Git 或文档
 
 ## 常用命令（justfile）
 ```bash

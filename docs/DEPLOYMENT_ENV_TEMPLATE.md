@@ -1,7 +1,48 @@
 # 部署环境变量模板
 
 > 用途：实际部署时直接照着填  
-> 当前免费方案：`Neon + Cloudflare Workers + Vercel`
+> 当前实际路线：`Vercel + AWS Lightsail Rust 后端 + Docker Postgres`
+
+## 0. 当前 Lightsail 生产后端
+
+当前后端基址：
+
+```env
+ROSELET_API_BASE=http://47.131.238.0
+```
+
+服务器上的 `.env.production` 只保存在 Lightsail，不能提交到 Git。关键变量：
+
+```env
+POSTGRES_PASSWORD=<服务器随机生成，不能入库>
+JWT_SECRET=<服务器随机生成，不能入库>
+NODE_ENV=production
+PORT=3001
+RUST_LOG=roselet=info
+ALLOWED_ORIGINS=https://roselet-web.vercel.app,http://47.131.238.0
+OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4o-mini
+```
+
+Vercel 前端下一步需要设置：
+
+```env
+NEXT_PUBLIC_API_URL=http://47.131.238.0
+NEXT_PUBLIC_AUTH_API_URL=http://47.131.238.0
+NEXT_PUBLIC_READ_API_URL=http://47.131.238.0
+NEXT_PUBLIC_WS_URL=ws://47.131.238.0
+```
+
+完整操作手册见：
+
+- [AWS Lightsail 部署记录与操作手册](AWS_LIGHTSAIL_DEPLOYMENT.md)
+
+---
+
+## 历史免费方案：Neon + Cloudflare Workers + Vercel
+
+下面内容保留作为历史路线和后续无服务器迁移参考，不是当前生产主线。
 
 ## 1. Neon
 

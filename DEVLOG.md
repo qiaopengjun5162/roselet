@@ -3086,3 +3086,34 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - [x] 构建并启动 Rust 后端。
 - [x] 冒烟验证 `http://47.131.238.0/health`、`/api/garden`、注册/种花。
 - [ ] 将 Vercel 生产环境变量切到 `http://47.131.238.0` 后重新部署。
+
+## 2026-06-24 会话 #62：整理 Lightsail 部署文档
+
+### 会话目标
+把 AWS Lightsail 部署过程从会话记录沉淀到项目文档，确保后续维护、交接、对外说明时有清晰入口。
+
+### 完成的工作
+- 新增 `docs/AWS_LIGHTSAIL_DEPLOYMENT.md`：
+  - 当前生产拓扑
+  - AWS CloudShell 创建实例命令
+  - SSH 公钥注入
+  - 服务器初始化
+  - Docker Compose 部署
+  - Caddy 反向代理
+  - 注册/种花/详情冒烟命令
+  - 维护命令和踩坑记录
+- 更新 `DEPLOYMENT.md`：
+  - 顶部增加当前实际生产部署入口
+  - 明确当前后端基址和 Vercel 待配置环境变量
+- 更新 `docs/DEPLOYMENT_ENV_TEMPLATE.md`：
+  - 增加 Lightsail 当前生产变量模板
+  - 将 Neon + Worker 内容标为历史免费方案/后续迁移参考
+- 更新 `PROGRESS.md`：
+  - 生产部署进度更新为 82%
+  - 下一步改为 Vercel 环境变量切换和线上冒烟
+- 更新 `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`：
+  - 补充 `Cargo.lock`、SQLx 离线 Docker 构建、反向代理入口、小服务器构建、平台 CLI 网络分层排障经验
+
+### 验证
+- 文档变更无密钥写入。
+- `git diff --check`

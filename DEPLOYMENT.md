@@ -1,5 +1,26 @@
 # Roselet 生产部署指南
 
+## 当前实际生产部署
+
+当前已执行的生产路线是：
+
+- Web：Vercel，`https://roselet-web.vercel.app`
+- API：AWS Lightsail + Caddy + Rust Axum，`http://47.131.238.0`
+- DB：Lightsail 内 Docker Postgres
+
+完整操作记录、命令和踩坑处理见：
+
+- [docs/AWS_LIGHTSAIL_DEPLOYMENT.md](docs/AWS_LIGHTSAIL_DEPLOYMENT.md)
+
+当前 Vercel 还需要把生产环境变量切到 Lightsail 后端：
+
+```env
+NEXT_PUBLIC_API_URL=http://47.131.238.0
+NEXT_PUBLIC_AUTH_API_URL=http://47.131.238.0
+NEXT_PUBLIC_READ_API_URL=http://47.131.238.0
+NEXT_PUBLIC_WS_URL=ws://47.131.238.0
+```
+
 ## 环境要求
 
 - Docker 20.10+

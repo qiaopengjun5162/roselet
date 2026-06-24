@@ -12,6 +12,8 @@
 - 账号注销使用软删除：`deleted_at` 冷却 30 天内允许原昵称恢复；超过 30 天先匿名化旧账号再释放昵称，不能直接硬删用户和玫瑰。
 - Web `logout()` 用 refresh token 调 `/api/auth/logout`；后端必须支持按 refresh token 撤销，不能只接受 access token。
 - 如果目标是 `不绑卡上线`，后端迁移入口固定在 `apps/worker-api/`；不要再把 Render / Koyeb 当作默认免费后端方案。
+- 当前实际生产后端路线已切到 AWS Lightsail：`http://47.131.238.0` 由 Caddy 反代到 Rust Axum `:3001`，操作手册见 `docs/AWS_LIGHTSAIL_DEPLOYMENT.md`。
+- Lightsail 服务器上的 `.env.production`、数据库密码、JWT_SECRET、私钥不能写入 Git；文档只记录命令模板和公开地址。
 - Worker 侧最小验证优先拆成独立的 `worker:typecheck` 和 `worker:test`，不要把 Cloudflare 类型环境和 Node 测试宿主强行混成一套。
 - Worker 侧跨文件相对导入按 NodeNext/ESM 目标显式写 `.js` 扩展名，避免测试编译链和部署编译链分叉。
 - 修改后按风险运行对应检查；Rust 测试使用 `cargo-nextest`。

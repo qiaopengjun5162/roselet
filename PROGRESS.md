@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 当前阶段：`Beta 免费上线验证（Web 开始具备使用动态看板）`
-- 项目定位：`产品内核已完成，正在从“能上线”走向“能看到真实用户反馈”`
+- 当前阶段：`Beta 上线联调（Web 已上线，Rust 后端已上 Lightsail）`
+- 项目定位：`产品内核已完成，正在把真实线上入口接到 Rust 后端`
 - 更新时间：`2026-06-24`
 
 ### 总体进度（主观里程碑）
@@ -12,7 +12,7 @@
 总体进度        [########--] 75%
 产品功能        [#########-] 90%
 工程质量        [#########-] 90%
-生产部署        [#######---] 72%
+生产部署        [########--] 82%
 小程序落地      [#####-----] 50%
 真实用户验证    [##--------] 20%
 ```
@@ -41,9 +41,10 @@
 - 目标：把当前项目从“本地开发可用”推进到“外网可访问、可稳定演示”
 - 当前小目标：
   - [x] 明确 Cloudflare 方案边界：Web 先上，后端按 API 分阶段迁移到 Workers
-  - [ ] 确定生产部署拓扑：Next.js、API、Postgres、WebSocket、AI 调用分别放哪里
-  - [ ] 补充部署文档、环境变量、域名、日志与回滚方案
-  - [ ] 完成第一版线上环境并跑通基本冒烟检查
+  - [x] 确定生产部署拓扑：Vercel Web + AWS Lightsail Rust API + Docker Postgres
+  - [x] 补充部署文档、环境变量、服务器操作记录与故障处理
+  - [x] 完成 Rust 后端线上环境并跑通基本冒烟检查
+  - [ ] 将 Vercel 生产环境变量切到 Lightsail 后端并重新部署
 
 ### Phase 3：多端闭环
 
@@ -67,15 +68,19 @@
 
 ## 接下来 3 个小目标
 
-1. 配置生产 Worker 域名、`ADMIN_USER_IDS` 与 Vercel 环境变量，让线上 `/stats` 作为管理员后台读到 Neon 数据。
-2. 邀请第一批真实用户试用，用 `/stats` 看注册、种花、反馈是否增长。
-3. 如果接近 100 个真实用户，再启动服务器/域名/完整后端部署；否则维持免费方案。
+1. 将 Vercel 生产环境变量切到 `http://47.131.238.0`，重新部署 Web。
+2. 用线上 Web 跑完整冒烟：注册、登录、种花、花圃、详情、点赞、反馈。
+3. 绑定正式域名并启用 HTTPS，再邀请第一批真实用户试用。
 
 ## 下一步
 
-- 我们下一步应该先做：`配置生产 Worker 域名和 ADMIN_USER_IDS，让 /stats 作为后台在线可用`
+- 我们下一步应该先做：`配置 Vercel 环境变量，让线上 Web 调用 Lightsail Rust 后端`
 - 当前已经完成：
   - `Vercel` 前端真实上线
+  - `AWS Lightsail` 服务器创建并绑定静态 IP：`47.131.238.0`
+  - `Rust Axum backend + Docker Postgres` 已在 Lightsail 启动
+  - `Caddy` 已监听 `80` 并反代到后端 `3001`
+  - `GET /health`、`GET /api/garden`、注册、种花、详情读取均已公网冒烟通过
   - `GET /api/garden` Worker 真实查 `Neon`
   - `GET /api/rose/:id` Worker 迁移完成，私有访问规则已对齐 Rust
   - `POST /api/auth/refresh` / `POST /api/auth/logout` Worker 最小闭环已迁移
@@ -83,8 +88,9 @@
   - Web 已开始把 `refresh/logout` 和 `garden/rose detail` 切到 Worker 基址
   - Web 已新增 `/stats` 使用动态后台，显示 100 用户判断线进度
 - 现在最有价值的动作变成：
-  - 配置生产 Worker 域名、`ADMIN_USER_IDS` 并更新 Vercel 环境变量
-  - 用 `/stats` 判断是否需要买服务器，而不是先买服务器
+  - 在 Vercel 设置 `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_AUTH_API_URL` / `NEXT_PUBLIC_READ_API_URL` / `NEXT_PUBLIC_WS_URL`
+  - 重新部署 Vercel 并通过浏览器跑完整线上冒烟
+  - 再考虑域名、HTTPS、备份和监控
 
 ### Cloudflare 判断
 
@@ -93,8 +99,9 @@
 
 ### 当前最低成本部署判断
 
-- 当前推荐：`Vercel + Rust backend + PostgreSQL + GitHub Pages`
+- 当前推荐：`Vercel + AWS Lightsail Rust backend + Docker Postgres`
 - 对比文档：`docs/DEPLOYMENT_OPTIONS_COMPARISON.md`
+- 当前操作手册：`docs/AWS_LIGHTSAIL_DEPLOYMENT.md`
 
 ### 当前免费部署方案
 
@@ -108,7 +115,9 @@
 - `Vercel` 前端已成功创建并可访问
 - 当前线上地址：`https://roselet-web.vercel.app`
 - `Render` 与 `Koyeb` 在真实部署中都被支付验证拦住
-- 因此当前后端路线已切换为：`Cloudflare Workers 分阶段迁移`
+- 后端当前已切换为：`AWS Lightsail 上运行 Rust Axum + Docker Postgres`
+- 后端公网地址：`http://47.131.238.0`
+- 当前未完成：`Vercel 生产环境变量仍需切到 Lightsail 后端`
 - Worker API 起点：`apps/worker-api`
 - Worker 当前已迁移：
   - `GET /health`
