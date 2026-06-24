@@ -12,8 +12,15 @@ import { colorEmoji, colorLabel } from "@/lib/recommend";
 
 const COLORS = ["red", "white", "yellow"];
 
+function resolveRoseId(id: string): string {
+  if (id !== "placeholder" || typeof window === "undefined") return id;
+  const match = window.location.pathname.match(/^\/rose\/([^/?#]+)/);
+  return match?.[1] ? decodeURIComponent(match[1]) : id;
+}
+
 export function RoseDetailClient({ id }: { id: string }) {
   const router = useRouter();
+  const roseId = resolveRoseId(id);
   const [rose, setRose] = useState<Rose | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -26,11 +33,11 @@ export function RoseDetailClient({ id }: { id: string }) {
   const isOwner = user && rose && rose.user_id === user.id;
 
   useEffect(() => {
-    getRose(id)
+    getRose(roseId)
       .then(setRose)
       .catch(() => setError("玫瑰不存在"))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [roseId]);
 
   function startEdit() {
     if (!rose) return;

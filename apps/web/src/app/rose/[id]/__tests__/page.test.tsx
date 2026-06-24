@@ -110,6 +110,22 @@ describe("RoseDetailPage", () => {
     });
   });
 
+  it("uses the browser path id when rendered from the Cloudflare placeholder shell", async () => {
+    const oldPath = window.location.pathname;
+    window.history.pushState({}, "", "/rose/real-cloudflare-id");
+    getRose.mockResolvedValue({ ...mockRose, id: "real-cloudflare-id" });
+    getUser.mockReturnValue({ id: "u2", nickname: "bob" });
+
+    render(<RoseDetailClient id="placeholder" />);
+
+    await waitFor(() => {
+      expect(getRose).toHaveBeenCalledWith("real-cloudflare-id");
+      expect(screen.getByText("红玫瑰")).toBeInTheDocument();
+    });
+
+    window.history.pushState({}, "", oldPath);
+  });
+
   it("should show AI reply", async () => {
     getRose.mockResolvedValue(mockRose);
     getUser.mockReturnValue({ id: "u2" });

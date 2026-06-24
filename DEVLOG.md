@@ -3783,3 +3783,33 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 当前状态
 - 本轮只新增设计和日志，不修改业务代码，不影响生产环境。
 - 下一步等设计确认后，再进入实现计划和分步开发。
+
+## 2026-06-25 会话 #78
+
+### 会话目标
+排查 Cloudflare Pages 访问新种玫瑰详情页显示“玫瑰不存在”的问题，并确认点赞规则。
+
+### 根因
+- 用户访问 `https://roselet.paxonqiao.com/rose/5925486e-4064-4e0d-bdc4-1e135569ba9b` 时页面显示“玫瑰不存在”。
+- 直连后端 `GET /api/rose/5925486e-4064-4e0d-bdc4-1e135569ba9b` 返回 `200`，生产数据库中也确实存在这朵玫瑰。
+- Cloudflare Pages 静态 fallback 正常返回 `/rose/placeholder.html`，但页面壳把路由参数固定为 `placeholder`。
+- 客户端 `RoseDetailClient` 直接用传入的 `id` 调 `getRose(id)`，导致它请求的是 `/api/rose/placeholder`，而不是真实 URL 里的玫瑰 ID。
+
+### 修复
+- `apps/web/src/app/rose/[id]/client.tsx`：
+  - 新增 `resolveRoseId()`。
+  - 当服务端传入 `id="placeholder"` 且运行在浏览器中时，从 `window.location.pathname` 解析真实 `/rose/:id`。
+  - 正常 SSG/SSR 场景继续使用传入的 `id`。
+- `apps/web/src/app/rose/[id]/__tests__/page.test.tsx`：
+  - 新增回归测试，覆盖 Cloudflare placeholder shell 下应使用浏览器真实路径 ID。
+
+### 点赞规则确认
+- `likes` 表有 `UNIQUE(user_id, rose_id)`，同一个登录用户对同一朵玫瑰最多只有一条点赞记录。
+- `POST /api/rose/:id/like` 是 toggle 行为：第一次点赞，第二次取消。
+- 因此页面显示 `❤️ 3` 表示 3 个不同用户当前点过赞。
+- 目前后端没有禁止作者给自己的玫瑰点赞，所以自己种的玫瑰也可以点赞；如果产品上不希望这样，需要单独改规则和测试。
+
+### 验证
+- `pnpm test -- --runTestsByPath 'src/app/rose/[id]/__tests__/page.test.tsx' -t 'uses the browser path id'`：1 passed
+- `pnpm test -- --runTestsByPath 'src/app/rose/[id]/__tests__/page.test.tsx'`：16 passed
+- `NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io pnpm --filter web build:cf`：通过
