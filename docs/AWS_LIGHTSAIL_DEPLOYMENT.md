@@ -75,6 +75,24 @@ push main
 - `scripts/lightsail-deploy.sh`
 - `Dockerfile.backend`
 
+最近一次成功验证：
+
+| 项 | 值 |
+|----|----|
+| CI run | `28075533784` |
+| Deploy run | `28075854263` |
+| Commit | `ae3db8b1e7c0a8aaa127a10a735750b5edf5f355` |
+| Current backend image | `ghcr.io/qiaopengjun5162/roselet-backend:ae3db8b1e7c0a8aaa127a10a735750b5edf5f355` |
+
+验证结果：
+
+```bash
+curl http://47.131.238.0/health
+curl 'http://47.131.238.0/api/garden?page=1&per_page=3'
+```
+
+`/health` 返回 `{"status":"ok","database":"healthy","version":"0.1.0"}`。
+
 ### GitHub Actions Secrets
 
 已配置的 repository secrets：
@@ -123,6 +141,15 @@ COMPOSE_PROJECT_NAME=roselet
 ```
 
 原因是最初手动部署已经创建了 `roselet` compose 项目和 `roselet_pgdata` 数据卷。后续自动部署必须接管同一套项目，不能让 `deploy/lightsail/docker-compose.backend.yml` 按目录名生成 `lightsail_*` 容器和卷。
+
+当前服务器状态应类似：
+
+```text
+roselet-backend-1   ghcr.io/qiaopengjun5162/roselet-backend:<sha>   127.0.0.1:3001->3001/tcp
+roselet-db-1        postgres:16-alpine                              5432/tcp
+```
+
+如果 `docker compose ls` 同时显示 `deploy/lightsail/docker-compose.backend.yml` 和旧 `docker-compose.prod.yml`，说明 compose 项目已经被新文件接管但还保留旧配置历史标记；只要当前 backend 镜像是 GHCR、端口绑定是 `127.0.0.1:3001`，就不要在用户流量期间贸然重建数据库容器。
 
 ### 回滚
 

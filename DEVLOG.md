@@ -3242,5 +3242,23 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - `bash -n scripts/lightsail-deploy.sh`
 
 ### 当前状态
-- 线上旧 `roselet` 后端仍健康运行。
-- 自动部署脚本已修复，等待 commit + push 后由 CI 再次触发端到端自动部署验证。
+- 修复提交 `ae3db8b fix: keep lightsail compose project stable` 已推送到 `main`。
+- `CI` run `28075533784` 已通过：
+  - Backend Tests：success
+  - Frontend Tests：success
+  - Miniprogram Build：success
+- `Deploy Backend` run `28075854263` 已通过。
+- 当前服务器后端镜像：
+  - `ghcr.io/qiaopengjun5162/roselet-backend:ae3db8b1e7c0a8aaa127a10a735750b5edf5f355`
+- 部署后验证通过：
+  - `curl -sS -i http://47.131.238.0/health`
+  - `curl -sS 'http://47.131.238.0/api/garden?page=1&per_page=3'`
+  - `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'cd ~/roselet && cat .current_backend_image && sudo docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}"'`
+- 注意：
+  - `docker compose ls` 当前同时显示新 `deploy/lightsail/docker-compose.backend.yml` 和旧 `docker-compose.prod.yml`，但容器已是 GHCR 镜像且 backend 只绑定 `127.0.0.1:3001`。
+  - 这是旧 compose 项目被新 compose 文件接管后的历史配置标记，不影响当前服务；避免在用户流量期间贸然重建数据库容器。
+
+### 下一步
+- 将 Vercel 环境变量切到 Lightsail Rust 后端。
+- 重新部署 Web。
+- 用线上 Web 跑完整注册、登录、种花、花圃、详情、点赞、反馈冒烟。
