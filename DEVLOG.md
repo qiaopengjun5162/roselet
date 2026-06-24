@@ -3442,6 +3442,11 @@ Web 端打开“个人资料”时显示“加载资料失败”。
   - 纯文档、Web、小程序变更只跑 CI，不再重启生产 Rust 后端。
 - 更新 `docs/AWS_LIGHTSAIL_DEPLOYMENT.md`，记录自动部署触发范围。
 - 更新 `AGENTS.md`，把“文档/Web/小程序改动不应触发生产后端部署”沉淀为后续约束。
+- 推送提交 `93b2e7b ci: skip backend deploy for docs-only changes` 后：
+  - `CI` run `28086560473` 成功。
+  - `Deploy Backend` run `28087096872` 成功。
+  - 生产 backend 镜像已更新为 `ghcr.io/qiaopengjun5162/roselet-backend:93b2e7b51970bbf5a169102c2d9e5674f8ce5070`。
+  - 生产容器仍保留 `ADMIN_USER_IDS=55be1141-8ad0-417a-bb3f-a9a3a1053287`。
 
 ### 问题记录
 
@@ -3463,8 +3468,9 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - 本地模拟 `4fc50de7cd3260b93abf386a5f50ea8c321c3891` 纯文档提交，结果：`should_deploy=false`。
 - 本地模拟 `648d2747da283f3e956e44c3438e3337b980fe97` 部署 workflow 相关提交，结果：`should_deploy=true`。
 - 本地模拟 `workflow_dispatch`，结果：`manual should_deploy=true`。
+- `curl -fsS --max-time 20 https://roselet.47.131.238.0.sslip.io/health`
+- `curl -fsS --max-time 20 'https://roselet.47.131.238.0.sslip.io/api/garden?page=1&per_page=3' | jq '{total,page,per_page,count:(.data|length)}'`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'cd ~/roselet && cat .current_backend_image && sudo docker inspect roselet-backend-1 --format "{{range .Config.Env}}{{println .}}{{end}}" | grep "^ADMIN_USER_IDS="'`
 
 ### 下一步
-- 提交并推送 workflow 优化。
-- 等 CI 和本次必要的 Deploy Backend 通过。
 - 后续用一次纯文档提交或下次文档改动验证 deploy job 会跳过生产后端重启。
