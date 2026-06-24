@@ -3474,3 +3474,23 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 下一步
 - 后续用一次纯文档提交或下次文档改动验证 deploy job 会跳过生产后端重启。
+
+## 2026-06-24 会话 #69：验证纯文档提交跳过生产后端部署
+
+### 会话目标
+验证 `.github/workflows/deploy-backend.yml` 的路径过滤确实能让纯文档提交跳过生产后端部署。
+
+### 验证过程
+- 本次只修改 `DEVLOG.md`，无后端镜像相关文件变更。
+- `CI` workflow 通过后触发 `Deploy Backend` workflow。
+- `Deploy Backend` run 总耗时约 12 秒。
+- 服务器当前后端镜像仍为 `ghcr.io/qiaopengjun5162/roselet-backend:93b2e7b51970bbf5a169102c2d9e5674f8ce5070`，未改变。
+- 生产容器 `roselet-backend-1` 创建时间未变，说明没有发生重启。
+- run 详情中以下步骤状态为 `skipped`：
+  - Docker build
+  - GHCR login
+  - SSH deploy to Lightsail
+  - Public HTTPS smoke test
+
+### 结论
+纯文档/Web/小程序改动不再触发生产后端镜像构建与容器重启，路径过滤生效；手动 `workflow_dispatch` 仍可强制部署。
