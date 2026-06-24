@@ -110,11 +110,12 @@
 
 ### 10. cargo-deny 要维护许可证策略
 
-问题：依赖使用 `BSD-3-Clause`、`ISC`、`Zlib` 等常见 OSI 许可证，workspace crate 未声明 license，会导致审计失败。
+问题：依赖使用 `BSD-3-Clause`、`ISC`、`Zlib`、`CDLA-Permissive-2.0` 等常见 permissive 许可证，workspace crate 未声明 license，会导致审计失败。
 
 解决：
 - Workspace crate 明确 `license = "MIT"`。
 - `deny.toml` 只补充实际出现且可接受的许可证，不一把放宽。
+- `webpki-roots` 使用 `CDLA-Permissive-2.0` 时，先确认依赖链和许可证属性，再只补这一项 allowlist。
 
 通用规则：依赖审计失败时先看 license/advisory/source 分类；许可证白名单要收窄维护，并和项目 LICENSE 对齐。
 

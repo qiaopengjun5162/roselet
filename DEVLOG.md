@@ -2798,3 +2798,33 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 下一步
 - [ ] 配置生产 Worker 域名与 Vercel 环境变量
 - [ ] 决定先迁写接口还是继续迁剩余认证接口
+
+## 2026-06-24 会话 #58：修复 cargo-deny license 拒绝
+
+### 会话目标
+修复 CI 中 `cargo deny check` 因 `webpki-roots` 许可证未显式允许而失败的问题。
+
+### 问题记录
+
+#### 问题：`webpki-roots` 使用 `CDLA-Permissive-2.0`
+- 现象：
+  - CI 报：
+    - `failed to satisfy license requirements`
+    - `webpki-roots-0.26.11`
+    - `webpki-roots-1.0.8`
+    - `license = "CDLA-Permissive-2.0"`
+- 根因：
+  - `webpki-roots` 由 `sqlx-core` TLS 依赖链引入
+  - 当前 `deny.toml` 的 license allowlist 没有显式允许 `CDLA-Permissive-2.0`
+- 解决：
+  - 只在 `deny.toml` 的 license allowlist 中补充 `CDLA-Permissive-2.0`
+  - 没有放宽其他许可证策略
+
+### 验证
+- `cargo deny check licenses` → `licenses ok`
+- `cargo deny check` 在当前环境仍因 RustSec advisory DB 网络拉取失败，报：
+  - `failed to fetch advisory database https://github.com/RustSec/advisory-db`
+  - 这和本次 license 修复不是同一类问题
+
+### 当前状态
+- CI 中贴出的 license rejected 问题已按最小范围修复
