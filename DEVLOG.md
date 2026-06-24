@@ -3032,9 +3032,22 @@ Web 端打开“个人资料”时显示“加载资料失败”。
   - 本地先运行 `git diff --check` 做补丁静态检查。
   - 镜像构建验证改到 Lightsail 服务器上执行。
 
+#### 问题 4：服务器 clone 后缺少 `Cargo.lock`
+- 现象：
+  - Lightsail 上运行 `docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build` 失败：
+    - `COPY Cargo.toml Cargo.lock ./`
+    - `"/Cargo.lock": not found`
+- 根因：
+  - 本地存在 `Cargo.lock`，但 `.gitignore` 忽略了它，导致 GitHub 和服务器 clone 都没有锁文件。
+  - Roselet 是可部署应用，不是纯库；生产 Docker 构建应使用锁文件保证可复现依赖。
+- 解决：
+  - 从 `.gitignore` 移除 `Cargo.lock` 忽略规则。
+  - 强制把根目录 `Cargo.lock` 纳入版本控制。
+
 ### 验证
 - `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'docker --version; docker compose version; free -h; sudo ufw status'`
 - `git diff --check`
+- `git check-ignore -v Cargo.lock .dockerignore Dockerfile.backend || true`
 
 ### 下一步
 - [ ] 提交并推送 `Dockerfile.backend` 部署构建修复。
