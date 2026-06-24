@@ -71,7 +71,7 @@ fn header_admin_user_ids(headers: &HeaderMap) -> Option<Vec<String>> {
         .filter(|ids| !ids.is_empty())
 }
 
-fn is_admin_user(user_id: Uuid, state: &AppState, headers: &HeaderMap) -> bool {
+pub(crate) fn is_admin_user(user_id: Uuid, state: &AppState, headers: &HeaderMap) -> bool {
     let header_ids = header_admin_user_ids(headers);
     let configured_ids = if state.config.is_production {
         &state.config.admin_user_ids

@@ -1439,6 +1439,78 @@ async fn test_feedback_no_content_field() {
 }
 
 #[tokio::test]
+async fn test_admin_feedback_requires_auth() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    let res = client.get(format!("{}/api/admin/feedback", base)).send().await.unwrap();
+
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_admin_feedback_rejects_non_admin() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "feedback-normal").await;
+    let token = auth["access_token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("{}/api/admin/feedback", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_admin_feedback_lists_feedback_content() {
+    let base = spawn_test_server().await;
+    let admin_auth = register_user(&base, "feedback-admin").await;
+    let user_auth = register_user(&base, "feedback-member").await;
+    let admin_token = admin_auth["access_token"].as_str().unwrap();
+    let user_token = user_auth["access_token"].as_str().unwrap();
+    let admin_id = admin_auth["user"]["id"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    client
+        .post(format!("{}/api/feedback", base))
+        .header("Authorization", format!("Bearer {}", user_token))
+        .json(&json!({ "content": "这个按钮我有点看不懂" }))
+        .send()
+        .await
+        .unwrap();
+
+    client
+        .post(format!("{}/api/feedback", base))
+        .json(&json!({ "content": "匿名反馈也应该能看到" }))
+        .send()
+        .await
+        .unwrap();
+
+    let res = client
+        .get(format!("{}/api/admin/feedback?page=1&per_page=20", base))
+        .header("Authorization", format!("Bearer {}", admin_token))
+        .header("X-Roselet-Test-Admin-Ids", admin_id)
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["total"], 2);
+    assert_eq!(body["page"], 1);
+    assert_eq!(body["per_page"], 20);
+    assert_eq!(body["data"].as_array().unwrap().len(), 2);
+    assert_eq!(body["data"][0]["content"], "匿名反馈也应该能看到");
+    assert!(body["data"][0]["nickname"].is_null());
+    assert_eq!(body["data"][1]["content"], "这个按钮我有点看不懂");
+    assert_eq!(body["data"][1]["nickname"], "feedback-member");
+}
+
+#[tokio::test]
 async fn test_usage_stats_requires_auth() {
     let base = spawn_test_server().await;
     let client = reqwest::Client::new();
