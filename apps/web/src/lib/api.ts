@@ -282,6 +282,31 @@ export async function getUsageStats(): Promise<UsageStats> {
   return res.json();
 }
 
+export interface AdminFeedbackItem {
+  id: number;
+  user_id: string | null;
+  nickname: string | null;
+  content: string;
+  created_at: string;
+}
+
+export interface AdminFeedbackResponse {
+  data: AdminFeedbackItem[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+export async function getAdminFeedback(page = 1, perPage = 20): Promise<AdminFeedbackResponse> {
+  const res = await authFetch(`${READ_API_BASE}/api/admin/feedback?page=${page}&per_page=${perPage}`, {
+    headers: authHeaders(),
+  });
+  if (res.status === 403) throw new Error("ADMIN_FEEDBACK_FORBIDDEN");
+  if (!res.ok) throw new Error("Failed to fetch admin feedback");
+  return res.json();
+}
+
 export async function getRose(id: string): Promise<Rose> {
   const res = await authFetch(`${READ_API_BASE}/api/rose/${id}`, {
     headers: authHeaders(),

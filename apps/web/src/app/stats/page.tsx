@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getToken, getUsageStats, type UsageStats } from "@/lib/api";
+import { getAdminFeedback, getToken, getUsageStats, type AdminFeedbackItem, type UsageStats } from "@/lib/api";
 
 type LoadState = "loading" | "ready" | "forbidden" | "error";
+type FeedbackState = "idle" | "loading" | "ready" | "error";
 
 const NUMBER_FORMATTER = new Intl.NumberFormat("zh-CN");
 
@@ -28,6 +29,8 @@ function formatDate(value: string | null): string {
 export default function StatsPage() {
   const [state, setState] = useState<LoadState>("loading");
   const [stats, setStats] = useState<UsageStats | null>(null);
+  const [feedbackState, setFeedbackState] = useState<FeedbackState>("idle");
+  const [feedbackItems, setFeedbackItems] = useState<AdminFeedbackItem[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -42,6 +45,17 @@ export default function StatsPage() {
         if (!alive) return;
         setStats(data);
         setState("ready");
+        setFeedbackState("loading");
+        getAdminFeedback()
+          .then((feedback) => {
+            if (!alive) return;
+            setFeedbackItems(feedback.data);
+            setFeedbackState("ready");
+          })
+          .catch(() => {
+            if (!alive) return;
+            setFeedbackState("error");
+          });
       })
       .catch((error) => {
         if (!alive) return;
@@ -173,6 +187,39 @@ export default function StatsPage() {
             <p className="text-sm text-slate-400">最近一条反馈</p>
             <p className="mt-2 text-lg text-slate-100">{formatDate(stats.latest_feedback_at)}</p>
           </article>
+        </section>
+
+        <section className="rounded-[2rem] border border-white/10 bg-slate-950/40 p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs tracking-[0.25em] text-rose-300/70">Feedback Inbox</p>
+              <h2 className="mt-2 text-xl font-semibold text-slate-100">最近反馈</h2>
+            </div>
+            <p className="text-sm text-slate-500">只对管理员可见</p>
+          </div>
+
+          {feedbackState === "loading" && (
+            <p className="mt-5 text-sm text-slate-500">反馈加载中...</p>
+          )}
+          {feedbackState === "error" && (
+            <p className="mt-5 text-sm text-amber-200">反馈暂时加载失败</p>
+          )}
+          {feedbackState === "ready" && feedbackItems.length === 0 && (
+            <p className="mt-5 text-sm text-slate-500">暂无具体反馈。</p>
+          )}
+          {feedbackItems.length > 0 && (
+            <div className="mt-5 space-y-3">
+              {feedbackItems.map((item) => (
+                <article key={item.id} className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                    <span>{item.nickname || "匿名用户"}</span>
+                    <span>{formatDate(item.created_at)}</span>
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-200">{item.content}</p>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </main>

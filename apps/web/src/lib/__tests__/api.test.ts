@@ -32,6 +32,7 @@ import {
   refreshAccessToken,
   getHealth,
   getUsageStats,
+  getAdminFeedback,
   submitFeedback,
 } from "../api";
 
@@ -421,6 +422,42 @@ describe("API Client", () => {
       expect(retryInit.headers).toEqual(expect.objectContaining({
         Authorization: "Bearer new-admin-token",
       }));
+    });
+  });
+
+  describe("getAdminFeedback", () => {
+    it("loads admin feedback with auth header", async () => {
+      setToken("admin-token");
+      const payload = {
+        data: [
+          {
+            id: 1,
+            user_id: "u1",
+            nickname: "alice",
+            content: "页面很好看",
+            created_at: "2026-06-25T10:00:00Z",
+          },
+        ],
+        total: 1,
+        page: 1,
+        per_page: 20,
+        total_pages: 1,
+      };
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => payload });
+
+      await expect(getAdminFeedback()).resolves.toEqual(payload);
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/admin/feedback?page=1&per_page=20",
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: "Bearer admin-token" }),
+        }),
+      );
+    });
+
+    it("throws forbidden for non-admin feedback requests", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 403 });
+
+      await expect(getAdminFeedback()).rejects.toThrow("ADMIN_FEEDBACK_FORBIDDEN");
     });
   });
 
