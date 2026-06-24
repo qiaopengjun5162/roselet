@@ -57,6 +57,15 @@
   - 当前错误语义：
     - token 缺失或无效返回 `401`
 
+### 当前已开始切流的前端调用
+
+- Web:
+  - `refreshAccessToken()`
+  - `logout()`
+- 当前策略：
+  - 只把最依赖双令牌生命周期的调用先切到 Worker
+  - 其他 Web API 继续留在原 `NEXT_PUBLIC_API_URL`
+
 ### CORS
 
 - 当前按 `ALLOWED_ORIGINS` 返回第一个 origin

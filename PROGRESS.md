@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前阶段：`Beta 准备上线（Cloudflare Worker 只读 + 认证最小闭环推进中）`
+- 当前阶段：`Beta 准备上线（Cloudflare Worker 只读 + 认证切流推进中）`
 - 项目定位：`产品内核已完成，正在从“能开发”走向“能上线、能试用、能讲清楚”`
 - 更新时间：`2026-06-23`
 
@@ -12,7 +12,7 @@
 总体进度        [########--] 75%
 产品功能        [#########-] 90%
 工程质量        [#########-] 90%
-生产部署        [#####-----] 50%
+生产部署        [######----] 60%
 小程序落地      [#####-----] 50%
 真实用户验证    [#---------] 10%
 ```
@@ -65,7 +65,7 @@
 
 ## 接下来 3 个小目标
 
-1. 开始让前端切 Worker 认证入口：先接 `refresh/logout`。
+1. 继续扩大前端切流范围：在 `refresh/logout` 之后决定下一个优先 API。
 2. 完成第一版线上后端切换准备：确认 Web 何时开始切 Worker API 地址。
 3. 选定下一条最低风险迁移线：写接口优先，还是剩余认证接口优先。
 
@@ -77,8 +77,9 @@
   - `GET /api/garden` Worker 真实查 `Neon`
   - `GET /api/rose/:id` Worker 迁移完成，私有访问规则已对齐 Rust
   - `POST /api/auth/refresh` / `POST /api/auth/logout` Worker 最小闭环已迁移
+  - Web 已开始把 `refresh/logout` 切到 Worker 基址
 - 现在最有价值的动作变成：
-  - 让 Web 先切 `refresh/logout`
+  - 选择下一批前端要切到 Worker 的接口
   - 再决定写接口和剩余认证接口的优先级
 
 ### Cloudflare 判断
@@ -111,6 +112,9 @@
   - `GET /api/rose/:id`
   - `POST /api/auth/refresh`
   - `POST /api/auth/logout`
+- Web 当前已切到 Worker 的调用：
+  - `refreshAccessToken()`
+  - `logout()`
 
 ## 已完成
 

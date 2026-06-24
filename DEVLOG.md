@@ -2675,3 +2675,67 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 下一步
 - [ ] 让 Web 端优先切 `refresh/logout` 到 Worker
 - [ ] 再决定先迁写接口还是其余认证接口
+
+## 2026-06-24 会话 #56：Web 先切 refresh/logout 到 Worker
+
+### 会话目标
+让 Cloudflare Worker 迁移不再只停留在后端实现层，先把 Web 最依赖的认证生命周期调用切过去，形成第一批真实前端流量切换。
+
+### 完成的工作
+
+#### Web：认证调用开始按 API 维度切流
+- 更新 `apps/web/src/lib/api.ts`
+- 新增独立认证基址：
+  - `NEXT_PUBLIC_AUTH_API_URL`
+  - 回退 `NEXT_PUBLIC_WORKER_API_URL`
+  - 本地默认：`http://localhost:8787`
+- 当前已切到 Worker 的 Web 调用：
+  - `refreshAccessToken()`
+  - `logout()`
+- 当前未切的接口继续走：
+  - `NEXT_PUBLIC_API_URL`
+
+#### 测试更新
+- 更新 `apps/web/src/lib/__tests__/api.test.ts`
+- 当前已验证：
+  - logout 请求发往 Worker 基址
+  - refresh 请求发往 Worker 基址
+
+### 问题记录
+
+#### 问题 1：直接裸跑 Jest 会先撞到项目外的测试入口噪音
+- 现象：
+  - 直接调用 Jest 二进制时，先遇到：
+    - `jest-haste-map` 命名冲突
+    - TS 语法解析异常
+- 根因：
+  - 没有走项目自己的 `apps/web/jest.config.ts`
+  - 生成物忽略、`ts-jest` 等项目级配置没有被加载
+- 解决：
+  - Web 单测验证统一显式带：
+    - `--config apps/web/jest.config.ts`
+
+#### 问题 2：Worker 的 `node --test` 仍然依赖先生成 `.tmp-test`
+- 现象：
+  - 只跑 `node --test apps/worker-api/src/*.test.mjs` 会因为 `.tmp-test/*.js` 不存在而失败
+- 根因：
+  - 当前 Worker 最小测试直接 import `tsc` 产物
+- 解决：
+  - 继续坚持顺序：
+    - 先 `tsc --outDir apps/worker-api/.tmp-test ...`
+    - 再 `node --test apps/worker-api/src/*.test.mjs`
+
+### 验证
+- `./apps/web/node_modules/.bin/jest --config apps/web/jest.config.ts --runInBand apps/web/src/lib/__tests__/api.test.ts`
+- `./apps/worker-api/node_modules/.bin/tsc --noEmit -p apps/worker-api/tsconfig.json`
+- `./apps/worker-api/node_modules/.bin/tsc --outDir apps/worker-api/.tmp-test --module NodeNext --moduleResolution NodeNext --target ES2022 apps/worker-api/src/rose.ts apps/worker-api/src/auth.ts`
+- `node --test apps/worker-api/src/*.test.mjs`
+
+### 当前状态
+- Worker 已具备最小认证闭环
+- Web 已开始消费 Worker：
+  - `refresh/logout`
+
+### 下一步
+- [ ] 选择下一批切到 Worker 的前端接口
+- [ ] 决定先迁写接口还是继续迁认证接口

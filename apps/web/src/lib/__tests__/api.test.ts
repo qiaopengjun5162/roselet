@@ -77,7 +77,7 @@ describe("API Client", () => {
       expect(localStorage.getItem("refresh_token")).toBeNull();
       expect(localStorage.getItem("user")).toBeNull();
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:3001/api/auth/logout",
+        "http://localhost:8787/api/auth/logout",
         expect.objectContaining({
           method: "POST",
           headers: expect.objectContaining({
@@ -103,6 +103,12 @@ describe("API Client", () => {
 
       await expect(refreshAccessToken()).resolves.toBe("new-access");
       expect(localStorage.getItem("access_token")).toBe("new-access");
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:8787/api/auth/refresh",
+        expect.objectContaining({
+          method: "POST",
+        })
+      );
     });
 
     it("retries auth requests after a 401 refresh", async () => {

@@ -1,4 +1,5 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const AUTH_API_BASE = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || "http://localhost:8787";
 
 export interface User {
   id: string;
@@ -59,7 +60,7 @@ export function logout() {
   clearAuthState();
   // 异步撤销服务端 refresh token，不阻塞登出
   if (refreshToken) {
-    fetch(`${API_BASE}/api/auth/logout`, {
+    fetch(`${AUTH_API_BASE}/api/auth/logout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -82,7 +83,7 @@ export async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
 
-  refreshing = fetch(`${API_BASE}/api/auth/refresh`, {
+  refreshing = fetch(`${AUTH_API_BASE}/api/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
