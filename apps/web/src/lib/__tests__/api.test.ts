@@ -78,7 +78,7 @@ describe("API Client", () => {
       expect(localStorage.getItem("refresh_token")).toBeNull();
       expect(localStorage.getItem("user")).toBeNull();
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:8787/api/auth/logout",
+        "http://localhost:3001/api/auth/logout",
         expect.objectContaining({
           method: "POST",
           headers: expect.objectContaining({
@@ -105,7 +105,7 @@ describe("API Client", () => {
       await expect(refreshAccessToken()).resolves.toBe("new-access");
       expect(localStorage.getItem("access_token")).toBe("new-access");
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:8787/api/auth/refresh",
+        "http://localhost:3001/api/auth/refresh",
         expect.objectContaining({
           method: "POST",
         })
@@ -132,7 +132,7 @@ describe("API Client", () => {
       await expect(getRose("r1")).resolves.toEqual(rose);
 
       const roseCalls = (global.fetch as jest.Mock).mock.calls.filter(
-        ([url]) => url === "http://localhost:8787/api/rose/r1",
+        ([url]) => url === "http://localhost:3001/api/rose/r1",
       );
       const [, retryInit] = roseCalls.at(-1);
       expect(retryInit.headers).toEqual(expect.objectContaining({
@@ -244,6 +244,34 @@ describe("API Client", () => {
   });
 
   describe("getGarden", () => {
+    it("should fall back to the main api when read api is not configured", async () => {
+      const oldApiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const oldReadApiUrl = process.env.NEXT_PUBLIC_READ_API_URL;
+      const oldWorkerApiUrl = process.env.NEXT_PUBLIC_WORKER_API_URL;
+
+      await jest.isolateModulesAsync(async () => {
+        process.env.NEXT_PUBLIC_API_URL = "https://roselet.example.com";
+        delete process.env.NEXT_PUBLIC_READ_API_URL;
+        delete process.env.NEXT_PUBLIC_WORKER_API_URL;
+        const { getGarden: isolatedGetGarden } = await import("../api");
+
+        (global.fetch as jest.Mock).mockResolvedValue({
+          ok: true,
+          json: async () => ({ data: [], total: 0, page: 1, per_page: 20 }),
+        });
+
+        await isolatedGetGarden();
+
+        expect(global.fetch).toHaveBeenCalledWith(
+          "https://roselet.example.com/api/garden?page=1&per_page=20"
+        );
+      });
+
+      process.env.NEXT_PUBLIC_API_URL = oldApiUrl;
+      process.env.NEXT_PUBLIC_READ_API_URL = oldReadApiUrl;
+      process.env.NEXT_PUBLIC_WORKER_API_URL = oldWorkerApiUrl;
+    });
+
     it("should return paginated roses", async () => {
       const mockResponse = {
         data: [
@@ -263,7 +291,7 @@ describe("API Client", () => {
       const result = await getGarden();
       expect(result).toEqual(mockResponse);
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:8787/api/garden?page=1&per_page=20"
+        "http://localhost:3001/api/garden?page=1&per_page=20"
       );
       expect(mockCacheGardenPage).toHaveBeenCalledWith(mockResponse);
     });
@@ -276,7 +304,7 @@ describe("API Client", () => {
 
       await getGarden(2, 10);
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:8787/api/garden?page=2&per_page=10"
+        "http://localhost:3001/api/garden?page=2&per_page=10"
       );
       expect(mockCacheGardenPage).not.toHaveBeenCalled();
     });
@@ -289,7 +317,7 @@ describe("API Client", () => {
 
       await getGarden(1, 20, "red");
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:8787/api/garden?page=1&per_page=20&color=red"
+        "http://localhost:3001/api/garden?page=1&per_page=20&color=red"
       );
       expect(mockCacheGardenPage).not.toHaveBeenCalled();
     });
@@ -329,7 +357,7 @@ describe("API Client", () => {
 
       await expect(getUsageStats()).resolves.toEqual(mockStats);
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:8787/api/stats",
+        "http://localhost:3001/api/stats",
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: "Bearer admin-token",
@@ -387,7 +415,7 @@ describe("API Client", () => {
       await expect(getUsageStats()).resolves.toEqual(mockStats);
 
       const statsCalls = (global.fetch as jest.Mock).mock.calls.filter(
-        ([url]) => url === "http://localhost:8787/api/stats",
+        ([url]) => url === "http://localhost:3001/api/stats",
       );
       const [, retryInit] = statsCalls.at(-1);
       expect(retryInit.headers).toEqual(expect.objectContaining({
@@ -413,7 +441,7 @@ describe("API Client", () => {
       const result = await getRose("123");
       expect(result).toEqual(mockRose);
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:8787/api/rose/123",
+        "http://localhost:3001/api/rose/123",
         expect.objectContaining({
           headers: expect.objectContaining({ "Content-Type": "application/json" }),
         })

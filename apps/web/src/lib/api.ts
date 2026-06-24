@@ -1,6 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const AUTH_API_BASE = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || "http://localhost:8787";
-const READ_API_BASE = process.env.NEXT_PUBLIC_READ_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || "http://localhost:8787";
+const AUTH_API_BASE = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || API_BASE;
+const READ_API_BASE = process.env.NEXT_PUBLIC_READ_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || API_BASE;
 
 export interface User {
   id: string;

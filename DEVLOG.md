@@ -3662,3 +3662,35 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - Lightsail 后端已接受 Cloudflare Pages 域名跨域请求。
 - 新管理员 user id 已进入生产白名单，`/stats` 权限配置已就位。
 - 剩余工作只在前端自动部署完成后做页面级验收。
+
+## 2026-06-24 会话 #74
+
+### 会话目标
+排查 Cloudflare Pages 域名花圃页显示“加载花圃失败”，并确认当前管理员账号状态。
+
+### 根因
+- 直连后端 `https://roselet.47.131.238.0.sslip.io/api/garden?page=1&per_page=12` 正常返回花圃 JSON。
+- 访问 `https://roselet.paxonqiao.com/api/garden?page=1&per_page=12` 返回 Cloudflare Pages 的 404 HTML 页面。
+- 抓取 Cloudflare 线上 JS 后确认：当前 Pages 构建里 `NEXT_PUBLIC_API_URL` 已写成 Lightsail 后端，但 `NEXT_PUBLIC_READ_API_URL` 没有配置，`READ_API_BASE` 回退到了旧默认值 `http://localhost:8787`，导致花圃读取失败。
+
+### 修复
+- `apps/web/src/lib/api.ts`：
+  - `AUTH_API_BASE` 未单独配置时回退到 `API_BASE`。
+  - `READ_API_BASE` 未单独配置时回退到 `API_BASE`。
+- `apps/web/src/lib/__tests__/api.test.ts`：
+  - 新增回归测试，覆盖“只配置主 API 时，花圃读取应回退到主 API”。
+  - 更新默认 URL 期望，从旧 Worker 默认地址改为主后端默认地址。
+
+### 管理员确认
+- 生产数据库中 `paxon-admin` 的 user id 是 `838fb4a6-25ba-4f1c-a7f6-96203e4741ad`。
+- 生产容器运行时 `ADMIN_USER_IDS` 已包含：
+  - `55be1141-8ad0-417a-bb3f-a9a3a1053287`
+  - `838fb4a6-25ba-4f1c-a7f6-96203e4741ad`
+- 因此截图里的 `paxon-admin` 是管理员，登录后可访问 `/stats`。
+
+### 验证
+- `curl -i 'https://roselet.47.131.238.0.sslip.io/api/garden?page=1&per_page=12' -H 'Origin: https://roselet.paxonqiao.com'` 返回 `200` 和花圃数据。
+- `curl -i 'https://roselet.paxonqiao.com/api/garden?page=1&per_page=12'` 当前线上仍返回 404，说明需要等待修复后的 Cloudflare Pages 重新部署。
+- `pnpm --filter web test -- src/lib/__tests__/api.test.ts`：42 passed
+- `NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io pnpm --filter web build:cf`：通过
+- `rg "localhost:8787|roselet\\.47\\.131\\.238\\.0|/api/garden" apps/web/dist/_next/static -S`：构建产物中读接口已回退到 Lightsail 后端。
