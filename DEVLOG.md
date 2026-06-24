@@ -3694,3 +3694,39 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - `pnpm --filter web test -- src/lib/__tests__/api.test.ts`：42 passed
 - `NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io pnpm --filter web build:cf`：通过
 - `rg "localhost:8787|roselet\\.47\\.131\\.238\\.0|/api/garden" apps/web/dist/_next/static -S`：构建产物中读接口已回退到 Lightsail 后端。
+
+## 2026-06-24 会话 #75
+
+### 会话目标
+排查 Web 音效/音乐体感“不起作用”，明确当前声音功能到底有哪些，并修正右上角喇叭按钮的反直觉行为。
+
+### 根因
+- 项目已有短音效：
+  - `playClick()`：种玫瑰流程里的选择/字段点击。
+  - `playPlant()`：打开玫瑰详情播放玫瑰音效。
+  - `playComplete()`：种花成功。
+  - `playLike()`：点赞。
+  - `playNotify()`：花圃 WebSocket 收到新玫瑰。
+- 右上角喇叭控制的是背景音乐，不是所有点击音效。
+- 旧交互默认显示 `🔊 / 关闭声音`，但背景音乐实际没有播放；用户第一次点击喇叭时会执行 `toggleMute()`，结果变成静音并停止音乐，所以体感上像“点了没作用”。
+
+### 修复
+- `apps/web/src/components/nav.tsx`：
+  - 引入 `isBgPlaying()`，把按钮状态拆成“是否静音”和“背景音乐是否正在播放”。
+  - 默认未播放时显示 `🔇 / 开启声音`。
+  - 点击“开启声音”会调用 `startBgMusic()`，真正开始背景音乐。
+  - 背景音乐播放中点击按钮会 `stopBgMusic()`，关闭播放。
+  - 静音状态下点击会先取消静音，再尝试启动背景音乐。
+- `apps/web/src/components/__tests__/nav.test.tsx`：
+  - 新增回归测试，覆盖默认 idle 状态点击喇叭应启动背景音乐，而不是先静音。
+  - 更新关闭声音和静音状态下的按钮行为测试。
+
+### 验证
+- `pnpm --filter web test -- src/components/__tests__/nav.test.tsx`：7 passed
+- `pnpm --filter web test -- src/lib/__tests__/sound.test.ts`：11 passed
+- `pnpm --filter web typecheck`：通过
+- `pnpm --filter web build`：通过
+
+### 说明
+- 自动化测试之前覆盖了声音函数是否被调用，但没有覆盖“按钮文案/图标是否反映真实播放状态”的用户体感。
+- Web Audio 还受浏览器策略影响，必须由用户点击后才能启动；这次把首次点击行为改成真正启动背景音乐。

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logout, getUser } from "@/lib/api";
-import { isMuted, toggleMute, startBgMusic, stopBgMusic } from "@/lib/sound";
+import { isBgPlaying, isMuted, startBgMusic, stopBgMusic, toggleMute } from "@/lib/sound";
 
 const MAIN_LINKS = [
   { href: "/plant", label: "种玫瑰", icon: "🌹" },
@@ -15,6 +15,7 @@ const MAIN_LINKS = [
 
 export function Nav() {
   const [muted, setMuted] = useState(false);
+  const [bgPlaying, setBgPlaying] = useState(false);
   const [nickname, setNickname] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -25,7 +26,11 @@ export function Nav() {
     setNickname(user?.nickname ?? null);
   }, []);
 
-  useEffect(() => { setMuted(isMuted()); refreshAuth(); }, [refreshAuth]);
+  useEffect(() => {
+    setMuted(isMuted());
+    setBgPlaying(isBgPlaying());
+    refreshAuth();
+  }, [refreshAuth]);
   useEffect(() => {
     window.addEventListener("auth-change", refreshAuth);
     return () => window.removeEventListener("auth-change", refreshAuth);
@@ -108,16 +113,29 @@ export function Nav() {
       )}
 
       <button
-        onClick={() => {
-          const now = toggleMute();
-          setMuted(now);
-          if (now) stopBgMusic();
-          else startBgMusic();
+        onClick={async () => {
+          if (muted) {
+            const nowMuted = toggleMute();
+            setMuted(nowMuted);
+            if (!nowMuted) {
+              await startBgMusic();
+              setBgPlaying(isBgPlaying());
+            }
+            return;
+          }
+
+          if (bgPlaying) {
+            stopBgMusic();
+            setBgPlaying(false);
+          } else {
+            await startBgMusic();
+            setBgPlaying(isBgPlaying());
+          }
         }}
         className="text-[13px] text-slate-500 hover:text-slate-300 px-2 py-1 transition-colors ml-1"
-        title={muted ? "开启声音" : "关闭声音"}
+        title={muted || !bgPlaying ? "开启声音" : "关闭声音"}
       >
-        {muted ? "🔇" : "🔊"}
+        {muted || !bgPlaying ? "🔇" : "🔊"}
       </button>
     </nav>
   );
