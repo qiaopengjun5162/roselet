@@ -115,6 +115,7 @@ Quality gates:
 - **Stats 后台**：Rust `/api/stats` 需要 JWT + `ADMIN_USER_IDS` 白名单；生产服务器 `.env.production` 必须配置管理员 user id
 - **生产密钥**：Lightsail `.env.production` 只留在服务器，不能把 `POSTGRES_PASSWORD` / `JWT_SECRET` / 私钥写入 Git 或文档
 - **Lightsail Compose 项目名**：自动部署必须固定 `COMPOSE_PROJECT_NAME=roselet`，复用 `roselet_pgdata`；否则会生成 `lightsail_*` 容器/卷并和旧后端抢占 `3001`
+- **Lightsail 环境变量变更**：只改服务器 `.env.production` 后，`docker compose restart backend` 不会把新值注入现有容器；必须结合 `~/roselet/.current_backend_image` 对 backend 执行 `up -d --force-recreate`
 
 ## 常用命令（justfile）
 ```bash

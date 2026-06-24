@@ -3616,13 +3616,49 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 当前状态
 - 代码已 push，Vercel 和 Cloudflare Pages 正在重新部署。
-- 后端仍需手动改服务器 `.env.production` 并重启。
+- Lightsail 生产后端已手动补齐 `ALLOWED_ORIGINS` 和 `ADMIN_USER_IDS`，并确认运行时环境已生效。
 
 ### 待办
-- [ ] SSH 到 Lightsail，在 `.env.production` 中：
-  - `ALLOWED_ORIGINS` 追加 `https://roselet.paxonqiao.com`
-  - `ADMIN_USER_IDS` 追加 `838fb4a6-25ba-4f1c-a7f6-96203e4741ad`
-  - `docker compose -p roselet restart backend`
 - [ ] 等 Vercel / Cloudflare 部署完成后，验证“听这朵玫瑰”能正常播放。
 - [ ] 验证 Cloudflare 域名可登录、可访问 `/stats` 后台。
 
+## 2026-06-24 会话 #73
+
+### 会话目标
+完成 Lightsail 生产环境配置收尾，让 Cloudflare 域名登录与 `/stats` 管理后台权限真正生效。
+
+### 完成的工作
+
+#### Lightsail 生产配置修复
+- 通过本机现有私钥 `~/.ssh/roselet_lightsail` 登录 `ubuntu@47.131.238.0`。
+- 更新服务器 `~/roselet/.env.production`：
+  - `ALLOWED_ORIGINS` 追加 `https://roselet.paxonqiao.com`
+  - `ADMIN_USER_IDS` 追加 `838fb4a6-25ba-4f1c-a7f6-96203e4741ad`
+- 发现单纯执行 `docker compose restart backend` 不会让 `.env.production` 新值重新注入现有容器。
+- 按 `~/roselet/.current_backend_image` 读取当前 GHCR 镜像，并显式执行：
+  - `COMPOSE_PROJECT_NAME=roselet BACKEND_IMAGE=$(cat .current_backend_image) docker compose --env-file .env.production -f deploy/lightsail/docker-compose.backend.yml up -d --force-recreate backend`
+- 重建后确认容器运行时环境已包含：
+  - `ALLOWED_ORIGINS=https://roselet-web.vercel.app,http://47.131.238.0,https://roselet.paxonqiao.com`
+  - `ADMIN_USER_IDS=55be1141-8ad0-417a-bb3f-a9a3a1053287,838fb4a6-25ba-4f1c-a7f6-96203e4741ad`
+
+#### 线上验证
+- `https://roselet.47.131.238.0.sslip.io/health` 返回 `200` 和健康 JSON。
+- 对 `Origin: https://roselet.paxonqiao.com` 的 `OPTIONS /api/auth/register` 预检返回：
+  - `access-control-allow-origin: https://roselet.paxonqiao.com`
+- 记录新的部署约束：生产若只改 `.env.production`，必须重建 backend 容器，不能只 `restart`。
+
+### 根因补充
+- 现象：`.env.production` 已更新，但 `docker inspect roselet-backend-1` 里仍是旧 `ALLOWED_ORIGINS` / `ADMIN_USER_IDS`。
+- 根因：Compose `restart` 只重启现有容器进程，不会按新的 Compose 变量源重建容器。
+- 处理：手动维护生产环境变量时，必须结合当前 GHCR 镜像做 `up -d --force-recreate backend`。
+
+### 验证
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'cd ~/roselet && grep -E "^(ALLOWED_ORIGINS|ADMIN_USER_IDS)=" .env.production'`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'cd ~/roselet && sudo docker inspect roselet-backend-1 --format "{{range .Config.Env}}{{println .}}{{end}}" | grep -E "^(ALLOWED_ORIGINS|ADMIN_USER_IDS)="'`
+- `curl -fsS --max-time 20 https://roselet.47.131.238.0.sslip.io/health`
+- `curl -i -X OPTIONS https://roselet.47.131.238.0.sslip.io/api/auth/register -H "Origin: https://roselet.paxonqiao.com" -H "Access-Control-Request-Method: POST"`
+
+### 当前状态
+- Lightsail 后端已接受 Cloudflare Pages 域名跨域请求。
+- 新管理员 user id 已进入生产白名单，`/stats` 权限配置已就位。
+- 剩余工作只在前端自动部署完成后做页面级验收。

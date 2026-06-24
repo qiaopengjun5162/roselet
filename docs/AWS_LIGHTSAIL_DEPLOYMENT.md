@@ -526,6 +526,19 @@ NEXT_PUBLIC_WS_URL=wss://roselet.47.131.238.0.sslip.io
 
 上线前还需要在 Lightsail `~/roselet/.env.production` 配置 `ADMIN_USER_IDS`，否则 `/api/stats` 会对所有登录用户返回 `403`。获取管理员用户 id 后，写入 `.env.production` 并重启 backend。
 
+如果只是修改 `.env.production` 中的 `ALLOWED_ORIGINS`、`ADMIN_USER_IDS` 等环境变量，不能只执行 `docker compose restart backend`。`restart` 只会重启现有容器进程，不会按新的 Compose 变量源重建容器，旧环境变量会继续留在运行时。生产维护时应读取 `~/roselet/.current_backend_image`，再显式重建 backend：
+
+```bash
+ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'set -euo pipefail
+cd ~/roselet
+CURRENT_IMAGE=$(cat .current_backend_image)
+sudo COMPOSE_PROJECT_NAME=roselet BACKEND_IMAGE="$CURRENT_IMAGE" \
+  docker compose --env-file .env.production \
+  -f deploy/lightsail/docker-compose.backend.yml \
+  up -d --force-recreate backend
+'
+```
+
 验证 stats 权限：
 
 ```bash
