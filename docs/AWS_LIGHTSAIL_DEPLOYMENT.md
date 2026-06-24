@@ -358,7 +358,7 @@ JWT_SECRET=$(openssl rand -hex 48)
 NODE_ENV=production
 PORT=3001
 RUST_LOG=roselet=info
-ALLOWED_ORIGINS=https://roselet-web.vercel.app,http://47.131.238.0
+ALLOWED_ORIGINS=https://roselet-web.vercel.app,https://roselet.paxonqiao.com,http://47.131.238.0
 ADMIN_USER_IDS=<允许访问 /api/stats 的用户 id，多个用英文逗号分隔>
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
@@ -435,7 +435,7 @@ JWT_SECRET=<服务器随机生成，不能入库>
 NODE_ENV=production
 PORT=3001
 RUST_LOG=roselet=info
-ALLOWED_ORIGINS=https://roselet-web.vercel.app,http://47.131.238.0
+ALLOWED_ORIGINS=https://roselet-web.vercel.app,https://roselet.paxonqiao.com,http://47.131.238.0
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4o-mini

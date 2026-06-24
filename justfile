@@ -145,6 +145,7 @@ pre-commit:
 # 构建 WASM 推荐模块
 wasm:
     cd crates/recommend && wasm-pack build --target web --out-dir ../../apps/web/public/pkg
+    rm -f apps/web/public/pkg/.gitignore
 
 # 完整构建（后端 + WASM + 前端）
 build-all: wasm build

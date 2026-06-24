@@ -16,7 +16,6 @@ apps/worker-api/.tmp-test/
 # IDE
 .vscode/
 .idea/
-apps/web/public/pkg/
 apps/web/pnpm-lock.yaml
 apps/web/pnpm-workspace.yaml
 .claude/plan/

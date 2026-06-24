@@ -30,7 +30,7 @@ export default function RootLayout({
         <RoseClickBloom />
         <header className="sticky top-0 z-50 backdrop-blur-2xl" style={{background:"linear-gradient(135deg, rgba(15,8,30,0.92) 0%, rgba(40,12,30,0.88) 50%, rgba(15,8,30,0.92) 100%)",borderBottom:"1px solid rgba(244,63,94,0.15)",boxShadow:"0 1px 20px rgba(244,63,94,0.06)"}}>
           <div className="max-w-4xl mx-auto px-5 h-14 flex items-center justify-between">
-            <Link href="/" className="text-xl font-bold text-rose-300 tracking-[0.15em]" style={{fontFamily:"Ma Shan Zheng, STXingkai, KaiTi, cursive"}}>
+            <Link href="/" className="shrink-0 whitespace-nowrap text-xl font-bold text-rose-300 tracking-[0.15em]" style={{fontFamily:"Ma Shan Zheng, STXingkai, KaiTi, cursive"}}>
               玫 · 瑰 · 源
             </Link>
             <Nav />

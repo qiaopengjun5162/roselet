@@ -107,11 +107,16 @@ export async function refreshAccessToken(): Promise<string | null> {
 }
 
 export async function register(nickname: string, passphrase?: string): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/api/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nickname, passphrase: passphrase || null }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nickname, passphrase: passphrase || null }),
+    });
+  } catch {
+    throw new Error("Failed to fetch");
+  }
   if (!res.ok) {
     let body: { error?: string } = {};
     try { body = await res.json(); } catch { /* ignore parse errors */ }

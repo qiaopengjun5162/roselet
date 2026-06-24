@@ -1,0 +1,16 @@
+{
+  "name": "roselet-recommend",
+  "type": "module",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "roselet_recommend_bg.wasm",
+    "roselet_recommend.js",
+    "roselet_recommend.d.ts"
+  ],
+  "main": "roselet_recommend.js",
+  "types": "roselet_recommend.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

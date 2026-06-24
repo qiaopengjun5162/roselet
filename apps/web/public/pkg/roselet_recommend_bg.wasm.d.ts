@@ -1,0 +1,34 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const analyze_text: (a: number, b: number) => number;
+export const apply_garden_cache_action_wasm: (a: number, b: number, c: number, d: number, e: number) => void;
+export const build_garden_url: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+export const build_optimistic_rose_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
+export const build_plant_body: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
+export const burstFireworks: (a: number, b: number, c: number, d: number) => number;
+export const color_emoji: (a: number, b: number, c: number) => void;
+export const color_label: (a: number, b: number, c: number) => void;
+export const color_options: () => number;
+export const compute_layout: (a: number, b: number) => number;
+export const compute_pagination: (a: number, b: number, c: number) => number;
+export const compute_sky_params_wasm: (a: number) => number;
+export const filter_roses: (a: number, b: number, c: number, d: number) => number;
+export const format_date_wasm: (a: number, b: number) => number;
+export const format_plant_request_wasm: (a: number, b: number, c: number) => void;
+export const generate_petals_wasm: (a: number, b: bigint) => number;
+export const generate_star_particles_wasm: (a: number, b: bigint) => number;
+export const getFireworkLaunches: () => number;
+export const parse_garden_response_wasm: (a: number, b: number) => number;
+export const parse_rose_response_wasm: (a: number, b: number) => number;
+export const recommend: (a: number, b: number) => number;
+export const rose_to_sound_params_wasm: (a: number, b: number) => number;
+export const store_dispatch: (a: number, b: number) => number;
+export const store_get_snapshot: () => number;
+export const validate_feedback_input: (a: number, b: number) => number;
+export const validate_plant_input: (a: number, b: number) => number;
+export const __wbindgen_export: (a: number, b: number) => number;
+export const __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_export3: (a: number) => void;
+export const __wbindgen_add_to_stack_pointer: (a: number) => number;
+export const __wbindgen_export4: (a: number, b: number, c: number) => void;

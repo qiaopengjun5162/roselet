@@ -29,7 +29,9 @@ function LoginForm() {
       router.push(redirect);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("密码错误")) {
+      if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("fetch")) {
+        setError("网络连接失败，可能是新域名还未被后端允许，请稍后再试");
+      } else if (msg.includes("密码错误")) {
         setError("密码错误");
       } else if (msg.includes("正在冷却期内")) {
         setError("这个昵称正在 30 天冷却期内，如要恢复账号请输入原密码");
