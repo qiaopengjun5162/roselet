@@ -47,6 +47,7 @@ describe("ProfilePage", () => {
     await waitFor(() => {
       expect(screen.getByText("alice")).toBeInTheDocument();
     });
+    expect(screen.getByText("u1")).toBeInTheDocument();
   });
 
   it("should show error on failure", async () => {
