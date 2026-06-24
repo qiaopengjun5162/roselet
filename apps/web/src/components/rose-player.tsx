@@ -22,6 +22,7 @@ export function RosePlayer({ rose, autoPlay = false, durationMs, canvasSize = 20
 
   const [playing, setPlaying] = useState(false);
   const [params, setParams]   = useState<RoseSoundParams | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // 挂载时预取 WASM 音频参数
   useEffect(() => {
@@ -40,7 +41,15 @@ export function RosePlayer({ rose, autoPlay = false, durationMs, canvasSize = 20
   }, [onStop]);
 
   const start = useCallback(async () => {
-    const p = params ?? await roseToSoundParams(rose);
+    setLoading(true);
+    const p = params ?? await roseToSoundParams(rose).catch(() => null);
+    setLoading(false);
+
+    if (!p) {
+      // WASM 参数未就绪时重试一次；仍失败则保持静默，避免报错打断用户
+      setTimeout(() => roseToSoundParams(rose).then(setParams).catch(() => {}), 0);
+      return;
+    }
     setParams(p);
 
     const ctx = new AudioContext();
@@ -125,6 +134,9 @@ export function RosePlayer({ rose, autoPlay = false, durationMs, canvasSize = 20
     return () => { stopFnRef.current?.(); cancelAnimationFrame(animRef.current); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const buttonDisabled = loading;
+  const buttonText = playing ? "■ 停止" : loading ? "加载中..." : "▶ 听这朵玫瑰";
+
   return (
     <div className="flex flex-col items-center gap-3">
       <canvas
@@ -136,15 +148,18 @@ export function RosePlayer({ rose, autoPlay = false, durationMs, canvasSize = 20
       />
       <button
         onClick={playing ? stop : start}
-        disabled={!params}
+        disabled={buttonDisabled}
         className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all disabled:opacity-40 ${
           playing
             ? "glass-card text-slate-300 hover:border-white/30"
             : "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-500/30 hover:-translate-y-0.5"
         }`}
       >
-        {playing ? "■ 停止" : "▶ 听这朵玫瑰"}
+        {buttonText}
       </button>
+      {!params && !loading && (
+        <p className="text-xs text-slate-500">音频参数加载中，请稍后再试</p>
+      )}
     </div>
   );
 }
