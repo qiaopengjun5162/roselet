@@ -3730,3 +3730,34 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 说明
 - 自动化测试之前覆盖了声音函数是否被调用，但没有覆盖“按钮文案/图标是否反映真实播放状态”的用户体感。
 - Web Audio 还受浏览器策略影响，必须由用户点击后才能启动；这次把首次点击行为改成真正启动背景音乐。
+
+## 2026-06-25 会话 #76
+
+### 会话目标
+排查 Cloudflare Pages 上点击别人的玫瑰详情进入 404 的问题。
+
+### 根因
+- Cloudflare Pages 使用静态导出，`/rose/:id` 只能预渲染构建时已存在的玫瑰详情页。
+- 线上后端已有新玫瑰 ID，例如：
+  - `247e725b-5ade-49a4-aa3e-a346751b4103`
+  - `f8f9ddcc-9c2a-4354-869f-a657fc6a4eca`
+- 当前构建产物只包含旧的 `/rose/<id>.html`，新玫瑰详情需要 Cloudflare Pages Worker 兜底到一个通用详情页壳，再由客户端按 URL 中的 id 拉后端数据。
+- Worker 兜底路径写成 `/rose/placeholder/index.html`，但 Next 静态导出实际生成的是 `/rose/placeholder.html`；同时 `generateStaticParams()` 在后端能返回玫瑰 ID 时没有额外生成 `placeholder` 壳。
+
+### 修复
+- `apps/web/src/app/rose/[id]/page.tsx`：
+  - `generateStaticParams()` 在返回后端玫瑰 ID 时，始终额外包含 `{ id: "placeholder" }`。
+- `apps/web/public/_worker.js`：
+  - `/rose/:id` 兜底改为读取 `/rose/placeholder.html`。
+- `apps/web/src/app/rose/[id]/__tests__/page.test.tsx`：
+  - 新增回归测试，确保 Cloudflare Pages fallback 所需的 placeholder shell 一定会被生成。
+
+### 验证
+- `pnpm --filter web test -- rose -t "includes a placeholder shell"`：通过
+- `pnpm --filter web test -- rose`：160 passed
+- `NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io pnpm --filter web build:cf`：通过
+- `apps/web/dist/rose/placeholder.html` 已生成。
+- `apps/web/dist/_worker.js` 已指向 `/rose/placeholder.html`。
+
+### 当前状态
+- 修复推送并等待 Cloudflare Pages 重新部署后，新玫瑰详情页应不再 404。

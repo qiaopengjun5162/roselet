@@ -40,6 +40,7 @@ const { playClick, playPlant, playLike } = require("@/lib/sound") as {
 };
 
 import { RoseDetailClient } from "../client";
+import { generateStaticParams } from "../page";
 
 const mockRose = {
   id: "rose-1",
@@ -56,6 +57,29 @@ const mockRose = {
 
 describe("RoseDetailPage", () => {
   beforeEach(() => jest.clearAllMocks());
+
+  describe("generateStaticParams", () => {
+    const oldApiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    afterEach(() => {
+      process.env.NEXT_PUBLIC_API_URL = oldApiUrl;
+      jest.restoreAllMocks();
+    });
+
+    it("includes a placeholder shell for Cloudflare Pages fallback", async () => {
+      process.env.NEXT_PUBLIC_API_URL = "https://api.example.com";
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: [{ id: "rose-1" }, { id: "rose-2" }] }),
+      } as Response);
+
+      await expect(generateStaticParams()).resolves.toEqual([
+        { id: "rose-1" },
+        { id: "rose-2" },
+        { id: "placeholder" },
+      ]);
+    });
+  });
 
   it("should show loading state", () => {
     getRose.mockReturnValue(new Promise(() => {}));

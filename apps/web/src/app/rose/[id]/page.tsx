@@ -9,7 +9,7 @@ export async function generateStaticParams() {
     if (!res.ok) return [{ id: "placeholder" }];
     const json = await res.json();
     const ids = (json.data as { id: string }[]).map((rose) => ({ id: String(rose.id) }));
-    return ids.length > 0 ? ids : [{ id: "placeholder" }];
+    return [...ids, { id: "placeholder" }];
   } catch {
     return [{ id: "placeholder" }];
   }

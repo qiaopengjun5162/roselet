@@ -7,7 +7,7 @@ export default {
     const url = new URL(request.url);
     const roseMatch = url.pathname.match(/^\/rose\/[^/]+$/);
     if (roseMatch) {
-      return env.ASSETS.fetch(new URL("/rose/placeholder/index.html", request.url));
+      return env.ASSETS.fetch(new URL("/rose/placeholder.html", request.url));
     }
     return env.ASSETS.fetch(request);
   },
