@@ -349,6 +349,51 @@ describe("API Client", () => {
 
       await expect(getUsageStats()).rejects.toThrow("STATS_FORBIDDEN");
     });
+
+    it("should refresh access token before retrying stats after 401", async () => {
+      setToken("old-admin-token");
+      setRefreshToken("refresh-token");
+      const mockStats = {
+        total_users: 1,
+        total_roses: 1,
+        public_roses: 1,
+        private_roses: 0,
+        total_likes: 0,
+        total_feedback: 0,
+        users_last_7_days: 1,
+        roses_last_7_days: 1,
+        feedback_last_7_days: 0,
+        latest_rose_at: null,
+        latest_feedback_at: null,
+        user_goal: {
+          current: 1,
+          goal: 100,
+          percent: 1,
+        },
+      };
+
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({ status: 401, ok: false })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: "new-admin-token" }),
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          ok: true,
+          json: async () => mockStats,
+        });
+
+      await expect(getUsageStats()).resolves.toEqual(mockStats);
+
+      const statsCalls = (global.fetch as jest.Mock).mock.calls.filter(
+        ([url]) => url === "http://localhost:8787/api/stats",
+      );
+      const [, retryInit] = statsCalls.at(-1);
+      expect(retryInit.headers).toEqual(expect.objectContaining({
+        Authorization: "Bearer new-admin-token",
+      }));
+    });
   });
 
   describe("getRose", () => {

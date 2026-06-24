@@ -8,8 +8,10 @@
 当前后端基址：
 
 ```env
-ROSELET_API_BASE=http://47.131.238.0
+ROSELET_API_BASE=https://roselet.47.131.238.0.sslip.io
 ```
+
+`http://47.131.238.0` 只用于服务器/IP 冒烟验证。Vercel Web 是 HTTPS 页面，生产环境变量必须使用 HTTPS API 基址，否则浏览器会按 mixed content 拦截请求。
 
 服务器上的 `.env.production` 只保存在 Lightsail，不能提交到 Git。关键变量：
 
@@ -20,6 +22,7 @@ NODE_ENV=production
 PORT=3001
 RUST_LOG=roselet=info
 ALLOWED_ORIGINS=https://roselet-web.vercel.app,http://47.131.238.0
+ADMIN_USER_IDS=<允许访问 /api/stats 的用户 id，多个用英文逗号分隔>
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4o-mini
@@ -40,10 +43,10 @@ LIGHTSAIL_KNOWN_HOSTS=<ssh-keyscan output>
 Vercel 前端下一步需要设置：
 
 ```env
-NEXT_PUBLIC_API_URL=http://47.131.238.0
-NEXT_PUBLIC_AUTH_API_URL=http://47.131.238.0
-NEXT_PUBLIC_READ_API_URL=http://47.131.238.0
-NEXT_PUBLIC_WS_URL=ws://47.131.238.0
+NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io
+NEXT_PUBLIC_AUTH_API_URL=https://roselet.47.131.238.0.sslip.io
+NEXT_PUBLIC_READ_API_URL=https://roselet.47.131.238.0.sslip.io
+NEXT_PUBLIC_WS_URL=wss://roselet.47.131.238.0.sslip.io
 ```
 
 完整操作手册见：

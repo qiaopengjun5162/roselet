@@ -3262,3 +3262,67 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - 将 Vercel 环境变量切到 Lightsail Rust 后端。
 - 重新部署 Web。
 - 用线上 Web 跑完整注册、登录、种花、花圃、详情、点赞、反馈冒烟。
+
+## 2026-06-24 会话 #65：补齐 Rust stats 与 HTTPS 上线收尾
+
+### 会话目标
+把 Vercel Web 切到 Lightsail Rust 后端前的最后阻塞点补齐：HTTPS API 基址、Rust `/api/stats`、stats 后台权限与认证恢复。
+
+### 完成的工作
+- Rust 后端新增并注册 `GET /api/stats`：
+  - 返回注册用户、玫瑰、公开/私密玫瑰、点赞、反馈、近 7 天增量、最近玫瑰/反馈时间、100 用户目标进度。
+  - 要求 JWT 登录。
+  - 生产通过 `ADMIN_USER_IDS` 配置管理员 user id 白名单。
+  - 测试环境允许 `X-Roselet-Test-Admin-Ids` 覆盖，便于集成测试不污染生产配置。
+- 后端集成测试新增：
+  - 未登录访问 stats 返回 `401`。
+  - 普通登录用户访问 stats 返回 `403`。
+  - 管理员可读取聚合统计。
+- OpenAPI 补充 `/stats` 路径、`UsageStats` 和 `UsageGoal` schema。
+- Web `getUsageStats()` 改为复用 `authFetch()`，避免 access token 过期后后台页面直接失败。
+- Web API 单测新增 stats 401 后 refresh 并重试的回归测试。
+- 部署文档更新：
+  - Vercel 生产 API 基址改为 `https://roselet.47.131.238.0.sslip.io`。
+  - WebSocket 改为 `wss://roselet.47.131.238.0.sslip.io`。
+  - `http://47.131.238.0` 只作为 IP/服务器冒烟地址。
+  - 记录 Caddy `sslip.io` HTTPS 临时域名配置。
+  - 记录 `ADMIN_USER_IDS` 生产环境变量。
+- 同步更新 `AGENTS.md`、`CLAUDE.md`、`PROGRESS.md`、`docs/AWS_LIGHTSAIL_DEPLOYMENT.md`、`docs/DEPLOYMENT_ENV_TEMPLATE.md`、`docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`。
+
+### 问题记录
+
+#### 问题 1：Vercel HTTPS 页面不能调用 HTTP API
+- 现象：后端 `http://47.131.238.0/health` 可访问，但 Vercel 页面如果配置 HTTP API，会被浏览器 mixed content 策略拦截。
+- 根因：HTTPS 页面不能主动调用不安全的 HTTP API；IP 冒烟成功不等于浏览器安全上下文可用。
+- 解决：Caddy 增加 `roselet.47.131.238.0.sslip.io` HTTPS 站点，Vercel 环境变量改用 HTTPS/WSS。
+- 验证：`curl -i https://roselet.47.131.238.0.sslip.io/health` 已返回健康状态。
+
+#### 问题 2：Rust 后端缺少 `/api/stats`
+- 现象：切换 Vercel `NEXT_PUBLIC_READ_API_URL` 到 Rust HTTPS 后端前，直接访问 `https://roselet.47.131.238.0.sslip.io/api/stats` 返回 `404`。
+- 根因：`/stats` 页面此前依赖 Worker `/api/stats`；Rust 主后端还没有同名接口。
+- 解决：Rust Axum 新增 `/api/stats`，保持响应结构兼容 Web 现有 `UsageStats`，并通过 `ADMIN_USER_IDS` 做后台权限控制。
+- 验证：后端 stats 集成测试覆盖 401、403、管理员成功聚合。
+
+#### 问题 3：stats 页面未复用 access token 静默刷新
+- 现象：`getUsageStats()` 使用裸 `fetch()`，如果 access token 过期，页面直接显示统计加载失败。
+- 根因：stats 是受保护接口，但没有接入已有 `authFetch()` 401 refresh 机制。
+- 解决：先新增失败测试，再将 `getUsageStats()` 改为 `authFetch()`。
+- 验证：`./node_modules/.bin/jest src/lib/__tests__/api.test.ts -t "refresh access token before retrying stats" --runInBand` 通过。
+
+#### 问题 4：pnpm 版本切换因网络签名校验失败
+- 现象：`pnpm --filter @roselet/web test ...` 失败：
+  ```text
+  Refusing to run pnpm@9.15.4: its npm registry signature could not be verified
+  ```
+- 根因：当前网络无法取到 pnpm release/signature，属于工具链网络问题，不是测试或代码失败。
+- 解决：使用已安装的 `apps/web/node_modules/.bin/jest` 跑窄测试，避开 pnpm 版本切换。
+
+### 验证
+- `apps/web/node_modules/.bin/jest src/lib/__tests__/api.test.ts -t "refresh access token before retrying stats" --runInBand`
+
+### 下一步
+- 跑后端 `fmt` / `clippy` / `nextest` 和 Web API 单测。
+- commit + push，等待 GitHub Actions CI 和 `Deploy Backend` 自动部署。
+- 在 Lightsail `.env.production` 配置真实 `ADMIN_USER_IDS` 并重启后端。
+- 在 Vercel 配置 HTTPS 环境变量并重新部署 Web。
+- 用线上 Web 跑注册、登录、种花、花圃、详情、点赞、反馈、stats 冒烟。

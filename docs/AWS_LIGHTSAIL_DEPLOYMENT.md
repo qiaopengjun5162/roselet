@@ -8,8 +8,8 @@
 ```text
 用户浏览器
   -> Vercel Web: https://roselet-web.vercel.app
-  -> AWS Lightsail: http://47.131.238.0
-      -> Caddy :80
+  -> AWS Lightsail: https://roselet.47.131.238.0.sslip.io
+      -> Caddy :443 / :80
       -> Rust Axum backend :3001
       -> Docker Postgres :5432
 GitHub Actions
@@ -20,14 +20,18 @@ GitHub Actions
 当前生产后端基址：
 
 ```text
-http://47.131.238.0
+https://roselet.47.131.238.0.sslip.io
 ```
+
+`http://47.131.238.0` 仍可用于 IP 冒烟；Vercel 生产前端必须使用 HTTPS 基址，避免浏览器 mixed content 拦截。
 
 已验证接口：
 
 ```bash
 curl http://47.131.238.0/health
+curl https://roselet.47.131.238.0.sslip.io/health
 curl 'http://47.131.238.0/api/garden?page=1&per_page=3'
+curl 'https://roselet.47.131.238.0.sslip.io/api/garden?page=1&per_page=3'
 ```
 
 ## AWS 资源
@@ -87,7 +91,7 @@ push main
 验证结果：
 
 ```bash
-curl http://47.131.238.0/health
+curl https://roselet.47.131.238.0.sslip.io/health
 curl 'http://47.131.238.0/api/garden?page=1&per_page=3'
 ```
 
@@ -340,6 +344,7 @@ NODE_ENV=production
 PORT=3001
 RUST_LOG=roselet=info
 ALLOWED_ORIGINS=https://roselet-web.vercel.app,http://47.131.238.0
+ADMIN_USER_IDS=<允许访问 /api/stats 的用户 id，多个用英文逗号分隔>
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4o-mini
@@ -426,7 +431,7 @@ BACKEND_IMAGE=roselet-backend:latest
 
 ## 已执行的 Caddy 反向代理
 
-因为公网直连 `3001` 超时，生产入口改为 `80 -> 3001`。
+因为公网直连 `3001` 超时，生产入口改为 Caddy 反代到 `127.0.0.1:3001`。Vercel 是 HTTPS 页面，最终浏览器访问 API 使用 `sslip.io` 临时域名获得 HTTPS 证书。
 
 安装并配置 Caddy：
 
@@ -448,10 +453,25 @@ sudo systemctl status caddy --no-pager -l | sed -n "1,80p"
 '
 ```
 
+HTTPS 临时域名配置：
+
+```caddyfile
+roselet.47.131.238.0.sslip.io {
+    reverse_proxy 127.0.0.1:3001
+}
+
+:80 {
+    reverse_proxy 127.0.0.1:3001
+}
+```
+
+`sslip.io` 会把域名解析回 IP，Caddy 可自动签发 Let's Encrypt 证书。等后续购买正式域名后，只需要把站点名替换为正式域名。
+
 验证：
 
 ```bash
 curl -i --max-time 15 http://47.131.238.0/health
+curl -i --max-time 15 https://roselet.47.131.238.0.sslip.io/health
 curl -i --max-time 15 'http://47.131.238.0/api/garden?page=1&per_page=3'
 ```
 
@@ -481,10 +501,20 @@ curl -sS --max-time 15 "http://47.131.238.0/api/rose/$RID" | jq '{id, color, gra
 Vercel Web 仍需设置生产环境变量并重新部署：
 
 ```env
-NEXT_PUBLIC_API_URL=http://47.131.238.0
-NEXT_PUBLIC_AUTH_API_URL=http://47.131.238.0
-NEXT_PUBLIC_READ_API_URL=http://47.131.238.0
-NEXT_PUBLIC_WS_URL=ws://47.131.238.0
+NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io
+NEXT_PUBLIC_AUTH_API_URL=https://roselet.47.131.238.0.sslip.io
+NEXT_PUBLIC_READ_API_URL=https://roselet.47.131.238.0.sslip.io
+NEXT_PUBLIC_WS_URL=wss://roselet.47.131.238.0.sslip.io
+```
+
+上线前还需要在 Lightsail `~/roselet/.env.production` 配置 `ADMIN_USER_IDS`，否则 `/api/stats` 会对所有登录用户返回 `403`。获取管理员用户 id 后，写入 `.env.production` 并重启 backend。
+
+验证 stats 权限：
+
+```bash
+curl -i --max-time 15 https://roselet.47.131.238.0.sslip.io/api/stats
+curl -i --max-time 15 https://roselet.47.131.238.0.sslip.io/api/stats \
+  -H 'authorization: Bearer <admin-access-token>'
 ```
 
 已尝试使用 Vercel CLI，但当前本机网络/TLS 失败：
@@ -576,6 +606,26 @@ COPY Cargo.toml Cargo.lock ./
 - 不依赖裸露应用端口。
 - 使用 Caddy 监听 80，反代到 `127.0.0.1:3001`。
 
+### Vercel HTTPS 前端不能调用 HTTP API
+
+现象：`https://roselet-web.vercel.app` 如果配置 `NEXT_PUBLIC_API_URL=http://47.131.238.0`，浏览器会按 mixed content 策略拦截请求。
+
+处理：
+
+- Caddy 增加 `roselet.47.131.238.0.sslip.io` 站点。
+- Vercel 的 `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_AUTH_API_URL` / `NEXT_PUBLIC_READ_API_URL` 使用 `https://roselet.47.131.238.0.sslip.io`。
+- WebSocket 使用 `wss://roselet.47.131.238.0.sslip.io`。
+
+### Rust 后端缺少 stats 接口
+
+现象：Web `/stats` 页面原先调用 Worker `/api/stats`；切到 Rust HTTPS 后端前，直接请求 `https://roselet.47.131.238.0.sslip.io/api/stats` 返回 `404`。
+
+处理：
+
+- Rust Axum 新增 `GET /api/stats`。
+- 接口要求 JWT 登录，并通过 `ADMIN_USER_IDS` 做管理员白名单。
+- OpenAPI 已补充 `/stats` 路径和 `UsageStats` schema。
+
 ### 小机器首次 Rust release 构建较慢
 
 现象：`micro_3_0` 首次 `cargo build --release` 编译依赖耗时数分钟。
@@ -619,5 +669,4 @@ sudo COMPOSE_PROJECT_NAME=lightsail docker compose --env-file .env.production -f
 
 - `.env.production` 只保存在服务器，权限为 `600`，不能提交到 Git。
 - 文档只记录命令模板和公开 IP，不记录数据库密码、JWT_SECRET、私钥。
-- 目前公网是 HTTP。正式对外前建议绑定域名，然后让 Caddy 自动签发 HTTPS。
-- 如果继续使用 IP + HTTP，浏览器安全策略会影响部分能力；生产前应尽快上域名和 HTTPS。
+- 当前 `sslip.io` HTTPS 域名适合临时上线和内测；正式对外建议购买域名后替换为自有域名。

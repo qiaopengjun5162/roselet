@@ -53,6 +53,7 @@ pub fn create_app(state: AppState) -> Router {
         .route("/api/user/profile", get(routes::auth::profile))
         .route("/api/rose/{id}/like", post(routes::like::toggle_like))
         .route("/api/feedback", post(routes::feedback::submit_feedback))
+        .route("/api/stats", get(routes::stats::get_usage_stats))
         .route("/api/ws", get(routes::ws::ws_handler))
         .route("/swagger", get(routes::docs::swagger_ui))
         .route("/api/openapi.json", get(openapi_json))

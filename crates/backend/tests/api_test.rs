@@ -36,6 +36,7 @@ async fn create_test_app() -> (axum::Router, PgPool) {
         port: 3001,
         jwt_secret: "test-secret".to_string(),
         allowed_origins: vec!["http://localhost:3000".to_string()],
+        admin_user_ids: vec![],
         is_production: false,
     };
     let state = roselet_backend::state::AppState::new(pool.clone(), config);
@@ -1435,6 +1436,91 @@ async fn test_feedback_no_content_field() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_usage_stats_requires_auth() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    let res = client.get(format!("{}/api/stats", base)).send().await.unwrap();
+
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_usage_stats_rejects_non_admin() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "stats-user").await;
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("{}/api/stats", base))
+        .header(
+            "Authorization",
+            format!("Bearer {}", auth["access_token"].as_str().unwrap()),
+        )
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_usage_stats_admin_sees_aggregates() {
+    let base = spawn_test_server().await;
+    let admin_auth = register_user(&base, "stats-admin").await;
+    let user_auth = register_user(&base, "stats-member").await;
+    let admin_token = admin_auth["access_token"].as_str().unwrap();
+    let user_token = user_auth["access_token"].as_str().unwrap();
+    let admin_id = admin_auth["user"]["id"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", admin_token))
+        .json(&json!({ "color": "red", "gratitude": "public rose" }))
+        .send()
+        .await
+        .unwrap();
+
+    client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", user_token))
+        .json(&json!({ "color": "white", "gratitude": "private rose", "is_private": true }))
+        .send()
+        .await
+        .unwrap();
+
+    client
+        .post(format!("{}/api/feedback", base))
+        .header("Authorization", format!("Bearer {}", user_token))
+        .json(&json!({ "content": "统计后台反馈" }))
+        .send()
+        .await
+        .unwrap();
+
+    let res = client
+        .get(format!("{}/api/stats", base))
+        .header("Authorization", format!("Bearer {}", admin_token))
+        .header("X-Roselet-Test-Admin-Ids", admin_id)
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["total_users"], 2);
+    assert_eq!(body["total_roses"], 2);
+    assert_eq!(body["public_roses"], 1);
+    assert_eq!(body["private_roses"], 1);
+    assert_eq!(body["total_feedback"], 1);
+    assert_eq!(body["user_goal"]["current"], 2);
+    assert_eq!(body["user_goal"]["goal"], 100);
+    assert_eq!(body["user_goal"]["percent"], 2);
+    assert!(body["latest_rose_at"].as_str().is_some());
+    assert!(body["latest_feedback_at"].as_str().is_some());
 }
 
 // ── Refresh / Logout 集成测试 ──

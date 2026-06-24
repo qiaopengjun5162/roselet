@@ -153,6 +153,19 @@
           "400": { "description": "参数错误" }
         }
       }
+    },
+    "/stats": {
+      "get": {
+        "tags": ["Stats"],
+        "summary": "获取应用使用统计",
+        "description": "后台管理员接口。调用者必须携带 JWT，且用户 id 必须在服务端 ADMIN_USER_IDS 白名单内。",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UsageStats" } } } },
+          "401": { "description": "未认证" },
+          "403": { "description": "非管理员用户" }
+        }
+      }
     }
   },
   "components": {
@@ -275,6 +288,31 @@
           "total": { "type": "integer" },
           "page": { "type": "integer" },
           "per_page": { "type": "integer" }
+        }
+      },
+      "UsageGoal": {
+        "type": "object",
+        "properties": {
+          "current": { "type": "integer", "format": "int64" },
+          "goal": { "type": "integer", "format": "int64" },
+          "percent": { "type": "integer", "format": "int64" }
+        }
+      },
+      "UsageStats": {
+        "type": "object",
+        "properties": {
+          "total_users": { "type": "integer", "format": "int64" },
+          "total_roses": { "type": "integer", "format": "int64" },
+          "public_roses": { "type": "integer", "format": "int64" },
+          "private_roses": { "type": "integer", "format": "int64" },
+          "total_likes": { "type": "integer", "format": "int64" },
+          "total_feedback": { "type": "integer", "format": "int64" },
+          "users_last_7_days": { "type": "integer", "format": "int64" },
+          "roses_last_7_days": { "type": "integer", "format": "int64" },
+          "feedback_last_7_days": { "type": "integer", "format": "int64" },
+          "latest_rose_at": { "type": "string", "format": "date-time", "nullable": true },
+          "latest_feedback_at": { "type": "string", "format": "date-time", "nullable": true },
+          "user_goal": { "$ref": "#/components/schemas/UsageGoal" }
         }
       }
     }

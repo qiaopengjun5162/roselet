@@ -367,6 +367,33 @@ ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
 
 通用规则：生产 compose 项目一旦承载数据卷和公网端口，后续自动部署必须固定 project name；不要让文件路径或目录名隐式决定生产资源名。
 
+### 34. HTTPS 前端不能直接调用 HTTP API
+
+问题：Vercel 前端是 `https://roselet-web.vercel.app`，如果把 API 环境变量配置为 `http://47.131.238.0`，浏览器会按 mixed content 策略拦截请求。后端 `curl http://.../health` 成功不代表浏览器页面能调用。
+
+根因：浏览器安全策略要求 HTTPS 页面不能主动调用不安全的 HTTP API。IP 冒烟和 Web 生产访问是两条不同验证链路。
+
+解决：
+- 在 Caddy 增加 `roselet.47.131.238.0.sslip.io`，由 Caddy 自动签发 HTTPS 证书并反代到 `127.0.0.1:3001`。
+- Vercel `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_AUTH_API_URL` / `NEXT_PUBLIC_READ_API_URL` 使用 HTTPS 基址。
+- `NEXT_PUBLIC_WS_URL` 使用 `wss://`。
+
+通用规则：上线前分别验证“服务器可达”和“浏览器安全上下文可调用”；公网 IP HTTP 只能当低层冒烟，不应作为 HTTPS 前端生产 API。
+
+### 35. 管理后台接口要迁回主后端并保留权限边界
+
+问题：Web `/stats` 已经存在，但生产主线从 Worker 切回 Rust Lightsail 后，Rust 缺少 `/api/stats` 会导致后台页面 404；如果直接公开统计又会把运营后台暴露给所有登录用户。
+
+根因：免费方案阶段为了尽快上线把部分读接口迁到 Worker，但长期生产主线是 Rust 后端。切换后端基址前必须确认所有前端调用的 API 在主后端同名存在，且权限语义一致。
+
+解决：
+- Rust Axum 新增 `GET /api/stats`，返回和 Worker 兼容的 `UsageStats`。
+- 生产使用 `ADMIN_USER_IDS` 白名单限制管理员访问。
+- Web `getUsageStats()` 复用 `authFetch()`，避免 access token 过期后后台页面直接失败。
+- OpenAPI 和部署文档同步记录 stats 权限和环境变量。
+
+通用规则：迁移后端基址前，用前端 API 清单逐项对齐主后端；管理后台接口必须有明确白名单或角色模型，不能只靠页面隐藏。
+
 ## 更新规则
 
 每次遇到问题，按这个顺序更新：

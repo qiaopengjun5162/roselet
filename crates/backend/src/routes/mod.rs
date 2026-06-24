@@ -6,6 +6,7 @@ pub mod health;
 pub mod like;
 pub mod my;
 pub mod rose;
+pub mod stats;
 pub mod ws;
 
 use std::collections::HashMap;

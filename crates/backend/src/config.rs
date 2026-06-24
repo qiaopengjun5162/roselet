@@ -6,6 +6,7 @@ pub struct Config {
     pub port: u16,
     pub jwt_secret: String,
     pub allowed_origins: Vec<String>,
+    pub admin_user_ids: Vec<String>,
     pub is_production: bool,
 }
 
@@ -35,6 +36,12 @@ impl Config {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .collect();
+        let admin_user_ids = env::var("ADMIN_USER_IDS")
+            .unwrap_or_default()
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
 
         Self {
             database_url: env::var("DATABASE_URL")
@@ -42,6 +49,7 @@ impl Config {
             port: env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(3001),
             jwt_secret,
             allowed_origins,
+            admin_user_ids,
             is_production,
         }
     }
@@ -58,6 +66,7 @@ mod tests {
         std::env::remove_var("JWT_SECRET");
         std::env::remove_var("NODE_ENV");
         std::env::remove_var("ALLOWED_ORIGINS");
+        std::env::remove_var("ADMIN_USER_IDS");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://localhost/roselet");
@@ -65,6 +74,7 @@ mod tests {
         assert_eq!(config.jwt_secret, "roselet-dev-secret");
         assert!(!config.is_production);
         assert!(config.allowed_origins.contains(&"http://localhost:3000".to_string()));
+        assert!(config.admin_user_ids.is_empty());
     }
 
     #[test]
@@ -73,6 +83,7 @@ mod tests {
         std::env::set_var("PORT", "8080");
         std::env::set_var("JWT_SECRET", "my-secret-key-with-sufficient-length-32bytes");
         std::env::set_var("ALLOWED_ORIGINS", "https://roselet.example.com");
+        std::env::set_var("ADMIN_USER_IDS", " user-1, user-2 ");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://custom/testdb");
@@ -82,11 +93,13 @@ mod tests {
             "my-secret-key-with-sufficient-length-32bytes"
         );
         assert_eq!(config.allowed_origins, vec!["https://roselet.example.com"]);
+        assert_eq!(config.admin_user_ids, vec!["user-1", "user-2"]);
 
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
         std::env::remove_var("JWT_SECRET");
         std::env::remove_var("ALLOWED_ORIGINS");
+        std::env::remove_var("ADMIN_USER_IDS");
     }
 
     #[test]
