@@ -2928,3 +2928,51 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - [ ] 配置生产 Worker 域名
 - [ ] 在 Vercel 配置 `NEXT_PUBLIC_WORKER_API_URL` 或 `NEXT_PUBLIC_READ_API_URL`
 - [ ] 打开线上 `/stats` 做一次真实冒烟检查
+
+## 2026-06-24 会话 #60：统计页收口为管理员后台
+
+### 会话目标
+把 `/stats` 从公开使用动态页收口为有权限边界的应用后台，避免长期运营数据默认公开。
+
+### 完成的工作
+
+#### Worker：统计接口增加管理员白名单
+- `GET /api/stats` 现在要求 `Authorization: Bearer <access_token>`
+- 新增 `ADMIN_USER_IDS` 环境变量，多个用户 id 用英文逗号分隔
+- Worker 校验 JWT 后，只允许白名单用户访问统计聚合
+- 错误语义：
+  - 未登录或 token 无效：`401`
+  - 已登录但非管理员：`403`
+
+#### Web：统计页按后台处理
+- `getUsageStats()` 请求带 access token
+- `/stats` 未登录时跳转到 `/login?redirect=/stats`
+- 非管理员返回 `STATS_FORBIDDEN` 时显示“无权限访问应用后台”
+
+#### 文档
+- 更新 `docs/CLOUDFLARE_WORKER_API.md`
+- 更新 `docs/DEPLOYMENT_ENV_TEMPLATE.md`
+- 更新 `PROGRESS.md`
+- 明确未来如果要公开统计，应新增 `/api/stats/public`，不要复用管理员后台接口
+
+### 问题记录
+
+#### 问题：统计看板长期维护时不能默认公开
+- 现象：
+  - `/stats` 会逐步变成应用后台，包含真实用户量、反馈量、私密玫瑰数量等运营信号
+  - 如果默认公开，后续想收回权限会影响已有链接和用户预期
+- 根因：
+  - 之前的第一版是为了快速验证“有没有人用”，没有建立后台权限边界
+- 解决：
+  - 先用 `ADMIN_USER_IDS` 做最小管理员白名单
+  - 不急着加数据库角色表，避免为了一个后台入口过早改用户模型
+  - 未来用户/管理员体系稳定后，再迁到 `users.role` 或 `admin_users` 表
+
+### 验证
+- `./apps/worker-api/node_modules/.bin/tsc --outDir apps/worker-api/.tmp-test --module NodeNext --moduleResolution NodeNext --target ES2022 apps/worker-api/src/index.ts apps/worker-api/src/garden.ts apps/worker-api/src/rose.ts apps/worker-api/src/auth.ts apps/worker-api/src/stats.ts`
+- `node --test apps/worker-api/src/stats.test.mjs`
+- `./apps/web/node_modules/.bin/jest --config apps/web/jest.config.ts --runInBand apps/web/src/lib/__tests__/api.test.ts apps/web/src/app/stats/__tests__/page.test.tsx`
+
+### 当前状态
+- `/stats` 已按管理员后台设计
+- 生产部署时必须配置 `ADMIN_USER_IDS`

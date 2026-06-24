@@ -1,7 +1,10 @@
 import { neon } from "@neondatabase/serverless";
+import { getUserIdFromRequest } from "./rose.js";
 
 type Bindings = {
   DATABASE_URL?: string;
+  JWT_SECRET?: string;
+  ADMIN_USER_IDS?: string;
 };
 
 type UsageStatsRow = {
@@ -75,7 +78,31 @@ export function normalizeUsageStats(row: UsageStatsRow): UsageStats {
   };
 }
 
-export async function getUsageStats(env: Bindings): Promise<UsageStats> {
+export function isAdminUser(userId: string | null, adminUserIds: string | undefined): boolean {
+  if (!userId || !adminUserIds) {
+    return false;
+  }
+
+  return adminUserIds
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .includes(userId);
+}
+
+export async function requireStatsAdmin(env: Bindings, request: Request): Promise<void> {
+  const userId = await getUserIdFromRequest(request, env);
+  if (!userId) {
+    throw new Error("STATS_UNAUTHORIZED");
+  }
+  if (!isAdminUser(userId, env.ADMIN_USER_IDS)) {
+    throw new Error("STATS_FORBIDDEN");
+  }
+}
+
+export async function getUsageStats(env: Bindings, request: Request): Promise<UsageStats> {
+  await requireStatsAdmin(env, request);
+
   if (!env.DATABASE_URL) {
     throw new Error("DATABASE_URL is required");
   }

@@ -1,11 +1,19 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+const mockPush = jest.fn();
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 jest.mock("@/lib/api", () => ({
+  getToken: jest.fn(),
   getUsageStats: jest.fn(),
 }));
 
-const { getUsageStats } = require("@/lib/api") as {
+const { getToken, getUsageStats } = require("@/lib/api") as {
+  getToken: jest.Mock;
   getUsageStats: jest.Mock;
 };
 
@@ -14,9 +22,21 @@ import StatsPage from "../page";
 describe("StatsPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    getToken.mockReturnValue("admin-token");
   });
 
-  it("shows public usage stats and the 100-user progress", async () => {
+  it("redirects anonymous users to login", async () => {
+    getToken.mockReturnValue(null);
+
+    render(<StatsPage />);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/login?redirect=/stats");
+    });
+    expect(getUsageStats).not.toHaveBeenCalled();
+  });
+
+  it("shows admin usage stats and the 100-user progress", async () => {
     getUsageStats.mockResolvedValue({
       total_users: 12,
       total_roses: 30,
@@ -53,6 +73,16 @@ describe("StatsPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("数据暂时加载失败")).toBeInTheDocument();
+    });
+  });
+
+  it("shows forbidden state when user is not an admin", async () => {
+    getUsageStats.mockRejectedValue(new Error("STATS_FORBIDDEN"));
+
+    render(<StatsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("无权限访问应用后台")).toBeInTheDocument();
     });
   });
 });

@@ -269,7 +269,10 @@ export interface UsageStats {
 }
 
 export async function getUsageStats(): Promise<UsageStats> {
-  const res = await fetch(`${READ_API_BASE}/api/stats`);
+  const res = await fetch(`${READ_API_BASE}/api/stats`, {
+    headers: authHeaders(),
+  });
+  if (res.status === 403) throw new Error("STATS_FORBIDDEN");
   if (!res.ok) throw new Error("Failed to fetch usage stats");
   return res.json();
 }

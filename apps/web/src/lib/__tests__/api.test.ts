@@ -301,7 +301,8 @@ describe("API Client", () => {
   });
 
   describe("getUsageStats", () => {
-    it("should return usage stats from the read api", async () => {
+    it("should return usage stats from the read api with auth header", async () => {
+      setToken("admin-token");
       const mockStats = {
         total_users: 12,
         total_roses: 30,
@@ -327,12 +328,26 @@ describe("API Client", () => {
       });
 
       await expect(getUsageStats()).resolves.toEqual(mockStats);
-      expect(global.fetch).toHaveBeenCalledWith("http://localhost:8787/api/stats");
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:8787/api/stats",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer admin-token",
+          }),
+        })
+      );
     });
 
     it("should throw error on stats failure", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
       await expect(getUsageStats()).rejects.toThrow("Failed to fetch usage stats");
+    });
+
+    it("should throw forbidden error when stats request is denied", async () => {
+      setToken("normal-user-token");
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 403 });
+
+      await expect(getUsageStats()).rejects.toThrow("STATS_FORBIDDEN");
     });
   });
 

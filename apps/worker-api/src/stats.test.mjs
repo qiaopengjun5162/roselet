@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeUsageStats, progressToGoal } from "../.tmp-test/stats.js";
+import { isAdminUser, normalizeUsageStats, progressToGoal } from "../.tmp-test/stats.js";
 
 test("progressToGoal caps percent at 100", () => {
   assert.deepEqual(progressToGoal(125, 100), {
@@ -53,4 +53,18 @@ test("normalizeUsageStats converts database aggregate strings to numbers", () =>
       },
     }
   );
+});
+
+test("isAdminUser accepts exact user id from comma-separated allowlist", () => {
+  assert.equal(isAdminUser("user-2", "user-1,user-2,user-3"), true);
+});
+
+test("isAdminUser trims allowlist entries", () => {
+  assert.equal(isAdminUser("user-2", " user-1, user-2 "), true);
+});
+
+test("isAdminUser rejects missing or unrelated user", () => {
+  assert.equal(isAdminUser(null, "user-1"), false);
+  assert.equal(isAdminUser("user-2", undefined), false);
+  assert.equal(isAdminUser("user-2", "user-1"), false);
 });

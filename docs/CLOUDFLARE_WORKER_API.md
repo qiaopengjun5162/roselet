@@ -44,6 +44,13 @@
 - `GET /api/stats`
   - 当前已接到 `Neon serverless driver`
   - 当前用于免费部署阶段的轻量运营可见性，不做第三方埋点
+  - 当前是管理员后台接口，不是公开接口
+  - 访问要求：
+    - `Authorization: Bearer <access_token>`
+    - token 对应用户 id 必须在 `ADMIN_USER_IDS` 白名单中
+  - 当前错误语义：
+    - 未登录或 token 无效返回 `401`
+    - 非管理员返回 `403`
   - 当前会返回隐私安全的聚合数据：
     - 活跃用户总数
     - 玫瑰总数、公开玫瑰、私密玫瑰
@@ -127,6 +134,7 @@ pnpm worker:deploy
 - `APP_NAME`
 - `DATABASE_URL`
 - `JWT_SECRET`
+- `ADMIN_USER_IDS`
 - `ALLOWED_ORIGINS`
 
 Web 前端切流相关变量：
@@ -140,6 +148,7 @@ Web 前端切流相关变量：
 - Worker 当前是 `不绑卡上线` 的部署适配层，不是长期替代 Rust Axum 后端的业务核心。
 - Rust WASM 仍负责跨端业务规则、推荐、文案映射、缓存合并等可测试逻辑。
 - `/api/stats` 当前只做数据库聚合，不做复杂运营逻辑；未来买服务器后，可在 Rust Axum 中提供同名接口，Web 端切换成本只是一处 API 基址。
+- `/api/stats` 默认按后台处理；如果未来要对外公开部分数据，应新增 `/api/stats/public`，只返回脱敏摘要，不复用管理员后台接口。
 
 后续如果接入 Hyperdrive，再新增 Cloudflare 对应 binding。
 
