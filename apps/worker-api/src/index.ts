@@ -8,6 +8,7 @@ type Bindings = {
   APP_NAME: string;
   DATABASE_URL?: string;
   JWT_SECRET?: string;
+  ADMIN_USER_IDS?: string;
   ALLOWED_ORIGINS?: string;
 };
 
@@ -60,11 +61,12 @@ app.get("/api/rose/:id", async (c) => {
 
 app.get("/api/stats", async (c) => {
   try {
-    const data = await getUsageStats(c.env);
+    const data = await getUsageStats(c.env, c.req.raw);
     return c.json(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : "服务器内部错误";
-    return c.json({ error: message }, 500);
+    const status = message === "STATS_UNAUTHORIZED" ? 401 : message === "STATS_FORBIDDEN" ? 403 : 500;
+    return c.json({ error: message }, status);
   }
 });
 

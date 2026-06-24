@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getUsageStats, type UsageStats } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { getToken, getUsageStats, type UsageStats } from "@/lib/api";
 
-type LoadState = "loading" | "ready" | "error";
+type LoadState = "loading" | "ready" | "forbidden" | "error";
 
 const NUMBER_FORMATTER = new Intl.NumberFormat("zh-CN");
 
@@ -27,8 +28,14 @@ function formatDate(value: string | null): string {
 export default function StatsPage() {
   const [state, setState] = useState<LoadState>("loading");
   const [stats, setStats] = useState<UsageStats | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
+    if (!getToken()) {
+      router.push("/login?redirect=/stats");
+      return;
+    }
+
     let alive = true;
     getUsageStats()
       .then((data) => {
@@ -36,20 +43,33 @@ export default function StatsPage() {
         setStats(data);
         setState("ready");
       })
-      .catch(() => {
+      .catch((error) => {
         if (!alive) return;
-        setState("error");
+        setState(error instanceof Error && error.message === "STATS_FORBIDDEN" ? "forbidden" : "error");
       });
 
     return () => {
       alive = false;
     };
-  }, []);
+  }, [router]);
 
   if (state === "loading") {
     return (
       <main className="relative z-10 min-h-full px-4 pt-24 pb-10">
         <p className="text-center text-slate-500">加载数据中...</p>
+      </main>
+    );
+  }
+
+  if (state === "forbidden") {
+    return (
+      <main className="relative z-10 min-h-full px-4 pt-24 pb-10">
+        <div className="mx-auto max-w-xl rounded-3xl border border-amber-300/20 bg-amber-300/10 p-6 text-center">
+          <h1 className="text-xl text-amber-100">无权限访问应用后台</h1>
+          <p className="mt-2 text-sm text-amber-100/70">
+            这个页面只开放给后台管理员。如果需要公开数据，后续应单独提供脱敏的公开统计页。
+          </p>
+        </div>
       </main>
     );
   }

@@ -67,13 +67,13 @@
 
 ## 接下来 3 个小目标
 
-1. 配置生产 Worker 域名与 Vercel 环境变量，让线上 `/stats` 读到 Neon 数据。
+1. 配置生产 Worker 域名、`ADMIN_USER_IDS` 与 Vercel 环境变量，让线上 `/stats` 作为管理员后台读到 Neon 数据。
 2. 邀请第一批真实用户试用，用 `/stats` 看注册、种花、反馈是否增长。
 3. 如果接近 100 个真实用户，再启动服务器/域名/完整后端部署；否则维持免费方案。
 
 ## 下一步
 
-- 我们下一步应该先做：`配置生产 Worker 域名并让 /stats 在线可用`
+- 我们下一步应该先做：`配置生产 Worker 域名和 ADMIN_USER_IDS，让 /stats 作为后台在线可用`
 - 当前已经完成：
   - `Vercel` 前端真实上线
   - `GET /api/garden` Worker 真实查 `Neon`
@@ -81,9 +81,9 @@
   - `POST /api/auth/refresh` / `POST /api/auth/logout` Worker 最小闭环已迁移
   - `GET /api/stats` Worker 聚合统计已迁移
   - Web 已开始把 `refresh/logout` 和 `garden/rose detail` 切到 Worker 基址
-  - Web 已新增 `/stats` 使用动态页，显示 100 用户判断线进度
+  - Web 已新增 `/stats` 使用动态后台，显示 100 用户判断线进度
 - 现在最有价值的动作变成：
-  - 配置生产 Worker 域名并更新 Vercel 环境变量
+  - 配置生产 Worker 域名、`ADMIN_USER_IDS` 并更新 Vercel 环境变量
   - 用 `/stats` 判断是否需要买服务器，而不是先买服务器
 
 ### Cloudflare 判断

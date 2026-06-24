@@ -1,7 +1,7 @@
 # 部署环境变量模板
 
 > 用途：实际部署时直接照着填  
-> 当前免费方案：`Neon + Render + Vercel`
+> 当前免费方案：`Neon + Cloudflare Workers + Vercel`
 
 ## 1. Neon
 
@@ -59,16 +59,33 @@ NEXT_PUBLIC_WS_URL=wss://<your-render-service>.onrender.com
 
 ---
 
-## 4. 推荐填写顺序
+## 4. Cloudflare Worker 环境变量
 
-1. 先拿到 Neon 的 `DATABASE_URL`
-2. 先部署 Render，拿到后端公网域名
-3. 再填 Vercel 的 `NEXT_PUBLIC_API_URL` 和 `NEXT_PUBLIC_WS_URL`
-4. 最后把 Vercel 域名回填到 Render 的 `ALLOWED_ORIGINS`
+Worker 必须设置：
+
+```env
+APP_NAME=roselet-worker-api
+DATABASE_URL=<Neon 提供的 DATABASE_URL>
+JWT_SECRET=<必须和 Rust 后端一致>
+ADMIN_USER_IDS=<允许访问 /stats 的用户 id，多个用英文逗号分隔>
+ALLOWED_ORIGINS=https://roselet-web.vercel.app
+```
+
+`ADMIN_USER_IDS` 用于限制应用后台统计页。`/api/stats` 默认不是公开接口；未来如需公开数据，应新增脱敏的公开统计接口。
 
 ---
 
-## 5. 当前最小可行填写示例
+## 5. 推荐填写顺序
+
+1. 先拿到 Neon 的 `DATABASE_URL`
+2. 先部署 Cloudflare Worker，设置 `DATABASE_URL` / `JWT_SECRET` / `ADMIN_USER_IDS`
+3. 在 Vercel 设置 `NEXT_PUBLIC_WORKER_API_URL` 和 `NEXT_PUBLIC_READ_API_URL`
+4. 尚未迁移到 Worker 的写接口继续用 `NEXT_PUBLIC_API_URL` 指向旧 Rust 后端或本地调试后端
+5. 最后把 Vercel 域名回填到 Worker / Rust 后端的 `ALLOWED_ORIGINS`
+
+---
+
+## 6. 当前最小可行填写示例
 
 ### Render
 
@@ -86,5 +103,7 @@ RUST_LOG=roselet=info
 
 ```env
 NEXT_PUBLIC_API_URL=https://roselet-backend.onrender.com
+NEXT_PUBLIC_WORKER_API_URL=https://roselet-worker-api.<your-subdomain>.workers.dev
+NEXT_PUBLIC_READ_API_URL=https://roselet-worker-api.<your-subdomain>.workers.dev
 NEXT_PUBLIC_WS_URL=wss://roselet-backend.onrender.com
 ```
