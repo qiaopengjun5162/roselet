@@ -31,6 +31,7 @@ import {
   logout,
   refreshAccessToken,
   getHealth,
+  getUsageStats,
   submitFeedback,
 } from "../api";
 
@@ -296,6 +297,42 @@ describe("API Client", () => {
     it("should throw error on failure", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
       await expect(getGarden()).rejects.toThrow("Failed to fetch garden");
+    });
+  });
+
+  describe("getUsageStats", () => {
+    it("should return usage stats from the read api", async () => {
+      const mockStats = {
+        total_users: 12,
+        total_roses: 30,
+        public_roses: 24,
+        private_roses: 6,
+        total_likes: 7,
+        total_feedback: 2,
+        users_last_7_days: 3,
+        roses_last_7_days: 5,
+        feedback_last_7_days: 1,
+        latest_rose_at: "2026-06-24T10:00:00Z",
+        latest_feedback_at: null,
+        user_goal: {
+          current: 12,
+          goal: 100,
+          percent: 12,
+        },
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockStats,
+      });
+
+      await expect(getUsageStats()).resolves.toEqual(mockStats);
+      expect(global.fetch).toHaveBeenCalledWith("http://localhost:8787/api/stats");
+    });
+
+    it("should throw error on stats failure", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+      await expect(getUsageStats()).rejects.toThrow("Failed to fetch usage stats");
     });
   });
 

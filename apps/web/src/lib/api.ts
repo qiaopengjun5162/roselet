@@ -249,6 +249,31 @@ export async function getGarden(page = 1, perPage = 20, color?: string): Promise
   return data;
 }
 
+export interface UsageStats {
+  total_users: number;
+  total_roses: number;
+  public_roses: number;
+  private_roses: number;
+  total_likes: number;
+  total_feedback: number;
+  users_last_7_days: number;
+  roses_last_7_days: number;
+  feedback_last_7_days: number;
+  latest_rose_at: string | null;
+  latest_feedback_at: string | null;
+  user_goal: {
+    current: number;
+    goal: number;
+    percent: number;
+  };
+}
+
+export async function getUsageStats(): Promise<UsageStats> {
+  const res = await fetch(`${READ_API_BASE}/api/stats`);
+  if (!res.ok) throw new Error("Failed to fetch usage stats");
+  return res.json();
+}
+
 export async function getRose(id: string): Promise<Rose> {
   const res = await authFetch(`${READ_API_BASE}/api/rose/${id}`, {
     headers: authHeaders(),

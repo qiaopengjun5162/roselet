@@ -1,6 +1,6 @@
 # Cloudflare Worker API 起步说明
 
-> 更新时间：2026-06-24（认证最小闭环已接入）
+> 更新时间：2026-06-24（使用动态统计已接入）
 
 ## 目标
 
@@ -41,6 +41,16 @@
     - nickname
     - like_count
     - recipient_user_id 仅用于 Worker 内部访问判断，不对外扩散额外语义
+- `GET /api/stats`
+  - 当前已接到 `Neon serverless driver`
+  - 当前用于免费部署阶段的轻量运营可见性，不做第三方埋点
+  - 当前会返回隐私安全的聚合数据：
+    - 活跃用户总数
+    - 玫瑰总数、公开玫瑰、私密玫瑰
+    - 点赞总数、反馈总数
+    - 近 7 天新增用户、玫瑰、反馈
+    - 最近玫瑰时间、最近反馈时间
+    - 距离 100 个用户判断线的进度
 - `POST /api/auth/refresh`
   - 当前已接到 `Neon serverless driver`
   - 当前已对齐 Rust 版的基础行为：
@@ -64,6 +74,7 @@
   - `logout()`
   - `getGarden()`
   - `getRose()`
+  - `getUsageStats()` / `/stats`
 - 当前策略：
   - 已迁移到 Worker 的只读和认证生命周期调用先切过去
   - 写接口、profile、feedback 等尚未迁移的调用继续留在原 `NEXT_PUBLIC_API_URL`
@@ -86,9 +97,10 @@
 ## 下一步迁移顺序
 
 1. 配置生产 Worker 域名与 Vercel 环境变量
-2. 迁移写接口
-3. 再迁 `register` / `profile` 等其余认证接口
-4. 最后再处理 WebSocket / Durable Objects
+2. 让 `/stats` 真实连生产 Neon，作为是否值得买服务器的判断面板
+3. 迁移写接口
+4. 再迁 `register` / `profile` 等其余认证接口
+5. 最后再处理 WebSocket / Durable Objects
 
 ## 本地命令
 
@@ -122,6 +134,12 @@ Web 前端切流相关变量：
 - `NEXT_PUBLIC_AUTH_API_URL`
 - `NEXT_PUBLIC_READ_API_URL`
 - `NEXT_PUBLIC_WORKER_API_URL`
+
+## 架构边界
+
+- Worker 当前是 `不绑卡上线` 的部署适配层，不是长期替代 Rust Axum 后端的业务核心。
+- Rust WASM 仍负责跨端业务规则、推荐、文案映射、缓存合并等可测试逻辑。
+- `/api/stats` 当前只做数据库聚合，不做复杂运营逻辑；未来买服务器后，可在 Rust Axum 中提供同名接口，Web 端切换成本只是一处 API 基址。
 
 后续如果接入 Hyperdrive，再新增 Cloudflare 对应 binding。
 
