@@ -1,7 +1,8 @@
 import { Hono } from "hono";
-import { logoutUser, refreshAccessToken } from "./auth";
-import { getGarden } from "./garden";
-import { getRose } from "./rose";
+import { logoutUser, refreshAccessToken } from "./auth.js";
+import { getGarden } from "./garden.js";
+import { getRose } from "./rose.js";
+import { getUsageStats } from "./stats.js";
 
 type Bindings = {
   APP_NAME: string;
@@ -54,6 +55,16 @@ app.get("/api/rose/:id", async (c) => {
     const message = error instanceof Error ? error.message : "服务器内部错误";
     const status = message === "ROSE_NOT_FOUND" ? 404 : 500;
     return c.json({ error: message }, status);
+  }
+});
+
+app.get("/api/stats", async (c) => {
+  try {
+    const data = await getUsageStats(c.env);
+    return c.json(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "服务器内部错误";
+    return c.json({ error: message }, 500);
   }
 });
 

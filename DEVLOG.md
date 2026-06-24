@@ -2828,3 +2828,103 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 当前状态
 - CI 中贴出的 license rejected 问题已按最小范围修复
+
+## 2026-06-24 会话 #59：新增使用动态看板
+
+### 会话目标
+先不继续扩大部署复杂度，而是围绕“先让用户用起来，再决定是否买服务器”补一个轻量使用动态入口。
+
+### 完成的工作
+
+#### Worker：新增使用统计接口
+- 新增 `apps/worker-api/src/stats.ts`
+- 新增 `GET /api/stats`
+- 统计来源只使用现有 Neon/Postgres 数据，不接第三方埋点
+- 返回聚合数据：
+  - 活跃用户总数
+  - 玫瑰总数、公开玫瑰、私密玫瑰
+  - 点赞总数、反馈总数
+  - 近 7 天新增用户、玫瑰、反馈
+  - 最近玫瑰时间、最近反馈时间
+  - 距离 100 个用户判断线的进度
+
+#### Web：新增公开动态页
+- 新增 `/stats`
+- 新增 `getUsageStats()`
+- 导航栏新增“动态”
+- 页面显示：
+  - `12 / 100` 这类阶段目标进度
+  - 核心总量指标
+  - 近 7 天活跃变化
+  - 最近一朵玫瑰/最近反馈时间
+
+#### 文档
+- 更新 `docs/CLOUDFLARE_WORKER_API.md`
+- 更新 `PROGRESS.md`
+- 明确 Worker 当前是免费部署适配层，不是长期替代 Rust Axum 后端的业务核心
+- 明确 `/stats` 是判断是否值得买服务器的第一版运营信号
+
+### 问题记录
+
+#### 问题 1：新增统计功能容易滑向复杂 analytics
+- 现象：
+  - 用户真正要的是“有没有人用、值不值得买服务器”
+  - 如果直接接第三方统计或做完整后台，会增加隐私、配置和维护成本
+- 根因：
+  - 当前阶段还不是增长分析阶段，只需要最低成本的决策信号
+- 解决：
+  - 只做数据库聚合，不记录 IP/UA/事件流
+  - 以 100 个活跃注册用户作为第一条服务器采购判断线
+
+#### 问题 2：TS Worker 容易被误解为业务逻辑迁移
+- 现象：
+  - 前面连续修改 TS 后，容易让人感觉项目从 Rust 方向偏离
+- 根因：
+  - 免费部署阶段需要 Worker 作为运行时适配层，但这和核心业务逻辑迁移不是一回事
+- 解决：
+  - 文档明确：Worker 只做 API 适配和简单聚合
+  - Rust WASM 继续承载跨端业务规则
+  - 未来买服务器后，`/api/stats` 可在 Rust Axum 中提供同名接口，Web 端只切 API 基址
+
+#### 问题 3：`pnpm --filter` 被 pnpm 自身签名校验拦住
+- 现象：
+  - `pnpm --filter @roselet/worker-api typecheck`
+  - `pnpm --filter @roselet/worker-api test`
+  - 都在进入项目脚本前失败：
+    - `Refusing to run pnpm@9.15.4`
+    - `npm registry signature could not be verified`
+- 根因：
+  - 当前环境无法拉取并验证项目指定的 pnpm 版本，属于包管理器 shim/网络问题，不是 Worker 代码问题
+- 解决：
+  - 改用本地已安装依赖的底层命令验证：
+    - `./apps/worker-api/node_modules/.bin/tsc --noEmit -p apps/worker-api/tsconfig.json`
+    - `./apps/worker-api/node_modules/.bin/tsc --outDir apps/worker-api/.tmp-test --module NodeNext --moduleResolution NodeNext --target ES2022 apps/worker-api/src/index.ts apps/worker-api/src/garden.ts apps/worker-api/src/rose.ts apps/worker-api/src/auth.ts apps/worker-api/src/stats.ts`
+    - `node --test apps/worker-api/src/*.test.mjs`
+
+#### 问题 4：Worker 路由入口也要纳入 NodeNext 编译验证
+- 现象：
+  - 文档已要求 Worker 跨文件相对导入显式写 `.js`
+  - 但新增统计路由时，如果只编译被测试 helper 文件，`index.ts` 路由入口可能漏掉 ESM 导入问题
+- 根因：
+  - Worker 最小测试此前只覆盖 `rose.ts` / `auth.ts` 等目标文件，没有把 Hono 路由入口纳入测试编译
+- 解决：
+  - 将 `apps/worker-api/src/index.ts` 和 `apps/worker-api/src/garden.ts` 加入 Worker 测试编译命令
+  - 同步把 `index.ts` 内部相对导入改为 `./auth.js` / `./garden.js` / `./rose.js` / `./stats.js`
+
+### 验证
+- `./apps/worker-api/node_modules/.bin/tsc --noEmit -p apps/worker-api/tsconfig.json`
+- `./apps/worker-api/node_modules/.bin/tsc --outDir apps/worker-api/.tmp-test --module NodeNext --moduleResolution NodeNext --target ES2022 apps/worker-api/src/index.ts apps/worker-api/src/garden.ts apps/worker-api/src/rose.ts apps/worker-api/src/auth.ts apps/worker-api/src/stats.ts`
+- `node --test apps/worker-api/src/*.test.mjs`
+- `./apps/web/node_modules/.bin/jest --config apps/web/jest.config.ts --runInBand apps/web/src/lib/__tests__/api.test.ts`
+- `./apps/web/node_modules/.bin/jest --config apps/web/jest.config.ts --runInBand apps/web/src/app/stats/__tests__/page.test.tsx`
+- `./apps/web/node_modules/.bin/jest --config apps/web/jest.config.ts --runInBand apps/web/src/components/__tests__/nav.test.tsx`
+- `cd apps/web && ./node_modules/.bin/tsc --noEmit`
+
+### 当前状态
+- 免费方案继续可行：Vercel 前端 + Neon 数据库 + Cloudflare Worker API
+- 当前更应该先上线 Worker 并观察 `/stats`，而不是立即买服务器
+
+### 下一步
+- [ ] 配置生产 Worker 域名
+- [ ] 在 Vercel 配置 `NEXT_PUBLIC_WORKER_API_URL` 或 `NEXT_PUBLIC_READ_API_URL`
+- [ ] 打开线上 `/stats` 做一次真实冒烟检查
