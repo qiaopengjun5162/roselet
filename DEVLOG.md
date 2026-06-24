@@ -2488,3 +2488,103 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - [x] 起一个最小 Cloudflare Worker API 骨架
 - [x] 明确 v1 先迁哪些 API
 - [ ] 补充 Cloudflare 本地开发 / 部署说明
+
+## 2026-06-24 会话 #54：Cloudflare Worker 迁移单朵玫瑰详情
+
+### 会话目标
+继续把无绑卡后端路线往前推一格，完成 `GET /api/rose/:id` 的 Worker 迁移，并把当前实际进度同步到仓库文档。
+
+### 完成的工作
+
+#### Worker API：单朵玫瑰详情迁移
+- 新增 `apps/worker-api/src/rose.ts`
+- 新增 `GET /api/rose/:id`
+- 当前已对齐 Rust 后端的关键行为：
+  - 公开玫瑰支持匿名访问
+  - 私有玫瑰仅创建者或接收人可见
+  - 资源不存在或无权限统一返回 `404`
+- 当前返回字段已对齐现有详情页核心需要：
+  - `id`
+  - `color`
+  - `gratitude`
+  - `anxiety`
+  - `hope`
+  - `user_id`
+  - `nickname`
+  - `like_count`
+  - `ai_reply`
+  - `is_private`
+  - `created_at`
+  - `recipient_nickname`
+  - `is_gift`
+
+#### 最小 JWT 解析
+- Worker 侧新增最小 JWT 校验逻辑
+- 当前只解析并验证 access token 的 `sub`
+- 目的仅用于私有玫瑰访问判断，没有把完整 auth 流一次搬过去
+
+#### Worker 最小验证回路
+- 根脚本新增：
+  - `pnpm worker:test`
+- justfile 新增：
+  - `just worker-test`
+- 新增最小测试：
+  - `apps/worker-api/src/rose.test.mjs`
+- 当前覆盖：
+  - Bearer token 提取
+  - 无密钥时安全返回 `null`
+  - 公开玫瑰匿名可见
+  - 私有玫瑰 owner / recipient 可见
+  - 私有玫瑰对无关用户不可见
+
+#### 文档同步
+- 更新：
+  - `PROGRESS.md`
+  - `docs/CLOUDFLARE_WORKER_API.md`
+  - `docs/CLOUDFLARE_MIGRATION_PLAN.md`
+  - `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
+  - `AGENTS.md`
+  - `CLAUDE.md`
+
+### 问题记录
+
+#### 问题 1：Worker 的 TypeScript 配置不能直接拿来跑 `node:test`
+- 现象：
+  - `apps/worker-api/tsconfig.json` 只挂了 `@cloudflare/workers-types`
+  - 直接给 Worker 写 `node:test` 的 `.ts` 用例时，会报：
+    - `Cannot find module 'node:test'`
+    - `Cannot find module 'node:assert/strict'`
+- 根因：
+  - Worker 运行时类型和 Node 测试宿主类型不是同一个目标环境
+  - 直接共用一套 `tsconfig`，会把本地测试和边缘运行时绑死在一起
+- 解决：
+  - Worker 业务代码继续按现有 `tsconfig` 做 `typecheck`
+  - 最小测试拆成两段：
+    - 先单独编译 `src/rose.ts`
+    - 再用原生 `node --test` 跑 `src/rose.test.mjs`
+  - 把这套命令固化为 `pnpm worker:test`
+
+#### 问题 2：Web Crypto 的签名校验参数类型更严格
+- 现象：
+  - 直接把 `Uint8Array` 结果喂给 `crypto.subtle.verify()` 时，TypeScript 对 `BufferSource` 报类型不兼容
+- 根因：
+  - 当前类型定义对 `ArrayBuffer` / `ArrayBufferLike` 的边界更严格
+- 解决：
+  - 把 base64url 解码结果收敛成明确的 `ArrayBuffer`
+  - 再传给 Worker 的 HMAC 校验逻辑
+
+### 验证
+- `./apps/worker-api/node_modules/.bin/tsc --noEmit -p apps/worker-api/tsconfig.json`
+- `./apps/worker-api/node_modules/.bin/tsc --outDir apps/worker-api/.tmp-test --module NodeNext --moduleResolution NodeNext --target ES2022 apps/worker-api/src/rose.ts`
+- `node --test apps/worker-api/src/rose.test.mjs`
+
+### 当前状态
+- Vercel 前端已上线
+- Cloudflare Worker 只读接口已迁移：
+  - `GET /health`
+  - `GET /api/garden`
+  - `GET /api/rose/:id`
+
+### 下一步
+- [ ] 继续迁认证最小闭环
+- [ ] 准备 Web 端切换到 Worker API 的策略

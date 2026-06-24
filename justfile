@@ -43,6 +43,10 @@ next-build:
 worker-typecheck:
     pnpm worker:typecheck
 
+# Cloudflare Worker API 最小行为验证
+worker-test:
+    pnpm worker:test
+
 # Cloudflare Worker API 本地开发
 worker-dev:
     pnpm worker:dev

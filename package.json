@@ -10,6 +10,7 @@
     "test": "pnpm --filter web test",
     "test:coverage": "pnpm --filter web test:coverage && pnpm --filter @roselet/miniprogram test:coverage",
     "worker:dev": "pnpm --filter @roselet/worker-api dev",
+    "worker:test": "pnpm --filter @roselet/worker-api test",
     "worker:typecheck": "pnpm --filter @roselet/worker-api typecheck",
     "worker:deploy": "pnpm --filter @roselet/worker-api deploy"
   },

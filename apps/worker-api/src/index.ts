@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { getGarden } from "./garden";
+import { getRose } from "./rose";
 
 type Bindings = {
   APP_NAME: string;
@@ -40,6 +41,17 @@ app.get("/api/garden", async (c) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "服务器内部错误";
     const status = message.startsWith("Invalid color") ? 400 : 500;
+    return c.json({ error: message }, status);
+  }
+});
+
+app.get("/api/rose/:id", async (c) => {
+  try {
+    const data = await getRose(c.env, c.req.raw, c.req.param("id"));
+    return c.json(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "服务器内部错误";
+    const status = message === "ROSE_NOT_FOUND" ? 404 : 500;
     return c.json({ error: message }, status);
   }
 });

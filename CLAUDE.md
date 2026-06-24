@@ -108,6 +108,7 @@ Quality gates:
 - **注销撤销 token**：Web 端 `/api/auth/logout` 发送的是 refresh token，后端不能只按 access token 解析，必须支持按 refresh token 哈希撤销
 - **i18n 不要前端分叉**：当前不做完整双语；后续若加中英文，先加 Rust `Locale` 和 WASM 本地化表，再让 Web / 小程序读取同一套结果
 - **git push**：必须用 `https_proxy=http://127.0.0.1:7890 git push`
+- **Worker 最小测试**：`apps/worker-api` 当前把 Worker 编译和 Node 测试分开；先跑 `pnpm worker:typecheck`，再跑 `pnpm worker:test`
 
 ## 常用命令（justfile）
 ```bash
@@ -126,6 +127,9 @@ just lint             # Web ESLint 检查
 just coverage         # Web + 小程序覆盖率门禁
 just audit            # 依赖审计
 just next-build       # Web Next 生产构建
+just worker-typecheck # Cloudflare Worker API 类型检查
+just worker-test      # Cloudflare Worker API 最小行为验证
+just worker-dev       # Cloudflare Worker API 本地开发
 just changelog        # 生成 CHANGELOG
 just wasm              # 构建 WASM 推荐模块
 just wasm-mini         # 为小程序构建 WASM（编译 + WXWebAssembly 补丁）
