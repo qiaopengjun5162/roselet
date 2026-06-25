@@ -24,6 +24,25 @@
 - `pnpm --filter web typecheck`
 - `cargo nextest run -p roselet-recommend`
 
+## 2026-06-25 会话：关于页版本元数据
+
+### 问题
+- 关于页左下角写死 `Roselet v1.0.0 · MIT`，线上页面无法反查真实版本、commit、构建时间和更新说明。
+
+### 根因
+- 前端没有统一读取 `NEXT_PUBLIC_APP_VERSION` / `NEXT_PUBLIC_COMMIT_SHA` / `NEXT_PUBLIC_BUILD_TIME` / `NEXT_PUBLIC_RELEASE_NOTES_URL` 的工具函数。
+- 关于页直接写静态文案，和实际 Git tag / Release 流程脱节。
+
+### 处理
+- 新增 `apps/web/src/lib/version.ts`，集中解析公开构建元数据，并为本地开发提供 `dev` / `unknown` fallback。
+- 关于页新增“当前版本”浮层，展示版本、commit、构建时间、MIT 和可选“查看本次更新”链接。
+- 新增版本工具测试和关于页渲染测试。
+
+### 验证
+- `pnpm --filter web test -- src/lib/__tests__/version.test.ts src/app/about/__tests__/page.test.tsx --runInBand`
+- `pnpm --filter web typecheck`
+- `NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io pnpm --filter web build:cf`
+
 ## 2026-05-27 会话 #1
 
 ### 会话目标

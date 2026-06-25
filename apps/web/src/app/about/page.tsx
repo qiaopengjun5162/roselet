@@ -6,6 +6,7 @@ import { FeedbackBottle } from "@/components/feedback-bottle";
 import { StarBottle } from "@/components/star-bottle";
 import { StarParticles } from "@/components/star-particles";
 import { SilentErrorBoundary } from "@/components/silent-error-boundary";
+import { getAppVersionInfo } from "@/lib/version";
 
 export const metadata: Metadata = {
   title: "关于 - Roselet",
@@ -13,6 +14,8 @@ export const metadata: Metadata = {
 };
 
 export default function AboutPage() {
+  const versionInfo = getAppVersionInfo();
+
   return (
     <div className="relative h-full w-full overflow-hidden flex flex-col">
       <StarParticles />
@@ -126,9 +129,24 @@ export default function AboutPage() {
       </div>
 
       {/* 版本 — 浮在左下角的微光 */}
-      <p className="absolute bottom-3 left-4 text-[10px] md:text-xs text-slate-600 tracking-wider z-10">
-        Roselet v1.0.0 · MIT
-      </p>
+      <div className="absolute bottom-3 left-4 max-w-[calc(100%-2rem)] rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-[10px] md:text-xs text-slate-500 backdrop-blur z-10">
+        <p className="text-slate-400">当前版本</p>
+        <p className="mt-0.5 tracking-wider text-slate-300">Roselet {versionInfo.version}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>提交：{versionInfo.commit}</span>
+          <span>构建：{versionInfo.buildTime ?? "本地开发"}</span>
+          <span>MIT</span>
+          {versionInfo.releaseNotesUrl && (
+            <Link
+              href={versionInfo.releaseNotesUrl}
+              target="_blank"
+              className="text-rose-300/80 underline-offset-4 hover:text-rose-200 hover:underline"
+            >
+              查看本次更新
+            </Link>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
