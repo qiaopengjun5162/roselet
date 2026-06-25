@@ -32,7 +32,7 @@ export default function GardenPage() {
     });
   }, []);
 
-  function loadRoses(pageNum: number, color?: string) {
+function loadRoses(pageNum: number, color?: string) {
     setLoading(true);
     setError("");
     getGarden(pageNum, 20, color)
@@ -77,12 +77,17 @@ export default function GardenPage() {
 
         {loading && roses.length === 0 ? (
           <p className="text-slate-500 text-center mt-20">加载中...</p>
-        ) : error ? (
+        ) : error && roses.length === 0 ? (
           <p className="text-red-400 text-center mt-20">{error}</p>
         ) : roses.length === 0 ? (
           <p className="text-slate-500 text-center mt-20">花圃还是空的，去种一朵花吧</p>
         ) : (
           <>
+            {error && (
+              <p className="text-amber-400 text-center text-sm">
+                {error}，先看看上次缓存的花圃吧
+              </p>
+            )}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {roses.map((rose) => <RoseCard key={rose.id} rose={rose} showNickname />)}
             </div>

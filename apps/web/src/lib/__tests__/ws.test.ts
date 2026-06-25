@@ -3,12 +3,14 @@ import { connectGardenWs } from "../ws";
 // Mock WebSocket
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
+  url: string;
   onmessage: ((event: { data: string }) => void) | null = null;
   onerror: (() => void) | null = null;
   readyState = 1;
   close = jest.fn();
 
-  constructor() {
+  constructor(url: string) {
+    this.url = url;
     MockWebSocket.instances.push(this);
   }
 
@@ -37,6 +39,25 @@ describe("connectGardenWs", () => {
     const disconnect = connectGardenWs(() => {});
     expect(MockWebSocket.instances).toHaveLength(1);
     disconnect();
+  });
+
+  it("should derive secure websocket url from api origin when env is missing", async () => {
+    const oldWsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    const oldApiUrl = process.env.NEXT_PUBLIC_API_URL;
+    delete process.env.NEXT_PUBLIC_WS_URL;
+    process.env.NEXT_PUBLIC_API_URL = "https://roselet.example.com";
+
+    jest.resetModules();
+    const { connectGardenWs: isolatedConnectGardenWs } = await import("../ws");
+    isolatedConnectGardenWs(() => {});
+
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(MockWebSocket.instances[0].url).toBe(
+      "wss://roselet.example.com/api/ws",
+    );
+
+    process.env.NEXT_PUBLIC_WS_URL = oldWsUrl;
+    process.env.NEXT_PUBLIC_API_URL = oldApiUrl;
   });
 
   it("should call onRose when message received", () => {

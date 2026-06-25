@@ -73,6 +73,27 @@ describe("GardenPage", () => {
     });
   });
 
+  it("keeps cached roses visible when refresh fails", async () => {
+    mockLoadGardenCache.mockResolvedValue({
+      roses: [{ id: "cached", color: "yellow", gratitude: "缓存玫瑰", is_private: false }],
+      total: 1,
+      page: 1,
+      filter: "",
+      updated_at: "2026-06-06T00:00:00Z",
+    });
+    mockGetGarden.mockRejectedValue(new Error("boom"));
+
+    render(<GardenPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("缓存玫瑰")).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByText("加载花圃失败，先看看上次缓存的花圃吧")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("花圃还是空的，去种一朵花吧")).not.toBeInTheDocument();
+  });
+
   it("calls getGarden with color filter", async () => {
     render(<GardenPage />);
     await waitFor(() => expect(screen.queryByText("加载中...")).not.toBeInTheDocument());

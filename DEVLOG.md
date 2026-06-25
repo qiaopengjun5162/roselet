@@ -2,6 +2,29 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：修复花圃加载失败前端回退
+
+### 问题
+- Web 花圃页在生产环境请求失败时会直接显示“加载花圃失败”，即使 IndexedDB 已有公共花圃缓存，也会把缓存内容整页盖掉。
+- 生产页面如果漏配 `NEXT_PUBLIC_WS_URL`，当前实现会退回 `ws://localhost:3001`，导致浏览器控制台持续出现本地 WebSocket 连接失败噪声。
+- 排查时确认 `https://roselet.47.131.238.0.sslip.io` 当前公网入口整体返回 `502`，所以用户看到的花圃失败还包含线上后端不可用因素。
+
+### 根因
+- `apps/web/src/app/garden/page.tsx` 把错误态优先级放在列表渲染之前，只要刷新失败就不再展示已有缓存。
+- `apps/web/src/lib/ws.ts` 只从 `NEXT_PUBLIC_WS_URL` 取值，否则固定退回 `ws://localhost:3001`，没有从现有 API 基址推导生产 WebSocket 地址。
+
+### 处理
+- 花圃页调整为：仅在“无缓存且加载失败”时显示纯错误页；如果已有缓存，则继续展示缓存列表，并加一条“加载花圃失败，先看看上次缓存的花圃吧”的提示。
+- `ws.ts` 新增 `resolveWsBase()`，在未配置 `NEXT_PUBLIC_WS_URL` 时优先从 `NEXT_PUBLIC_READ_API_URL` / `NEXT_PUBLIC_API_URL` 推导 `wss://` 或 `ws://`，最后才退回本地默认值。
+- 补充页面与 WS 定向测试，覆盖“缓存存在时网络失败”和“缺少 WS 环境变量时从 HTTPS API 推导 `wss://`”两条回归路径。
+
+### 验证
+- `cd apps/web && ./node_modules/.bin/jest --runTestsByPath src/app/garden/__tests__/page.test.tsx src/lib/__tests__/ws.test.ts --runInBand`
+- `cd apps/web && ./node_modules/.bin/jest --runTestsByPath src/lib/__tests__/api.test.ts src/app/garden/__tests__/page.test.tsx src/lib/__tests__/ws.test.ts --runInBand`
+- `cd apps/web && ./node_modules/.bin/tsc --noEmit`
+- `curl -i --max-time 15 -sS https://roselet.47.131.238.0.sslip.io/health` → 当前仍返回 `HTTP/2 502`
+- `curl -i --max-time 15 -sS 'https://roselet.47.131.238.0.sslip.io/api/garden?page=1&per_page=3'` → 当前仍返回 `HTTP/2 502`
+
 ## 2026-06-25 会话：补充 Rust CODEOWNERS 规则
 
 ### 问题
