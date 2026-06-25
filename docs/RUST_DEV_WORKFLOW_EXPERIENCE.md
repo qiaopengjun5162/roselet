@@ -429,6 +429,8 @@ ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
 - `journalctl -u caddy` 看到 `connect: connection refused`
 - `docker inspect roselet-backend-1` 的 `StartedAt` 与 `Deploy Backend` workflow 的 `Deploy backend on Lightsail` 时间对齐
 
+补充验证：给 Caddy 单 upstream 增加 `lb_try_duration 15s` / `lb_try_interval 250ms` 后，受控重建 backend 时外部连续探测未再出现 `502`，但仍可能看到少量 TLS handshake failure 或短超时。说明这个改动能显著改善“可见 502”，但还不是严格意义上的零中断切换。
+
 通用规则：单机后端切镜像时，公网短暂 `502` 不一定是“又挂了”；先对齐发布时间线，再判断是不是需要真正回滚或修复应用。
 
 ## 更新规则

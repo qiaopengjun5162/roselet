@@ -18,6 +18,15 @@
 - `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'sudo caddy validate --config /tmp/roselet-Caddyfile --adapter caddyfile'` → `Valid configuration`
 - `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'sudo cp /tmp/roselet-Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy'` → 成功
 - `curl -i --max-time 15 -sS https://roselet.47.131.238.0.sslip.io/health` → `HTTP/2 200`
+- 受控验证：`BACKEND_IMAGE=$(cat .current_backend_image) bash scripts/lightsail-deploy.sh` + 外部每秒探测 `https://roselet.47.131.238.0.sslip.io/health` 约 80 秒
+  - 结果：未再观察到 `502`
+  - 但出现 2 次 TLS handshake failure（`curl: (35)`）和 1 次 2 秒超时（`curl: (28)`）
+  - 其余探测均为 `200 {"status":"ok","database":"healthy","version":"0.1.0"}`
+
+### 当前判断
+- `lb_try_duration 15s` / `lb_try_interval 250ms` 已经把“切镜像时可见 502”压下去了。
+- 当前剩余现象更像 Caddy reload / TLS listener 切换窗口内的短暂握手失败或超时，而不是后端 `127.0.0.1:3001` 不可达。
+- 如果后续还要继续压缩这段抖动，下一层应考虑减少 Caddy reload 干预或引入真正的蓝绿/双实例切换，而不是继续只调前端。
 
 ## 2026-06-25 会话：修复花圃加载失败前端回退
 
