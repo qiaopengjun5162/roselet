@@ -4181,3 +4181,14 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - `pnpm test -- --runTestsByPath 'src/app/rose/[id]/__tests__/page.test.tsx' -t 'uses the browser path id'`：1 passed
 - `pnpm test -- --runTestsByPath 'src/app/rose/[id]/__tests__/page.test.tsx'`：16 passed
 - `NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io pnpm --filter web build:cf`：通过
+
+## 2026-06-25 会话：设计单机蓝绿后端发布方案
+
+### 会话目标
+在不增加第二台机器的前提下，为 Lightsail 生产后端设计一套比“单实例切镜像 + Caddy 重试”更接近零中断的发布方案。
+
+### 完成的工作
+- 基于现有实测结果比较了三条路线：继续堆单实例重试、单机蓝绿、双机/外部 LB。
+- 确认本轮推荐路线为“单机蓝绿切换”。
+- 编写设计文档 `docs/superpowers/specs/2026-06-25-single-node-blue-green-deploy-design.md`。
+- 设计覆盖了双槽位 compose、活动槽位状态文件、Caddy 主槽位优先转发、部署脚本切流顺序、回滚路径和受控验证标准。
