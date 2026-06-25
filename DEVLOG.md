@@ -2,6 +2,30 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：决定支持种下后补送玫瑰（待实现）
+
+### 问题
+- 用户希望已经种下的公开玫瑰，如果当时没送人，之后还能补送。
+- 同时坚持已送出的玫瑰不能修改对象，也不能撤销。
+
+### 根因
+- 当前 `PUT /api/rose/{id}` 只允许公开转私密，不支持事后补填 recipient。
+- 玫瑰详情页只有占位文案，没有实际补送入口。
+
+### 决策
+- 允许「公开且无 recipient」的玫瑰在种下后补送。
+- 已送礼或已私密的玫瑰不能再改 recipient。
+- 用户只需要填对方昵称，后端查/建用户并写入 `recipient_user_id`。
+
+### 待实现
+- 后端：`UpdateRose` 增加 `recipient_nickname`；`update_rose` 仅对公开无 recipient 玫瑰处理 recipient，复用查/建用户 + 防自送 + 软删除恢复逻辑。
+- 前端：玫瑰详情/设置页在 `is_private=false && !recipient_nickname` 时显示「送给谁」输入框。
+- 测试：后端集成测试 + 前端组件测试。
+
+### 验证（仅方案确认，未开始实现）
+- 已确认后端实现位置：`crates/backend/src/models/rose.rs`、`crates/backend/src/routes/rose.rs`。
+- 已确认前端入口：`apps/web/src/app/rose/[id]/page.tsx` → `RoseDetailClient`。
+
 ## 2026-06-25 会话：理清私密与送礼的互斥关系
 
 ### 问题
