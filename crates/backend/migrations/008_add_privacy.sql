@@ -1,2 +1,2 @@
--- 私密模式：每月有温和上限，仅自己可见
+-- 私密模式：每月 5 个私有名额，仅自己可见
 ALTER TABLE roses ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT FALSE;

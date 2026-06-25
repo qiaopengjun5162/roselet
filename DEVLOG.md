@@ -2,6 +2,25 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：修复 Lightsail 部署 `VersionMismatch(8)`
+
+### 问题
+- `Deploy Backend` 在 Lightsail 健康检查阶段反复连不上 `127.0.0.1:3001`，容器日志连续报 `Error: VersionMismatch(8)`，导致 `/health` 冒烟失败。
+
+### 根因
+- 后端启动时会执行 `sqlx::migrate!("./migrations").run(&pool)`。
+- `crates/backend/migrations/008_add_privacy.sql` 在线上已经执行过，但后来为了把“5 个名额”文案改成更泛化的描述，直接改了旧 migration 顶部注释。
+- `sqlx` 对 migration checksum 按整个文件计算，注释变更也会触发 checksum 不一致，所以生产库在校验第 8 个迁移时直接报 `VersionMismatch(8)` 并退出。
+
+### 处理
+- 把 `crates/backend/migrations/008_add_privacy.sql` 恢复到首次发布时的原始内容，确保与线上已执行版本 checksum 一致。
+- 在 `AGENTS.md` / `CLAUDE.md` 明确补充约束：已发布 migration 只能追加新文件，不能改旧文件内容，哪怕只是注释。
+
+### 验证
+- `git show 0299a5b:crates/backend/migrations/008_add_privacy.sql`：确认第 8 个迁移首次发布内容为 `-- 私密模式：每月 5 个私有名额，仅自己可见`
+- `git blame crates/backend/migrations/008_add_privacy.sql`：确认后续改动只发生在注释行，来自 `89da189`
+- `gh run view 28161240766 --json databaseId,status,conclusion,workflowName,url,headSha,jobs`：确认失败时卡在 `Build image and deploy to Lightsail`，容器健康检查前日志为 `VersionMismatch(8)`
+
 ## 2026-06-25 会话：实现种下后补送玫瑰
 
 ### 问题
