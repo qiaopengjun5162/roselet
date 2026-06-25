@@ -43,6 +43,21 @@
 - `pnpm --filter web typecheck`
 - `NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io pnpm --filter web build:cf`
 
+## 2026-06-25 会话：发布流程文档
+
+### 问题
+- 真实用户开始使用后，日常开发、预览验证、灰度和生产发布之间缺少明确边界。
+
+### 根因
+- 项目已有测试和部署脚本，但缺少一个面向发布的固定清单，导致“push 后自动影响用户”的风险偏高。
+
+### 处理
+- 新增 `docs/RELEASE_PROCESS.md`，记录版本来源、发布前检查、人工冒烟、生产发布和回滚步骤。
+- 同步 `AGENTS.md` / `CLAUDE.md`，要求生产发布按发布流程执行，用户可见版本必须能追溯到 Git tag / GitHub Release。
+
+### 验证
+- `rg -n "RELEASE_PROCESS|生产发布|GitHub Release|版本" AGENTS.md CLAUDE.md docs/RELEASE_PROCESS.md`
+
 ## 2026-05-27 会话 #1
 
 ### 会话目标

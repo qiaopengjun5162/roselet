@@ -19,6 +19,8 @@
 - Lightsail 服务器上的 `.env.production`、数据库密码、JWT_SECRET、私钥不能写入 Git；文档只记录命令模板和公开地址。
 - Lightsail 自动部署必须固定 Docker Compose project name 为 `roselet`，复用 `roselet_pgdata`；不要让 `deploy/lightsail/docker-compose.backend.yml` 默认生成 `lightsail_*` 容器和卷。
 - `Deploy Backend` 只应在后端镜像相关路径变化或手动触发时部署；文档、Web、小程序变更不应重启生产 Rust 后端。
+- 生产发布按 `docs/RELEASE_PROCESS.md` 执行；功能开发先走分支/预览/冒烟，不要把日常优化直接当作生产发布。
+- 用户可见版本号以 Git tag / GitHub Release 为准，关于页展示的版本、commit、构建时间必须能追溯到发布记录。
 - Worker 侧最小验证优先拆成独立的 `worker:typecheck` 和 `worker:test`，不要把 Cloudflare 类型环境和 Node 测试宿主强行混成一套。
 - Worker 侧跨文件相对导入按 NodeNext/ESM 目标显式写 `.js` 扩展名，避免测试编译链和部署编译链分叉。
 - 修改后按风险运行对应检查；Rust 测试使用 `cargo-nextest`。
