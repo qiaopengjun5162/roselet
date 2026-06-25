@@ -4,21 +4,23 @@
 
 当前已执行的生产路线是：
 
-- Web：Vercel，`https://roselet-web.vercel.app`
-- API：AWS Lightsail + Caddy + Rust Axum，`http://47.131.238.0`
+- Web（主入口）：Vercel，`https://roselet-web.vercel.app`
+- Web（国内镜像）：Cloudflare Pages，`https://roselet.paxonqiao.com`
+- API：AWS Lightsail + Caddy + Rust Axum，`https://roselet.47.131.238.0.sslip.io`
 - DB：Lightsail 内 Docker Postgres
 
-完整操作记录、命令和踩坑处理见：
+`roselet.paxonqiao.com` 作为 Cloudflare Pages 国内镜像，DNS 应 CNAME 到 `roselet.pages.dev`，并保持 Proxy 开启，用于解决部分地区访问 Vercel 困难的问题。完整操作记录、命令和踩坑处理见：
 
 - [docs/AWS_LIGHTSAIL_DEPLOYMENT.md](docs/AWS_LIGHTSAIL_DEPLOYMENT.md)
+- `DEVLOG.md` 会话 #71 ~ #73
 
-当前 Vercel 还需要把生产环境变量切到 Lightsail 后端：
+当前生产环境变量（Vercel / Cloudflare Pages 均需配置）：
 
 ```env
-NEXT_PUBLIC_API_URL=http://47.131.238.0
-NEXT_PUBLIC_AUTH_API_URL=http://47.131.238.0
-NEXT_PUBLIC_READ_API_URL=http://47.131.238.0
-NEXT_PUBLIC_WS_URL=ws://47.131.238.0
+NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io
+NEXT_PUBLIC_AUTH_API_URL=https://roselet.47.131.238.0.sslip.io
+NEXT_PUBLIC_READ_API_URL=https://roselet.47.131.238.0.sslip.io
+NEXT_PUBLIC_WS_URL=wss://roselet.47.131.238.0.sslip.io
 ```
 
 ## 环境要求

@@ -51,6 +51,7 @@
   - [x] 将应用统计后台迁回 Rust `/api/stats`，减少 Worker 作为生产依赖
   - [x] 将 Vercel 生产环境变量切到 Lightsail HTTPS 后端并重新部署
   - [x] 完成线上 Web + Rust HTTPS 后端冒烟：注册、私密种花、详情、反馈、统计后台
+  - [x] 新增 Cloudflare Pages 国内镜像 `https://roselet.paxonqiao.com`，解决国内访问 Vercel 困难的问题
 
 ### Phase 3：多端闭环
 
@@ -74,9 +75,9 @@
 
 ## 接下来 3 个小目标
 
-1. 邀请 5 个真实用户试用 `https://roselet-web.vercel.app`。
+1. 邀请 5 个真实用户试用 `https://roselet-web.vercel.app` 和 `https://roselet.paxonqiao.com`，对比国内访问速度。
 2. 观察 `/stats` 后台数据，判断是否接近 100 用户目标线。
-3. 整理 Worker/免费方案遗留入口，明确 Rust Lightsail 是当前生产主线。
+3. 整理 Worker/免费方案遗留入口，明确 Rust Lightsail + Vercel/Cloudflare Pages 是当前生产主线。
 
 ## 下一步
 
@@ -126,13 +127,17 @@
 
 ### 当前真实上线状态
 
-- `Vercel` 前端已成功创建并可访问
-- 当前线上地址：`https://roselet-web.vercel.app`
+- `Vercel` 前端主入口已成功创建并可访问
+  - 当前线上地址：`https://roselet-web.vercel.app`
+- `Cloudflare Pages` 国内镜像已成功创建并可访问
+  - 当前国内镜像地址：`https://roselet.paxonqiao.com`
+  - DNS：`roselet.paxonqiao.com` CNAME → `roselet.pages.dev`（Proxy 开启）
+  - 构建命令：`cd apps/web && pnpm build:cf`，输出目录：`apps/web/dist`
 - `Render` 与 `Koyeb` 在真实部署中都被支付验证拦住
 - 后端当前已切换为：`AWS Lightsail 上运行 Rust Axum + Docker Postgres`
 - 后端公网地址：`http://47.131.238.0`，仅用于 IP/服务器冒烟
-- 后端 HTTPS 地址：`https://roselet.47.131.238.0.sslip.io`，用于 Vercel 生产前端
-- 当前未完成：`正式域名、备份策略、监控告警、小程序真机闭环`
+- 后端 HTTPS 地址：`https://roselet.47.131.238.0.sslip.io`，用于 Vercel / Cloudflare Pages 生产前端
+- 当前未完成：备份策略、监控告警、小程序真机闭环
 - Worker API 起点：`apps/worker-api`
 - Worker 当前已迁移：
   - `GET /health`
