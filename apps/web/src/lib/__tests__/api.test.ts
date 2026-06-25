@@ -33,6 +33,7 @@ import {
   getUsageStats,
   getAdminFeedback,
   submitFeedback,
+  getRecentActivity,
 } from "../api";
 
 global.fetch = jest.fn();
@@ -791,4 +792,34 @@ describe("API Client", () => {
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
       await expect(toggleLike("rose-1")).rejects.toThrow("Failed to toggle like");
     });
+  
+  describe("getRecentActivity", () => {
+    it("should return items from the read api", async () => {
+      const items = [
+        { id: "1", kind: "planted", actor: "Alice", color: "red", created_at: "2026-06-25T00:00:00Z" },
+      ];
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({ items }),
+      });
+
+      await expect(getRecentActivity()).resolves.toEqual(items);
+      expect(global.fetch).toHaveBeenCalledWith("http://localhost:3001/api/activity/recent");
+    });
+
+    it("should return empty array when response lacks items", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      await expect(getRecentActivity()).resolves.toEqual([]);
+    });
+
+    it("should return empty array when request fails", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+
+      await expect(getRecentActivity()).resolves.toEqual([]);
+    });
   });
+});

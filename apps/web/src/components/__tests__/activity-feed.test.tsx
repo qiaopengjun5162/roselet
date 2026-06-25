@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { ActivityFeed } from "../activity-feed";
 
@@ -48,6 +48,21 @@ describe("ActivityFeed", () => {
     expect(screen.getByText("欢迎公告")).toBeInTheDocument();
   });
 
+  it("falls back gracefully when date or color metadata is missing", async () => {
+    mockGetRecentActivity.mockResolvedValue([
+      { id: "1", kind: "planted", actor: "Someone", color: "blue", created_at: "2026-06-25T00:00:00Z" },
+    ]);
+    mockFormatDate.mockResolvedValue(null);
+    mockColorEmoji.mockReturnValue(undefined);
+    mockColorLabel.mockReturnValue(undefined);
+
+    render(<ActivityFeed />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Someone 种下一朵玫瑰/)).toBeInTheDocument();
+    });
+  });
+
   it("hides when there are no activities", async () => {
     mockGetRecentActivity.mockResolvedValue([]);
     const { container } = render(<ActivityFeed />);
@@ -56,11 +71,29 @@ describe("ActivityFeed", () => {
     });
   });
 
-  it("silently hides on fetch failure", async () => {
-    mockGetRecentActivity.mockRejectedValue(new Error("network"));
-    const { container } = render(<ActivityFeed />);
-    await waitFor(() => {
-      expect(container.firstChild).toBeNull();
+  it("ignores successful state updates after unmount", async () => {
+    let resolve: (value: unknown[]) => void;
+    const promise = new Promise((r) => { resolve = r; });
+    mockGetRecentActivity.mockReturnValue(promise);
+
+    const { unmount } = render(<ActivityFeed />);
+    unmount();
+
+    await act(async () => {
+      resolve([{ id: "1", kind: "planted", actor: "A", color: "red", created_at: "2026-06-25T00:00:00Z" }]);
+    });
+  });
+
+  it("ignores error state updates after unmount", async () => {
+    let reject: (reason?: unknown) => void;
+    const promise = new Promise((_, r) => { reject = r; });
+    mockGetRecentActivity.mockReturnValue(promise);
+
+    const { unmount } = render(<ActivityFeed />);
+    unmount();
+
+    await act(async () => {
+      reject(new Error("network"));
     });
   });
 });

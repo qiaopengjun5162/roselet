@@ -238,6 +238,20 @@ describe("RoseDetailPage", () => {
     await waitFor(() => expect(screen.getByText("设置失败")).toBeInTheDocument());
   });
 
+  it("should show gift status and hide private toggle for a gift rose", async () => {
+    getRose.mockResolvedValue({ ...mockRose, is_gift: true, recipient_nickname: "小花" });
+    getUser.mockReturnValue({ id: "u1", nickname: "alice" });
+
+    render(<RoseDetailClient id="rose-1" />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "玫瑰设置" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "玫瑰设置" }));
+
+    expect(screen.getByText("已送礼")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "设为私密" })).not.toBeInTheDocument();
+    expect(screen.getByText(/这朵玫瑰已送给 小花/)).toBeInTheDocument();
+  });
+
   it("should redirect anonymous likes to login", async () => {
     getRose.mockResolvedValue({ ...mockRose, like_count: 0 });
     getUser.mockReturnValue(null);

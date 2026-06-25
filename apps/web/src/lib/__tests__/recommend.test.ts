@@ -95,6 +95,33 @@ describe("recommend WASM wrappers", () => {
     }));
   });
 
+  it("returns fallback tips when WASM is not available", async () => {
+    const { getTips } = await import("../recommend");
+    await expect(getTips("home")).resolves.toEqual([
+      { text: "这里不是朋友圈，不用表现得很好。种下一点真实就可以。" },
+    ]);
+  });
+
+  it("returns fallback tips when WASM get_tips_wasm throws", async () => {
+    mockWasm({
+      get_tips_wasm: jest.fn(() => { throw new Error("boom"); }),
+    });
+    const { getTips } = await import("../recommend");
+    await expect(getTips("garden")).resolves.toEqual([
+      { text: "花圃里看到的是公开玫瑰；私密玫瑰只留在自己的小角落。" },
+    ]);
+  });
+
+  it("returns fallback tips when WASM returns an empty list", async () => {
+    mockWasm({
+      get_tips_wasm: jest.fn(() => []),
+    });
+    const { getTips } = await import("../recommend");
+    await expect(getTips("plant")).resolves.toEqual([
+      { text: "不知道写哪一栏？只写一栏也可以，一朵花不需要一次说完全部心事。" },
+    ]);
+  });
+
   it("uses TS fallbacks when selected WASM calls throw", async () => {
     mockWasm({
       build_garden_url: jest.fn(() => { throw new Error("boom"); }),

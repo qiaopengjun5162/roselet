@@ -16,19 +16,20 @@ export function ActivityFeed() {
 
   useEffect(() => {
     let alive = true;
-    getRecentActivity()
-      .then((raw) => Promise.all(raw.map(formatActivity)))
-      .then((formatted) => {
+    async function load() {
+      try {
+        const raw = await getRecentActivity();
+        const formatted = await Promise.all(raw.map(formatActivity));
         if (!alive) return;
         setItems(formatted);
-      })
-      .catch(() => {
+      } catch {
         if (!alive) return;
         setItems([]);
-      })
-      .finally(() => {
+      } finally {
         if (alive) setLoading(false);
-      });
+      }
+    }
+    load();
     return () => {
       alive = false;
     };
