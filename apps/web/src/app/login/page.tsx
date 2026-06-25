@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { register, setToken, setRefreshToken, setUser } from "@/lib/api";
+import { TipTicker } from "@/components/tip-ticker";
 
 function LoginForm() {
   const [nickname, setNickname] = useState("");
@@ -52,6 +53,9 @@ function LoginForm() {
         <p className="text-muted-foreground text-center mb-6">
           起个昵称就能开始种花，已有昵称直接进入；注销后 30 天内也能用原昵称恢复
         </p>
+        <div className="mb-5">
+          <TipTicker context="login" />
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -20,6 +20,7 @@ export const format_plant_request_wasm: (a: number, b: number, c: number) => voi
 export const generate_petals_wasm: (a: number, b: bigint) => number;
 export const generate_star_particles_wasm: (a: number, b: bigint) => number;
 export const getFireworkLaunches: () => number;
+export const get_tips_wasm: (a: number, b: number) => number;
 export const parse_garden_response_wasm: (a: number, b: number) => number;
 export const parse_rose_response_wasm: (a: number, b: number) => number;
 export const recommend: (a: number, b: number) => number;

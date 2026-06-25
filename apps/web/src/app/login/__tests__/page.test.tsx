@@ -22,6 +22,10 @@ jest.mock("@/lib/sound", () => ({
   playClick: jest.fn(),
 }));
 
+jest.mock("@/components/tip-ticker", () => ({
+  TipTicker: ({ context }: { context: string }) => <div data-testid={`tip-${context}`} />,
+}));
+
 const { register } = require("@/lib/api") as { register: jest.Mock };
 
 import LoginPage from "../page";
@@ -32,6 +36,7 @@ describe("LoginPage", () => {
   it("should render login form", () => {
     render(<LoginPage />);
     expect(screen.getByPlaceholderText("你想叫什么名字？")).toBeInTheDocument();
+    expect(screen.getByTestId("tip-login")).toBeInTheDocument();
     expect(screen.getByText("进入花圃")).toBeInTheDocument();
   });
 

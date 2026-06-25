@@ -3,6 +3,7 @@ interface FeedbackValidation { valid: boolean; error?: string }
 interface WasmMod {
   default?: (input?: unknown) => Promise<unknown>;
   recommend: (json: string) => unknown; analyze_text: (text: string) => unknown;
+  get_tips_wasm: (context: string) => unknown;
   compute_layout: (json: string) => unknown; filter_roses: (json: string, f: string) => unknown;
   validate_plant_input: (json: string) => unknown;
   parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
@@ -41,4 +42,4 @@ export async function validateFeedback(content: string): Promise<FeedbackValidat
 }
 
 // 导出其他已有的 WASM 功能
-export { getRecommendation, analyzeTextWasm, getLayout, filterRosesInWasm, validatePlantInput, parseGardenResponse, parseRoseResponse, formatDate, generatePetals, roseToSoundParamsWasm, audioPlaybackPolicy, computeSkyParams, generateStarParticles, buildGardenUrl, buildPlantBody, colorEmoji, colorLabel } from "./recommend";
+export { getRecommendation, analyzeTextWasm, getTips, getLayout, filterRosesInWasm, validatePlantInput, parseGardenResponse, parseRoseResponse, formatDate, generatePetals, roseToSoundParamsWasm, audioPlaybackPolicy, computeSkyParams, generateStarParticles, buildGardenUrl, buildPlantBody, colorEmoji, colorLabel } from "./recommend";

@@ -113,6 +113,13 @@ pub fn analyze_text(text: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
 }
 
+/// WASM: 获取页面小提示文案（Rust 统一维护，Web/小程序只负责展示）
+#[wasm_bindgen]
+pub fn get_tips_wasm(context: &str) -> JsValue {
+    let tips = tips::get_tips_internal(tips::parse_context(context));
+    serde_wasm_bindgen::to_value(&tips).unwrap_or(JsValue::NULL)
+}
+
 mod api_client;
 mod audio;
 mod color;
@@ -123,6 +130,7 @@ mod petal;
 mod plant;
 mod sky;
 mod store;
+mod tips;
 
 use garden::{GardenLayout, GardenState, RoseItem};
 

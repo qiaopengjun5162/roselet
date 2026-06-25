@@ -67,6 +67,11 @@ export function generate_star_particles_wasm(count: number, seed: bigint): any;
 export function getFireworkLaunches(): any;
 
 /**
+ * WASM: 获取页面小提示文案（Rust 统一维护，Web/小程序只负责展示）
+ */
+export function get_tips_wasm(context: string): any;
+
+/**
  * WASM: 解析花圃 API 响应
  */
 export function parse_garden_response_wasm(json: string): any;
@@ -129,6 +134,7 @@ export interface InitOutput {
     readonly generate_petals_wasm: (a: number, b: bigint) => number;
     readonly generate_star_particles_wasm: (a: number, b: bigint) => number;
     readonly getFireworkLaunches: () => number;
+    readonly get_tips_wasm: (a: number, b: number) => number;
     readonly parse_garden_response_wasm: (a: number, b: number) => number;
     readonly parse_rose_response_wasm: (a: number, b: number) => number;
     readonly recommend: (a: number, b: number) => number;

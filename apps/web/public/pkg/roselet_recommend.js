@@ -315,6 +315,18 @@ export function getFireworkLaunches() {
 }
 
 /**
+ * WASM: 获取页面小提示文案（Rust 统一维护，Web/小程序只负责展示）
+ * @param {string} context
+ * @returns {any}
+ */
+export function get_tips_wasm(context) {
+    const ptr0 = passStringToWasm0(context, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.get_tips_wasm(ptr0, len0);
+    return takeObject(ret);
+}
+
+/**
  * WASM: 解析花圃 API 响应
  * @param {string} json
  * @returns {any}

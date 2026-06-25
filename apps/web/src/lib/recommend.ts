@@ -3,10 +3,13 @@ export interface Recommendation { flower_language: { title: string; content: str
 export interface GardenLayout { card_width: number; columns: number; gap: number; padding_x: number; offset_top: number; offset_bottom: number }
 export interface ValidationResult { valid: boolean; error: string | null; cleaned: { color: string; gratitude: string | null; anxiety: string | null; hope: string | null } | null }
 export interface FormattedDate { full_cn: string; short_cn: string; iso: string; weekday_cn: string; relative: string }
+export type TipContext = "home" | "login" | "plant" | "garden";
+export interface Tip { text: string }
 
 interface WasmMod {
   default?: (input?: unknown) => Promise<unknown>;
   recommend: (json: string) => unknown; analyze_text: (text: string) => unknown;
+  get_tips_wasm: (context: string) => unknown;
   compute_layout: (json: string) => unknown; filter_roses: (json: string, f: string) => unknown;
   validate_plant_input: (json: string) => unknown;
   parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
@@ -42,6 +45,21 @@ async function loadWasm(): Promise<WasmMod | null> {
 
 export async function getRecommendation(roses: RoseInput[]): Promise<Recommendation | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.recommend(JSON.stringify(roses)) as Recommendation; } catch { return null; } }
 export async function analyzeTextWasm(text: string): Promise<Record<string, unknown> | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.analyze_text(text) as Record<string, unknown>; } catch { return null; } }
+export async function getTips(context: TipContext): Promise<Tip[]> {
+  const fallback: Record<TipContext, Tip[]> = {
+    home: [{ text: "这里不是朋友圈，不用表现得很好。种下一点真实就可以。" }],
+    login: [{ text: "可以不设密码，像把钥匙藏在花盆底下；但设了密码，别人就不容易误进你的花圃。" }],
+    plant: [{ text: "不知道写哪一栏？只写一栏也可以，一朵花不需要一次说完全部心事。" }],
+    garden: [{ text: "花圃里看到的是公开玫瑰；私密玫瑰只留在自己的小角落。" }],
+  };
+  const mod = await loadWasm(); if (!mod) return fallback[context];
+  try {
+    const tips = mod.get_tips_wasm(context) as Tip[];
+    return Array.isArray(tips) && tips.length > 0 ? tips : fallback[context];
+  } catch {
+    return fallback[context];
+  }
+}
 export async function getLayout(screenWidth: number): Promise<GardenLayout | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.compute_layout(JSON.stringify({ width: screenWidth, height: 0, safe_area_top: 0, safe_area_bottom: 0, is_web: true })) as GardenLayout; } catch { return null; } }
 export async function filterRosesInWasm<T extends { color: string }>(roses: T[], f: string): Promise<T[] | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.filter_roses(JSON.stringify(roses), f) as T[]; } catch { return null; } }
 export async function validatePlantInput(input: RoseInput): Promise<ValidationResult | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.validate_plant_input(JSON.stringify(input)) as ValidationResult; } catch { return null; } }

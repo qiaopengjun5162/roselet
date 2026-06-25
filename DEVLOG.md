@@ -75,6 +75,25 @@
 ### 验证
 - 当前受限环境重跑 `pnpm --filter web typecheck` 和 `pnpm --filter web test -- src/components/__tests__/rose-player.test.tsx --runInBand` 时，均在测试启动前被 pnpm registry 签名校验 fetch 失败阻断，未跑到 TypeScript/Jest 断言层。
 
+## 2026-06-25 会话：页面小纸条提示
+
+### 问题
+- 新用户不一定理解 Roselet 的细节，例如登录时密码可选、设置密码的好处、私密玫瑰和公共花圃的区别。
+
+### 根因
+- 现有说明主要散落在表单 placeholder 和页面文案里，缺少一个轻量、可复用、跨端一致的小提示机制。
+
+### 处理
+- 在 Rust WASM `tips.rs` 中集中维护 `home / login / plant / garden` 场景小提示。
+- 新增 `get_tips_wasm(context)` 导出，Web 通过 `getTips()` 读取，失败时使用同语气 fallback。
+- 新增 `TipTicker` 组件，以“小纸条”形式展示提示并自动轮换。
+- 首页和登录页接入小纸条；登录页提示密码可选但设置后更安全。
+- 重新执行 `just wasm` 并提交真实 `apps/web/public/pkg/` 产物。
+
+### 验证
+- `cargo fmt --check && cargo nextest run -p roselet-recommend tips::tests`
+- 当前受限环境重跑 `pnpm --filter web test -- src/components/__tests__/tip-ticker.test.tsx src/app/login/__tests__/page.test.tsx --runInBand` 和 `pnpm --filter web typecheck` 时，均在测试启动前被 pnpm registry 签名校验 fetch 失败阻断，未跑到 TypeScript/Jest 断言层。
+
 ## 2026-05-27 会话 #1
 
 ### 会话目标
