@@ -9,6 +9,15 @@ use crate::error::AppError;
 use crate::models::rose::{CreateRose, Rose, RoseResponse, UpdateRose};
 use crate::state::AppState;
 
+pub const PRIVATE_ROSE_MONTHLY_LIMIT: i64 = 10;
+
+fn private_quota_exceeded_message() -> String {
+    format!(
+        "本月悄悄种下的机会已用完 ({}/{})",
+        PRIVATE_ROSE_MONTHLY_LIMIT, PRIVATE_ROSE_MONTHLY_LIMIT
+    )
+}
+
 async fn lookup_nickname(pool: &PgPool, user_id: Option<Uuid>) -> Option<String> {
     let uid = user_id?;
     sqlx::query_scalar("SELECT nickname FROM users WHERE id = $1 AND deleted_at IS NULL")
@@ -40,7 +49,7 @@ pub async fn create_rose(
 
     let is_private = input.is_private.unwrap_or(false);
 
-    // 私有模式配额：每月最多 5 朵
+    // 私密是安全感，但仍需要一个温和上限，避免公共资源被无边界占用。
     if is_private {
         let count: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM roses WHERE user_id = $1 AND is_private = true AND date_trunc('month', created_at) = date_trunc('month', now())",
@@ -48,8 +57,8 @@ pub async fn create_rose(
         .bind(user_id)
         .fetch_one(&state.pool)
         .await?;
-        if count >= 5 {
-            return Err(AppError::BadRequest("本月私有名额已用完 (5/5)".into()));
+        if count >= PRIVATE_ROSE_MONTHLY_LIMIT {
+            return Err(AppError::BadRequest(private_quota_exceeded_message()));
         }
     }
 
@@ -229,8 +238,8 @@ pub async fn update_rose(
         .bind(user_id)
         .fetch_one(&state.pool)
         .await?;
-        if count >= 5 {
-            return Err(AppError::BadRequest("本月私有名额已用完 (5/5)".into()));
+        if count >= PRIVATE_ROSE_MONTHLY_LIMIT {
+            return Err(AppError::BadRequest(private_quota_exceeded_message()));
         }
     }
 
@@ -248,4 +257,18 @@ pub async fn update_rose(
         .await
         .unwrap_or(0);
     Ok(Json(RoseResponse::from_rose(rose, nickname, like_count)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_private_quota_message_uses_current_limit() {
+        assert_eq!(PRIVATE_ROSE_MONTHLY_LIMIT, 10);
+        assert_eq!(
+            private_quota_exceeded_message(),
+            "本月悄悄种下的机会已用完 (10/10)"
+        );
+    }
 }

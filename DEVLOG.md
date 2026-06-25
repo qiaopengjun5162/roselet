@@ -2,6 +2,29 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：私密玫瑰额度上调
+
+### 问题
+- 用户担心每月 5 朵私密玫瑰太少，会削弱用户表达焦虑、期待等私密内容时的安全感。
+- 同时用户不想把 Roselet 做成传统签到、任务、积分商城式产品，担心破坏花圃气质。
+
+### 根因
+- 私密额度是安全感边界，不适合过度稀缺。
+- 后端创建私密玫瑰和事后公开转私密各自硬编码 `5`，文案也偏“名额制”，不利于后续调整。
+
+### 处理
+- 新增 `PRIVATE_ROSE_MONTHLY_LIMIT = 10`，创建私密玫瑰和公开转私密共用同一个常量。
+- 错误文案改为“本月悄悄种下的机会已用完 (10/10)”。
+- 私密配额测试改为引用常量，并断言新错误文案。
+- 迁移注释不再写死具体数字。
+- 产品方向暂定：短期只提高额度；暂不做签到/积分，未来再单独设计更有 Roselet 气质的“夜露 / 探索”机制。
+
+### 验证
+- `cargo fmt --check --all`
+- `SQLX_OFFLINE=true cargo clippy -p roselet-backend --all-targets -- -D warnings`
+- `SQLX_OFFLINE=true cargo nextest run -p roselet-backend routes::rose::tests::test_private_quota_message_uses_current_limit`
+- `NO_PROXY=localhost,127.0.0.1 SQLX_OFFLINE=true cargo nextest run -p roselet-backend --test api_test test_private_rose_monthly_quota --no-fail-fast -j1` 在当前沙箱因连接本地测试数据库 `Operation not permitted` 阻断，未进入业务断言。
+
 ## 2026-06-25 会话：玫瑰详情页设置规则收口
 
 ### 问题
@@ -13,7 +36,7 @@
 
 ### 处理
 - 后端 `UpdateRose` 改为只接受 `is_private`，反序列化时拒绝 `color / gratitude / anxiety / hope`。
-- `PUT /api/rose/{id}` 改为“玫瑰设置”接口：仅 owner 可调用，当前只允许公开转私密；公开转私密继续复用每月 5 朵私密玫瑰配额。
+- `PUT /api/rose/{id}` 改为“玫瑰设置”接口：仅 owner 可调用，当前只允许公开转私密；公开转私密继续复用每月 10 朵私密玫瑰配额。
 - 从 Axum 路由移除 `DELETE /api/rose/{id}`，OpenAPI 删除 DELETE 文档。
 - Web 详情页移除“编辑 / 删除”，owner 改为“玫瑰设置”面板：可设为私密；“送给别人”先作为即将支持说明，不混入内容编辑。
 - Web API 删除 `deleteRose()`，`UpdateRose` 类型收窄为 `{ is_private?: boolean }`。

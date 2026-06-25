@@ -4,6 +4,7 @@ use futures_util::StreamExt;
 use http_body_util::BodyExt;
 use roselet_backend::auth::create_access_token;
 use roselet_backend::config::Config;
+use roselet_backend::routes::rose::PRIVATE_ROSE_MONTHLY_LIMIT;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -687,7 +688,7 @@ async fn test_private_rose_monthly_quota() {
     let auth = register_user(&base, "quota-user").await;
     let token = auth["access_token"].as_str().unwrap();
 
-    for i in 0..5 {
+    for i in 0..PRIVATE_ROSE_MONTHLY_LIMIT {
         let res = client
             .post(format!("{}/api/rose", base))
             .header("Authorization", format!("Bearer {}", token))
@@ -698,14 +699,16 @@ async fn test_private_rose_monthly_quota() {
         assert_eq!(res.status(), StatusCode::CREATED);
     }
 
-    let sixth = client
+    let exceeded = client
         .post(format!("{}/api/rose", base))
         .header("Authorization", format!("Bearer {}", token))
         .json(&json!({ "color": "red", "gratitude": "too much", "is_private": true }))
         .send()
         .await
         .unwrap();
-    assert_eq!(sixth.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(exceeded.status(), StatusCode::BAD_REQUEST);
+    let body: Value = exceeded.json().await.unwrap();
+    assert_eq!(body["error"], "本月悄悄种下的机会已用完 (10/10)");
 }
 
 #[tokio::test]
