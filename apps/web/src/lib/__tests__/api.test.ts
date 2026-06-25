@@ -530,6 +530,34 @@ describe("API Client", () => {
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
       await expect(updateRose("123", { is_private: true })).rejects.toThrow("Failed to update rose");
     });
+
+    it("should send recipient nickname when gifting after planting", async () => {
+      setToken("test-token");
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          id: "123",
+          color: "yellow",
+          gratitude: "送给你",
+          anxiety: null,
+          hope: null,
+          user_id: "u1",
+          created_at: "2026-05-27T00:00:00Z",
+          recipient_nickname: "小花",
+          is_gift: true,
+        }),
+      });
+
+      await updateRose("123", { recipient_nickname: "小花" });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/rose/123",
+        expect.objectContaining({
+          method: "PUT",
+          body: JSON.stringify({ recipient_nickname: "小花" }),
+        })
+      );
+    });
   });
 
   describe("submitFeedback", () => {

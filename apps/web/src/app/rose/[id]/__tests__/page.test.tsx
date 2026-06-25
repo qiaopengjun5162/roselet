@@ -252,6 +252,59 @@ describe("RoseDetailPage", () => {
     expect(screen.getByText(/这朵玫瑰已送给 小花/)).toBeInTheDocument();
   });
 
+  it("shows a post-plant gift form for the owner of a public non-gift rose", async () => {
+    getRose.mockResolvedValue(mockRose);
+    getUser.mockReturnValue({ id: "u1", nickname: "alice" });
+
+    render(<RoseDetailClient id="rose-1" />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "玫瑰设置" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "玫瑰设置" }));
+
+    expect(screen.getByPlaceholderText("输入对方昵称")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "送出" })).toBeInTheDocument();
+  });
+
+  it("submits a post-plant gift and updates the UI", async () => {
+    getRose.mockResolvedValue(mockRose);
+    getUser.mockReturnValue({ id: "u1", nickname: "alice" });
+    updateRose.mockResolvedValue({
+      ...mockRose,
+      recipient_nickname: "小花",
+      is_gift: true,
+    });
+
+    render(<RoseDetailClient id="rose-1" />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "玫瑰设置" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "玫瑰设置" }));
+    fireEvent.change(screen.getByPlaceholderText("输入对方昵称"), { target: { value: " 小花 " } });
+    fireEvent.click(screen.getByRole("button", { name: "送出" }));
+
+    await waitFor(() => {
+      expect(updateRose).toHaveBeenCalledWith("rose-1", {
+        recipient_nickname: "小花",
+      });
+    });
+    expect(playPlant).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByText(/这朵玫瑰已送给 小花/)).toBeInTheDocument();
+    });
+  });
+
+  it("shows a private hint instead of the post-plant gift form for private roses", async () => {
+    getRose.mockResolvedValue({ ...mockRose, is_private: true });
+    getUser.mockReturnValue({ id: "u1", nickname: "alice" });
+
+    render(<RoseDetailClient id="rose-1" />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "玫瑰设置" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "玫瑰设置" }));
+
+    expect(screen.getByText("私密玫瑰不能送礼，请先设为公开")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("输入对方昵称")).not.toBeInTheDocument();
+  });
+
   it("should redirect anonymous likes to login", async () => {
     getRose.mockResolvedValue({ ...mockRose, like_count: 0 });
     getUser.mockReturnValue(null);

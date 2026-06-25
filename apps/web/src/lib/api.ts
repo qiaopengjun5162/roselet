@@ -152,6 +152,7 @@ export interface CreateRose {
 
 export interface UpdateRose {
   is_private?: boolean;
+  recipient_nickname?: string;
 }
 
 function authHeaders(): Record<string, string> {

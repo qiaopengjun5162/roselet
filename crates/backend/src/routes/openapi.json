@@ -76,7 +76,7 @@
       "put": {
         "tags": ["Rose"],
         "summary": "更新玫瑰设置",
-        "description": "玫瑰内容种下后不可修改；当前只允许创建者将公开玫瑰设为私密。",
+        "description": "玫瑰内容种下后不可修改；当前只允许创建者将公开玫瑰设为私密，或为公开且未送礼的玫瑰补填接收人。",
         "security": [{ "Bearer": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateRose" } } } },
@@ -238,7 +238,8 @@
       "UpdateRose": {
         "type": "object",
         "properties": {
-          "is_private": { "type": "boolean", "description": "只能从 false 更新为 true；暂不支持重新公开。" }
+          "is_private": { "type": "boolean", "description": "只能从 false 更新为 true；暂不支持重新公开。" },
+          "recipient_nickname": { "type": "string", "nullable": true, "description": "仅公开且尚未送礼的玫瑰可补填；私密与送礼互斥。" }
         }
       },
       "RoseResponse": {

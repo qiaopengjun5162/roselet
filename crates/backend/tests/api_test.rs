@@ -930,6 +930,199 @@ async fn test_update_rose_rejects_private_to_public() {
 }
 
 #[tokio::test]
+async fn test_update_public_rose_can_add_recipient() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "gift-after-owner").await;
+    let token = auth["access_token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "yellow", "gratitude": "晚一点再送" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CREATED);
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "recipient_nickname": "小花" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let updated: Value = res.json().await.unwrap();
+    assert_eq!(updated["recipient_nickname"], "小花");
+    assert_eq!(updated["is_gift"], true);
+    assert_eq!(updated["is_private"], false);
+}
+
+#[tokio::test]
+async fn test_update_rose_cannot_change_existing_recipient() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "gift-change-owner").await;
+    let token = auth["access_token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({
+            "color": "yellow",
+            "gratitude": "先送给你",
+            "recipient_nickname": "小花"
+        }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "recipient_nickname": "小树" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_update_private_rose_cannot_add_recipient() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "gift-private-owner").await;
+    let token = auth["access_token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "white", "gratitude": "只给自己", "is_private": true }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "recipient_nickname": "小花" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_update_rose_cannot_gift_to_self() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "self-gift-owner").await;
+    let token = auth["access_token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "送给自己?" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "recipient_nickname": "self-gift-owner" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_update_rose_rejects_private_and_recipient_together() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "gift-private-conflict").await;
+    let token = auth["access_token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "想同时做两件事" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({
+            "is_private": true,
+            "recipient_nickname": "小花"
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_update_recipient_restores_soft_deleted_user() {
+    let base = spawn_test_server().await;
+    let (_app, pool) = create_test_app().await;
+    let auth = register_user(&base, "restore-owner").await;
+    let token = auth["access_token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let deleted_user_id: Uuid = sqlx::query_scalar(
+        "INSERT INTO users (nickname, deleted_at) VALUES ($1, now()) RETURNING id",
+    )
+    .bind("冷却中的小花")
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "yellow", "gratitude": "等你回来" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "recipient_nickname": "冷却中的小花" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let updated: Value = res.json().await.unwrap();
+    assert_eq!(updated["recipient_nickname"], "冷却中的小花");
+
+    let restored_deleted_at: Option<chrono::DateTime<chrono::Utc>> =
+        sqlx::query_scalar("SELECT deleted_at FROM users WHERE id = $1")
+            .bind(deleted_user_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(restored_deleted_at.is_none());
+}
+
+#[tokio::test]
 async fn test_update_rose_forbidden() {
     let base = spawn_test_server().await;
     let auth1 = register_user(&base, "eve").await;

@@ -24,6 +24,9 @@ export function RoseDetailClient({ id }: { id: string }) {
   const [error, setError] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [giftNickname, setGiftNickname] = useState("");
+  const [giftSaving, setGiftSaving] = useState(false);
+  const [giftError, setGiftError] = useState("");
 
   const user = getUser();
   const isOwner = user && rose && rose.user_id === user.id;
@@ -38,11 +41,13 @@ export function RoseDetailClient({ id }: { id: string }) {
   function toggleSettings() {
     playClick();
     setSettingsOpen((open) => !open);
+    setGiftError("");
   }
 
   async function makePrivate() {
     if (!rose) return;
     setSaving(true);
+    setError("");
     try {
       const updated = await updateRose(rose.id, { is_private: true });
       setRose(updated);
@@ -52,6 +57,29 @@ export function RoseDetailClient({ id }: { id: string }) {
       setError("设置失败");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function sendGift() {
+    if (!rose) return;
+    const trimmed = giftNickname.trim();
+    if (!trimmed) {
+      setGiftError("请先填写对方昵称");
+      return;
+    }
+
+    setGiftSaving(true);
+    setGiftError("");
+    setError("");
+    try {
+      const updated = await updateRose(rose.id, { recipient_nickname: trimmed });
+      setRose(updated);
+      setGiftNickname("");
+      playPlant();
+    } catch {
+      setGiftError("送出失败");
+    } finally {
+      setGiftSaving(false);
     }
   }
 
@@ -146,11 +174,33 @@ export function RoseDetailClient({ id }: { id: string }) {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-black/10 p-3">
                   <p className="text-sm font-medium text-slate-100">送给别人</p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    {rose.is_gift
-                      ? `这朵玫瑰已送给 ${rose.recipient_nickname}。`
-                      : "已种下的玫瑰暂不支持事后补送，想送人请在种花时填写对方昵称。"}
-                  </p>
+                  {rose.is_gift ? (
+                    <p className="mt-1 text-xs text-slate-400">{`这朵玫瑰已送给 ${rose.recipient_nickname}。`}</p>
+                  ) : rose.is_private ? (
+                    <p className="mt-1 text-xs text-slate-400">私密玫瑰不能送礼，请先设为公开</p>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-xs text-slate-400">公开且还没送出的玫瑰，可以在这里补送给对方。</p>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <input
+                          value={giftNickname}
+                          onChange={(event) => setGiftNickname(event.target.value)}
+                          placeholder="输入对方昵称"
+                          maxLength={50}
+                          className="h-9 flex-1 rounded-md border border-white/10 bg-black/20 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-rose-400/40"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={sendGift}
+                          disabled={giftSaving}
+                          className="bg-rose-500 hover:bg-rose-600"
+                        >
+                          {giftSaving ? "送出中..." : "送出"}
+                        </Button>
+                      </div>
+                      {giftError && <p className="text-xs text-red-400">{giftError}</p>}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

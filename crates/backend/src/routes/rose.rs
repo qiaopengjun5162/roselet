@@ -15,6 +15,84 @@ fn private_quota_exceeded_message(limit: i64) -> String {
     format!("本月悄悄种下的机会已用完 ({}/{})", limit, limit)
 }
 
+async fn resolve_recipient_user_id(
+    pool: &PgPool,
+    sender_user_id: Uuid,
+    nickname: &str,
+) -> Result<Option<Uuid>, AppError> {
+    let trimmed = nickname.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    let sender_nickname: Option<String> =
+        sqlx::query_scalar("SELECT nickname FROM users WHERE id = $1 AND deleted_at IS NULL")
+            .bind(sender_user_id)
+            .fetch_optional(pool)
+            .await?;
+
+    if sender_nickname.as_deref() == Some(trimmed) {
+        return Err(AppError::BadRequest(
+            "花是送人的哦，送给自己直接种花就好".into(),
+        ));
+    }
+
+    #[derive(sqlx::FromRow)]
+    struct RecipientUser {
+        id: Uuid,
+        deleted_at: Option<chrono::DateTime<chrono::Utc>>,
+    }
+
+    let recipient = sqlx::query_as::<_, RecipientUser>(
+        "SELECT id, deleted_at FROM users WHERE nickname = $1 LIMIT 1",
+    )
+    .bind(trimmed)
+    .fetch_optional(pool)
+    .await?;
+
+    match recipient {
+        Some(RecipientUser {
+            id,
+            deleted_at: Some(deleted_at),
+        }) => {
+            if auth::deletion_is_restorable(deleted_at, chrono::Utc::now()) {
+                sqlx::query(
+                    "UPDATE users
+                     SET deleted_at = NULL,
+                         deletion_reason = NULL,
+                         nickname = $1
+                     WHERE id = $2",
+                )
+                .bind(trimmed)
+                .bind(id)
+                .execute(pool)
+                .await?;
+                Ok(Some(id))
+            } else {
+                auth::finalize_deleted_user(pool, id).await?;
+                let created: (Uuid,) =
+                    sqlx::query_as("INSERT INTO users (nickname) VALUES ($1) RETURNING id")
+                        .bind(trimmed)
+                        .fetch_one(pool)
+                        .await?;
+                Ok(Some(created.0))
+            }
+        }
+        Some(RecipientUser {
+            id,
+            deleted_at: None,
+        }) => Ok(Some(id)),
+        None => {
+            let created: (Uuid,) =
+                sqlx::query_as("INSERT INTO users (nickname) VALUES ($1) RETURNING id")
+                    .bind(trimmed)
+                    .fetch_one(pool)
+                    .await?;
+            Ok(Some(created.0))
+        }
+    }
+}
+
 async fn lookup_nickname(pool: &PgPool, user_id: Option<Uuid>) -> Option<String> {
     let uid = user_id?;
     sqlx::query_scalar("SELECT nickname FROM users WHERE id = $1 AND deleted_at IS NULL")
@@ -72,73 +150,9 @@ pub async fn create_rose(
         }
     }
 
-    // 处理接收人
-    let recipient_user_id = if let Some(ref nickname) = input.recipient_nickname {
-        let trimmed = nickname.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            let sender_nickname: Option<String> = sqlx::query_scalar(
-                "SELECT nickname FROM users WHERE id = $1 AND deleted_at IS NULL",
-            )
-            .bind(user_id)
-            .fetch_optional(&state.pool)
-            .await?;
-
-            // 不能送给自己
-            if sender_nickname.as_deref() == Some(trimmed) {
-                return Err(AppError::BadRequest(
-                    "花是送人的哦，送给自己直接种花就好".into(),
-                ));
-            }
-
-            // 查找或创建接收人用户
-            #[derive(sqlx::FromRow)]
-            struct RecipientUser {
-                id: Uuid,
-                deleted_at: Option<chrono::DateTime<chrono::Utc>>,
-            }
-
-            let recipient = sqlx::query_as::<_, RecipientUser>(
-                "SELECT id, deleted_at FROM users WHERE nickname = $1 LIMIT 1",
-            )
-            .bind(trimmed)
-            .fetch_optional(&state.pool)
-            .await?;
-
-            match recipient {
-                Some(RecipientUser {
-                    id,
-                    deleted_at: Some(deleted_at),
-                }) => {
-                    if auth::deletion_is_restorable(deleted_at, chrono::Utc::now()) {
-                        Some(id)
-                    } else {
-                        auth::finalize_deleted_user(&state.pool, id).await?;
-                        let created: (Uuid,) =
-                            sqlx::query_as("INSERT INTO users (nickname) VALUES ($1) RETURNING id")
-                                .bind(trimmed)
-                                .fetch_one(&state.pool)
-                                .await?;
-                        Some(created.0)
-                    }
-                }
-                Some(RecipientUser {
-                    id,
-                    deleted_at: None,
-                }) => Some(id),
-                None => {
-                    let created: (Uuid,) =
-                        sqlx::query_as("INSERT INTO users (nickname) VALUES ($1) RETURNING id")
-                            .bind(trimmed)
-                            .fetch_one(&state.pool)
-                            .await?;
-                    Some(created.0)
-                }
-            }
-        }
-    } else {
-        None
+    let recipient_user_id = match input.recipient_nickname.as_deref() {
+        Some(nickname) => resolve_recipient_user_id(&state.pool, user_id, nickname).await?,
+        None => None,
     };
 
     let rose = sqlx::query_as::<_, Rose>(
@@ -227,6 +241,7 @@ pub async fn update_rose(
 ) -> Result<Json<RoseResponse>, AppError> {
     let input: UpdateRose =
         serde_json::from_value(raw_input).map_err(|e| AppError::BadRequest(e.to_string()))?;
+    input.validate().map_err(AppError::BadRequest)?;
     let user_id = auth::require_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
 
     let existing = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
@@ -237,6 +252,48 @@ pub async fn update_rose(
 
     if existing.user_id != Some(user_id) {
         return Err(AppError::Forbidden);
+    }
+
+    if input.is_private == Some(true) && input.wants_recipient() {
+        return Err(AppError::BadRequest(
+            "私密玫瑰只能留给自己，送礼请保持公开".into(),
+        ));
+    }
+
+    if let Some(recipient_nickname) = input.recipient_target().map_err(AppError::BadRequest)? {
+        if existing.is_private {
+            return Err(AppError::BadRequest(
+                "私密玫瑰只能留给自己，不能再送礼".into(),
+            ));
+        }
+        if existing.recipient_nickname.is_some() {
+            return Err(AppError::BadRequest(
+                "这朵玫瑰已经送出，不能再修改接收人".into(),
+            ));
+        }
+
+        let recipient_user_id =
+            resolve_recipient_user_id(&state.pool, user_id, recipient_nickname).await?;
+
+        let rose = sqlx::query_as::<_, Rose>(
+            "UPDATE roses
+             SET recipient_nickname = $1, recipient_user_id = $2
+             WHERE id = $3
+             RETURNING *",
+        )
+        .bind(recipient_nickname)
+        .bind(recipient_user_id)
+        .bind(id)
+        .fetch_one(&state.pool)
+        .await?;
+
+        let nickname = lookup_nickname(&state.pool, rose.user_id).await;
+        let like_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM likes WHERE rose_id = $1")
+            .bind(rose.id)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(0);
+        return Ok(Json(RoseResponse::from_rose(rose, nickname, like_count)));
     }
 
     let target_private = input.target_private().map_err(AppError::BadRequest)?;

@@ -2,6 +2,29 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：实现种下后补送玫瑰
+
+### 问题
+- 已决定支持「公开且未送礼」玫瑰在种下后补送，但后端 `PUT /api/rose/{id}` 和 Web 详情页仍只支持公开转私密，用户无法实际完成补送。
+
+### 根因
+- `UpdateRose` 还没有真正接收 `recipient_nickname`，`update_rose` 也没有复用送礼时的接收人查/建逻辑。
+- 既有送礼查/建逻辑对冷却期内软删除用户只复用 id，没有同步恢复 `deleted_at`，会让接收人保持“已注销”状态。
+- 详情页“送给别人”区块只有静态文案，没有输入、提交和错误状态。
+
+### 处理
+- 后端 `UpdateRose` 增加 `recipient_nickname` 反序列化与校验，保持正文不可修改的不变量。
+- 抽出 `resolve_recipient_user_id()`，统一给创建玫瑰和事后补送复用，并在命中冷却期软删除用户时恢复 `deleted_at/deletion_reason`。
+- `update_rose` 新增补送分支：仅允许公开且未送礼玫瑰补填接收人，同时拒绝私密+送礼、自送、重复改收件人。
+- Web 详情页在 owner 打开设置面板后，对公开且未送礼玫瑰显示补送输入框和提交按钮；私密玫瑰显示不能送礼提示。
+- 更新 `AGENTS.md` / `CLAUDE.md` / OpenAPI，明确 `PUT /api/rose/{id}` 现在同时承担“公开转私密”与“事后补送”两类设置。
+
+### 验证
+- `cargo test -p roselet-backend models::rose::tests::test_update_rose -- --nocapture`
+- `cd apps/web && ./node_modules/.bin/jest --runTestsByPath src/lib/__tests__/api.test.ts 'src/app/rose/[id]/__tests__/page.test.tsx' --runInBand`
+- `cargo fmt --all --check`
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend --test api_test test_update_public_rose_can_add_recipient test_update_rose_cannot_change_existing_recipient test_update_private_rose_cannot_add_recipient test_update_rose_cannot_gift_to_self test_update_rose_rejects_private_and_recipient_together test_update_recipient_restores_soft_deleted_user -j1` 在当前沙箱因本地数据库 / SQLx 宏访问触发 `Operation not permitted`，未能完成集成验证。
+
 ## 2026-06-25 会话：决定支持种下后补送玫瑰（待实现）
 
 ### 问题
