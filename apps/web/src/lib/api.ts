@@ -260,6 +260,7 @@ export interface UsageStats {
     goal: number;
     percent: number;
   };
+  private_rose_monthly_limit: number;
 }
 
 export async function getUsageStats(): Promise<UsageStats> {

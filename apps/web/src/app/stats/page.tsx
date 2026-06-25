@@ -178,6 +178,21 @@ export default function StatsPage() {
           ))}
         </section>
 
+        <section className="rounded-[2rem] border border-sky-300/15 bg-sky-300/[0.05] p-6 backdrop-blur-xl">
+          <p className="text-xs tracking-[0.25em] text-sky-200/70">Garden Rules</p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm text-sky-100/70">本月悄悄种下上限</p>
+              <p className="mt-2 text-3xl font-semibold text-sky-100">
+                {formatCount(stats.private_rose_monthly_limit)}
+              </p>
+            </div>
+            <p className="max-w-md text-sm leading-6 text-sky-100/60">
+              当前值来自后端配置，暂不在后台直接修改；需要调整时改服务器环境变量并重启后端。
+            </p>
+          </div>
+        </section>
+
         <section className="grid gap-3 md:grid-cols-2">
           <article className="rounded-3xl border border-white/10 bg-slate-950/40 p-5">
             <p className="text-sm text-slate-400">最近一朵玫瑰</p>

@@ -39,6 +39,7 @@ function mockStats() {
       goal: 100,
       percent: 12,
     },
+    private_rose_monthly_limit: 10,
   };
 }
 
@@ -77,6 +78,8 @@ describe("StatsPage", () => {
     expect(screen.getByText("30")).toBeInTheDocument();
     expect(screen.getByText("近 7 天新增用户")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("本月悄悄种下上限")).toBeInTheDocument();
+    expect(screen.getByText("10")).toBeInTheDocument();
   });
 
   it("shows recent feedback content for admins", async () => {

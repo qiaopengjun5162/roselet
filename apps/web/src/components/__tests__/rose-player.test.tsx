@@ -118,6 +118,7 @@ describe("RosePlayer", () => {
     jest.clearAllMocks();
     audioContexts.length = 0;
     mockRoseToSoundParams.mockResolvedValue(params);
+    mockPrepareForegroundAudio.mockResolvedValue(undefined);
     Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
       configurable: true,
       value: jest.fn(() => canvasContext),

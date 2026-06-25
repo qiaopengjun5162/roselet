@@ -300,7 +300,8 @@
           "feedback_last_7_days": { "type": "integer", "format": "int64" },
           "latest_rose_at": { "type": "string", "format": "date-time", "nullable": true },
           "latest_feedback_at": { "type": "string", "format": "date-time", "nullable": true },
-          "user_goal": { "$ref": "#/components/schemas/UsageGoal" }
+          "user_goal": { "$ref": "#/components/schemas/UsageGoal" },
+          "private_rose_monthly_limit": { "type": "integer", "format": "int64", "description": "每位用户每月可创建的私密玫瑰上限，由环境变量 PRIVATE_ROSE_MONTHLY_LIMIT 控制" }
         }
       }
     }

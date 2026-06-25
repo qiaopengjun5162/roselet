@@ -348,6 +348,7 @@ describe("API Client", () => {
           goal: 100,
           percent: 12,
         },
+        private_rose_monthly_limit: 10,
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -398,6 +399,7 @@ describe("API Client", () => {
           goal: 100,
           percent: 1,
         },
+        private_rose_monthly_limit: 10,
       };
 
       (global.fetch as jest.Mock)

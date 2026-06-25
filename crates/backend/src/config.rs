@@ -7,6 +7,7 @@ pub struct Config {
     pub jwt_secret: String,
     pub allowed_origins: Vec<String>,
     pub admin_user_ids: Vec<String>,
+    pub private_rose_monthly_limit: i64,
     pub is_production: bool,
 }
 
@@ -42,6 +43,11 @@ impl Config {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .collect();
+        let private_rose_monthly_limit = env::var("PRIVATE_ROSE_MONTHLY_LIMIT")
+            .ok()
+            .and_then(|value| value.parse::<i64>().ok())
+            .filter(|limit| *limit > 0)
+            .unwrap_or(crate::routes::rose::DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT);
 
         Self {
             database_url: env::var("DATABASE_URL")
@@ -50,6 +56,7 @@ impl Config {
             jwt_secret,
             allowed_origins,
             admin_user_ids,
+            private_rose_monthly_limit,
             is_production,
         }
     }
@@ -67,6 +74,7 @@ mod tests {
         std::env::remove_var("NODE_ENV");
         std::env::remove_var("ALLOWED_ORIGINS");
         std::env::remove_var("ADMIN_USER_IDS");
+        std::env::remove_var("PRIVATE_ROSE_MONTHLY_LIMIT");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://localhost/roselet");
@@ -75,6 +83,7 @@ mod tests {
         assert!(!config.is_production);
         assert!(config.allowed_origins.contains(&"http://localhost:3000".to_string()));
         assert!(config.admin_user_ids.is_empty());
+        assert_eq!(config.private_rose_monthly_limit, 10);
     }
 
     #[test]
@@ -84,6 +93,7 @@ mod tests {
         std::env::set_var("JWT_SECRET", "my-secret-key-with-sufficient-length-32bytes");
         std::env::set_var("ALLOWED_ORIGINS", "https://roselet.example.com");
         std::env::set_var("ADMIN_USER_IDS", " user-1, user-2 ");
+        std::env::set_var("PRIVATE_ROSE_MONTHLY_LIMIT", "15");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://custom/testdb");
@@ -94,12 +104,14 @@ mod tests {
         );
         assert_eq!(config.allowed_origins, vec!["https://roselet.example.com"]);
         assert_eq!(config.admin_user_ids, vec!["user-1", "user-2"]);
+        assert_eq!(config.private_rose_monthly_limit, 15);
 
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
         std::env::remove_var("JWT_SECRET");
         std::env::remove_var("ALLOWED_ORIGINS");
         std::env::remove_var("ADMIN_USER_IDS");
+        std::env::remove_var("PRIVATE_ROSE_MONTHLY_LIMIT");
     }
 
     #[test]

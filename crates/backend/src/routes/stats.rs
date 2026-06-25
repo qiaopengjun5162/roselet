@@ -26,6 +26,7 @@ pub struct UsageStats {
     pub latest_rose_at: Option<DateTime<Utc>>,
     pub latest_feedback_at: Option<DateTime<Utc>>,
     pub user_goal: UsageGoal,
+    pub private_rose_monthly_limit: i64,
 }
 
 #[derive(sqlx::FromRow)]
@@ -123,6 +124,7 @@ pub async fn get_usage_stats(
         latest_rose_at: row.latest_rose_at,
         latest_feedback_at: row.latest_feedback_at,
         user_goal: progress_to_goal(row.total_users, 100),
+        private_rose_monthly_limit: state.config.private_rose_monthly_limit,
     }))
 }
 

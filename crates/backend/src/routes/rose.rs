@@ -9,13 +9,10 @@ use crate::error::AppError;
 use crate::models::rose::{CreateRose, Rose, RoseResponse, UpdateRose};
 use crate::state::AppState;
 
-pub const PRIVATE_ROSE_MONTHLY_LIMIT: i64 = 10;
+pub const DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT: i64 = 10;
 
-fn private_quota_exceeded_message() -> String {
-    format!(
-        "本月悄悄种下的机会已用完 ({}/{})",
-        PRIVATE_ROSE_MONTHLY_LIMIT, PRIVATE_ROSE_MONTHLY_LIMIT
-    )
+fn private_quota_exceeded_message(limit: i64) -> String {
+    format!("本月悄悄种下的机会已用完 ({}/{})", limit, limit)
 }
 
 async fn lookup_nickname(pool: &PgPool, user_id: Option<Uuid>) -> Option<String> {
@@ -57,8 +54,9 @@ pub async fn create_rose(
         .bind(user_id)
         .fetch_one(&state.pool)
         .await?;
-        if count >= PRIVATE_ROSE_MONTHLY_LIMIT {
-            return Err(AppError::BadRequest(private_quota_exceeded_message()));
+        let limit = state.config.private_rose_monthly_limit;
+        if count >= limit {
+            return Err(AppError::BadRequest(private_quota_exceeded_message(limit)));
         }
     }
 
@@ -238,8 +236,9 @@ pub async fn update_rose(
         .bind(user_id)
         .fetch_one(&state.pool)
         .await?;
-        if count >= PRIVATE_ROSE_MONTHLY_LIMIT {
-            return Err(AppError::BadRequest(private_quota_exceeded_message()));
+        let limit = state.config.private_rose_monthly_limit;
+        if count >= limit {
+            return Err(AppError::BadRequest(private_quota_exceeded_message(limit)));
         }
     }
 
@@ -265,9 +264,9 @@ mod tests {
 
     #[test]
     fn test_private_quota_message_uses_current_limit() {
-        assert_eq!(PRIVATE_ROSE_MONTHLY_LIMIT, 10);
+        assert_eq!(DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT, 10);
         assert_eq!(
-            private_quota_exceeded_message(),
+            private_quota_exceeded_message(DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT),
             "本月悄悄种下的机会已用完 (10/10)"
         );
     }

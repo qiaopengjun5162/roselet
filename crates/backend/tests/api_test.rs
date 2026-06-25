@@ -4,7 +4,7 @@ use futures_util::StreamExt;
 use http_body_util::BodyExt;
 use roselet_backend::auth::create_access_token;
 use roselet_backend::config::Config;
-use roselet_backend::routes::rose::PRIVATE_ROSE_MONTHLY_LIMIT;
+use roselet_backend::routes::rose::DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -38,6 +38,7 @@ async fn create_test_app() -> (axum::Router, PgPool) {
         jwt_secret: "test-secret".to_string(),
         allowed_origins: vec!["http://localhost:3000".to_string()],
         admin_user_ids: vec![],
+        private_rose_monthly_limit: DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT,
         is_production: false,
     };
     let state = roselet_backend::state::AppState::new(pool.clone(), config);
@@ -688,7 +689,7 @@ async fn test_private_rose_monthly_quota() {
     let auth = register_user(&base, "quota-user").await;
     let token = auth["access_token"].as_str().unwrap();
 
-    for i in 0..PRIVATE_ROSE_MONTHLY_LIMIT {
+    for i in 0..DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT {
         let res = client
             .post(format!("{}/api/rose", base))
             .header("Authorization", format!("Bearer {}", token))
@@ -1601,6 +1602,10 @@ async fn test_usage_stats_admin_sees_aggregates() {
     assert_eq!(body["user_goal"]["current"], 2);
     assert_eq!(body["user_goal"]["goal"], 100);
     assert_eq!(body["user_goal"]["percent"], 2);
+    assert_eq!(
+        body["private_rose_monthly_limit"],
+        DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT
+    );
     assert!(body["latest_rose_at"].as_str().is_some());
     assert!(body["latest_feedback_at"].as_str().is_some());
 }
