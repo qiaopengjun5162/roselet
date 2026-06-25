@@ -23,7 +23,18 @@
 - `cargo test -p roselet-backend models::rose::tests::test_update_rose -- --nocapture`
 - `cd apps/web && ./node_modules/.bin/jest --runTestsByPath src/lib/__tests__/api.test.ts 'src/app/rose/[id]/__tests__/page.test.tsx' --runInBand`
 - `cargo fmt --all --check`
-- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend --test api_test test_update_public_rose_can_add_recipient test_update_rose_cannot_change_existing_recipient test_update_private_rose_cannot_add_recipient test_update_rose_cannot_gift_to_self test_update_rose_rejects_private_and_recipient_together test_update_recipient_restores_soft_deleted_user -j1` 在当前沙箱因本地数据库 / SQLx 宏访问触发 `Operation not permitted`，未能完成集成验证。
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend --test api_test test_update_public_rose_can_add_recipient test_update_rose_cannot_change_existing_recipient test_update_private_rose_cannot_add_recipient test_update_rose_cannot_gift_to_self test_update_rose_rejects_private_and_recipient_together test_update_recipient_restores_soft_deleted_user -j1` → 6 passed
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend --test api_test test_create_rose_private_and_recipient_are_mutually_exclusive test_update_gift_rose_to_private_is_rejected test_update_rose_rejects_content_changes test_update_rose_can_make_public_rose_private test_update_rose_rejects_private_to_public test_update_rose_forbidden test_update_rose_no_auth -j1` → 7 passed
+- `cargo clippy -p roselet-backend --all-targets -- -D warnings` 通过
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend -j1` → 145 passed
+- `cd apps/web && ./node_modules/.bin/tsc --noEmit` 通过
+- `cd apps/web && pnpm lint` 通过
+- `cd apps/web && pnpm build` 通过
+- `pnpm test:coverage` → Web 188 passed，statement 90.28%；Miniprogram 66 passed，statement 99.33%
+- `just typecheck`、`just lint`、`just next-build` 通过
+- `just audit` → advisories / bans / licenses / sources 均 ok（仅保留 duplicate warnings）
+- `just check-all` → 通过，其中 `cargo nextest run --all-features -j1` 为 291 passed
+- `gh run list --limit 5 --json databaseId,displayTitle,event,headBranch,headSha,status,conclusion,workflowName`：本次提交 `c16f35d` 对应 GitHub Actions `CI` run `28160715730` 仍在执行中。
 
 ## 2026-06-25 会话：决定支持种下后补送玫瑰（待实现）
 

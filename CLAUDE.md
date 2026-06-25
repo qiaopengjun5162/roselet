@@ -44,11 +44,11 @@ Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请
 
 ## 测试状态
 ```
-Rust backend:   110 passed
-Rust WASM:      139 passed
-Web frontend:   146 passed
+Rust backend:   145 passed
+Rust WASM:      146 passed
+Web frontend:   188 passed
 Miniprogram:     66 passed
-Total:          461 passed
+Total:          545 passed
 
 llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   100%: flowers, petal, sky, keywords, pagination, user, docs, state
@@ -58,7 +58,7 @@ llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   90%+: plant (93.06%), emotion (91.43%), store (90.21%), rose routes (94.87%)
 
 Jest coverage:
-  Web: 91.32% statements / 96.48% lines
+  Web: 90.28% statements / 95.32% lines
   Miniprogram: 99.33% statements / 100% lines / 96.05% branches
 Coverage gates:
   pnpm test:coverage  # Web + Miniprogram coverage threshold
