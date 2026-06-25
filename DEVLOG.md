@@ -2,6 +2,18 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：补充 Rust CODEOWNERS 规则
+
+### 问题
+- 之前新增的 `CODEOWNERS` 只覆盖了 Go、配置文件和 `/.github/`，还没有覆盖当前仓库最主要的 Rust workspace 文件。
+
+### 处理
+- 在 `.github/CODEOWNERS` 增加 `*.rs`、`Cargo.toml`、`Cargo.lock` 的 owner 规则，统一指派给 `@qiaopengjun5162`。
+- `Cargo.toml` 使用非根目录限定写法，覆盖 workspace 根和 `crates/*/Cargo.toml`，避免只匹配根文件。
+
+### 验证
+- `git diff --check`
+
 ## 2026-06-25 会话：新增 GitHub CODEOWNERS
 
 ### 问题

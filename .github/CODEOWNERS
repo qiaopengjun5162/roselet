@@ -1,6 +1,11 @@
 # Go files
 *.go @qiaopengjun5162
 
+# Rust files
+*.rs @qiaopengjun5162
+Cargo.toml @qiaopengjun5162
+Cargo.lock @qiaopengjun5162
+
 # Config files
 *.yml @qiaopengjun5162
 *.yaml @qiaopengjun5162
