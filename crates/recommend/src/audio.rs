@@ -1,5 +1,24 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum AudioSource {
+    Background,
+    Foreground,
+    Effect,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PlaybackPolicyInput {
+    pub starting: AudioSource,
+    pub background_playing: bool,
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct PlaybackPolicy {
+    pub stop_background: bool,
+}
+
 /// 来自前端的玫瑰摘要（仅音频参数所需字段）
 #[derive(Debug, Deserialize)]
 pub struct RoseAudioInput {
@@ -20,6 +39,12 @@ pub struct RoseSoundParams {
     pub phase: f64,
     pub stroke: String,
     pub glow: String,
+}
+
+pub fn playback_policy_internal(input: &PlaybackPolicyInput) -> PlaybackPolicy {
+    PlaybackPolicy {
+        stop_background: input.background_playing && input.starting == AudioSource::Foreground,
+    }
 }
 
 struct ColorParams {
@@ -198,5 +223,47 @@ mod tests {
         let r = rose("red", None, None, None, 0);
         let p = rose_to_sound_params_internal(&r);
         assert_eq!(p.waveform, "sawtooth");
+    }
+
+    #[test]
+    fn test_foreground_audio_stops_background() {
+        let policy = playback_policy_internal(&PlaybackPolicyInput {
+            starting: AudioSource::Foreground,
+            background_playing: true,
+        });
+        assert_eq!(
+            policy,
+            PlaybackPolicy {
+                stop_background: true
+            }
+        );
+    }
+
+    #[test]
+    fn test_effect_audio_keeps_background() {
+        let policy = playback_policy_internal(&PlaybackPolicyInput {
+            starting: AudioSource::Effect,
+            background_playing: true,
+        });
+        assert_eq!(
+            policy,
+            PlaybackPolicy {
+                stop_background: false
+            }
+        );
+    }
+
+    #[test]
+    fn test_foreground_audio_has_no_stop_when_background_is_idle() {
+        let policy = playback_policy_internal(&PlaybackPolicyInput {
+            starting: AudioSource::Foreground,
+            background_playing: false,
+        });
+        assert_eq!(
+            policy,
+            PlaybackPolicy {
+                stop_background: false
+            }
+        );
     }
 }

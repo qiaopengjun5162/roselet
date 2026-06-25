@@ -4,10 +4,15 @@ import { RosePlayer } from "../rose-player";
 import type { Rose } from "@/lib/api";
 
 const mockRoseToSoundParams = jest.fn();
+const mockPrepareForegroundAudio = jest.fn();
 
 jest.mock("@/lib/rose-sound", () => ({
   roseToSoundParams: (...args: unknown[]) => mockRoseToSoundParams(...args),
   playWithParams: jest.fn(),
+}));
+
+jest.mock("@/lib/sound", () => ({
+  prepareForegroundAudio: () => mockPrepareForegroundAudio(),
 }));
 
 const params = {
@@ -140,6 +145,7 @@ describe("RosePlayer", () => {
 
     await waitFor(() => expect(screen.getByRole("button", { name: "■ 停止" })).toBeInTheDocument());
     expect(mockRoseToSoundParams).toHaveBeenCalledWith(rose);
+    expect(mockPrepareForegroundAudio).toHaveBeenCalledTimes(1);
     expect(audioContexts[0].ctx.createChannelMerger).toHaveBeenCalledWith(2);
     expect(audioContexts[0].ctx.createAnalyser).toHaveBeenCalledTimes(2);
     expect(canvasContext.fillRect).toHaveBeenCalled();

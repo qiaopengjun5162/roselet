@@ -14,6 +14,7 @@ interface WasmMod {
   format_date_wasm: (iso: string) => unknown;
   generate_petals_wasm: (count: number, seed: bigint) => unknown;
   rose_to_sound_params_wasm: (rose_json: string) => unknown;
+  audio_playback_policy_wasm: (input_json: string) => unknown;
   compute_sky_params_wasm: (hour: number) => unknown;
   generate_star_particles_wasm: (count: number, seed: bigint) => unknown;
   build_garden_url: (base_url: string, page: number, per_page: number, color: string) => string;
@@ -71,6 +72,16 @@ export async function generatePetals(count: number, seed: bigint) {
 export async function roseToSoundParamsWasm(roseJson: string): Promise<Record<string, unknown> | null> {
   const mod = await loadWasm(); if (!mod) return null;
   try { return mod.rose_to_sound_params_wasm(roseJson) as Record<string, unknown>; } catch { return null; }
+}
+
+export async function audioPlaybackPolicy(input: { starting: "background" | "foreground" | "effect"; background_playing: boolean }): Promise<{ stop_background: boolean }> {
+  const mod = await loadWasm();
+  if (!mod) return { stop_background: input.starting === "foreground" && input.background_playing };
+  try {
+    return mod.audio_playback_policy_wasm(JSON.stringify(input)) as { stop_background: boolean };
+  } catch {
+    return { stop_background: input.starting === "foreground" && input.background_playing };
+  }
 }
 
 export interface SkyParams { gradient: string; stars: number; nebula: number; label: string }

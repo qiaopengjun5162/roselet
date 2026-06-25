@@ -39,6 +39,18 @@ export function apply_garden_cache_action_wasm(cache_json, action_json) {
 }
 
 /**
+ * WASM: 音频播放互斥策略（前景音频开始时暂停背景音乐，短音效不打断背景）
+ * @param {string} input_json
+ * @returns {any}
+ */
+export function audio_playback_policy_wasm(input_json) {
+    const ptr0 = passStringToWasm0(input_json, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.audio_playback_policy_wasm(ptr0, len0);
+    return takeObject(ret);
+}
+
+/**
  * WASM: Rust API 客户端 — 构造 URL、请求体、分页计算
  * @param {string} base_url
  * @param {number} page

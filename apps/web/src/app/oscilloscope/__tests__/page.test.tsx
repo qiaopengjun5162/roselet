@@ -1,5 +1,11 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+
+const mockPrepareForegroundAudio = jest.fn();
+
+jest.mock("@/lib/sound", () => ({
+  prepareForegroundAudio: () => mockPrepareForegroundAudio(),
+}));
 
 // Web Audio API mock
 const mockStart = jest.fn();
@@ -83,17 +89,18 @@ describe("OscilloscopePage", () => {
     expect(screen.getByText("▶ 开始感受")).toBeInTheDocument();
   });
 
-  it("switches to stop button after clicking start", () => {
+  it("switches to stop button after clicking start", async () => {
     render(<OscilloscopePage />);
     fireEvent.click(screen.getByText("▶ 开始感受"));
-    expect(screen.getByText("■ 停止")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("■ 停止")).toBeInTheDocument());
+    expect(mockPrepareForegroundAudio).toHaveBeenCalledTimes(1);
     expect(mockStart).toHaveBeenCalledTimes(2); // left + right osc
   });
 
-  it("stops audio and shows start button after clicking stop", () => {
+  it("stops audio and shows start button after clicking stop", async () => {
     render(<OscilloscopePage />);
     fireEvent.click(screen.getByText("▶ 开始感受"));
-    fireEvent.click(screen.getByText("■ 停止"));
+    fireEvent.click(await screen.findByText("■ 停止"));
     expect(screen.getByText("▶ 开始感受")).toBeInTheDocument();
     expect(mockClose).toHaveBeenCalled();
   });

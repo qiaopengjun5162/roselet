@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { roseToSoundParams, type RoseSoundParams } from "@/lib/rose-sound";
+import { prepareForegroundAudio } from "@/lib/sound";
 import type { Rose } from "@/lib/api";
 
 interface RosePlayerProps {
@@ -51,6 +52,7 @@ export function RosePlayer({ rose, autoPlay = false, durationMs, canvasSize = 20
       return;
     }
     setParams(p);
+    await prepareForegroundAudio();
 
     const ctx = new AudioContext();
     const merger = ctx.createChannelMerger(2);

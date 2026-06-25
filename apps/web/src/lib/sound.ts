@@ -1,4 +1,5 @@
 import * as Tone from "tone";
+import { audioPlaybackPolicy } from "@/lib/recommend";
 
 let started = false;
 let muted = false;
@@ -130,6 +131,14 @@ export async function startBgMusic() {
   Tone.getTransport().start();
   bgLoop.start(0);
   bgPlaying = true;
+}
+
+export async function prepareForegroundAudio() {
+  const policy = await audioPlaybackPolicy({
+    starting: "foreground",
+    background_playing: bgPlaying,
+  });
+  if (policy.stop_background) stopBgMusic();
 }
 
 export function stopBgMusic() {

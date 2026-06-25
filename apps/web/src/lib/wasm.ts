@@ -10,6 +10,7 @@ interface WasmMod {
   format_date_wasm: (iso: string) => unknown;
   generate_petals_wasm: (count: number, seed: bigint) => unknown;
   rose_to_sound_params_wasm: (rose_json: string) => unknown;
+  audio_playback_policy_wasm: (input_json: string) => unknown;
   color_emoji: (color: string) => string;
   color_label: (color: string) => string;
   compute_sky_params_wasm: (hour: number) => unknown;
@@ -40,4 +41,4 @@ export async function validateFeedback(content: string): Promise<FeedbackValidat
 }
 
 // 导出其他已有的 WASM 功能
-export { getRecommendation, analyzeTextWasm, getLayout, filterRosesInWasm, validatePlantInput, parseGardenResponse, parseRoseResponse, formatDate, generatePetals, roseToSoundParamsWasm, computeSkyParams, generateStarParticles, buildGardenUrl, buildPlantBody, colorEmoji, colorLabel } from "./recommend";
+export { getRecommendation, analyzeTextWasm, getLayout, filterRosesInWasm, validatePlantInput, parseGardenResponse, parseRoseResponse, formatDate, generatePetals, roseToSoundParamsWasm, audioPlaybackPolicy, computeSkyParams, generateStarParticles, buildGardenUrl, buildPlantBody, colorEmoji, colorLabel } from "./recommend";

@@ -73,7 +73,7 @@ Quality gates:
 | 模块 | 功能 | WASM 导出 |
 |------|------|----------|
 | `emotion.rs` | 文本→情绪→音频参数 | `analyze_text` |
-| `audio.rs` | 玫瑰属性→示波器参数 | `rose_to_sound_params_wasm` |
+| `audio.rs` | 玫瑰属性→示波器参数 + 音频互斥策略 | `rose_to_sound_params_wasm`, `audio_playback_policy_wasm` |
 | `color.rs` | 颜色元数据（emoji/label） | `color_emoji`, `color_label`, `color_options` |
 | `petal.rs` | 确定性花瓣轨迹（seed） | `generate_petals_wasm` |
 | `datefmt.rs` | 日期格式化（中文） | `format_date_wasm` |
@@ -116,6 +116,7 @@ Quality gates:
 - **生产密钥**：Lightsail `.env.production` 只留在服务器，不能把 `POSTGRES_PASSWORD` / `JWT_SECRET` / 私钥写入 Git 或文档
 - **Lightsail Compose 项目名**：自动部署必须固定 `COMPOSE_PROJECT_NAME=roselet`，复用 `roselet_pgdata`；否则会生成 `lightsail_*` 容器/卷并和旧后端抢占 `3001`
 - **Lightsail 环境变量变更**：只改服务器 `.env.production` 后，`docker compose restart backend` 不会把新值注入现有容器；必须结合 `~/roselet/.current_backend_image` 对 backend 执行 `up -d --force-recreate`
+- **前景音频互斥**：听一朵玫瑰 / 示波器试听前必须调用 Web `prepareForegroundAudio()`；是否停掉导航栏背景音乐由 Rust WASM `audio_playback_policy_wasm` 决定，短音效不打断背景音乐
 
 ## 常用命令（justfile）
 ```bash

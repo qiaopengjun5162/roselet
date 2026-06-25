@@ -2,6 +2,28 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：音频互斥策略修复
+
+### 问题
+- 用户反馈听一朵玫瑰或在示波器试听时，导航栏小喇叭背景音乐仍可能继续播放，两个声音叠在一起。
+
+### 根因
+- 现有测试覆盖了音频能播放、能停止，但没有覆盖多个音源之间的互斥策略。
+- `RosePlayer` 和示波器页启动 Web Audio 前没有统一停止背景音乐。
+
+### 处理
+- 在 `crates/recommend/src/audio.rs` 增加 Rust 可测试的 `playback_policy_internal`，并通过 `audio_playback_policy_wasm` 导出给 Web。
+- Web 新增 `prepareForegroundAudio()`，启动前景音频前按 Rust/WASM 策略停止背景音乐；短音效仍允许和背景音乐共存。
+- `RosePlayer` 和示波器页启动前统一调用 `prepareForegroundAudio()`。
+- 重新执行 `just wasm`，提交真实 `apps/web/public/pkg/` WASM 产物，避免部署包与源码导出错位。
+- 更新 `AGENTS.md` / `CLAUDE.md`，记录音频策略边界。
+
+### 验证
+- `pnpm --filter web test -- src/lib/__tests__/sound.test.ts src/lib/__tests__/recommend.test.ts src/components/__tests__/rose-player.test.tsx src/app/oscilloscope/__tests__/page.test.tsx --runInBand`
+- `cargo nextest run -p roselet-recommend audio::tests::test_`
+- `pnpm --filter web typecheck`
+- `cargo nextest run -p roselet-recommend`
+
 ## 2026-05-27 会话 #1
 
 ### 会话目标

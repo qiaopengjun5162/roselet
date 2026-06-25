@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { analyzeTextAsync, type SoundParams } from "@/lib/text-to-sound";
+import { prepareForegroundAudio } from "@/lib/sound";
 
 const PRESETS = [
   { label: "同频共振", fx: 1, fy: 1, emotion: "gratitude", desc: "心与心的共鸣，感恩最纯粹的形状" },
@@ -84,8 +85,9 @@ export default function OscilloscopePage() {
     return () => clearTimeout(id);
   }, [inputText, mode]);
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     const p = activeParams;
+    await prepareForegroundAudio();
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
     const merger = ctx.createChannelMerger(2);

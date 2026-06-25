@@ -360,6 +360,17 @@ pub fn rose_to_sound_params_wasm(rose_json: &str) -> JsValue {
     serde_wasm_bindgen::to_value(&audio::rose_to_sound_params_internal(&input)).unwrap()
 }
 
+/// WASM: 音频播放互斥策略（前景音频开始时暂停背景音乐，短音效不打断背景）
+#[wasm_bindgen]
+pub fn audio_playback_policy_wasm(input_json: &str) -> JsValue {
+    let input: audio::PlaybackPolicyInput =
+        serde_json::from_str(input_json).unwrap_or(audio::PlaybackPolicyInput {
+            starting: audio::AudioSource::Foreground,
+            background_playing: false,
+        });
+    serde_wasm_bindgen::to_value(&audio::playback_policy_internal(&input)).unwrap()
+}
+
 /// WASM: 根据小时(0-23)返回天空参数 — 梯度/星空/星云/时段标签
 #[wasm_bindgen]
 pub fn compute_sky_params_wasm(hour: u32) -> JsValue {

@@ -16,6 +16,7 @@ function mockWasm(overrides: Record<string, unknown> = {}) {
     format_date_wasm: jest.fn().mockReturnValue({ relative: "刚刚" }),
     generate_petals_wasm: jest.fn().mockReturnValue([{ left: 10 }]),
     rose_to_sound_params_wasm: jest.fn().mockReturnValue({ base_freq: 220 }),
+    audio_playback_policy_wasm: jest.fn().mockReturnValue({ stop_background: true }),
     compute_sky_params_wasm: jest.fn().mockReturnValue({ label: "夜晚" }),
     generate_star_particles_wasm: jest.fn().mockReturnValue([{ left: 20 }]),
     build_garden_url: jest.fn().mockReturnValue("/garden-from-wasm"),
@@ -66,6 +67,7 @@ describe("recommend WASM wrappers", () => {
     await expect(recommend.formatDate("2026-01-01")).resolves.toEqual({ relative: "刚刚" });
     await expect(recommend.generatePetals(1, BigInt(1))).resolves.toEqual([{ left: 10 }]);
     await expect(recommend.roseToSoundParamsWasm("{}")).resolves.toEqual({ base_freq: 220 });
+    await expect(recommend.audioPlaybackPolicy({ starting: "foreground", background_playing: true })).resolves.toEqual({ stop_background: true });
     await expect(recommend.computeSkyParams(23)).resolves.toEqual({ label: "夜晚" });
     await expect(recommend.generateStarParticles(1, BigInt(2))).resolves.toEqual([{ left: 20 }]);
     await expect(recommend.buildGardenUrl("http://x", 1, 20, "red")).resolves.toBe("/garden-from-wasm");
@@ -87,6 +89,10 @@ describe("recommend WASM wrappers", () => {
     }));
     expect(wasm.build_plant_body).toHaveBeenCalledWith("red", "g", "", "", true, "");
     expect(wasm.build_optimistic_rose_wasm).toHaveBeenCalledWith("{}", "temp-1", "now", "alice");
+    expect(wasm.audio_playback_policy_wasm).toHaveBeenCalledWith(JSON.stringify({
+      starting: "foreground",
+      background_playing: true,
+    }));
   });
 
   it("uses TS fallbacks when selected WASM calls throw", async () => {
@@ -97,6 +103,7 @@ describe("recommend WASM wrappers", () => {
       color_label: jest.fn(() => { throw new Error("boom"); }),
       burstFireworks: jest.fn(() => { throw new Error("boom"); }),
       getFireworkLaunches: jest.fn(() => { throw new Error("boom"); }),
+      audio_playback_policy_wasm: jest.fn(() => { throw new Error("boom"); }),
     });
     const recommend = await import("../recommend");
 
@@ -110,5 +117,7 @@ describe("recommend WASM wrappers", () => {
     expect(recommend.colorLabel("missing")).toBe("missing");
     await expect(recommend.burstFireworks(0, 0, 1, 0)).resolves.toEqual([]);
     await expect(recommend.getFireworkLaunches()).resolves.toEqual([]);
+    await expect(recommend.audioPlaybackPolicy({ starting: "foreground", background_playing: true })).resolves.toEqual({ stop_background: true });
+    await expect(recommend.audioPlaybackPolicy({ starting: "effect", background_playing: true })).resolves.toEqual({ stop_background: false });
   });
 });

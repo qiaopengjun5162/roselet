@@ -7,6 +7,11 @@ const mockLoopStart = jest.fn();
 const mockLoopStop = jest.fn();
 const mockLoopDispose = jest.fn();
 const mockDestination = { mute: false };
+const mockAudioPlaybackPolicy = jest.fn();
+
+jest.mock("@/lib/recommend", () => ({
+  audioPlaybackPolicy: (...args: unknown[]) => mockAudioPlaybackPolicy(...args),
+}));
 
 const createMockSynth = () => ({
   triggerAttackRelease: mockTriggerAttackRelease,
@@ -40,6 +45,7 @@ describe("sound", () => {
     jest.useFakeTimers();
     jest.resetModules();
     jest.clearAllMocks();
+    mockAudioPlaybackPolicy.mockResolvedValue({ stop_background: true });
     mockDestination.mute = false;
     sound = require("@/lib/sound");
   });
@@ -137,6 +143,20 @@ describe("sound", () => {
     expect(mockLoopStop).toHaveBeenCalledTimes(1);
     expect(mockLoopDispose).toHaveBeenCalledTimes(1);
     expect(mockDispose).toHaveBeenCalledTimes(1);
+    expect(mockTransportStop).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops background music before foreground audio when policy requires it", async () => {
+    await sound.startBgMusic();
+
+    await sound.prepareForegroundAudio();
+
+    expect(mockAudioPlaybackPolicy).toHaveBeenCalledWith({
+      starting: "foreground",
+      background_playing: true,
+    });
+    expect(sound.isBgPlaying()).toBe(false);
+    expect(mockLoopStop).toHaveBeenCalledTimes(1);
     expect(mockTransportStop).toHaveBeenCalledTimes(1);
   });
 
