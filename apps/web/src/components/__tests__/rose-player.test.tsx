@@ -105,6 +105,7 @@ function createAudioContextMock() {
     createOscillator: jest.fn(() => oscillators.shift()),
     createGain: jest.fn(() => gains.shift()),
     createDelay: jest.fn().mockReturnValue(delay),
+    resume: jest.fn().mockResolvedValue(undefined),
     close: jest.fn(),
   };
   return { ctx, merger, delay };
@@ -156,6 +157,20 @@ describe("RosePlayer", () => {
     expect(audioContexts[0].ctx.close).toHaveBeenCalledTimes(1);
     expect(onStop).toHaveBeenCalledTimes(1);
     expect(cancelAnimationFrame).toHaveBeenCalled();
+  });
+
+  it("creates audio context before awaiting foreground preparation", async () => {
+    mockPrepareForegroundAudio.mockImplementation(() => {
+      expect(AudioContext).toHaveBeenCalledTimes(1);
+      return Promise.resolve();
+    });
+
+    render(<RosePlayer rose={rose} />);
+
+    const playButton = await screen.findByRole("button", { name: "▶ 听这朵玫瑰" });
+    fireEvent.click(playButton);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "■ 停止" })).toBeInTheDocument());
   });
 
   it("auto-plays and stops after duration", async () => {

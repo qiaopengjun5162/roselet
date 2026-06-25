@@ -58,6 +58,23 @@
 ### 验证
 - `rg -n "RELEASE_PROCESS|生产发布|GitHub Release|版本" AGENTS.md CLAUDE.md docs/RELEASE_PROCESS.md`
 
+## 2026-06-25 会话：玫瑰播放器移动端无声排查
+
+### 问题
+- 用户反馈点击“听这朵玫瑰”时没有声音。
+
+### 根因
+- `RosePlayer` 在点击后先 `await prepareForegroundAudio()`，再创建 `AudioContext`。
+- 移动端浏览器常要求 Web Audio 上下文必须在用户手势的同步调用链里创建或恢复；一旦跨过异步等待，可能进入挂起状态，表现为按钮进入播放但无声。
+
+### 处理
+- 点击开始时立即创建并 `resume()` `AudioContext`，随后再加载参数、停止背景音乐并连接 oscillator。
+- `prepareForegroundAudio()` 失败时不再阻断玫瑰播放器发声。
+- 补充测试约束：前景音频准备前应已创建 `AudioContext`。
+
+### 验证
+- 当前受限环境重跑 `pnpm --filter web typecheck` 和 `pnpm --filter web test -- src/components/__tests__/rose-player.test.tsx --runInBand` 时，均在测试启动前被 pnpm registry 签名校验 fetch 失败阻断，未跑到 TypeScript/Jest 断言层。
+
 ## 2026-05-27 会话 #1
 
 ### 会话目标

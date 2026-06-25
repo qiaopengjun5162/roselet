@@ -42,19 +42,22 @@ export function RosePlayer({ rose, autoPlay = false, durationMs, canvasSize = 20
   }, [onStop]);
 
   const start = useCallback(async () => {
+    const ctx = new AudioContext();
+    const resumePromise = ctx.resume?.().catch(() => undefined);
+
     setLoading(true);
     const p = params ?? await roseToSoundParams(rose).catch(() => null);
     setLoading(false);
 
     if (!p) {
+      void ctx.close();
       // WASM 参数未就绪时重试一次；仍失败则保持静默，避免报错打断用户
       setTimeout(() => roseToSoundParams(rose).then(setParams).catch(() => {}), 0);
       return;
     }
     setParams(p);
-    await prepareForegroundAudio();
-
-    const ctx = new AudioContext();
+    await prepareForegroundAudio().catch(() => undefined);
+    await resumePromise;
     const merger = ctx.createChannelMerger(2);
 
     const aL = ctx.createAnalyser(); aL.fftSize = 256; analyserLRef.current = aL;
