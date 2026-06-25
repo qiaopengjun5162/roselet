@@ -2,6 +2,19 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：新增 GitHub CODEOWNERS
+
+### 问题
+- 仓库还没有 `CODEOWNERS`，GitHub 无法按文件类型和目录自动指派评审人。
+- 需求里给了 `/.github/ [@补全提示词](thread://019e9c52-1803-73c2-9431-cdd4ba8ec119)`，但 GitHub `CODEOWNERS` 不支持线程链接语法。
+
+### 处理
+- 新增 `.github/CODEOWNERS`，把 Go 文件、配置文件、根目录 `go.mod` / `go.sum`、以及 `/.github/` 目录统一指派给 `@qiaopengjun5162`。
+- 将无法被 GitHub 解析的 `thread://...` 写法降级为 GitHub 支持的 owner 语法，保证配置实际生效。
+
+### 验证
+- `git diff --check`
+
 ## 2026-06-25 会话：修复 Lightsail 部署 `VersionMismatch(8)`
 
 ### 问题

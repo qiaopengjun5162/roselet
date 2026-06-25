@@ -1,0 +1,14 @@
+# Go files
+*.go @qiaopengjun5162
+
+# Config files
+*.yml @qiaopengjun5162
+*.yaml @qiaopengjun5162
+*.json @qiaopengjun5162
+
+# Root project files
+/go.mod @qiaopengjun5162
+/go.sum @qiaopengjun5162
+
+# GitHub files
+/.github/ @qiaopengjun5162
