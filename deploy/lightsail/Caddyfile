@@ -1,0 +1,14 @@
+(roselet_backend) {
+    reverse_proxy 127.0.0.1:3001 {
+        lb_try_duration 15s
+        lb_try_interval 250ms
+    }
+}
+
+roselet.47.131.238.0.sslip.io {
+    import roselet_backend
+}
+
+:80 {
+    import roselet_backend
+}

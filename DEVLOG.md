@@ -2,6 +2,23 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：收口 Lightsail Caddy 反代配置
+
+### 会话目标
+把生产 Caddy 配置收口到仓库，并给单机后端部署窗口增加短重试，尽量减少用户在切镜像时看到的瞬时 `502`。
+
+### 完成的工作
+- 新增 `deploy/lightsail/Caddyfile`，作为 Lightsail Caddy 反代配置的仓库共享源。
+- 对 `127.0.0.1:3001` 增加 `lb_try_duration 15s` / `lb_try_interval 250ms`，尽量把单机后端切镜像窗口里的短暂不可达转换成客户端等待。
+- 更新 `AGENTS.md`、`CLAUDE.md`、`docs/AWS_LIGHTSAIL_DEPLOYMENT.md`、`docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`，明确以后不要只在服务器手改 `/etc/caddy/Caddyfile`。
+- 已将 `deploy/lightsail/Caddyfile` 实际同步到 Lightsail `/etc/caddy/Caddyfile` 并成功热重载生效。
+
+### 验证
+- `git diff --check`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'sudo caddy validate --config /tmp/roselet-Caddyfile --adapter caddyfile'` → `Valid configuration`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'sudo cp /tmp/roselet-Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy'` → 成功
+- `curl -i --max-time 15 -sS https://roselet.47.131.238.0.sslip.io/health` → `HTTP/2 200`
+
 ## 2026-06-25 会话：修复花圃加载失败前端回退
 
 ### 问题

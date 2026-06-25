@@ -120,6 +120,7 @@ Quality gates:
 - **Cloudflare Pages 构建**：`cd apps/web && pnpm build:cf`，输出目录 `apps/web/dist`，与 Vercel `standalone` 构建共存
 - **Stats 后台**：Rust `/api/stats` 需要 JWT + `ADMIN_USER_IDS` 白名单；生产服务器 `.env.production` 必须配置管理员 user id
 - **生产密钥**：Lightsail `.env.production` 只留在服务器，不能把 `POSTGRES_PASSWORD` / `JWT_SECRET` / 私钥写入 Git 或文档
+- **Lightsail Caddy 配置源**：生产 Caddy 站点配置以 `deploy/lightsail/Caddyfile` 为仓库共享源；当前对 `127.0.0.1:3001` 开启 `lb_try_duration 15s` / `lb_try_interval 250ms`，用于在单机切镜像时尽量把短暂 `502` 转成客户端等待
 - **Lightsail Compose 项目名**：自动部署必须固定 `COMPOSE_PROJECT_NAME=roselet`，复用 `roselet_pgdata`；否则会生成 `lightsail_*` 容器/卷并和旧后端抢占 `3001`
 - **Lightsail 环境变量变更**：只改服务器 `.env.production` 后，`docker compose restart backend` 不会把新值注入现有容器；必须结合 `~/roselet/.current_backend_image` 对 backend 执行 `up -d --force-recreate`
 - **Lightsail 部署窗口**：当前单机 `docker compose up -d backend` 会在切镜像时短暂释放 `127.0.0.1:3001`；这段时间 `https://roselet.47.131.238.0.sslip.io` 会返回几秒到十几秒 `502`，属于发布窗口，不是持续性崩溃。判断时先看 `http://47.131.238.0/health`、`docker inspect roselet-backend-1` 的 `StartedAt`，再对齐最近 `Deploy Backend` workflow 时间线。

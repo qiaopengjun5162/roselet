@@ -463,11 +463,7 @@ curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key | sudo gpg --dea
 curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt | sudo tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
 sudo apt-get update
 sudo apt-get install -y caddy
-cat <<EOF | sudo tee /etc/caddy/Caddyfile >/dev/null
-:80 {
-    reverse_proxy 127.0.0.1:3001
-}
-EOF
+cat deploy/lightsail/Caddyfile | sudo tee /etc/caddy/Caddyfile >/dev/null
 sudo systemctl reload caddy
 sudo systemctl status caddy --no-pager -l | sed -n "1,80p"
 '
@@ -476,16 +472,29 @@ sudo systemctl status caddy --no-pager -l | sed -n "1,80p"
 HTTPS 临时域名配置：
 
 ```caddyfile
+(roselet_backend) {
+    reverse_proxy 127.0.0.1:3001 {
+        lb_try_duration 15s
+        lb_try_interval 250ms
+    }
+}
+
 roselet.47.131.238.0.sslip.io {
-    reverse_proxy 127.0.0.1:3001
+    import roselet_backend
 }
 
 :80 {
-    reverse_proxy 127.0.0.1:3001
+    import roselet_backend
 }
 ```
 
 `sslip.io` 会把域名解析回 IP，Caddy 可自动签发 Let's Encrypt 证书。等后续购买正式域名后，只需要把站点名替换为正式域名。
+
+当前仓库内共享源为：
+
+- `deploy/lightsail/Caddyfile`
+
+之所以增加 `lb_try_duration 15s` / `lb_try_interval 250ms`，是因为 [Caddy 官方 `reverse_proxy` 文档](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy) 明确说明：开启 retries 后，即使只有一个 upstream，也可以在 upstream reboot/redeploy 时暂时持有请求，尽量减少可见错误。
 
 验证：
 

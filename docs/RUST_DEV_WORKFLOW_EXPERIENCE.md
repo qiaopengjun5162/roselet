@@ -421,6 +421,7 @@ ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
   - `gh run view <deploy-run-id> --json jobs`
 - 如果 `StartedAt` 刚好落在报错窗口附近，且最近 `Deploy Backend` workflow 刚执行完成，那这更像一次正常发布窗口，而不是应用自身持续崩溃。
 - 前端要保留缓存兜底，避免把一次短暂发布窗口放大成整页不可用。
+- Caddy 侧可以利用官方 `reverse_proxy` 的 `lb_try_duration` / `lb_try_interval` 给单 upstream 一个短重试窗口，让客户端更可能等到新容器监听，而不是立刻看到 `502`。
 
 验证：
 - `curl -i --max-time 15 http://47.131.238.0/health` 返回 `200`

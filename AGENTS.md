@@ -18,6 +18,7 @@
 - Vercel 生产前端必须使用 HTTPS API 基址和 `wss://` WebSocket，不能再配置 `http://47.131.238.0`，否则浏览器 mixed content 会拦截请求。
 - Rust `/api/stats` 是管理员后台接口，生产必须在 Lightsail `.env.production` 配置 `ADMIN_USER_IDS`，不要把统计后台公开给所有登录用户。
 - Lightsail 服务器上的 `.env.production`、数据库密码、JWT_SECRET、私钥不能写入 Git；文档只记录命令模板和公开地址。
+- Lightsail 的 Caddy 反代配置以 `deploy/lightsail/Caddyfile` 为仓库内共享源；生产如果只在服务器上手改 `/etc/caddy/Caddyfile` 而不回写仓库，后续排障和重装会漂移。
 - 已发布并执行过的 `crates/backend/migrations/*.sql` 只能追加新文件，不能改旧文件内容，哪怕只改注释；`sqlx` 会校验 checksum，生产启动会直接报 `VersionMismatch(n)`。
 - Lightsail 自动部署必须固定 Docker Compose project name 为 `roselet`，复用 `roselet_pgdata`；不要让 `deploy/lightsail/docker-compose.backend.yml` 默认生成 `lightsail_*` 容器和卷。
 - `Deploy Backend` 只应在后端镜像相关路径变化或手动触发时部署；文档、Web、小程序变更不应重启生产 Rust 后端。
