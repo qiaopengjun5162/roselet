@@ -136,6 +136,8 @@ export function RoseDetailClient({ id }: { id: string }) {
                   </div>
                   {rose.is_private ? (
                     <span className="whitespace-nowrap rounded-full border border-emerald-400/30 px-3 py-1 text-xs text-emerald-200">已私密</span>
+                  ) : rose.is_gift ? (
+                    <span className="whitespace-nowrap rounded-full border border-amber-400/30 px-3 py-1 text-xs text-amber-200" title="已送给别人的玫瑰不能转为私密">已送礼</span>
                   ) : (
                     <Button size="sm" onClick={makePrivate} disabled={saving} className="bg-rose-500 hover:bg-rose-600">
                       {saving ? "设置中..." : "设为私密"}
@@ -144,7 +146,11 @@ export function RoseDetailClient({ id }: { id: string }) {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-black/10 p-3">
                   <p className="text-sm font-medium text-slate-100">送给别人</p>
-                  <p className="mt-1 text-xs text-slate-400">事后补送这朵玫瑰会单独做，避免和内容修改混在一起。</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {rose.is_gift
+                      ? `这朵玫瑰已送给 ${rose.recipient_nickname}。`
+                      : "已种下的玫瑰暂不支持事后补送，想送人请在种花时填写对方昵称。"}
+                  </p>
                 </div>
               </div>
             )}

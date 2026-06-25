@@ -125,6 +125,31 @@ describe("PlantPage", () => {
     });
   });
 
+  it("disables private toggle when a recipient is entered", () => {
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+
+    const privateToggle = screen.getByText("🌐 公开分享");
+    expect(privateToggle).not.toBeDisabled();
+
+    const recipientInput = screen.getAllByRole("textbox")[0];
+    fireEvent.change(recipientInput, { target: { value: "小花" } });
+
+    expect(privateToggle).toBeDisabled();
+  });
+
+  it("switches to public when typing a recipient", async () => {
+    createRose.mockResolvedValue({ id: "r1", color: "red" });
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByText("🌐 公开分享"));
+    expect(screen.getByText("🔒 仅自己可见")).toBeInTheDocument();
+
+    const recipientInput = screen.getAllByRole("textbox")[0];
+    fireEvent.change(recipientInput, { target: { value: "小花" } });
+    expect(screen.getByText("🌐 公开分享")).toBeInTheDocument();
+  });
+
   it("should show error on submit failure", async () => {
     createRose.mockRejectedValue(new Error("fail"));
     render(<PlantPage />);

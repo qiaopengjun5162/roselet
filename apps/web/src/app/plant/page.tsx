@@ -59,6 +59,23 @@ export default function PlantPage() {
   const hasContent = gratitude.trim() || anxiety.trim() || hope.trim();
   const isGift = recipientNickname.trim().length > 0;
 
+  function togglePrivate() {
+    const next = !isPrivate;
+    setIsPrivate(next);
+    if (next) {
+      // 私密玫瑰只给自己看，不能同时送人
+      setRecipientNickname("");
+    }
+  }
+
+  function handleRecipientChange(value: string) {
+    setRecipientNickname(value);
+    if (value.trim().length > 0) {
+      // 送礼需要对方能看到，因此必须是公开玫瑰
+      setIsPrivate(false);
+    }
+  }
+
   // 未登录跳转登录页，登录后跳回种花页
   useEffect(() => {
     if (!getToken()) {
@@ -350,8 +367,10 @@ export default function PlantPage() {
         <div className="flex flex-col items-center gap-3">
           <button
             type="button"
-            onClick={() => setIsPrivate(!isPrivate)}
-            className={`px-4 py-1.5 rounded-full text-xs transition-all ${
+            onClick={togglePrivate}
+            disabled={isGift}
+            title={isGift ? "送礼需要公开，对方才能看到" : undefined}
+            className={`px-4 py-1.5 rounded-full text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               isPrivate
                 ? "bg-purple-500/20 border border-purple-500/40 text-purple-300"
                 : "bg-white/5 border border-white/10 text-slate-500"
@@ -359,16 +378,20 @@ export default function PlantPage() {
           >
             {isPrivate ? "🔒 仅自己可见" : "🌐 公开分享"}
           </button>
+          {isPrivate && (
+            <p className="text-[10px] text-purple-300/70">私密玫瑰不会送给任何人</p>
+          )}
 
           {/* Recipient nickname input */}
           <div className="w-full max-w-xs">
             <input
               type="text"
               value={recipientNickname}
-              onChange={(e) => setRecipientNickname(e.target.value)}
-              placeholder="送给谁？（留空=为自己种花）"
+              onChange={(e) => handleRecipientChange(e.target.value)}
+              placeholder="送给谁？（留空=为自己种花；送礼会公开）"
               maxLength={50}
-              className="w-full rounded-full border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-500 px-4 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-rose-400"
+              disabled={isPrivate}
+              className="w-full rounded-full border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-500 px-4 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-rose-400 disabled:opacity-40 disabled:cursor-not-allowed"
             />
           </div>
         </div>

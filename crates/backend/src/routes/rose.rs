@@ -45,6 +45,18 @@ pub async fn create_rose(
     }
 
     let is_private = input.is_private.unwrap_or(false);
+    let has_recipient = input
+        .recipient_nickname
+        .as_deref()
+        .map(|n| !n.trim().is_empty())
+        .unwrap_or(false);
+
+    // 私密玫瑰只给自己看；送礼意味着对方也要看到，因此两者互斥。
+    if is_private && has_recipient {
+        return Err(AppError::BadRequest(
+            "私密玫瑰只能留给自己，送礼请保持公开".into(),
+        ));
+    }
 
     // 私密是安全感，但仍需要一个温和上限，避免公共资源被无边界占用。
     if is_private {
@@ -228,6 +240,13 @@ pub async fn update_rose(
     }
 
     let target_private = input.target_private().map_err(AppError::BadRequest)?;
+
+    // 已有接收人的玫瑰不能再设为私密，否则会变成“私密礼物”，与“私密=仅自己可见”的语义冲突。
+    if target_private && !existing.is_private && existing.recipient_nickname.is_some() {
+        return Err(AppError::BadRequest(
+            "已送给别人的玫瑰不能再设为私密".into(),
+        ));
+    }
 
     if target_private && !existing.is_private {
         let count: i64 = sqlx::query_scalar(

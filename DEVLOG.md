@@ -2,6 +2,34 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：理清私密与送礼的互斥关系
+
+### 问题
+- 用户发现种花页同时存在「设为私密」和「送给谁」，逻辑上容易混淆：私密是不是只能给自己？已经种下的公开玫瑰能不能事后送人？
+- 玫瑰详情页「送给别人」只有占位文案，没有实际功能。
+
+### 根因
+- 后端 `CreateRose` 同时接受 `is_private=true` 和 `recipient_nickname`，会创建「私密礼物」，与 UI 上「仅自己可见」的文案冲突。
+- `PUT /api/rose/{id}` 只允许公开转私密，没有支持事后补送；详情页文案也没有把这一点说清楚。
+
+### 处理（按方案 A：私密仅限自己，送礼必须公开）
+- 后端 `create_rose`：当 `is_private=true` 且存在 `recipient_nickname` 时返回 400。
+- 后端 `update_rose`：当已有 `recipient_nickname` 的玫瑰被设为私密时返回 400。
+- 种花页：
+  - 填了接收人时自动切回公开，并禁用私密 toggle。
+  - 切到私密时清空接收人输入。
+  - 文案明确「私密玫瑰不会送给任何人」「送礼会公开」。
+- 玫瑰详情页：
+  - 已送礼的玫瑰显示「已送礼」，不再显示「设为私密」按钮。
+  - 未送礼的玫瑰明确提示「已种下的玫瑰暂不支持事后补送，想送人请在种花时填写对方昵称」。
+- 新增后端集成测试和前端组件测试。
+
+### 验证
+- `cargo fmt --all && cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings` 通过
+- `DATABASE_URL=postgres://localhost/roselet_test NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features -j1` → 282 passed
+- `cd apps/web && pnpm typecheck && pnpm test -- --runInBand` → 174 passed
+- `cd apps/miniprogram && pnpm test -- --runInBand` → 66 passed
+
 ## 2026-06-25 会话：首页「星空动态」
 
 ### 问题

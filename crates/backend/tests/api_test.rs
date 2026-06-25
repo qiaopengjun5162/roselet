@@ -203,6 +203,81 @@ async fn test_create_rose_empty_content() {
 }
 
 #[tokio::test]
+async fn test_create_rose_private_and_recipient_are_mutually_exclusive() {
+    let (app, pool) = create_test_app().await;
+    let token = create_test_jwt(&pool, "private-gift-user").await;
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/rose")
+                .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "color": "red",
+                        "gratitude": "感恩",
+                        "is_private": true,
+                        "recipient_nickname": "小花"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_update_gift_rose_to_private_is_rejected() {
+    let (app, pool) = create_test_app().await;
+    let token = create_test_jwt(&pool, "gift-owner").await;
+
+    let create_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/rose")
+                .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "color": "yellow",
+                        "gratitude": "送你",
+                        "recipient_nickname": "小花"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+    let rose: Value =
+        serde_json::from_slice(&create_response.into_body().collect().await.unwrap().to_bytes())
+            .unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let update_response = app
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/api/rose/{}", rose_id))
+                .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::from(
+                    serde_json::to_vec(&json!({ "is_private": true })).unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(update_response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
 async fn test_get_rose_by_id() {
     let (app, pool) = create_test_app().await;
     let token = create_test_jwt(&pool, "get-rose-user").await;
