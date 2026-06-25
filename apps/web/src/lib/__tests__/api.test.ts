@@ -23,7 +23,6 @@ import {
   getGarden,
   getRose,
   updateRose,
-  deleteRose,
   setToken,
   setRefreshToken,
   setUser,
@@ -509,7 +508,7 @@ describe("API Client", () => {
         json: async () => mockRose,
       });
 
-      const result = await updateRose("123", { color: "yellow", gratitude: "修改后" });
+      const result = await updateRose("123", { is_private: true });
 
       expect(result).toEqual(mockRose);
       expect(global.fetch).toHaveBeenCalledWith(
@@ -519,38 +518,14 @@ describe("API Client", () => {
           headers: expect.objectContaining({
             Authorization: "Bearer test-token",
           }),
+          body: JSON.stringify({ is_private: true }),
         })
       );
     });
 
     it("should throw error on failure", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
-      await expect(updateRose("123", { color: "red" })).rejects.toThrow("Failed to update rose");
-    });
-  });
-
-  describe("deleteRose", () => {
-    it("should delete a rose", async () => {
-      setToken("test-token");
-
-      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-
-      await deleteRose("123");
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:3001/api/rose/123",
-        expect.objectContaining({
-          method: "DELETE",
-          headers: expect.objectContaining({
-            Authorization: "Bearer test-token",
-          }),
-        })
-      );
-    });
-
-    it("should throw error on failure", async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
-      await expect(deleteRose("123")).rejects.toThrow("Failed to delete rose");
+      await expect(updateRose("123", { is_private: true })).rejects.toThrow("Failed to update rose");
     });
   });
 

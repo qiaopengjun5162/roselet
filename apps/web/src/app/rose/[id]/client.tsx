@@ -5,12 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getRose, updateRose, deleteRose, getUser, toggleLike, type Rose, type UpdateRose } from "@/lib/api";
+import { getRose, updateRose, getUser, toggleLike, type Rose } from "@/lib/api";
 import { playClick, playPlant, playLike } from "@/lib/sound";
 import { RosePlayer } from "@/components/rose-player";
 import { colorEmoji, colorLabel } from "@/lib/recommend";
-
-const COLORS = ["red", "white", "yellow"];
 
 function resolveRoseId(id: string): string {
   if (id !== "placeholder" || typeof window === "undefined") return id;
@@ -24,10 +22,8 @@ export function RoseDetailClient({ id }: { id: string }) {
   const [rose, setRose] = useState<Rose | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState<UpdateRose>({});
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   const user = getUser();
   const isOwner = user && rose && rose.user_id === user.id;
@@ -39,42 +35,23 @@ export function RoseDetailClient({ id }: { id: string }) {
       .finally(() => setLoading(false));
   }, [roseId]);
 
-  function startEdit() {
-    if (!rose) return;
+  function toggleSettings() {
     playClick();
-    setEditData({
-      color: rose.color,
-      gratitude: rose.gratitude ?? undefined,
-      anxiety: rose.anxiety ?? undefined,
-      hope: rose.hope ?? undefined,
-    });
-    setEditing(true);
+    setSettingsOpen((open) => !open);
   }
 
-  async function handleSave() {
+  async function makePrivate() {
     if (!rose) return;
     setSaving(true);
     try {
-      const updated = await updateRose(rose.id, editData);
+      const updated = await updateRose(rose.id, { is_private: true });
       setRose(updated);
-      setEditing(false);
+      setSettingsOpen(false);
       playPlant();
     } catch {
-      setError("保存失败");
+      setError("设置失败");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!rose || !confirm("确定要删除这朵玫瑰吗？")) return;
-    setDeleting(true);
-    try {
-      await deleteRose(rose.id);
-      router.push("/garden");
-    } catch {
-      setError("删除失败");
-      setDeleting(false);
     }
   }
 
@@ -123,13 +100,10 @@ export function RoseDetailClient({ id }: { id: string }) {
           <Link href="/garden">
             <Button variant="ghost" size="sm" className="text-slate-300 hover:text-rose-300 hover:bg-white/5">← 返回花圃</Button>
           </Link>
-          {isOwner && !editing && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={startEdit} className="border-white/20 text-slate-300 hover:border-white/40">编辑</Button>
-              <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
-                {deleting ? "删除中..." : "删除"}
-              </Button>
-            </div>
+          {isOwner && (
+            <Button variant="outline" size="sm" onClick={toggleSettings} className="border-white/20 text-slate-300 hover:border-white/40">
+              玫瑰设置
+            </Button>
           )}
         </div>
 
@@ -147,119 +121,89 @@ export function RoseDetailClient({ id }: { id: string }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {editing ? (
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  {COLORS.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setEditData({ ...editData, color: c })}
-                      className={`px-4 py-2 rounded-lg border text-sm transition-colors ${
-                        editData.color === c
-                          ? "border-rose-500 bg-rose-50 text-rose-700"
-                          : "border-gray-200 hover:border-rose-300"
-                      }`}
-                    >
-                      {colorEmoji(c)} {colorLabel(c)}
-                    </button>
-                  ))}
-                </div>
+            {settingsOpen && isOwner && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
                 <div>
-                  <label className="text-sm font-medium text-rose-600">感恩</label>
-                  <textarea
-                    value={editData.gratitude ?? ""}
-                    onChange={(e) => setEditData({ ...editData, gratitude: e.target.value || null })}
-                    className="w-full mt-1 px-3 py-2 rounded-lg border border-white/15 bg-white/5 text-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-rose-400"
-                    rows={2}
-                  />
+                  <h2 className="text-base font-semibold text-slate-100">玫瑰设置</h2>
+                  <p className="mt-1 text-sm text-slate-400">
+                    种下后的文字会保留下来，不再改写；这里先放只影响可见性的设置。
+                  </p>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-amber-600">焦虑</label>
-                  <textarea
-                    value={editData.anxiety ?? ""}
-                    onChange={(e) => setEditData({ ...editData, anxiety: e.target.value || null })}
-                    className="w-full mt-1 px-3 py-2 rounded-lg border border-white/15 bg-white/5 text-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-rose-400"
-                    rows={2}
-                  />
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-100">设为私密</p>
+                    <p className="mt-1 text-xs text-slate-400">设为私密后只给你自己看，暂不支持重新公开。</p>
+                  </div>
+                  {rose.is_private ? (
+                    <span className="whitespace-nowrap rounded-full border border-emerald-400/30 px-3 py-1 text-xs text-emerald-200">已私密</span>
+                  ) : (
+                    <Button size="sm" onClick={makePrivate} disabled={saving} className="bg-rose-500 hover:bg-rose-600">
+                      {saving ? "设置中..." : "设为私密"}
+                    </Button>
+                  )}
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-green-600">期待</label>
-                  <textarea
-                    value={editData.hope ?? ""}
-                    onChange={(e) => setEditData({ ...editData, hope: e.target.value || null })}
-                    className="w-full mt-1 px-3 py-2 rounded-lg border border-white/15 bg-white/5 text-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-rose-400"
-                    rows={2}
-                  />
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setEditing(false)}>取消</Button>
-                  <Button onClick={handleSave} disabled={saving} className="bg-rose-500 hover:bg-rose-600">
-                    {saving ? "保存中..." : "保存"}
-                  </Button>
+                <div className="rounded-xl border border-white/10 bg-black/10 p-3">
+                  <p className="text-sm font-medium text-slate-100">送给别人</p>
+                  <p className="mt-1 text-xs text-slate-400">事后补送这朵玫瑰会单独做，避免和内容修改混在一起。</p>
                 </div>
               </div>
-            ) : (
-              <>
-                {rose.gratitude && (
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-rose-600">感恩</h3>
-                    <p className="text-base leading-relaxed bg-rose-900/20 border border-rose-500/20 p-4 rounded-lg text-slate-200">{rose.gratitude}</p>
-                  </div>
-                )}
-                {rose.anxiety && (
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-amber-600">焦虑</h3>
-                    <p className="text-base leading-relaxed bg-amber-900/20 border border-amber-500/20 p-4 rounded-lg text-slate-200">{rose.anxiety}</p>
-                  </div>
-                )}
-                {rose.hope && (
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-green-600">期待</h3>
-                    <p className="text-base leading-relaxed bg-green-900/20 border border-green-500/20 p-4 rounded-lg text-slate-200">{rose.hope}</p>
-                  </div>
-                )}
-                {rose.is_gift && rose.recipient_nickname && (
-                  <div className="space-y-2 pt-4 border-t border-pink-500/20">
-                    <p className="text-sm text-purple-400">
-                      {rose.user_id && user && rose.user_id === user.id
-                        ? `💝 你送给了 ${rose.recipient_nickname}`
-                        : rose.recipient_nickname && user && rose.recipient_nickname === user.nickname
-                          ? `💝 ${rose.nickname || "匿名"} 送给了你`
-                          : `💝 ${rose.nickname || "匿名"} 送给了 ${rose.recipient_nickname}`
-                      }
-                    </p>
-                  </div>
-                )}
-                {rose.ai_reply && (
-                  <div className="space-y-2 pt-4 border-t border-white/10">
-                    <h3 className="font-medium text-purple-600">AI 回复</h3>
-                    <p className="text-base leading-relaxed bg-purple-900/20 border border-purple-500/20 p-4 rounded-lg text-slate-300 italic">{rose.ai_reply}</p>
-                  </div>
-                )}
-                <div className="pt-4 border-t border-white/10 flex items-center gap-4 flex-wrap">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleLike}
-                  >
-                    {rose.like_count > 0 ? `❤️ ${rose.like_count}` : "❤️ 点赞"}
-                  </Button>
-                </div>
-                <div className="pt-2 flex justify-center">
-                  <RosePlayer rose={rose} canvasSize={160} />
-                </div>
-              </>
             )}
+            {rose.gratitude && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-rose-600">感恩</h3>
+                <p className="text-base leading-relaxed bg-rose-900/20 border border-rose-500/20 p-4 rounded-lg text-slate-200">{rose.gratitude}</p>
+              </div>
+            )}
+            {rose.anxiety && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-amber-600">焦虑</h3>
+                <p className="text-base leading-relaxed bg-amber-900/20 border border-amber-500/20 p-4 rounded-lg text-slate-200">{rose.anxiety}</p>
+              </div>
+            )}
+            {rose.hope && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-green-600">期待</h3>
+                <p className="text-base leading-relaxed bg-green-900/20 border border-green-500/20 p-4 rounded-lg text-slate-200">{rose.hope}</p>
+              </div>
+            )}
+            {rose.is_gift && rose.recipient_nickname && (
+              <div className="space-y-2 pt-4 border-t border-pink-500/20">
+                <p className="text-sm text-purple-400">
+                  {rose.user_id && user && rose.user_id === user.id
+                    ? `💝 你送给了 ${rose.recipient_nickname}`
+                    : rose.recipient_nickname && user && rose.recipient_nickname === user.nickname
+                      ? `💝 ${rose.nickname || "匿名"} 送给了你`
+                      : `💝 ${rose.nickname || "匿名"} 送给了 ${rose.recipient_nickname}`
+                  }
+                </p>
+              </div>
+            )}
+            {rose.ai_reply && (
+              <div className="space-y-2 pt-4 border-t border-white/10">
+                <h3 className="font-medium text-purple-600">AI 回复</h3>
+                <p className="text-base leading-relaxed bg-purple-900/20 border border-purple-500/20 p-4 rounded-lg text-slate-300 italic">{rose.ai_reply}</p>
+              </div>
+            )}
+            <div className="pt-4 border-t border-white/10 flex items-center gap-4 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLike}
+              >
+                {rose.like_count > 0 ? `❤️ ${rose.like_count}` : "❤️ 点赞"}
+              </Button>
+            </div>
+            <div className="pt-2 flex justify-center">
+              <RosePlayer rose={rose} canvasSize={160} />
+            </div>
           </CardContent>
         </Card>
 
-        {!editing && (
-          <div className="text-center">
-            <Link href="/plant">
-              <Button className="bg-rose-500 hover:bg-rose-600">种一朵玫瑰</Button>
-            </Link>
-          </div>
-        )}
+        <div className="text-center">
+          <Link href="/plant">
+            <Button className="bg-rose-500 hover:bg-rose-600">种一朵玫瑰</Button>
+          </Link>
+        </div>
       </div>
     </main>
   );

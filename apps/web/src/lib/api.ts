@@ -151,10 +151,7 @@ export interface CreateRose {
 }
 
 export interface UpdateRose {
-  color?: string;
-  gratitude?: string | null;
-  anxiety?: string | null;
-  hope?: string | null;
+  is_private?: boolean;
 }
 
 function authHeaders(): Record<string, string> {
@@ -224,14 +221,6 @@ export async function updateRose(id: string, data: UpdateRose): Promise<Rose> {
   });
   if (!res.ok) throw new Error("Failed to update rose");
   return res.json();
-}
-
-export async function deleteRose(id: string): Promise<void> {
-  const res = await authFetch(`${API_BASE}/api/rose/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(),
-  });
-  if (!res.ok) throw new Error("Failed to delete rose");
 }
 
 export interface PaginatedResponse<T> {

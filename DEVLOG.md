@@ -2,6 +2,33 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：玫瑰详情页设置规则收口
+
+### 问题
+- 用户认为玫瑰种下后不应再修改已提交文字，也暂时不应提供删除入口。
+- 但当前详情页 owner 仍显示“编辑 / 删除”，后端 `PUT /api/rose/{id}` 也允许改颜色和正文，`DELETE /api/rose/{id}` 仍暴露。
+
+### 根因
+- 早期产品设计把玫瑰当作普通 CRUD 资源处理；随着 Roselet 的表达定位变清晰，“种下即留下”的产品不变量没有同步固化到后端、OpenAPI、Web UI 和测试。
+
+### 处理
+- 后端 `UpdateRose` 改为只接受 `is_private`，反序列化时拒绝 `color / gratitude / anxiety / hope`。
+- `PUT /api/rose/{id}` 改为“玫瑰设置”接口：仅 owner 可调用，当前只允许公开转私密；公开转私密继续复用每月 5 朵私密玫瑰配额。
+- 从 Axum 路由移除 `DELETE /api/rose/{id}`，OpenAPI 删除 DELETE 文档。
+- Web 详情页移除“编辑 / 删除”，owner 改为“玫瑰设置”面板：可设为私密；“送给别人”先作为即将支持说明，不混入内容编辑。
+- Web API 删除 `deleteRose()`，`UpdateRose` 类型收窄为 `{ is_private?: boolean }`。
+- 更新 `AGENTS.md` / `CLAUDE.md`，记录玫瑰正文不可修改、暂不提供删除入口的项目约束。
+
+### 验证
+- `cargo fmt --check --all`
+- `SQLX_OFFLINE=true cargo nextest run -p roselet-backend models::rose::tests::test_update_rose`
+- `SQLX_OFFLINE=true cargo clippy -p roselet-backend --all-targets -- -D warnings`
+- `cd apps/web && ./node_modules/.bin/jest 'src/app/rose/[id]/__tests__/page.test.tsx' src/lib/__tests__/api.test.ts --runInBand`
+- `cd apps/web && ./node_modules/.bin/tsc --noEmit`
+- `pnpm --filter web test -- 'src/app/rose/[id]/__tests__/page.test.tsx' src/lib/__tests__/api.test.ts --runInBand` 在当前环境被 pnpm registry signature fetch 失败阻断，未进入 Jest。
+- `NO_PROXY=localhost,127.0.0.1 SQLX_OFFLINE=true cargo nextest run -p roselet-backend --test api_test test_update_rose test_delete_rose --no-fail-fast -j1` 在当前沙箱因连接本地测试数据库 `Operation not permitted` 阻断，未进入业务断言。
+- 非沙箱重跑上述 pnpm / 后端集成测试的权限申请被审批器拒绝；本次未绕过权限继续执行。
+
 ## 2026-06-25 会话：音频互斥策略修复
 
 ### 问题

@@ -204,10 +204,10 @@ pub async fn update_rose(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<Uuid>,
-    Json(input): Json<UpdateRose>,
+    Json(raw_input): Json<serde_json::Value>,
 ) -> Result<Json<RoseResponse>, AppError> {
-    input.validate().map_err(AppError::BadRequest)?;
-
+    let input: UpdateRose =
+        serde_json::from_value(raw_input).map_err(|e| AppError::BadRequest(e.to_string()))?;
     let user_id = auth::require_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
 
     let existing = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
@@ -220,30 +220,26 @@ pub async fn update_rose(
         return Err(AppError::Forbidden);
     }
 
-    let color = input.color.as_deref().unwrap_or(&existing.color);
-    let gratitude = match &input.gratitude {
-        Some(v) => v.as_deref(),
-        None => existing.gratitude.as_deref(),
-    };
-    let anxiety = match &input.anxiety {
-        Some(v) => v.as_deref(),
-        None => existing.anxiety.as_deref(),
-    };
-    let hope = match &input.hope {
-        Some(v) => v.as_deref(),
-        None => existing.hope.as_deref(),
-    };
+    let target_private = input.target_private().map_err(AppError::BadRequest)?;
 
-    let rose = sqlx::query_as::<_, Rose>(
-        "UPDATE roses SET color = $1, gratitude = $2, anxiety = $3, hope = $4 WHERE id = $5 RETURNING *",
-    )
-    .bind(color)
-    .bind(gratitude)
-    .bind(anxiety)
-    .bind(hope)
-    .bind(id)
-    .fetch_one(&state.pool)
-    .await?;
+    if target_private && !existing.is_private {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM roses WHERE user_id = $1 AND is_private = true AND date_trunc('month', created_at) = date_trunc('month', now())",
+        )
+        .bind(user_id)
+        .fetch_one(&state.pool)
+        .await?;
+        if count >= 5 {
+            return Err(AppError::BadRequest("本月私有名额已用完 (5/5)".into()));
+        }
+    }
+
+    let rose =
+        sqlx::query_as::<_, Rose>("UPDATE roses SET is_private = $1 WHERE id = $2 RETURNING *")
+            .bind(target_private)
+            .bind(id)
+            .fetch_one(&state.pool)
+            .await?;
 
     let nickname = lookup_nickname(&state.pool, rose.user_id).await;
     let like_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM likes WHERE rose_id = $1")
@@ -252,29 +248,4 @@ pub async fn update_rose(
         .await
         .unwrap_or(0);
     Ok(Json(RoseResponse::from_rose(rose, nickname, like_count)))
-}
-
-pub async fn delete_rose(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Path(id): Path<Uuid>,
-) -> Result<(), AppError> {
-    let user_id = auth::require_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
-
-    let existing = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
-        .bind(id)
-        .fetch_optional(&state.pool)
-        .await?
-        .ok_or(AppError::NotFound)?;
-
-    if existing.user_id != Some(user_id) {
-        return Err(AppError::Forbidden);
-    }
-
-    sqlx::query("DELETE FROM roses WHERE id = $1")
-        .bind(id)
-        .execute(&state.pool)
-        .await?;
-
-    Ok(())
 }

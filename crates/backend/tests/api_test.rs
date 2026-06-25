@@ -761,7 +761,7 @@ async fn test_private_rose_like_requires_owner() {
 }
 
 #[tokio::test]
-async fn test_update_rose_by_owner() {
+async fn test_update_rose_rejects_content_changes() {
     let base = spawn_test_server().await;
     let auth = register_user(&base, "dave").await;
     let token = auth["access_token"].as_str().unwrap();
@@ -784,10 +784,70 @@ async fn test_update_rose_by_owner() {
         .send()
         .await
         .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let detail = client.get(format!("{}/api/rose/{}", base, rose_id)).send().await.unwrap();
+    let body: Value = detail.json().await.unwrap();
+    assert_eq!(body["color"], "red");
+    assert_eq!(body["gratitude"], "原始");
+}
+
+#[tokio::test]
+async fn test_update_rose_can_make_public_rose_private() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "privacy-owner").await;
+    let token = auth["access_token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "想先公开一下" }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+    assert_eq!(rose["is_private"], false);
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "is_private": true }))
+        .send()
+        .await
+        .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let updated: Value = res.json().await.unwrap();
-    assert_eq!(updated["color"], "yellow");
-    assert_eq!(updated["gratitude"], "已修改");
+    assert_eq!(updated["is_private"], true);
+    assert_eq!(updated["gratitude"], "想先公开一下");
+}
+
+#[tokio::test]
+async fn test_update_rose_rejects_private_to_public() {
+    let base = spawn_test_server().await;
+    let auth = register_user(&base, "private-to-public-owner").await;
+    let token = auth["access_token"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "white", "gratitude": "只给自己看", "is_private": true }))
+        .send()
+        .await
+        .unwrap();
+    let rose: Value = res.json().await.unwrap();
+    let rose_id = rose["id"].as_str().unwrap();
+
+    let res = client
+        .put(format!("{}/api/rose/{}", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "is_private": false }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]
@@ -816,7 +876,7 @@ async fn test_update_rose_forbidden() {
             "Authorization",
             format!("Bearer {}", auth2["access_token"].as_str().unwrap()),
         )
-        .json(&json!({ "gratitude": "尝试修改" }))
+        .json(&json!({ "is_private": true }))
         .send()
         .await
         .unwrap();
@@ -844,7 +904,7 @@ async fn test_update_rose_no_auth() {
 
     let res = client
         .put(format!("{}/api/rose/{}", base, rose_id))
-        .json(&json!({ "gratitude": "未认证修改" }))
+        .json(&json!({ "is_private": true }))
         .send()
         .await
         .unwrap();
@@ -852,7 +912,7 @@ async fn test_update_rose_no_auth() {
 }
 
 #[tokio::test]
-async fn test_delete_rose_by_owner() {
+async fn test_delete_rose_is_not_exposed() {
     let base = spawn_test_server().await;
     let auth = register_user(&base, "helen").await;
     let token = auth["access_token"].as_str().unwrap();
@@ -861,7 +921,7 @@ async fn test_delete_rose_by_owner() {
     let res = client
         .post(format!("{}/api/rose", base))
         .header("Authorization", format!("Bearer {}", token))
-        .json(&json!({ "color": "white", "gratitude": "待删除" }))
+        .json(&json!({ "color": "white", "gratitude": "不再删除" }))
         .send()
         .await
         .unwrap();
@@ -874,63 +934,10 @@ async fn test_delete_rose_by_owner() {
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
 
     let res = client.get(format!("{}/api/rose/{}", base, rose_id)).send().await.unwrap();
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
-}
-
-#[tokio::test]
-async fn test_delete_rose_forbidden() {
-    let base = spawn_test_server().await;
-    let auth1 = register_user(&base, "ivan").await;
-    let auth2 = register_user(&base, "judy").await;
-    let client = reqwest::Client::new();
-
-    let res = client
-        .post(format!("{}/api/rose", base))
-        .header(
-            "Authorization",
-            format!("Bearer {}", auth1["access_token"].as_str().unwrap()),
-        )
-        .json(&json!({ "color": "red", "gratitude": "ivan的玫瑰" }))
-        .send()
-        .await
-        .unwrap();
-    let rose: Value = res.json().await.unwrap();
-    let rose_id = rose["id"].as_str().unwrap();
-
-    let res = client
-        .delete(format!("{}/api/rose/{}", base, rose_id))
-        .header(
-            "Authorization",
-            format!("Bearer {}", auth2["access_token"].as_str().unwrap()),
-        )
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::FORBIDDEN);
-}
-
-#[tokio::test]
-async fn test_delete_rose_not_found() {
-    let base = spawn_test_server().await;
-    let auth = register_user(&base, "kate").await;
-    let client = reqwest::Client::new();
-
-    let res = client
-        .delete(format!(
-            "{}/api/rose/00000000-0000-0000-0000-000000000000",
-            base
-        ))
-        .header(
-            "Authorization",
-            format!("Bearer {}", auth["access_token"].as_str().unwrap()),
-        )
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 #[tokio::test]

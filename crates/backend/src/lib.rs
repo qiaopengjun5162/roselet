@@ -45,9 +45,7 @@ pub fn create_app(state: AppState) -> Router {
         .route("/api/rose", post(routes::rose::create_rose))
         .route(
             "/api/rose/{id}",
-            get(routes::rose::get_rose)
-                .put(routes::rose::update_rose)
-                .delete(routes::rose::delete_rose),
+            get(routes::rose::get_rose).put(routes::rose::update_rose),
         )
         .route("/api/my/roses", get(routes::my::get_my_roses))
         .route("/api/user/profile", get(routes::auth::profile))

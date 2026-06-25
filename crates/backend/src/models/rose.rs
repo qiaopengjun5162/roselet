@@ -105,41 +105,62 @@ impl CreateRose {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone)]
 pub struct UpdateRose {
-    pub color: Option<String>,
-    pub gratitude: Option<Option<String>>,
-    pub anxiety: Option<Option<String>>,
-    pub hope: Option<Option<String>>,
+    pub is_private: Option<bool>,
 }
 
 impl UpdateRose {
     pub fn validate(&self) -> Result<(), String> {
-        if let Some(ref color) = self.color {
-            let valid_colors = ["red", "white", "yellow"];
-            if !valid_colors.contains(&color.as_str()) {
-                return Err(format!(
-                    "Invalid color '{}'. Must be one of: {:?}",
-                    color, valid_colors
-                ));
-            }
+        match self.is_private {
+            Some(true) => Ok(()),
+            Some(false) => Err("私密玫瑰暂不支持重新公开".to_string()),
+            None => Err("玫瑰内容种下后不能修改，只能更新玫瑰设置".to_string()),
         }
-        if let Some(Some(ref text)) = self.gratitude {
-            if text.len() > 500 {
-                return Err("Gratitude text too long (max 500 chars)".to_string());
-            }
+    }
+
+    pub fn target_private(&self) -> Result<bool, String> {
+        self.validate()?;
+        match self.is_private {
+            Some(true) => Ok(true),
+            Some(false) => Err("私密玫瑰暂不支持重新公开".to_string()),
+            None => Err("玫瑰内容种下后不能修改，只能更新玫瑰设置".to_string()),
         }
-        if let Some(Some(ref text)) = self.anxiety {
-            if text.len() > 500 {
-                return Err("Anxiety text too long (max 500 chars)".to_string());
-            }
+    }
+
+    pub fn rejects_immutable_fields(raw: &serde_json::Value) -> bool {
+        ["color", "gratitude", "anxiety", "hope"]
+            .iter()
+            .any(|field| raw.get(field).is_some())
+    }
+}
+
+impl<'de> Deserialize<'de> for UpdateRose {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let raw = serde_json::Value::deserialize(deserializer)?;
+        if Self::rejects_immutable_fields(&raw) {
+            return Err(serde::de::Error::custom(
+                "玫瑰内容种下后不能修改，只能更新玫瑰设置",
+            ));
         }
-        if let Some(Some(ref text)) = self.hope {
-            if text.len() > 500 {
-                return Err("Hope text too long (max 500 chars)".to_string());
-            }
-        }
-        Ok(())
+        let is_private = match raw.get("is_private") {
+            Some(value) => Some(
+                value
+                    .as_bool()
+                    .ok_or_else(|| serde::de::Error::custom("is_private must be a boolean"))?,
+            ),
+            None => None,
+        };
+        Ok(Self { is_private })
+    }
+}
+
+impl std::fmt::Debug for UpdateRose {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UpdateRose").field("is_private", &self.is_private).finish()
     }
 }
 
@@ -235,44 +256,44 @@ mod tests {
     #[test]
     fn test_update_rose_valid() {
         let r = UpdateRose {
-            color: Some("white".to_string()),
-            gratitude: None,
-            anxiety: None,
-            hope: None,
+            is_private: Some(true),
         };
         assert!(r.validate().is_ok());
     }
 
     #[test]
-    fn test_update_rose_invalid_color() {
+    fn test_update_rose_rejects_public_setting() {
         let r = UpdateRose {
-            color: Some("green".to_string()),
-            gratitude: None,
-            anxiety: None,
-            hope: None,
+            is_private: Some(false),
         };
         assert!(r.validate().is_err());
     }
 
     #[test]
-    fn test_update_rose_too_long() {
-        let r = UpdateRose {
-            color: None,
-            gratitude: Some(Some("a".repeat(501))),
-            anxiety: None,
-            hope: None,
-        };
+    fn test_update_rose_requires_settings() {
+        let r = UpdateRose { is_private: None };
         assert!(r.validate().is_err());
     }
 
     #[test]
-    fn test_update_rose_clear_field() {
-        let r = UpdateRose {
-            color: None,
-            gratitude: Some(None),
-            anxiety: None,
-            hope: None,
-        };
-        assert!(r.validate().is_ok());
+    fn test_update_rose_rejects_immutable_fields() {
+        let raw = serde_json::json!({ "gratitude": "改掉过去" });
+        assert!(UpdateRose::rejects_immutable_fields(&raw));
+    }
+
+    #[test]
+    fn test_update_rose_deserialize_rejects_content_changes() {
+        let raw = serde_json::json!({ "color": "white", "gratitude": "改掉过去" });
+        let parsed = serde_json::from_value::<UpdateRose>(raw);
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn test_update_rose_deserialize_accepts_private_setting() {
+        let parsed: UpdateRose = serde_json::from_value(serde_json::json!({
+            "is_private": true
+        }))
+        .unwrap();
+        assert!(parsed.target_private().unwrap());
     }
 }

@@ -75,23 +75,14 @@
       },
       "put": {
         "tags": ["Rose"],
-        "summary": "编辑玫瑰",
+        "summary": "更新玫瑰设置",
+        "description": "玫瑰内容种下后不可修改；当前只允许创建者将公开玫瑰设为私密。",
         "security": [{ "Bearer": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateRose" } } } },
         "responses": {
           "200": { "description": "成功" },
-          "403": { "description": "无权操作" },
-          "404": { "description": "不存在" }
-        }
-      },
-      "delete": {
-        "tags": ["Rose"],
-        "summary": "删除玫瑰",
-        "security": [{ "Bearer": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
-        "responses": {
-          "200": { "description": "删除成功" },
+          "400": { "description": "参数错误" },
           "403": { "description": "无权操作" },
           "404": { "description": "不存在" }
         }
@@ -237,10 +228,7 @@
       "UpdateRose": {
         "type": "object",
         "properties": {
-          "color": { "type": "string", "enum": ["red", "white", "yellow"] },
-          "gratitude": { "type": "string", "maxLength": 500 },
-          "anxiety": { "type": "string", "maxLength": 500 },
-          "hope": { "type": "string", "maxLength": 500 }
+          "is_private": { "type": "boolean", "description": "只能从 false 更新为 true；暂不支持重新公开。" }
         }
       },
       "RoseResponse": {

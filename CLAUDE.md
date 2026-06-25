@@ -40,6 +40,7 @@ roselet/
 认证：双令牌 (Access 15min + Refresh 30天，DB 存 SHA-256 哈希)，令牌桶限流 30req/60s。
 Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请求重试。
 账号注销：软删除 + 30 天冷却期；冷却期内同昵称登录恢复原账号，过期后旧账号昵称匿名化并释放。
+玫瑰种下后的正文内容不可修改，也暂不提供删除入口；`PUT /api/rose/{id}` 只做 owner 设置更新，当前仅允许公开转私密。
 
 ## 测试状态
 ```
@@ -155,8 +156,7 @@ POST   /api/auth/logout    # 注销（撤销 Refresh Token）
 POST   /api/auth/deactivate # 注销账号（软删除 + 30 天冷却期）
 GET    /health             # 健康检查（数据库连接 + 版本信息）
 POST   /api/rose           # 种一朵玫瑰（后台异步生成 AI 回复）→ 201 Created
-PUT    /api/rose/:id       # 编辑玫瑰（仅 owner）
-DELETE /api/rose/:id       # 删除玫瑰（仅 owner）
+PUT    /api/rose/:id       # 更新玫瑰设置（仅 owner；当前只允许公开转私密）
 GET    /api/garden         # 获取花圃（分页，可选 ?color=red/white/yellow）
 GET    /api/rose/:id       # 获取单朵玫瑰
 GET    /api/my/roses       # 获取个人花圃（需 JWT，分页）
