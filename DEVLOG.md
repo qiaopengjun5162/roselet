@@ -2,6 +2,26 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-25 会话：首页「星空动态」
+
+### 问题
+- 用户希望首页更有生命感，展示真实发生的社区动态，但又担心伪造活跃和隐私泄露。
+
+### 根因
+- 首页只有静态标题和提示条，缺少轻量、真实、保护隐私的动态入口。
+
+### 处理
+- 后端新增公开接口 `GET /api/activity/recent`，`UNION ALL` 查询最近公开种植 / 送礼玫瑰，硬上限 10 条，不查询 `gratitude/anxiety/hope` 内容。
+- 已注销用户或匿名场景 fallback 为「有人」，只显示昵称不暴露账号细节。
+- 数据少于 3 条时注入一条项目公告，避免空状态造假；空库仍保留公告兜底。
+- 前端新增 `<ActivityFeed />` 组件，使用现有 WASM `format_date_wasm` / `color_emoji` / `color_label` 渲染相对时间和颜色文案。
+- 更新 OpenAPI、后端集成测试、Web 组件测试。
+
+### 验证
+- `DATABASE_URL=postgres://localhost/roselet_test NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features -j1` → 280 passed
+- `cd apps/web && pnpm typecheck && pnpm test -- --runInBand` → 172 passed
+- `cd apps/miniprogram && pnpm test -- --runInBand` → 66 passed
+
 ## 2026-06-25 会话：私密玫瑰额度上调
 
 ### 问题

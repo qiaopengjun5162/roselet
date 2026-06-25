@@ -1610,6 +1610,169 @@ async fn test_usage_stats_admin_sees_aggregates() {
     assert!(body["latest_feedback_at"].as_str().is_some());
 }
 
+// ── Activity Feed 集成测试 ──
+
+#[tokio::test]
+async fn test_activity_recent_public_only() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let auth = register_user(&base, "activity-public").await;
+    let token = auth["access_token"].as_str().unwrap();
+
+    let public_res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "public rose" }))
+        .send()
+        .await
+        .unwrap();
+    let public_rose: Value = public_res.json().await.unwrap();
+    let public_id = public_rose["id"].as_str().unwrap();
+
+    let private_res = client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "white", "gratitude": "private rose", "is_private": true }))
+        .send()
+        .await
+        .unwrap();
+    let private_rose: Value = private_res.json().await.unwrap();
+    let private_id = private_rose["id"].as_str().unwrap();
+
+    let res = client.get(format!("{}/api/activity/recent", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    let items = body.as_array().expect("activity feed should be an array");
+    let ids: Vec<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
+    assert!(
+        ids.contains(&public_id),
+        "public rose should appear in activity feed"
+    );
+    assert!(
+        !ids.contains(&private_id),
+        "private rose should not appear in activity feed"
+    );
+    assert!(items.iter().any(|i| i["kind"] == "planted"));
+}
+
+#[tokio::test]
+async fn test_activity_recent_excludes_content() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let auth = register_user(&base, "activity-content").await;
+    let token = auth["access_token"].as_str().unwrap();
+
+    client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "secret content here" }))
+        .send()
+        .await
+        .unwrap();
+
+    let res = client.get(format!("{}/api/activity/recent", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = res.text().await.unwrap();
+    assert!(!text.contains("secret content here"));
+    assert!(!text.contains("gratitude"));
+    assert!(!text.contains("anxiety"));
+    assert!(!text.contains("hope"));
+}
+
+#[tokio::test]
+async fn test_activity_recent_gift_roses() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+    let auth = register_user(&base, "activity-gift").await;
+    let token = auth["access_token"].as_str().unwrap();
+
+    client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({
+            "color": "yellow",
+            "gratitude": "for you",
+            "recipient_nickname": "小花"
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    let res = client.get(format!("{}/api/activity/recent", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    let items = body.as_array().unwrap();
+    assert_eq!(items[0]["kind"], "gifted");
+    assert_eq!(items[0]["recipient"], "小花");
+}
+
+#[tokio::test]
+async fn test_activity_recent_nickname_or_anonymous() {
+    let base = spawn_test_server().await;
+    let (_app, pool) = create_test_app().await;
+    let client = reqwest::Client::new();
+
+    let auth = register_user(&base, "activity-nick").await;
+    let token = auth["access_token"].as_str().unwrap();
+    client
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "named" }))
+        .send()
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO roses (color, gratitude, is_private, user_id) VALUES ('white', 'anonymous', false, NULL)")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let res = client.get(format!("{}/api/activity/recent", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    let items = body.as_array().unwrap();
+    let actors: Vec<String> =
+        items.iter().map(|i| i["actor"].as_str().unwrap().to_string()).collect();
+    assert!(actors.contains(&"activity-nick".to_string()));
+    assert!(actors.contains(&"有人".to_string()));
+}
+
+#[tokio::test]
+async fn test_activity_recent_empty_has_announcement() {
+    let base = spawn_test_server().await;
+    let client = reqwest::Client::new();
+
+    let res = client.get(format!("{}/api/activity/recent", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    let items = body.as_array().unwrap();
+    assert!(!items.is_empty());
+    assert_eq!(items[0]["kind"], "announcement");
+}
+
+#[tokio::test]
+async fn test_activity_recent_capped_at_10() {
+    let base = spawn_test_server().await;
+    let (_app, pool) = create_test_app().await;
+    let client = reqwest::Client::new();
+
+    for i in 0..15 {
+        let color = if i % 2 == 0 { "red" } else { "white" };
+        sqlx::query("INSERT INTO roses (color, gratitude, is_private, user_id) VALUES ($1, $2, false, NULL)")
+            .bind(color)
+            .bind(format!("rose {}", i))
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+
+    let res = client.get(format!("{}/api/activity/recent", base)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: Value = res.json().await.unwrap();
+    let items = body.as_array().unwrap();
+    assert!(items.len() <= 10);
+}
+
 // ── Refresh / Logout 集成测试 ──
 
 #[tokio::test]

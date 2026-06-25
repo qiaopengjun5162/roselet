@@ -157,6 +157,16 @@
           "403": { "description": "非管理员用户" }
         }
       }
+    },
+    "/activity/recent": {
+      "get": {
+        "tags": ["Activity"],
+        "summary": "获取首页星空动态",
+        "description": "公开接口，无需登录。返回最近公开玫瑰的种植/送礼动态和项目公告，不包含私密玫瑰和具体情绪内容。",
+        "responses": {
+          "200": { "description": "成功", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ActivityItem" } } } } }
+        }
+      }
     }
   },
   "components": {
@@ -302,6 +312,18 @@
           "latest_feedback_at": { "type": "string", "format": "date-time", "nullable": true },
           "user_goal": { "$ref": "#/components/schemas/UsageGoal" },
           "private_rose_monthly_limit": { "type": "integer", "format": "int64", "description": "每位用户每月可创建的私密玫瑰上限，由环境变量 PRIVATE_ROSE_MONTHLY_LIMIT 控制" }
+        }
+      },
+      "ActivityItem": {
+        "type": "object",
+        "required": ["id", "kind", "actor", "color", "created_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "kind": { "type": "string", "enum": ["planted", "gifted", "announcement"], "description": "动态类型" },
+          "actor": { "type": "string", "description": "发起者昵称或“有人”；公告类型时存放公告文本" },
+          "color": { "type": "string", "description": "玫瑰颜色；公告类型为空" },
+          "recipient": { "type": "string", "nullable": true, "description": "送礼对象；仅 kind=gifted 时有值" },
+          "created_at": { "type": "string", "format": "date-time" }
         }
       }
     }

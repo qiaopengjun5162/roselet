@@ -42,6 +42,10 @@ pub fn create_app(state: AppState) -> Router {
             post(routes::auth::deactivate_account),
         )
         .route("/api/garden", get(routes::garden::get_garden))
+        .route(
+            "/api/activity/recent",
+            get(routes::activity::get_recent_activity),
+        )
         .route("/api/rose", post(routes::rose::create_rose))
         .route(
             "/api/rose/{id}",

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TipTicker } from "@/components/tip-ticker";
+import { ActivityFeed } from "@/components/activity-feed";
 
 export default function Home() {
   return (
@@ -18,6 +19,7 @@ export default function Home() {
         </div>
 
         <TipTicker context="home" />
+        <ActivityFeed />
 
         {/* 三块说明 */}
         <div className="grid gap-4 md:grid-cols-3">

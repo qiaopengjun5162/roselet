@@ -272,6 +272,22 @@ export async function getUsageStats(): Promise<UsageStats> {
   return res.json();
 }
 
+export interface ActivityItem {
+  id: string;
+  kind: "planted" | "gifted" | "announcement";
+  actor: string;
+  color: string;
+  recipient?: string;
+  created_at: string;
+}
+
+export async function getRecentActivity(): Promise<ActivityItem[]> {
+  const res = await fetch(`${READ_API_BASE}/api/activity/recent`);
+  if (!res.ok) return [];
+  const data: { items?: ActivityItem[] } = await res.json();
+  return data.items ?? [];
+}
+
 export interface AdminFeedbackItem {
   id: number;
   user_id: string | null;

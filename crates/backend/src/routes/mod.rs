@@ -1,3 +1,4 @@
+pub mod activity;
 pub mod auth;
 pub mod docs;
 pub mod feedback;
