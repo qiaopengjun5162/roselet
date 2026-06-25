@@ -30,6 +30,26 @@
 - `cd apps/web && pnpm typecheck && pnpm test -- --runInBand` → 174 passed
 - `cd apps/miniprogram && pnpm test -- --runInBand` → 66 passed
 
+## 2026-06-25 会话：修复 Web 覆盖率门禁
+
+### 问题
+- 推送后 GitHub Actions `CI` 工作流因 Web 前端 statement coverage 89.47%（阈值 90%）失败，阻塞 `Deploy Backend` 自动部署。
+
+### 根因
+- `src/lib/recommend.ts` 的 `getTips` WASM 兜底分支、`src/components/tip-ticker.tsx` 的多条 tips 轮播逻辑、`src/components/activity-feed.tsx` 的 unmount 竞态防护分支均未覆盖。
+- 此前用 promise-chain 写法导致 Istanbul 无法把覆盖率归因到回调体；即便有测试，statement 统计也不完整。
+
+### 处理
+- 重写 `activity-feed.tsx` 的 `useEffect` 为内部 `async function load()` + `try/catch/finally`，让每条语句都能被覆盖率工具识别。
+- 新增 `getTips` 三类兜底测试：WASM 未加载、WASM 抛错、WASM 返回空数组。
+- 新增 `TipTicker` 多条 tips 轮播与 unmount 清理测试。
+- 新增 `ActivityFeed` unmount 后成功/失败回调的竞态测试。
+
+### 验证
+- `cd apps/web && pnpm test:coverage` → statements 90.4%、branches 76.56%、functions 86.81%、lines 95.49%，全部超过阈值。
+- `cd apps/web && pnpm typecheck` 通过。
+- 推送后 CI run `28154077897` 正在执行中。
+
 ## 2026-06-25 会话：首页「星空动态」
 
 ### 问题
