@@ -406,6 +406,30 @@ ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 \
 
 通用规则：新增生产环境变量必须同时改 `.env` 模板、Compose/Kubernetes 注入配置和应用读取代码；只改 `.env` 文件不代表服务会读到。
 
+### 37. 单机部署切镜像时，公网 502 可能只是短暂发布窗口
+
+问题：用户看到 Web 关于页“暂时无法读取后端状态”，同时花圃请求报 `502`；但过几分钟后 `https://roselet.47.131.238.0.sslip.io/health` 又恢复正常。
+
+根因：当前 Lightsail 生产是单机 Caddy + 单个 backend 容器。`scripts/lightsail-deploy.sh` 在 `docker compose up -d backend` 切换镜像时，旧容器退出到新容器真正开始监听 `127.0.0.1:3001` 之间存在短暂空窗；这段时间 Caddy 会记录 `dial tcp 127.0.0.1:3001: connect: connection refused` 并向公网返回 `502`。
+
+解决：
+- 先分层验证，不要把短暂 `502` 直接当成持续性生产故障：
+  - `curl -i http://47.131.238.0/health`
+  - `curl -i https://roselet.47.131.238.0.sslip.io/health`
+  - `ssh ... 'sudo journalctl -u caddy -n 120 --no-pager'`
+  - `ssh ... 'sudo docker inspect roselet-backend-1 --format "StartedAt={{.State.StartedAt}} RestartCount={{.RestartCount}}"'`
+  - `gh run view <deploy-run-id> --json jobs`
+- 如果 `StartedAt` 刚好落在报错窗口附近，且最近 `Deploy Backend` workflow 刚执行完成，那这更像一次正常发布窗口，而不是应用自身持续崩溃。
+- 前端要保留缓存兜底，避免把一次短暂发布窗口放大成整页不可用。
+
+验证：
+- `curl -i --max-time 15 http://47.131.238.0/health` 返回 `200`
+- `curl -i --max-time 15 https://roselet.47.131.238.0.sslip.io/health` 在部署窗口内短暂 `502`，恢复后返回 `200`
+- `journalctl -u caddy` 看到 `connect: connection refused`
+- `docker inspect roselet-backend-1` 的 `StartedAt` 与 `Deploy Backend` workflow 的 `Deploy backend on Lightsail` 时间对齐
+
+通用规则：单机后端切镜像时，公网短暂 `502` 不一定是“又挂了”；先对齐发布时间线，再判断是不是需要真正回滚或修复应用。
+
 ## 更新规则
 
 每次遇到问题，按这个顺序更新：

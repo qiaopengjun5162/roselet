@@ -7,7 +7,7 @@
 ### 问题
 - Web 花圃页在生产环境请求失败时会直接显示“加载花圃失败”，即使 IndexedDB 已有公共花圃缓存，也会把缓存内容整页盖掉。
 - 生产页面如果漏配 `NEXT_PUBLIC_WS_URL`，当前实现会退回 `ws://localhost:3001`，导致浏览器控制台持续出现本地 WebSocket 连接失败噪声。
-- 排查时确认 `https://roselet.47.131.238.0.sslip.io` 当前公网入口整体返回 `502`，所以用户看到的花圃失败还包含线上后端不可用因素。
+- 排查时确认 `https://roselet.47.131.238.0.sslip.io` 在 2026-06-25 09:48–09:59 UTC 短暂返回 `502`，所以用户看到的花圃失败还叠加了一次线上后端部署窗口。
 
 ### 根因
 - `apps/web/src/app/garden/page.tsx` 把错误态优先级放在列表渲染之前，只要刷新失败就不再展示已有缓存。
@@ -22,8 +22,15 @@
 - `cd apps/web && ./node_modules/.bin/jest --runTestsByPath src/app/garden/__tests__/page.test.tsx src/lib/__tests__/ws.test.ts --runInBand`
 - `cd apps/web && ./node_modules/.bin/jest --runTestsByPath src/lib/__tests__/api.test.ts src/app/garden/__tests__/page.test.tsx src/lib/__tests__/ws.test.ts --runInBand`
 - `cd apps/web && ./node_modules/.bin/tsc --noEmit`
-- `curl -i --max-time 15 -sS https://roselet.47.131.238.0.sslip.io/health` → 当前仍返回 `HTTP/2 502`
-- `curl -i --max-time 15 -sS 'https://roselet.47.131.238.0.sslip.io/api/garden?page=1&per_page=3'` → 当前仍返回 `HTTP/2 502`
+- `curl -i --max-time 15 -sS http://47.131.238.0/health` → `200`
+- `curl -i --max-time 15 -sS https://roselet.47.131.238.0.sslip.io/health` → 故障窗口内为 `HTTP/2 502`，10:08 UTC 已恢复 `200`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'sudo journalctl -u caddy -n 120 --no-pager'` → 故障窗口日志为 `dial tcp 127.0.0.1:3001: connect: connection refused`
+- `ssh -i ~/.ssh/roselet_lightsail ubuntu@47.131.238.0 'sudo docker inspect roselet-backend-1 --format "StartedAt={{.State.StartedAt}} RestartCount={{.RestartCount}} Image={{.Config.Image}}"'` → 当前容器于 `2026-06-25T09:59:14Z` 启动，`RestartCount=0`
+- `gh run view 28162131859 --json databaseId,status,conclusion,workflowName,url,headSha,jobs` → `Deploy Backend` 在 `09:59:02Z–09:59:14Z` 执行 Lightsail 部署并通过公网冒烟
+
+### 结论
+- 这次 `502` 不是持续性线上崩溃，而是 `Deploy Backend` 将生产镜像从 `c16f35d` 切到 `101eace` 时，单机后端在 `09:59:14Z` 前短暂不监听 `127.0.0.1:3001`，Caddy 因此返回 `502`。
+- `http://47.131.238.0` 在排查时已恢复 `200`，`https://roselet.47.131.238.0.sslip.io` 也在部署完成后恢复 `200`，所以这次属于“发布窗口可见抖动”，不是当前仍未恢复的生产事故。
 
 ## 2026-06-25 会话：补充 Rust CODEOWNERS 规则
 
