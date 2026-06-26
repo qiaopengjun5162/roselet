@@ -27,6 +27,8 @@
 ### 当前判断
 - 这次告警更像 Cloudflare Pages 国内镜像的“请求计费面过宽”，不是历史 `apps/worker-api` 在产生活跃流量。
 - 修复部署后，只有 `/rose/*` 会继续消耗 Pages Functions 请求；首页、花圃、静态资源应回到 Pages 静态层，不再烧 daily requests。
+- Cloudflare Pages 仪表盘已确认 `roselet` 生产环境自动部署到 `main 821e88e`，状态成功，时间约 `30 minutes ago`。
+- 部署确认时 Cloudflare 仪表盘显示 `Requests today 3,956 / 100,000`，相比告警邮件中的 77% 已明显回落，说明当前生产流量面已经收窄。
 
 ## 2026-06-25 会话：收口 Lightsail Caddy 反代配置
 
