@@ -2,6 +2,32 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-06-26 会话：收敛 Cloudflare Pages Functions 调用范围
+
+### 问题
+- 2026-06-26 08:37 收到 Cloudflare 告警：账号已用到 Workers / Pages Functions 每日 100000 次请求额度的 77%。
+- 当前生产国内镜像 `https://roselet.paxonqiao.com` 只有 `/rose/:id` 需要 Pages Worker fallback，但仓库里只有 `apps/web/public/_worker.js`，没有 `_routes.json` 去限制调用范围。
+
+### 根因
+- 根据 Cloudflare Pages 官方路由文档，只要项目包含 Functions，默认所有请求都会先进入 Functions；若不提供 `_routes.json`，静态首页、脚本、WASM、图片也会计入 Functions 请求。
+- 我们当前的 `public/_worker.js` 虽然逻辑上只在 `/rose/:id` 时改写到 `placeholder.html`，但没有路由级限流，导致整个镜像站流量都在烧 Pages Functions 免费日额度。
+
+### 处理
+- 新增 `apps/web/public/_routes.json`，仅 `include: ["/rose/*"]`，把 Functions 调用范围收敛到玫瑰详情 fallback。
+- 保留 `apps/web/public/_worker.js` 现有 `/rose/:id` 兜底逻辑，只补注释说明它必须与 `_routes.json` 配套使用。
+- 新增 `apps/web/src/lib/__tests__/cloudflare-routes.test.ts`，锁定 `_routes.json` 存在且配置不漂移。
+- 更新 `AGENTS.md`、`CLAUDE.md`、`DEPLOYMENT.md`、`docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`，记录这条 Cloudflare Pages 配额约束。
+
+### 验证
+- `cd apps/web && ./node_modules/.bin/jest --runTestsByPath src/lib/__tests__/cloudflare-routes.test.ts --runInBand`
+- `cd apps/web && ./node_modules/.bin/jest --runTestsByPath src/app/rose/[id]/__tests__/page.test.tsx src/lib/__tests__/cloudflare-routes.test.ts --runInBand`
+- `cd apps/web && NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io pnpm build:cf`
+- `git diff --check`
+
+### 当前判断
+- 这次告警更像 Cloudflare Pages 国内镜像的“请求计费面过宽”，不是历史 `apps/worker-api` 在产生活跃流量。
+- 修复部署后，只有 `/rose/*` 会继续消耗 Pages Functions 请求；首页、花圃、静态资源应回到 Pages 静态层，不再烧 daily requests。
+
 ## 2026-06-25 会话：收口 Lightsail Caddy 反代配置
 
 ### 会话目标

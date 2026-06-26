@@ -1,7 +1,6 @@
 /* eslint-disable import/no-anonymous-default-export */
-// Cloudflare Pages catch-all worker: for any /rose/:id request that doesn't
-// match a statically generated file, serve the placeholder shell so the client
-// can fetch the rose dynamically.
+// Only /rose/* should invoke this worker; _routes.json keeps the rest of the
+// mirror on free static delivery instead of consuming Pages Functions quota.
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);

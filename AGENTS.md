@@ -16,6 +16,7 @@
 - 如果目标是 `不绑卡上线`，后端迁移入口固定在 `apps/worker-api/`；不要再把 Render / Koyeb 当作默认免费后端方案。
 - 当前实际生产后端路线已切到 AWS Lightsail：`https://roselet.47.131.238.0.sslip.io` 由 Caddy 反代到 Rust Axum `:3001`，`http://47.131.238.0` 只用于 IP 冒烟，操作手册见 `docs/AWS_LIGHTSAIL_DEPLOYMENT.md`。
 - Vercel 生产前端必须使用 HTTPS API 基址和 `wss://` WebSocket，不能再配置 `http://47.131.238.0`，否则浏览器 mixed content 会拦截请求。
+- Cloudflare Pages 国内镜像若保留 `public/_worker.js` fallback，必须同时提交 `apps/web/public/_routes.json`，把 Functions 调用范围限制到 `/rose/*`；不要让全站静态请求都先经过 Worker，否则会快速耗尽免费 daily requests。
 - Rust `/api/stats` 是管理员后台接口，生产必须在 Lightsail `.env.production` 配置 `ADMIN_USER_IDS`，不要把统计后台公开给所有登录用户。
 - Lightsail 服务器上的 `.env.production`、数据库密码、JWT_SECRET、私钥不能写入 Git；文档只记录命令模板和公开地址。
 - Lightsail 的 Caddy 反代配置以 `deploy/lightsail/Caddyfile` 为仓库内共享源；生产如果只在服务器上手改 `/etc/caddy/Caddyfile` 而不回写仓库，后续排障和重装会漂移。

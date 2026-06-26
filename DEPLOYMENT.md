@@ -23,6 +23,12 @@ NEXT_PUBLIC_READ_API_URL=https://roselet.47.131.238.0.sslip.io
 NEXT_PUBLIC_WS_URL=wss://roselet.47.131.238.0.sslip.io
 ```
 
+Cloudflare Pages 镜像还要额外注意：
+
+- `apps/web/public/_worker.js` 只用于 `/rose/:id` 的静态导出兜底。
+- 必须同时提交 `apps/web/public/_routes.json`，把 Functions 调用限制在 `/rose/*`。
+- 否则 Cloudflare Pages 一旦检测到 Function，默认所有请求都会先进入 Functions，首页、静态资源、WASM 也会消耗 daily requests 配额。
+
 ## 环境要求
 
 - Docker 20.10+

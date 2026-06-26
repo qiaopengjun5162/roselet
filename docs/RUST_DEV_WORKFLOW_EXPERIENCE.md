@@ -86,7 +86,18 @@
 
 通用规则：门禁至少覆盖格式化、静态分析、测试、依赖审计、生产构建；前端项目不能只跑 Jest。
 
-### 8. 生成物要从 lint / test 索引中排除
+### 8. Cloudflare Pages fallback 不能默认吃全站请求
+
+问题：Cloudflare Pages 项目一旦加入 `public/_worker.js` / Functions，默认所有请求都会先进入 Functions；如果只想给少数动态路由做 fallback，却没提交 `_routes.json`，静态首页、JS、WASM、图片都会计入 daily requests，很快打满免费额度。
+
+解决：
+- 保留 `apps/web/public/_worker.js` 只处理 `/rose/:id` fallback。
+- 同时提交 `apps/web/public/_routes.json`，显式限制 `include` 为 `/rose/*`。
+- 用测试锁定这个文件存在且配置不漂移。
+
+通用规则：在 Cloudflare Pages 上给静态站加少量动态兜底时，必须同步提交 `_routes.json` 收窄执行范围；不要默认接受“全站都先进 Worker”。
+
+### 9. 生成物要从 lint / test 索引中排除
 
 问题：ESLint 和 Jest 会扫到 `.next`、coverage、Playwright cache、WASM 生成 JS / package metadata，产生误报或 haste collision。
 
@@ -96,7 +107,7 @@
 
 通用规则：构建产物、测试缓存和生成代码不能进入源码 lint / Jest module crawl。
 
-### 9. 网络和代理问题要写成命令
+### 10. 网络和代理问题要写成命令
 
 问题：`git push`、`cargo deny`、`pnpm` 在沙箱或代理环境下失败时，容易被误判为代码问题。
 
@@ -108,7 +119,7 @@
 
 通用规则：环境类问题要记录“可复制命令”，不要只写“代理有问题”。
 
-### 10. cargo-deny 要维护许可证策略
+### 11. cargo-deny 要维护许可证策略
 
 问题：依赖使用 `BSD-3-Clause`、`ISC`、`Zlib`、`CDLA-Permissive-2.0` 等常见 permissive 许可证，workspace crate 未声明 license，会导致审计失败。
 
@@ -119,7 +130,7 @@
 
 通用规则：依赖审计失败时先看 license/advisory/source 分类；许可证白名单要收窄维护，并和项目 LICENSE 对齐。
 
-### 11. Next build 不应依赖外部字体网络
+### 12. Next build 不应依赖外部字体网络
 
 问题：`next/font/google` 在受限网络下可能拖垮生产构建。
 
@@ -127,7 +138,7 @@
 
 通用规则：生产构建应尽量自包含；外部网络资源应在运行时可降级，不能成为 build 必需条件。
 
-### 12. WASM 绑定边界要避免宿主陷阱
+### 13. WASM 绑定边界要避免宿主陷阱
 
 问题：`wasm-bindgen` 不支持某些 Rust 签名，例如 `Option<&str>`；native test 中 `JsValue` 反序列化也可能因为没有 JS 宿主而 panic。
 
@@ -137,7 +148,7 @@
 
 通用规则：WASM 导出层保持薄，核心逻辑放在普通 Rust 函数中测试。
 
-### 13. 虚拟 Cargo workspace 的门禁要显式覆盖 workspace
+### 14. 虚拟 Cargo workspace 的门禁要显式覆盖 workspace
 
 问题：根目录是虚拟 workspace 时，直接跑 `cargo clippy --all-targets ...` 的覆盖口径可能不够直观，容易误以为所有成员都检查了。
 

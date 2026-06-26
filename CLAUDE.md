@@ -118,6 +118,7 @@ Quality gates:
   - 国内镜像：`https://roselet.paxonqiao.com`（Cloudflare Pages，`roselet.pages.dev` CNAME，Proxy 开启）
 - **生产前端 API 基址**：Vercel / Cloudflare Pages 均需配置 HTTPS：`NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_AUTH_API_URL` / `NEXT_PUBLIC_READ_API_URL=https://roselet.47.131.238.0.sslip.io`，`NEXT_PUBLIC_WS_URL=wss://roselet.47.131.238.0.sslip.io`
 - **Cloudflare Pages 构建**：`cd apps/web && pnpm build:cf`，输出目录 `apps/web/dist`，与 Vercel `standalone` 构建共存
+- **Cloudflare Pages 请求额度**：只要 Pages 项目存在 Function/`public/_worker.js`，默认所有请求都会计入 Functions 调用；必须用 `apps/web/public/_routes.json` 把调用范围限制到 `/rose/*`，否则国内镜像的静态流量也会烧掉每日 100k 配额
 - **Stats 后台**：Rust `/api/stats` 需要 JWT + `ADMIN_USER_IDS` 白名单；生产服务器 `.env.production` 必须配置管理员 user id
 - **生产密钥**：Lightsail `.env.production` 只留在服务器，不能把 `POSTGRES_PASSWORD` / `JWT_SECRET` / 私钥写入 Git 或文档
 - **Lightsail Caddy 配置源**：生产 Caddy 站点配置以 `deploy/lightsail/Caddyfile` 为仓库共享源；当前对 `127.0.0.1:3001` 开启 `lb_try_duration 15s` / `lb_try_interval 250ms`，用于在单机切镜像时尽量把短暂 `502` 转成客户端等待
