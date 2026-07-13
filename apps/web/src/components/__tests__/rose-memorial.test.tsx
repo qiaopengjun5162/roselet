@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import type { Rose } from "@/lib/api";
 
 const mockMintRoseMemorial = jest.fn();
 const mockVerifyRoseMemorial = jest.fn();
@@ -18,7 +19,7 @@ const rose = {
   id: "a8664541-09d6-4da7-9b78-7f8ca20ba60a",
   color: "red",
   is_private: false,
-} as never;
+} as Rose;
 
 describe("RoseMemorial", () => {
   beforeEach(() => jest.clearAllMocks());
