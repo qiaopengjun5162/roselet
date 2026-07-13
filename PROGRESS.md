@@ -305,6 +305,7 @@
 - [ ] **真机联调**：AppID 已有，拉起后端验证双令牌 + WASM 花瓣
 - [ ] **找 5 个真实用户试用**
 - [ ] **多语言 Spike**：若试用反馈需要英文，再按 `docs/I18N_STRATEGY.md` 从 Rust `Locale` + WASM 文案映射开始
-- [ ] Web3 功能（已设计，待实现）
-  - Ethereum Solidity + Solana Anchor 双链，ChainAdapter trait
-  - 上链内容：精选一句话（≤200字）+ 颜色，完整内容留链下
+- [ ] Web3 功能（Base Sepolia 最小闭环已实现，待部署和真实钱包验证）
+  - 已实现：公开玫瑰的 ERC-721 链上纪念版、交易回执验证、详情页钱包入口
+  - 当前上链内容：精选一句话（≤200字）+ 颜色，完整内容留链下
+  - 后续再评估 Ethereum / Solana 双链和 ChainAdapter trait，避免在未验证用户需求前扩张范围

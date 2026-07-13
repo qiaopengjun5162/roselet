@@ -6,6 +6,7 @@ pub mod garden;
 pub mod health;
 pub mod like;
 pub mod my;
+pub mod on_chain;
 pub mod rose;
 pub mod stats;
 pub mod ws;

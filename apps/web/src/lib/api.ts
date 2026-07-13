@@ -155,6 +155,23 @@ export interface UpdateRose {
   recipient_nickname?: string;
 }
 
+export interface OnChainMint {
+  chain_id: number;
+  contract_address: string;
+  token_id: string;
+  tx_hash: string;
+  wallet_address: string;
+  on_chain_message: string;
+  message_hash: string;
+  minted_at: string;
+}
+
+export interface VerifyRoseMemorial {
+  tx_hash: string;
+  wallet_address: string;
+  message: string;
+}
+
 function authHeaders(): Record<string, string> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -221,6 +238,27 @@ export async function updateRose(id: string, data: UpdateRose): Promise<Rose> {
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to update rose");
+  return res.json();
+}
+
+export async function getRoseMemorial(id: string): Promise<OnChainMint | null> {
+  const res = await authFetch(`${READ_API_BASE}/api/rose/${id}/on-chain`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch rose memorial");
+  return res.json();
+}
+
+export async function verifyRoseMemorial(id: string, data: VerifyRoseMemorial): Promise<OnChainMint> {
+  const res = await authFetch(`${API_BASE}/api/rose/${id}/on-chain`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body: { error?: string } = await res.json().catch(() => ({}));
+    throw new Error(body.error || "链上交易验证失败");
+  }
   return res.json();
 }
 

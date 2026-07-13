@@ -2,6 +2,37 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-13 会话：实现 Base Sepolia 链上纪念版最小闭环
+
+### 问题
+- Roselet 已有 Web3 架构设计，但没有可演示的链上流程，无法作为 AI x Web3 Builder Grant 的运行 Demo。
+- 公开玫瑰若直接在合约里做全局唯一约束，第三方可用公开 UUID 抢先铸造，反而阻塞真正创建者；而服务器又不能持有用户钱包私钥来签发链上授权。
+
+### 处理
+- 新增 `contracts/RoseMemorial.sol`：Base Sepolia ERC-721，保存用户主动提交的短句和颜色，事件包含 rose id、接收钱包、短句 Keccak-256 哈希和颜色。
+- 新增 `012_create_nft_mints.sql` 及 `/api/rose/{id}/on-chain`：仅公开玫瑰创建者可验证交易；服务端先确认 Base Sepolia chain id，再从 RPC 回执校验合约、rose id、钱包、短句哈希和颜色，才写入官方纪念版记录。
+- 合约允许同一公开 UUID 存在非官方铸造，避免恶意抢先交易造成 DoS；Roselet 以数据库中的唯一已验证记录定义“官方纪念版”。
+- Web 详情页新增仅 owner 可见的链上纪念版入口，钱包交易成功后再调后端验证；其他用户只能看到已验证记录和 Basescan 链接。
+- 新增 `docs/BASE_SEPOLIA_MEMORIAL.md`、环境变量模板和 OpenAPI 描述，明确部署私钥只能在本机临时使用。
+- 将 `apps/web/dist/**` 加入 ESLint 全局忽略；它是 Cloudflare 构建产物，扫描其中压缩 JS/WASM 会制造与源码无关的 lint error。
+
+### 验证
+- `cd contracts && forge test`
+- `cargo nextest run -p roselet-backend on_chain -j1`
+- `cd apps/web && pnpm test -- --runTestsByPath src/lib/__tests__/api.test.ts 'src/app/rose/[id]/__tests__/page.test.tsx' --runInBand`
+- `cd apps/web && pnpm typecheck`
+- `NO_PROXY=localhost,127.0.0.1 cargo nextest run -p roselet-backend -j1` → 149 passed
+- `cargo clippy -p roselet-backend --all-targets -- -D warnings`
+- `pnpm test:coverage` → Web 198 passed，statement 90.22%；小程序 66 passed，statement 99.33%
+- `pnpm --filter web lint`
+- `pnpm --filter web build`
+
+### 当前判断
+- 代码层面的 Base Sepolia 最小闭环已实现，但尚未部署合约、配置生产环境变量或使用真实钱包完成 testnet 交易；这些步骤不能在没有部署钱包授权的情况下替用户执行。
+- 后续扩展 x402 / GOAT / AgentKit 时，应建立在这条可验证的用户钱包交易路径上，而不是重做一套上链身份逻辑。
+- 本机 `roselet_test` 曾保留第 8 个 migration 的旧 checksum，导致全量 nextest 报 `VersionMismatch(8)`；仓库文件与已发布版本一致，因此仅重建了这个专用测试库，随后 149 项后端测试通过。
+- 提交 `1ba5424` 已推送到 `codex/onchain-memorial`，PR #4 已创建；CI 状态以 GitHub 为准。
+
 ## 2026-06-26 会话：收敛 Cloudflare Pages Functions 调用范围
 
 ### 问题

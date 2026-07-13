@@ -9,6 +9,7 @@ axum = { version = "0.8", features = ["macros", "ws"] }
 tokio = { version = "1", features = ["full"] }
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono"] }
 sha2 = "0.10"
+sha3 = "0.10"
 argon2 = "0.5"
 hex = "0.4"
 serde = { version = "1", features = ["derive"] }
