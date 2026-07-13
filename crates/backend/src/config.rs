@@ -8,6 +8,8 @@ pub struct Config {
     pub allowed_origins: Vec<String>,
     pub admin_user_ids: Vec<String>,
     pub private_rose_monthly_limit: i64,
+    pub base_sepolia_rpc_url: Option<String>,
+    pub rose_memorial_contract_address: Option<String>,
     pub is_production: bool,
 }
 
@@ -48,6 +50,11 @@ impl Config {
             .and_then(|value| value.parse::<i64>().ok())
             .filter(|limit| *limit > 0)
             .unwrap_or(crate::routes::rose::DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT);
+        let base_sepolia_rpc_url =
+            env::var("BASE_SEPOLIA_RPC_URL").ok().filter(|url| !url.is_empty());
+        let rose_memorial_contract_address = env::var("ROSE_MEMORIAL_CONTRACT_ADDRESS")
+            .ok()
+            .filter(|address| !address.is_empty());
 
         Self {
             database_url: env::var("DATABASE_URL")
@@ -57,6 +64,8 @@ impl Config {
             allowed_origins,
             admin_user_ids,
             private_rose_monthly_limit,
+            base_sepolia_rpc_url,
+            rose_memorial_contract_address,
             is_production,
         }
     }
@@ -75,6 +84,8 @@ mod tests {
         std::env::remove_var("ALLOWED_ORIGINS");
         std::env::remove_var("ADMIN_USER_IDS");
         std::env::remove_var("PRIVATE_ROSE_MONTHLY_LIMIT");
+        std::env::remove_var("BASE_SEPOLIA_RPC_URL");
+        std::env::remove_var("ROSE_MEMORIAL_CONTRACT_ADDRESS");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://localhost/roselet");
@@ -84,6 +95,8 @@ mod tests {
         assert!(config.allowed_origins.contains(&"http://localhost:3000".to_string()));
         assert!(config.admin_user_ids.is_empty());
         assert_eq!(config.private_rose_monthly_limit, 10);
+        assert!(config.base_sepolia_rpc_url.is_none());
+        assert!(config.rose_memorial_contract_address.is_none());
     }
 
     #[test]
@@ -94,6 +107,11 @@ mod tests {
         std::env::set_var("ALLOWED_ORIGINS", "https://roselet.example.com");
         std::env::set_var("ADMIN_USER_IDS", " user-1, user-2 ");
         std::env::set_var("PRIVATE_ROSE_MONTHLY_LIMIT", "15");
+        std::env::set_var("BASE_SEPOLIA_RPC_URL", "https://sepolia.base.org");
+        std::env::set_var(
+            "ROSE_MEMORIAL_CONTRACT_ADDRESS",
+            "0x0000000000000000000000000000000000000001",
+        );
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://custom/testdb");
@@ -105,6 +123,14 @@ mod tests {
         assert_eq!(config.allowed_origins, vec!["https://roselet.example.com"]);
         assert_eq!(config.admin_user_ids, vec!["user-1", "user-2"]);
         assert_eq!(config.private_rose_monthly_limit, 15);
+        assert_eq!(
+            config.base_sepolia_rpc_url.as_deref(),
+            Some("https://sepolia.base.org")
+        );
+        assert_eq!(
+            config.rose_memorial_contract_address.as_deref(),
+            Some("0x0000000000000000000000000000000000000001")
+        );
 
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
@@ -112,6 +138,8 @@ mod tests {
         std::env::remove_var("ALLOWED_ORIGINS");
         std::env::remove_var("ADMIN_USER_IDS");
         std::env::remove_var("PRIVATE_ROSE_MONTHLY_LIMIT");
+        std::env::remove_var("BASE_SEPOLIA_RPC_URL");
+        std::env::remove_var("ROSE_MEMORIAL_CONTRACT_ADDRESS");
     }
 
     #[test]

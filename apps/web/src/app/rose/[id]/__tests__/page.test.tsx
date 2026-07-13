@@ -14,6 +14,7 @@ jest.mock("next/link", () => {
 
 jest.mock("@/lib/api", () => ({
   getRose: jest.fn(),
+  getRoseMemorial: jest.fn(),
   updateRose: jest.fn(),
   getUser: jest.fn(),
   toggleLike: jest.fn(),
@@ -25,8 +26,9 @@ jest.mock("@/lib/sound", () => ({
   playLike: jest.fn(),
 }));
 
-const { getRose, updateRose, getUser, toggleLike } = require("@/lib/api") as {
+const { getRose, getRoseMemorial, updateRose, getUser, toggleLike } = require("@/lib/api") as {
   getRose: jest.Mock;
+  getRoseMemorial: jest.Mock;
   updateRose: jest.Mock;
   getUser: jest.Mock;
   toggleLike: jest.Mock;
@@ -57,7 +59,10 @@ const mockRose = {
 };
 
 describe("RoseDetailPage", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    getRoseMemorial.mockResolvedValue(null);
+  });
 
   describe("generateStaticParams", () => {
     const oldApiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -145,6 +150,15 @@ describe("RoseDetailPage", () => {
     });
     expect(screen.queryByText("编辑")).not.toBeInTheDocument();
     expect(screen.queryByText("删除")).not.toBeInTheDocument();
+  });
+
+  it("shows the chain memorial entry only to the public rose owner", async () => {
+    getRose.mockResolvedValue(mockRose);
+    getUser.mockReturnValue({ id: "u1", nickname: "alice" });
+    render(<RoseDetailClient id="rose-1" />);
+
+    await waitFor(() => expect(screen.getByText("链上纪念版")).toBeInTheDocument());
+    expect(getRoseMemorial).toHaveBeenCalledWith("rose-1");
   });
 
   it("should not show rose settings for non-owner", async () => {

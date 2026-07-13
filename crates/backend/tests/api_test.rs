@@ -39,6 +39,8 @@ async fn create_test_app() -> (axum::Router, PgPool) {
         allowed_origins: vec!["http://localhost:3000".to_string()],
         admin_user_ids: vec![],
         private_rose_monthly_limit: DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT,
+        base_sepolia_rpc_url: None,
+        rose_memorial_contract_address: None,
         is_production: false,
     };
     let state = roselet_backend::state::AppState::new(pool.clone(), config);
@@ -331,6 +333,47 @@ async fn test_get_rose_not_found() {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_public_rose_without_memorial_returns_null() {
+    let (app, pool) = create_test_app().await;
+    let token = create_test_jwt(&pool, "memorial-owner").await;
+    let create_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/rose")
+                .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
+                .body(Body::from(
+                    serde_json::to_vec(&json!({ "color": "red", "gratitude": "链上测试" }))
+                        .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let created: Value =
+        serde_json::from_slice(&create_response.into_body().collect().await.unwrap().to_bytes())
+            .unwrap();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/api/rose/{}/on-chain",
+                    created["id"].as_str().unwrap()
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    assert_eq!(body.as_ref(), b"null");
 }
 
 #[tokio::test]

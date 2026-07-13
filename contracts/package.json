@@ -1,0 +1,7 @@
+{
+  "name": "roselet-contracts",
+  "private": true,
+  "devDependencies": {
+    "@openzeppelin/contracts": "5.6.1"
+  }
+}

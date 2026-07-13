@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getRose, updateRose, getUser, toggleLike, type Rose } from "@/lib/api";
+import { getRose, getRoseMemorial, updateRose, getUser, toggleLike, type OnChainMint, type Rose } from "@/lib/api";
 import { playClick, playPlant, playLike } from "@/lib/sound";
 import { RosePlayer } from "@/components/rose-player";
 import { colorEmoji, colorLabel } from "@/lib/recommend";
+import { RoseMemorial } from "@/components/rose-memorial";
 
 function resolveRoseId(id: string): string {
   if (id !== "placeholder" || typeof window === "undefined") return id;
@@ -27,13 +28,22 @@ export function RoseDetailClient({ id }: { id: string }) {
   const [giftNickname, setGiftNickname] = useState("");
   const [giftSaving, setGiftSaving] = useState(false);
   const [giftError, setGiftError] = useState("");
+  const [memorial, setMemorial] = useState<OnChainMint | null>(null);
 
   const user = getUser();
   const isOwner = user && rose && rose.user_id === user.id;
 
   useEffect(() => {
     getRose(roseId)
-      .then(setRose)
+      .then((loadedRose) => {
+        setRose(loadedRose);
+        if (!loadedRose.is_private) {
+          void Promise.resolve()
+            .then(() => getRoseMemorial(loadedRose.id))
+            .then(setMemorial)
+            .catch(() => {});
+        }
+      })
       .catch(() => setError("玫瑰不存在"))
       .finally(() => setLoading(false));
   }, [roseId]);
@@ -240,6 +250,12 @@ export function RoseDetailClient({ id }: { id: string }) {
                 <p className="text-base leading-relaxed bg-purple-900/20 border border-purple-500/20 p-4 rounded-lg text-slate-300 italic">{rose.ai_reply}</p>
               </div>
             )}
+            <RoseMemorial
+              rose={rose}
+              mint={memorial}
+              canMint={Boolean(isOwner)}
+              onVerified={setMemorial}
+            />
             <div className="pt-4 border-t border-white/10 flex items-center gap-4 flex-wrap">
               <Button
                 variant="outline"

@@ -51,6 +51,10 @@ pub fn create_app(state: AppState) -> Router {
             "/api/rose/{id}",
             get(routes::rose::get_rose).put(routes::rose::update_rose),
         )
+        .route(
+            "/api/rose/{id}/on-chain",
+            get(routes::on_chain::get_mint).post(routes::on_chain::verify_mint),
+        )
         .route("/api/my/roses", get(routes::my::get_my_roses))
         .route("/api/user/profile", get(routes::auth::profile))
         .route("/api/rose/{id}/like", post(routes::like::toggle_like))

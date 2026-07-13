@@ -21,6 +21,9 @@ pub enum AppError {
 
     #[error("认证错误: {0}")]
     Auth(String),
+
+    #[error("{0}")]
+    Internal(String),
 }
 
 impl IntoResponse for AppError {
@@ -34,6 +37,10 @@ impl IntoResponse for AppError {
                 "服务器内部错误".to_string(),
             ),
             AppError::Auth(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AppError::Internal(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "服务器内部错误".to_string(),
+            ),
         };
 
         (status, Json(json!({ "error": message }))).into_response()
