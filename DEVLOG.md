@@ -33,6 +33,19 @@
 - 本机 `roselet_test` 曾保留第 8 个 migration 的旧 checksum，导致全量 nextest 报 `VersionMismatch(8)`；仓库文件与已发布版本一致，因此仅重建了这个专用测试库，随后 149 项后端测试通过。
 - 提交 `1ba5424` 已推送到 `codex/onchain-memorial`，PR #4 已创建；CI 状态以 GitHub 为准。
 
+## 2026-07-13 会话：启动 Aleo Hackathon 私密 vault
+
+### 处理
+- 新增 `contracts/aleo-private-vault` Leo 4 程序：用户签名持有 `PrivateRose` record，记录内容和 AI 回复的承诺值；分享时生成接收人的 `RoseShare` record，原记录仍留给创建者。
+- 编译器验证后统一使用 Leo 4 的 `fn` 声明、`bool` 类型及 `self.signer` 作为 record owner；避免使用可能是程序地址的 `self.caller`。
+
+### 验证
+- `cd contracts/aleo-private-vault && leo test --offline` → 1 passed
+- `cd contracts/aleo-private-vault && leo build --offline` → program size 1.49 KB
+
+### 当前判断
+- 私密链上状态与授权合约已可编译和测试；下一步是配置 Aleo testnet program id、钱包适配器和交易费用，完成 Web 演示与真实 testnet 交易。
+
 ## 2026-06-26 会话：收敛 Cloudflare Pages Functions 调用范围
 
 ### 问题
