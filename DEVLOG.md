@@ -30,6 +30,8 @@
 ### 当前判断
 - 代码层面的 Base Sepolia 最小闭环已实现，但尚未部署合约、配置生产环境变量或使用真实钱包完成 testnet 交易；这些步骤不能在没有部署钱包授权的情况下替用户执行。
 - 后续扩展 x402 / GOAT / AgentKit 时，应建立在这条可验证的用户钱包交易路径上，而不是重做一套上链身份逻辑。
+- 本机 `roselet_test` 曾保留第 8 个 migration 的旧 checksum，导致全量 nextest 报 `VersionMismatch(8)`；仓库文件与已发布版本一致，因此仅重建了这个专用测试库，随后 149 项后端测试通过。
+- 提交 `1ba5424` 已推送到 `codex/onchain-memorial`，PR #4 已创建；CI 状态以 GitHub 为准。
 
 ## 2026-06-26 会话：收敛 Cloudflare Pages Functions 调用范围
 
