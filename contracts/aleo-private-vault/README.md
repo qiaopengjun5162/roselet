@@ -17,3 +17,14 @@ leo build --offline
 ```
 
 Deployment and wallet execution require a configured Aleo testnet account, program id, and transaction fee. They are deliberately not embedded in this repository.
+
+## Web wallet setup
+
+The Web demo is available at `/private-vault` and uses Leo Wallet on Aleo Testnet. Configure the deployed program before building the Web app:
+
+```bash
+NEXT_PUBLIC_ALEO_VAULT_PROGRAM_ID=roselet_private_vault.aleo
+NEXT_PUBLIC_ALEO_EXECUTION_FEE_MICROCREDITS=100000
+```
+
+The current repository verifies local compilation and wallet transaction construction only. A real Testnet deployment and end-to-end wallet execution still require a funded deployment account, the deployed program id, and Leo Wallet Testnet credits.

@@ -28,6 +28,7 @@ interface WasmMod {
   getFireworkLaunches: () => unknown;
   build_optimistic_rose_wasm: (plant_body_json: string, temp_id: string, now_iso: string, nickname: string) => unknown;
   apply_garden_cache_action_wasm: (cache_json: string, action_json: string) => string;
+  build_aleo_vault_inputs_wasm: (rose_id: string, content: string, ai_reply: string, nonce: string) => string;
 }
 
 let wasmModule: WasmMod | null = null;
@@ -128,6 +129,22 @@ export async function buildPlantBody(color: string, gratitude?: string | null, a
   const fallback = () => JSON.stringify({ color, gratitude, anxiety, hope, ...(isPrivate ? { is_private: true } : {}), ...(recipientNickname ? { recipient_nickname: recipientNickname } : {}) });
   if (!mod) return fallback();
   try { return mod.build_plant_body(color, gratitude ?? "", anxiety ?? "", hope ?? "", isPrivate, recipientNickname ?? ""); } catch { return fallback(); }
+}
+
+export interface AleoVaultInputs {
+  rose_id: string;
+  content_commitment: string;
+  ai_reply_commitment: string;
+  share_key: string;
+}
+
+export async function buildAleoVaultInputs(roseId: string, content: string, aiReply: string, nonce: string): Promise<AleoVaultInputs> {
+  const mod = await loadWasm();
+  if (!mod) throw new Error("WASM 加载失败");
+  const raw = mod.build_aleo_vault_inputs_wasm(roseId, content, aiReply, nonce);
+  const result = JSON.parse(raw) as AleoVaultInputs & { error?: string };
+  if (result.error) throw new Error(result.error);
+  return result;
 }
 
 // 颜色元数据 — 同步调用（WASM 已加载则走 Rust，否则 TS 兜底保证首屏不闪）
