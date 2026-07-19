@@ -2,6 +2,49 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-19 会话：实现 Solana x402 Agent API 与付费 MCP Tool
+
+### 问题
+- Base 已承担公开纪念，Aleo 已承担私密记录，但“Solana 满足不同需求”仍没有可运行实现，也缺少 Grant 强调的 Agent 支付、API 收费和 MCP Tool。
+- `goat-sdk/goat` 官方仓库已经归档，继续把新功能绑定到 GOAT 会引入停止维护的核心依赖。
+- x402 SVM 初装使用 `@solana/kit` v7 时，与内部 Solana Program 包的 v5 peer 约束冲突。
+- x402 支付客户端经环境代理访问 Solana RPC 时失败；根因是 Solana Kit v5 显式 `Content-Length` 被 Undici ProxyAgent 拒绝。
+- HTTP 中间件原先在支付前完成了整份推荐计算，虽然没有泄露响应，但违背“付费后才执行核心服务”的边界。
+- Agent API 固定监听 `127.0.0.1` 且允许 `$0` 价格，前者阻止容器对外服务，后者可能把付费接口误配置成免费。
+
+### 处理
+- 新增 `apps/agent-api`：Hono `POST /v1/reflection` 使用 x402 v2 SVM `exact` 收取 Solana Devnet USDC；`/health` 保持免费。
+- 新增 stdio MCP server，暴露付费 `roselet_reflection` tool；HTTP 与 MCP 共用 x402 官方 facilitator 和同一价格/收款配置。
+- 推荐、输入清洗和错误码全部复用 `crates/recommend` 的 Node WASM，TypeScript 只负责 HTTP、MCP 和支付接线。
+- 将 `@solana/kit` / `@solana/sysvars` 固定在兼容的 v5，消除 Agent API 的全部 peer mismatch。
+- 支付客户端使用 `EnvHttpProxyAgent` 并在代理模式删除显式 `Content-Length`，让 Undici 根据 body 重算，同时保留 `NO_PROXY` 本地直连。
+- HTTP 请求在支付前仅通过 Rust WASM 校验和清洗输入；推荐引擎延迟到 x402 支付中间件放行后执行。
+- `X402_DEBUG_NETWORK=1` 只输出请求阶段、状态和公开支付要求，不输出支付签名或私钥。
+- 默认继续仅监听 `127.0.0.1`；容器或反向代理部署可显式设置 `AGENT_API_HOST=0.0.0.0`，价格必须是大于零的 USD 金额。
+- 把 Agent API 类型检查、覆盖率测试和构建加入根命令、justfile 与 GitHub Actions。
+- 新增 `docs/WEB3_GRANT_DEMO.md`，明确 Base / Aleo / Solana 三条链的不同职责和诚实完成边界。
+
+### 验证
+- `cd apps/agent-api && ./node_modules/.bin/tsc --noEmit`
+- `cd apps/agent-api && ./node_modules/.bin/vitest run` → 16 passed，statements/lines 98.51%，branches 94.44%，functions 100%
+- `cd apps/agent-api && ./node_modules/.bin/tsc`
+- `GET http://127.0.0.1:4021/health` → 200
+- 无支付 `POST /v1/reflection` → 402，`PAYMENT-REQUIRED` 解码为 x402 v2 / exact / Solana Devnet / amount 1000 / Devnet USDC
+- 官方 x402 client 已完成 Solana RPC 交易构造和签名重试；facilitator 返回 `transaction_simulation_failed`，链上查询确认付款地址不存在官方 Devnet USDC mint 的 token account。
+- MCP initialize 与 `tools/list` 成功，发现 `roselet_reflection`；无支付 `tools/call` 返回结构化 x402 要求
+- `cargo fmt --all -- --check`
+- `cargo nextest run -p roselet-recommend -j1` → 148 passed
+- Web typecheck / ESLint / Next production build / 208 coverage tests passed
+- Miniprogram typecheck / 66 coverage tests passed
+- `cargo deny check` → advisories / bans / licenses / sources 均 ok（仅既有 duplicate warnings）
+- `git diff --check`
+
+### 当前判断
+- Solana 本地闭环已具备真实官方 facilitator 协商、签名和交易模拟，不是手写的 402 模拟；但付款钱包尚无 Devnet USDC，不能声称支付已结算上链。
+- Circle 官方 Faucet 支持 Solana Devnet USDC；领取测试币后可完成最后的 settlement 验证。
+- 服务端只需要公开 `X402_SVM_PAY_TO`，不应配置或接触任何钱包私钥。
+- GOAT 类 Agent 仍可调用标准 HTTP/MCP 接口，但项目核心支付依赖应保持在活跃维护的 x402 Foundation 包上。
+
 ## 2026-07-19 会话：接通 Aleo Private Vault Web 钱包入口
 
 ### 问题

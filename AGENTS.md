@@ -27,10 +27,13 @@
 - 用户可见版本号以 Git tag / GitHub Release 为准，关于页展示的版本、commit、构建时间必须能追溯到发布记录。
 - Base Sepolia 链上纪念版只能为公开玫瑰创建；前后端的 `ROSE_MEMORIAL_CONTRACT_ADDRESS` / `NEXT_PUBLIC_ROSE_MEMORIAL_CONTRACT_ADDRESS` 必须是同一地址，后端只信任 RPC 回执内匹配合约、玫瑰编号、钱包、短句哈希和颜色的 `RoseMemorialMinted` 事件，绝不接触用户钱包私钥。
 - Aleo 私密 Vault 的原文、本地 AI 回应和分享 nonce 只能进入浏览器 Rust WASM；钱包交易只接收 WASM 生成的四个 `field`，不能把原文发给 Roselet 后端、公开 mapping 或 Leo program input。Leo record owner 固定使用 `self.signer`，不能改成可能为程序地址的 `self.caller`。
+- Solana Agent API 固定使用 x402 v2 SVM `exact` + Devnet USDC；`X402_SVM_PAY_TO` 只能是公开收款地址，服务端不得持有付款方或商户私钥。推荐和校验继续复用 `crates/recommend` 的 Node WASM；Rust 变更后必须运行 `just agent-wasm` 更新 `apps/agent-api/pkg`。
+- GOAT 官方仓库当前已归档，不能作为新增核心运行时依赖；Agent 对接优先使用仍维护的 x402 HTTP/MCP 标准接口。
+- x402 SVM 客户端通过 Undici 环境代理访问 RPC 时，必须删除 Solana Kit v5 显式设置的 `Content-Length`，让 Undici 按 body 重算；否则 `EnvHttpProxyAgent` 会报 `UND_ERR_INVALID_ARG: invalid content-length header`。
 - Worker 侧最小验证优先拆成独立的 `worker:typecheck` 和 `worker:test`，不要把 Cloudflare 类型环境和 Node 测试宿主强行混成一套。
 - Worker 侧跨文件相对导入按 NodeNext/ESM 目标显式写 `.js` 扩展名，避免测试编译链和部署编译链分叉。
 - 修改后按风险运行对应检查；Rust 测试使用 `cargo-nextest`。
-- 前端/小程序覆盖率门禁使用 `just coverage` 或根目录 `pnpm test:coverage`。
+- Web/小程序/Agent API 覆盖率门禁使用 `just coverage` 或根目录 `pnpm test:coverage`。
 - 质量门禁使用 `just typecheck`、`just lint`、`just audit`、`just next-build`；`just check-all` / `just pre-commit` 已包含这些检查。
 - 每次代码或项目文档变更都要 commit 并 push。
 - 遇到问题先解决；解决后把问题、原因、处理方式、验证命令记录到 `DEVLOG.md`。

@@ -22,6 +22,7 @@ test:
     NO_PROXY=localhost,127.0.0.1 cargo nextest run --all-features -j1
     cd apps/web && pnpm test
     cd apps/miniprogram && pnpm test
+    cd apps/agent-api && pnpm test
 
 # 前端覆盖率门禁
 coverage:
@@ -50,6 +51,27 @@ worker-test:
 # Cloudflare Worker API 本地开发
 worker-dev:
     pnpm worker:dev
+
+# Solana x402 Agent API
+agent-dev:
+    pnpm agent:dev
+
+# Solana x402 付费 MCP Tool
+agent-mcp:
+    pnpm agent:mcp
+
+# 使用本地 Solana keypair 调用 x402 付费 API
+agent-pay:
+    pnpm agent:pay
+
+# 构建 Agent API Node WASM
+agent-wasm:
+    pnpm agent:wasm
+
+# Agent API 类型检查与测试
+agent-check:
+    pnpm agent:typecheck
+    pnpm agent:test
 
 # 快速检查
 check:
@@ -131,6 +153,8 @@ check-all:
     pnpm typecheck
     pnpm lint
     cd apps/web && pnpm build
+    pnpm agent:build
+    pnpm agent:test
     cargo nextest run --all-features -j1
 
 # 提交前检查
@@ -141,6 +165,7 @@ pre-commit:
     pnpm typecheck
     pnpm lint
     cd apps/web && pnpm build
+    pnpm agent:build
     just test
 # 构建 WASM 推荐模块
 wasm:

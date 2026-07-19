@@ -8,6 +8,8 @@ node_modules/
 out/
 apps/web/dist/
 apps/worker-api/.tmp-test/
+apps/agent-api/dist/
+apps/agent-api/coverage/
 
 # Env
 .env
