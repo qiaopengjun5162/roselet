@@ -4,7 +4,7 @@
 
 - 当前阶段：`Beta 上线联调（Web 已上线，Rust 后端已上 Lightsail）`
 - 项目定位：`产品内核已完成，正在把真实线上入口接到 Rust 后端`
-- 更新时间：`2026-06-24`
+- 更新时间：`2026-07-19`
 
 ### 总体进度（主观里程碑）
 
@@ -305,7 +305,10 @@
 - [ ] **真机联调**：AppID 已有，拉起后端验证双令牌 + WASM 花瓣
 - [ ] **找 5 个真实用户试用**
 - [ ] **多语言 Spike**：若试用反馈需要英文，再按 `docs/I18N_STRATEGY.md` 从 Rust `Locale` + WASM 文案映射开始
-- [ ] Web3 功能（Base Sepolia 最小闭环已实现，待部署和真实钱包验证）
+- [ ] Web3 / Grant 功能（Base Sepolia 与 Aleo 本地闭环已实现，待部署和真实钱包验证）
   - 已实现：公开玫瑰的 ERC-721 链上纪念版、交易回执验证、详情页钱包入口
+  - 已实现：Aleo `PrivateRose` / `RoseShare` record、浏览器 Rust WASM 承诺、Leo Wallet Testnet 交易入口 `/private-vault`
   - 当前上链内容：精选一句话（≤200字）+ 颜色，完整内容留链下
-  - 后续再评估 Ethereum / Solana 双链和 ChainAdapter trait，避免在未验证用户需求前扩张范围
+  - Aleo 隐私边界：原文和本地 AI 回应不发后端，钱包只提交四个不可逆 `field`
+  - 待完成：部署 Aleo testnet program，并用有测试余额的 Leo Wallet 完成端到端交易
+  - 后续再评估 Solana 场景和 ChainAdapter trait，避免在未验证用户需求前扩张范围

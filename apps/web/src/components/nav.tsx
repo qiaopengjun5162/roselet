@@ -52,7 +52,7 @@ export function Nav() {
         <Link
           key={link.href}
           href={link.href}
-          className={`shrink-0 whitespace-nowrap text-[13px] px-3 py-1.5 rounded-full transition-all duration-200 ${
+          className={`shrink-0 whitespace-nowrap text-[13px] px-2 sm:px-3 py-1.5 rounded-full transition-all duration-200 ${
             isActive(link.href)
               ? "bg-rose-500/15 text-rose-300 font-medium"
               : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
@@ -62,7 +62,7 @@ export function Nav() {
         </Link>
       ))}
 
-      <span className="w-px h-5 bg-white/8 mx-1.5" />
+      <span className="w-px h-5 bg-white/8 mx-0.5 sm:mx-1.5" />
 
       {authed ? (
         <div className="relative">
@@ -132,7 +132,7 @@ export function Nav() {
             setBgPlaying(isBgPlaying());
           }
         }}
-        className="text-[13px] text-slate-500 hover:text-slate-300 px-2 py-1 transition-colors ml-1"
+        className="text-[13px] text-slate-500 hover:text-slate-300 px-1.5 sm:px-2 py-1 transition-colors sm:ml-1"
         title={muted || !bgPlaying ? "开启声音" : "关闭声音"}
       >
         {muted || !bgPlaying ? "🔇" : "🔊"}

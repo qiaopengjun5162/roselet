@@ -68,6 +68,7 @@ describe("PlantPage", () => {
     expect(screen.getByText("红玫瑰")).toBeInTheDocument();
     expect(screen.getByText("白玫瑰")).toBeInTheDocument();
     expect(screen.getByText("黄玫瑰")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "使用 Aleo 私密 Vault" })).toHaveAttribute("href", "/private-vault");
   });
 
   it("should navigate to interactive step on color click", () => {

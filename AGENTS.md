@@ -26,6 +26,7 @@
 - 生产发布按 `docs/RELEASE_PROCESS.md` 执行；功能开发先走分支/预览/冒烟，不要把日常优化直接当作生产发布。
 - 用户可见版本号以 Git tag / GitHub Release 为准，关于页展示的版本、commit、构建时间必须能追溯到发布记录。
 - Base Sepolia 链上纪念版只能为公开玫瑰创建；前后端的 `ROSE_MEMORIAL_CONTRACT_ADDRESS` / `NEXT_PUBLIC_ROSE_MEMORIAL_CONTRACT_ADDRESS` 必须是同一地址，后端只信任 RPC 回执内匹配合约、玫瑰编号、钱包、短句哈希和颜色的 `RoseMemorialMinted` 事件，绝不接触用户钱包私钥。
+- Aleo 私密 Vault 的原文、本地 AI 回应和分享 nonce 只能进入浏览器 Rust WASM；钱包交易只接收 WASM 生成的四个 `field`，不能把原文发给 Roselet 后端、公开 mapping 或 Leo program input。Leo record owner 固定使用 `self.signer`，不能改成可能为程序地址的 `self.caller`。
 - Worker 侧最小验证优先拆成独立的 `worker:typecheck` 和 `worker:test`，不要把 Cloudflare 类型环境和 Node 测试宿主强行混成一套。
 - Worker 侧跨文件相对导入按 NodeNext/ESM 目标显式写 `.js` 扩展名，避免测试编译链和部署编译链分叉。
 - 修改后按风险运行对应检查；Rust 测试使用 `cargo-nextest`。

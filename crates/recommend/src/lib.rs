@@ -1,3 +1,4 @@
+mod aleo;
 mod emotion;
 mod flowers;
 mod keywords;
@@ -5,6 +6,19 @@ mod offline;
 
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub fn build_aleo_vault_inputs_wasm(
+    rose_id: &str,
+    content: &str,
+    ai_reply: &str,
+    nonce: &str,
+) -> String {
+    match aleo::build_vault_inputs(rose_id, content, ai_reply, nonce) {
+        Ok(inputs) => serde_json::to_string(&inputs).unwrap_or_else(|_| "{}".into()),
+        Err(error) => serde_json::json!({ "error": error }).to_string(),
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub struct RoseInput {

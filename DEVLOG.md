@@ -2,6 +2,37 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-19 会话：接通 Aleo Private Vault Web 钱包入口
+
+### 问题
+- Leo 合约已经可以离线编译，但 Web 尚不能从用户原文生成合法 Aleo `field`，也没有 Leo Wallet 交易入口，无法演示从本地隐私处理到钱包签名的完整路径。
+- 原文若直接作为 Leo input、公开 mapping 或后端请求，会破坏 Aleo 赛道需要证明的隐私边界。
+- `390px` 移动视口下顶栏总宽超过页面约 11px，最右侧声音按钮被裁切，影响 Hackathon Demo 的移动展示。
+
+### 处理
+- 在 `crates/recommend/src/aleo.rs` 新增带 domain separation 的 SHA-256 承诺生成，截取 128-bit 生成四个合法 Aleo `field`；通过 `build_aleo_vault_inputs_wasm` 暴露给 Web。
+- 新增 `/private-vault`：浏览器内 Rust WASM 生成本地 AI 主题与承诺，Leo Wallet 只执行 `plant_private_rose` 的四个 field 参数，原文不发送 Roselet 后端。
+- 接入 Demox Leo Wallet adapter，固定 Aleo Testnet，并校验执行费必须是正安全整数。
+- 补充 WASM wrapper、交易构造和页面交互测试，锁定原文只在本地处理、钱包只接收 field 的边界。
+- 首页和普通种花页增加 Aleo Vault 入口；收紧移动端 header、导航链接和分隔线的水平间距，使顶栏宽度回到视口内。
+
+### 验证
+- `cargo fmt --all --check`
+- `cargo nextest run -p roselet-recommend -j1` → 148 passed
+- `cd contracts/aleo-private-vault && leo test --offline` → 1 passed
+- `cd contracts/aleo-private-vault && leo build --offline` → 1.49 KB
+- `cd apps/web && ./node_modules/.bin/tsc --noEmit`
+- `cd apps/web && ./node_modules/.bin/jest --coverage --runInBand` → 208 passed，statement 90.22%，lines 95.04%
+- `cd apps/web && ./node_modules/.bin/eslint .`
+- `cd apps/web && ./node_modules/.bin/next build` → `/private-vault` 静态预渲染成功
+- `cargo deny check` → advisories / bans / licenses / sources 均 ok（仅既有 duplicate warnings）
+- 浏览器检查 `1280x720` 与 `390x844` 的 `/private-vault`，以及移动首页入口；移动端 `bodyWidth = documentWidth = viewportWidth = 390`
+
+### 当前判断
+- 本地代码已覆盖 Leo 合约、浏览器承诺、钱包连接和交易请求构造，但尚未部署 `roselet_private_vault.aleo`，也未用有 Testnet 余额的 Leo Wallet 完成真实交易，不能声称 testnet 已验证。
+- 下一步外部前置条件是 Aleo testnet 部署账户、实际 program id、部署费用和 Leo Wallet 测试余额。
+- 当前 Demox React adapter 声明 React 18 peer，而项目使用 React 19；类型检查、Jest 和 Next 16 生产构建均已通过，真实 Leo Wallet 扩展仍需端到端验证。
+
 ## 2026-07-13 会话：实现 Base Sepolia 链上纪念版最小闭环
 
 ### 问题
@@ -32,6 +63,19 @@
 - 后续扩展 x402 / GOAT / AgentKit 时，应建立在这条可验证的用户钱包交易路径上，而不是重做一套上链身份逻辑。
 - 本机 `roselet_test` 曾保留第 8 个 migration 的旧 checksum，导致全量 nextest 报 `VersionMismatch(8)`；仓库文件与已发布版本一致，因此仅重建了这个专用测试库，随后 149 项后端测试通过。
 - 提交 `1ba5424` 已推送到 `codex/onchain-memorial`，PR #4 已创建；CI 状态以 GitHub 为准。
+
+## 2026-07-13 会话：启动 Aleo Hackathon 私密 vault
+
+### 处理
+- 新增 `contracts/aleo-private-vault` Leo 4 程序：用户签名持有 `PrivateRose` record，记录内容和 AI 回复的承诺值；分享时生成接收人的 `RoseShare` record，原记录仍留给创建者。
+- 编译器验证后统一使用 Leo 4 的 `fn` 声明、`bool` 类型及 `self.signer` 作为 record owner；避免使用可能是程序地址的 `self.caller`。
+
+### 验证
+- `cd contracts/aleo-private-vault && leo test --offline` → 1 passed
+- `cd contracts/aleo-private-vault && leo build --offline` → program size 1.49 KB
+
+### 当前判断
+- 私密链上状态与授权合约已可编译和测试；下一步是配置 Aleo testnet program id、钱包适配器和交易费用，完成 Web 演示与真实 testnet 交易。
 
 ## 2026-06-26 会话：收敛 Cloudflare Pages Functions 调用范围
 

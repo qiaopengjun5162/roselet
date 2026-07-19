@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createRose, getToken, getMyRoses } from "@/lib/api";
 import { playClick, playPlant, playComplete } from "@/lib/sound";
@@ -164,6 +166,13 @@ export default function PlantPage() {
           <div className="text-center space-y-2">
             <h2 className="text-xl font-bold text-rose-300">选择玫瑰的颜色</h2>
             <p className="text-slate-400">每种颜色代表不同的心情</p>
+            <Link
+              href="/private-vault"
+              className="inline-flex items-center gap-1.5 text-sm text-emerald-300 hover:text-emerald-200"
+            >
+              <LockKeyhole className="size-4" aria-hidden="true" />
+              使用 Aleo 私密 Vault
+            </Link>
           </div>
           {/* Recommendation Card */}
           {(recLoading || rec) && (

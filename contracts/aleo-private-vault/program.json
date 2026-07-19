@@ -1,0 +1,9 @@
+{
+  "program": "roselet_private_vault.aleo",
+  "version": "0.1.0",
+  "description": "Private Roselet reflections and consented sharing records.",
+  "license": "MIT",
+  "leo": "4.0.2",
+  "dependencies": null,
+  "dev_dependencies": null
+}
