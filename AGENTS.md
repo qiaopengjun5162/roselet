@@ -28,7 +28,8 @@
 - Base Sepolia 链上纪念版只能为公开玫瑰创建；前后端的 `ROSE_MEMORIAL_CONTRACT_ADDRESS` / `NEXT_PUBLIC_ROSE_MEMORIAL_CONTRACT_ADDRESS` 必须是同一地址，后端只信任 RPC 回执内匹配合约、玫瑰编号、钱包、短句哈希和颜色的 `RoseMemorialMinted` 事件，绝不接触用户钱包私钥。
 - Aleo 私密 Vault 的原文、本地 AI 回应和分享 nonce 只能进入浏览器 Rust WASM；钱包交易只接收 WASM 生成的四个 `field`，不能把原文发给 Roselet 后端、公开 mapping 或 Leo program input。Leo record owner 固定使用 `self.signer`，不能改成可能为程序地址的 `self.caller`。
 - Solana Agent API 固定使用 x402 v2 SVM `exact` + Devnet USDC；`X402_SVM_PAY_TO` 只能是公开收款地址，服务端不得持有付款方或商户私钥。推荐和校验继续复用 `crates/recommend` 的 Node WASM；Rust 变更后必须运行 `just agent-wasm` 更新 `apps/agent-api/pkg`。
-- GOAT 官方仓库当前已归档，不能作为新增核心运行时依赖；Agent 对接优先使用仍维护的 x402 HTTP/MCP 标准接口。
+- 已归档的是旧 `goat-sdk/goat`，不能作为新增核心运行时依赖；官方 `GOATNetwork/x402` 仍在维护。GOAT 支付使用其 `goatflow-sdk-server` 的 `DIRECT` 商户订单接口，API key/secret 只能留在 Agent API 服务端；Solana 标准 x402/SVM 路径继续独立保留。
+- GOAT 订单必须与 Rust WASM 规范化后的 reflection 和付款字段做 domain-separated 绑定；只有订单状态为 `INVOICED`、订单字段匹配且 proof 获取并校验通过后才能生成推荐，不能把 `PAYMENT_CONFIRMED` 或 SDK 返回的未签名 checksum 当成最终交付证明。
 - x402 SVM 客户端通过 Undici 环境代理访问 RPC 时，必须删除 Solana Kit v5 显式设置的 `Content-Length`，让 Undici 按 body 重算；否则 `EnvHttpProxyAgent` 会报 `UND_ERR_INVALID_ARG: invalid content-length header`。
 - Worker 侧最小验证优先拆成独立的 `worker:typecheck` 和 `worker:test`，不要把 Cloudflare 类型环境和 Node 测试宿主强行混成一套。
 - Worker 侧跨文件相对导入按 NodeNext/ESM 目标显式写 `.js` 扩展名，避免测试编译链和部署编译链分叉。

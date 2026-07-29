@@ -2,6 +2,27 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-29 会话：确定 GOAT x402 Grant 接入设计
+
+### 问题
+- GOAT Builder 申请表会直接询问是否已接入 GOAT x402、是否申请 Integration Faucet，以及项目状态和交易证据；现有 Solana x402/SVM Demo 不能被描述为 GOAT 基础设施接入。
+- 旧记录把“已归档的 `goat-sdk/goat`”泛化成了“GOAT 官方仓库已归档”，但当前官方 `GOATNetwork/x402` 仓库仍在维护，并发布了 `goatflow-sdk-server`。
+- GOAT programmatic x402 使用 EVM 商户订单、HMAC API 凭据和 `INVOICED` 终态，与 Solana x402 Foundation facilitator 不是同一套结算接口。
+
+### 处理
+- 确定保留 Solana x402 API/MCP，同时新增 GOAT Testnet3 `DIRECT` 支付入口，不用一条链替代另一条链。
+- 新增设计文档 `docs/superpowers/specs/2026-07-29-goat-x402-agent-payment-design.md`，定义配置、订单创建、支付后交付、错误和测试边界。
+- GOAT 订单引用由 Rust WASM 对 reflection 和付款字段做 domain-separated 绑定；推荐只能在 `INVOICED`、订单字段匹配且 proof 获取并校验通过后执行。
+- 修正项目约束：禁止的是已归档旧 SDK；新的 GOAT x402 服务端 SDK 可以作为支付接线依赖，但 API key/secret 必须只存在于服务端。
+
+### 验证
+- 对照 GOAT 官方 x402 Developer Quick Start、API Reference 和 `GOATNetwork/x402` v0.3.0 SDK 源码核对接口与状态语义。
+- `rg -n "TBD|TODO|FIXME|GOAT 官方仓库当前已归档" docs/superpowers/specs/2026-07-29-goat-x402-agent-payment-design.md AGENTS.md CLAUDE.md` 无未决占位符或旧约束。
+
+### 当前判断
+- 设计不需要钱包私钥，也不会在自动化测试中创建订单或移动资金。
+- 真实 GOAT Testnet3 结算仍需要官方审核后的 merchant ID/API 凭据、Faucet 测试资产和用户钱包授权，未完成前不能声称 GOAT 支付已上链。
+
 ## 2026-07-19 会话：实现 Solana x402 Agent API 与付费 MCP Tool
 
 ### 问题
