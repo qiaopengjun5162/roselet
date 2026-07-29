@@ -1,6 +1,6 @@
 # GOAT x402 Agent Payment Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add a GOAT Testnet3 DIRECT merchant payment path to `apps/agent-api` alongside the existing Solana x402 path, per `docs/superpowers/specs/2026-07-29-goat-x402-agent-payment-design.md`.
 
@@ -16,7 +16,7 @@
 - Create: `crates/recommend/src/goat.rs`
 - Test: in-module `#[cfg(test)]` tests
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```rust
 #[cfg(test)]
@@ -78,12 +78,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cargo nextest run -p roselet-recommend -j1 goat`
 Expected: compile error because the `goat` module does not exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```rust
 use serde::{Deserialize, Serialize};
@@ -188,14 +188,14 @@ fn normalize_amount_wei(value: &str) -> Result<String, String> {
 }
 ```
 
-- [ ] **Step 4: Register the module and run tests**
+- [x] **Step 4: Register the module and run tests**
 
 Add `mod goat;` to `crates/recommend/src/lib.rs` (next to `mod aleo;`).
 
 Run: `cargo nextest run -p roselet-recommend -j1 goat`
 Expected: 4 tests pass.
 
-- [ ] **Step 5: Format**
+- [x] **Step 5: Format**
 
 Run: `cargo fmt --all -- --check`
 Expected: clean.
@@ -206,7 +206,7 @@ Expected: clean.
 - Modify: `crates/recommend/src/lib.rs` (near `build_aleo_vault_inputs_wasm`)
 - Regenerate: `apps/agent-api/pkg/*`
 
-- [ ] **Step 1: Write the failing WASM wrapper test**
+- [x] **Step 1: Write the failing WASM wrapper test**
 
 Add to the `crates/recommend/src/lib.rs` test module:
 
@@ -227,7 +227,7 @@ Add to the `crates/recommend/src/lib.rs` test module:
 Run: `cargo nextest run -p roselet-recommend -j1 goat_order_reference_wasm`
 Expected: compile error — `build_goat_order_reference_wasm` does not exist (RED).
 
-- [ ] **Step 2: Add the WASM export**
+- [x] **Step 2: Add the WASM export**
 
 In `crates/recommend/src/lib.rs`, after `build_aleo_vault_inputs_wasm`:
 
@@ -241,7 +241,7 @@ pub fn build_goat_order_reference_wasm(input_json: &str) -> String {
 }
 ```
 
-- [ ] **Step 3: Run tests and rebuild the Node WASM package**
+- [x] **Step 3: Run tests and rebuild the Node WASM package**
 
 Run: `cargo nextest run -p roselet-recommend -j1`
 Expected: all tests pass.
@@ -249,7 +249,7 @@ Expected: all tests pass.
 Run: `just agent-wasm`
 Expected: `apps/agent-api/pkg/roselet_recommend.js` exports `build_goat_order_reference_wasm`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add crates/recommend/src/goat.rs crates/recommend/src/lib.rs apps/agent-api/pkg docs/superpowers/plans/2026-07-29-goat-x402-agent-payment.md
@@ -262,7 +262,7 @@ git commit -m "feat: add GOAT order reference to Rust WASM"
 - Modify: `apps/agent-api/package.json`
 - Modify: `pnpm-lock.yaml`
 
-- [ ] **Step 1: Add the dependency**
+- [x] **Step 1: Add the dependency**
 
 Add to `apps/agent-api/package.json` dependencies:
 
@@ -270,7 +270,7 @@ Add to `apps/agent-api/package.json` dependencies:
     "goatflow-sdk-server": "0.3.0",
 ```
 
-- [ ] **Step 2: Install**
+- [x] **Step 2: Install**
 
 Run: `pnpm install`
 Expected: lockfile updates, `node_modules/goatflow-sdk-server` present.
@@ -281,7 +281,7 @@ Expected: lockfile updates, `node_modules/goatflow-sdk-server` present.
 - Modify: `apps/agent-api/src/config.ts`
 - Test: `apps/agent-api/src/config.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `config.test.ts`, and update the import to include `DEFAULT_GOATX402_API_URL` and `loadGoatConfig`:
 
@@ -331,7 +331,7 @@ describe("loadGoatConfig", () => {
 Run: `cd apps/agent-api && pnpm vitest run src/config.test.ts --coverage.enabled=false`
 Expected: FAIL — `loadGoatConfig` is not exported.
 
-- [ ] **Step 2: Implement `loadGoatConfig`**
+- [x] **Step 2: Implement `loadGoatConfig`**
 
 Append to `apps/agent-api/src/config.ts`:
 
@@ -377,7 +377,7 @@ export function loadGoatConfig(env: NodeJS.ProcessEnv = process.env): GoatX402Co
 }
 ```
 
-- [ ] **Step 3: Run tests to verify they pass**
+- [x] **Step 3: Run tests to verify they pass**
 
 Run: `cd apps/agent-api && pnpm vitest run src/config.test.ts --coverage.enabled=false`
 Expected: all config tests pass.
@@ -388,7 +388,7 @@ Expected: all config tests pass.
 - Create: `apps/agent-api/src/goat-client.ts`
 - Test: `apps/agent-api/src/goat-client.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -416,7 +416,7 @@ describe("createGoatClient", () => {
 Run: `cd apps/agent-api && pnpm vitest run src/goat-client.test.ts --coverage.enabled=false`
 Expected: FAIL — module does not exist.
 
-- [ ] **Step 2: Implement the wrapper**
+- [x] **Step 2: Implement the wrapper**
 
 ```ts
 import {
@@ -453,7 +453,7 @@ export function createGoatClient(config: GoatX402Config): GoatMerchantClient {
 }
 ```
 
-- [ ] **Step 3: Run test to verify it passes**
+- [x] **Step 3: Run test to verify it passes**
 
 Run: `cd apps/agent-api && pnpm vitest run src/goat-client.test.ts --coverage.enabled=false`
 Expected: PASS.
@@ -464,7 +464,7 @@ Expected: PASS.
 - Create: `apps/agent-api/src/goat-order.ts`
 - Test: `apps/agent-api/src/goat-order.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -500,7 +500,7 @@ describe("buildGoatOrderReference", () => {
 Run: `cd apps/agent-api && pnpm vitest run src/goat-order.test.ts --coverage.enabled=false`
 Expected: FAIL — module does not exist.
 
-- [ ] **Step 2: Implement the helper**
+- [x] **Step 2: Implement the helper**
 
 ```ts
 import { build_goat_order_reference_wasm } from "../pkg/roselet_recommend.js";
@@ -536,7 +536,7 @@ export function buildGoatOrderReference(input: GoatOrderReferenceInput): GoatOrd
 }
 ```
 
-- [ ] **Step 3: Run tests to verify they pass**
+- [x] **Step 3: Run tests to verify they pass**
 
 Run: `cd apps/agent-api && pnpm vitest run src/goat-order.test.ts --coverage.enabled=false`
 Expected: PASS (requires Task 2's rebuilt pkg).
@@ -548,7 +548,7 @@ Expected: PASS (requires Task 2's rebuilt pkg).
 - Test: `apps/agent-api/src/goat-routes.test.ts`
 - Modify: `apps/agent-api/src/app.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `apps/agent-api/src/goat-routes.test.ts`:
 
@@ -797,7 +797,7 @@ describe("GOAT routes", () => {
 Run: `cd apps/agent-api && pnpm vitest run src/goat-routes.test.ts --coverage.enabled=false`
 Expected: FAIL — `goat` option and routes do not exist.
 
-- [ ] **Step 2: Implement `goat-routes.ts`**
+- [x] **Step 2: Implement `goat-routes.ts`**
 
 ```ts
 import type { Hono } from "hono";
@@ -1027,7 +1027,7 @@ async function prepareOrder(
 }
 ```
 
-- [ ] **Step 3: Wire the routes into `app.ts`**
+- [x] **Step 3: Wire the routes into `app.ts`**
 
 Modify `apps/agent-api/src/app.ts`:
 
@@ -1057,7 +1057,7 @@ export function createApp({ payment, goat = null }: CreateAppOptions) {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd apps/agent-api && pnpm vitest run --coverage.enabled=false`
 Expected: all tests pass.
@@ -1067,7 +1067,7 @@ Expected: all tests pass.
 **Files:**
 - Modify: `apps/agent-api/src/server.ts`
 
-- [ ] **Step 1: Update `server.ts`**
+- [x] **Step 1: Update `server.ts`**
 
 ```ts
 import { serve } from "@hono/node-server";
@@ -1091,7 +1091,7 @@ serve({ fetch: app.fetch, hostname: config.host, port: config.port }, info => {
 });
 ```
 
-- [ ] **Step 2: Typecheck, test with coverage, and build**
+- [x] **Step 2: Typecheck, test with coverage, and build**
 
 Run: `just agent-check`
 Expected: typecheck clean, all tests pass, coverage thresholds met.
@@ -1099,7 +1099,7 @@ Expected: typecheck clean, all tests pass, coverage thresholds met.
 Run: `pnpm agent:build`
 Expected: build succeeds.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/agent-api
@@ -1114,15 +1114,15 @@ git commit -m "feat: add GOAT x402 DIRECT merchant payment routes"
 - Modify: `CLAUDE.md` (test counts)
 - Modify: `DEVLOG.md`
 
-- [ ] **Step 1: Document the GOAT env vars and endpoints**
+- [x] **Step 1: Document the GOAT env vars and endpoints**
 
 In `apps/agent-api/README.md`, add a "GOAT x402 (Testnet3)" section documenting the five env vars, the three endpoints, the 402 order flow, and the INVOICED + proof delivery gate.
 
-- [ ] **Step 2: Update grant demo doc, CLAUDE.md test counts, DEVLOG.md**
+- [x] **Step 2: Update grant demo doc, CLAUDE.md test counts, DEVLOG.md**
 
 Record what was added, why DIRECT mode, why INVOICED + proof gating, verification commands, and remaining external steps (merchant approval, faucet, real Testnet3 order).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/agent-api/README.md docs/WEB3_GRANT_DEMO.md CLAUDE.md DEVLOG.md
@@ -1131,7 +1131,7 @@ git commit -m "docs: document GOAT x402 agent payment path"
 
 ### Task 10: Final verification and push
 
-- [ ] **Step 1: Run the full verification suite**
+- [x] **Step 1: Run the full verification suite**
 
 ```bash
 cargo fmt --all -- --check
@@ -1143,7 +1143,7 @@ git diff --check
 
 Expected: all clean.
 
-- [ ] **Step 2: Push**
+- [x] **Step 2: Push**
 
 ```bash
 git push
