@@ -41,3 +41,44 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentApiConfig
     price,
   };
 }
+
+export const DEFAULT_GOATX402_API_URL = "https://x402-api-lx58aabp0r.testnet3.goat.network/";
+
+export interface GoatX402Config {
+  apiUrl: string;
+  merchantId: string;
+  apiKey: string;
+  apiSecret: string;
+  reflectionAmountWei: string;
+}
+
+// 部分配置直接启动失败：避免部署环境凭据缺失却静默降级。
+export function loadGoatConfig(env: NodeJS.ProcessEnv = process.env): GoatX402Config | null {
+  const fields = {
+    GOATX402_MERCHANT_ID: env.GOATX402_MERCHANT_ID?.trim(),
+    GOATX402_API_KEY: env.GOATX402_API_KEY?.trim(),
+    GOATX402_API_SECRET: env.GOATX402_API_SECRET?.trim(),
+    GOATX402_REFLECTION_AMOUNT_WEI: env.GOATX402_REFLECTION_AMOUNT_WEI?.trim(),
+  };
+  const missing = Object.entries(fields)
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+
+  if (missing.length === Object.keys(fields).length) return null;
+  if (missing.length > 0) {
+    throw new Error(`partial GOAT x402 configuration, missing: ${missing.join(", ")}`);
+  }
+
+  const reflectionAmountWei = fields.GOATX402_REFLECTION_AMOUNT_WEI as string;
+  if (!/^[1-9]\d*$/.test(reflectionAmountWei)) {
+    throw new Error("GOATX402_REFLECTION_AMOUNT_WEI must be a positive integer in wei");
+  }
+
+  return {
+    apiUrl: env.GOATX402_API_URL?.trim() || DEFAULT_GOATX402_API_URL,
+    merchantId: fields.GOATX402_MERCHANT_ID as string,
+    apiKey: fields.GOATX402_API_KEY as string,
+    apiSecret: fields.GOATX402_API_SECRET as string,
+    reflectionAmountWei,
+  };
+}

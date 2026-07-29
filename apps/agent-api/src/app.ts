@@ -1,4 +1,5 @@
 import { Hono, type MiddlewareHandler } from "hono";
+import { type GoatRouteContext, registerGoatRoutes } from "./goat-routes.js";
 import {
   type CleanedReflectionInput,
   generateReflectionFromCleanedInput,
@@ -8,9 +9,10 @@ import {
 
 export interface CreateAppOptions {
   payment: MiddlewareHandler;
+  goat?: GoatRouteContext | null;
 }
 
-export function createApp({ payment }: CreateAppOptions) {
+export function createApp({ payment, goat = null }: CreateAppOptions) {
   const app = new Hono<{ Variables: { reflectionInput: CleanedReflectionInput } }>();
 
   app.get("/health", c => c.json({ status: "ok", paymentProtocol: "x402", network: "solana-devnet" }));
@@ -37,6 +39,8 @@ export function createApp({ payment }: CreateAppOptions) {
   app.post("/v1/reflection", c =>
     c.json(generateReflectionFromCleanedInput(c.get("reflectionInput"))),
   );
+
+  registerGoatRoutes(app, goat);
 
   return app;
 }

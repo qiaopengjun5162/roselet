@@ -41,6 +41,9 @@ importers:
       '@x402/svm':
         specifier: 2.19.0
         version: 2.19.0(@solana/kit@5.5.1(typescript@5.9.3))(@solana/sysvars@5.5.1(typescript@5.9.3))
+      goatflow-sdk-server:
+        specifier: 0.3.0
+        version: 0.3.0
       hono:
         specifier: ^4.12.3
         version: 4.12.23
@@ -5754,6 +5757,10 @@ packages:
 
   globs@0.1.4:
     resolution: {integrity: sha512-D23dWbOq48vlOraoSigbcQV4tWrnhwk+E/Um2cMuDS3/5dwGmdFeA7L/vAvDhLFlQOTDqHcXh35m/71g2A2WzQ==}
+
+  goatflow-sdk-server@0.3.0:
+    resolution: {integrity: sha512-MvW0t4mDQ3jbeQPZ87351BLyyx4O9AnLUN+flsaLmQivVKSES9nqrSmlVrdl5+iDVz3xZG5VaW7AfpmFbWtwqA==}
+    engines: {node: '>=18'}
 
   gopd@1.2.0:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
@@ -15330,6 +15337,8 @@ snapshots:
   globs@0.1.4:
     dependencies:
       glob: 7.2.3
+
+  goatflow-sdk-server@0.3.0: {}
 
   gopd@1.2.0: {}
 
