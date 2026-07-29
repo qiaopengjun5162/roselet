@@ -117,6 +117,30 @@ function build_garden_url(base_url, page, per_page, color) {
 exports.build_garden_url = build_garden_url;
 
 /**
+ * @param {string} input_json
+ * @returns {string}
+ */
+function build_goat_order_reference_wasm(input_json) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(input_json, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.build_goat_order_reference_wasm(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export4(deferred2_0, deferred2_1, 1);
+    }
+}
+exports.build_goat_order_reference_wasm = build_goat_order_reference_wasm;
+
+/**
  * @param {string} plant_body_json
  * @param {string} temp_id
  * @param {string} now_iso

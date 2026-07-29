@@ -6,6 +6,7 @@ export const apply_garden_cache_action_wasm: (a: number, b: number, c: number, d
 export const audio_playback_policy_wasm: (a: number, b: number) => number;
 export const build_aleo_vault_inputs_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
 export const build_garden_url: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+export const build_goat_order_reference_wasm: (a: number, b: number, c: number) => void;
 export const build_optimistic_rose_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
 export const build_plant_body: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
 export const burstFireworks: (a: number, b: number, c: number, d: number) => number;

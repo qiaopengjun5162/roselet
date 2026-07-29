@@ -20,6 +20,8 @@ export function build_aleo_vault_inputs_wasm(rose_id: string, content: string, a
  */
 export function build_garden_url(base_url: string, page: number, per_page: number, color: string): string;
 
+export function build_goat_order_reference_wasm(input_json: string): string;
+
 export function build_optimistic_rose_wasm(plant_body_json: string, temp_id: string, now_iso: string, nickname: string): any;
 
 export function build_plant_body(color: string, gratitude: string, anxiety: string, hope: string, is_private: boolean, recipient_nickname: string): string;
