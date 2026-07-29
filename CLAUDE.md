@@ -19,7 +19,7 @@ Roselet 是一个社区破冰互动 Web 应用：用户种下玫瑰（感恩）�
 roselet/
 ├── apps/web/          # Next.js 前端
 ├── apps/miniprogram/  # Taro 微信小程序
-├── apps/agent-api/    # Solana x402 HTTP / MCP
+├── apps/agent-api/    # Solana + GOAT x402 HTTP / MCP
 ├── packages/core/     # 共享 TypeScript 类型
 ├── crates/backend/    # Rust Axum 后端
 ├── crates/recommend/  # Rust WASM 推荐模块
@@ -46,11 +46,11 @@ Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请
 ## 测试状态
 ```
 Rust backend:   149 passed
-Rust WASM:      148 passed
+Rust WASM:      153 passed
 Web frontend:   208 passed
 Miniprogram:     66 passed
-Agent API:       16 passed
-Total:          587 passed
+Agent API:       35 passed
+Total:          611 passed
 
 llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   100%: flowers, petal, sky, keywords, pagination, user, docs, state

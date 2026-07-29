@@ -2,6 +2,32 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-29 会话：实现 GOAT x402 DIRECT 商户支付路径
+
+### 会话目标
+按 `docs/superpowers/specs/2026-07-29-goat-x402-agent-payment-design.md` 给 Agent API 增加官方 GOAT Testnet3 支付路径，与 Solana x402 路径并存，用于 GOAT AI Builder Grant 投递。实现计划见 `docs/superpowers/plans/2026-07-29-goat-x402-agent-payment.md`。
+
+### 完成的工作
+- `crates/recommend/src/goat.rs`：EVM 地址 / amount_wei / token_symbol 规范化 + domain-separated（`roselet-goat-x402-v1`）SHA-256 确定性 `dapp_order_id`；`lib.rs` 新增 `build_goat_order_reference_wasm` 导出并重建 `apps/agent-api/pkg`。
+- `apps/agent-api`：安装官方 `goatflow-sdk-server@0.3.0`；新增 `loadGoatConfig`（缺全部变量返回 null，部分配置启动失败）、`goat-client.ts`（凭据只留在 SDK 实例内的可注入接口）、`goat-order.ts`（WASM helper）、`goat-routes.ts` 三个路由。
+- 路由语义：`GET /v1/goat/merchant` 返回公开商户配置；`POST /v1/goat/reflection/orders` 校验 reflection + 商户 DIRECT 路由匹配后创建订单，返回 HTTP 402 + base64 `PAYMENT-REQUIRED`，此步不生成推荐；`POST /v1/goat/reflection/complete` 只有在订单 `INVOICED`、全部订单字段匹配重算引用、proof payload 匹配后才交付推荐。`PAYMENT_CONFIRMED` 返回 409 pending；`FAILED/EXPIRED/CANCELLED` 返回 402；proof 的 `signature` 只是未签名 checksum，不作为背书。
+- 未配置 GOAT 时所有 `/v1/goat/*` 返回稳定 `503 goat_x402_not_configured`，Solana 路径不受影响。
+
+### 遇到的问题
+- `just agent-wasm` 沙箱内失败：pnpm@9.15.4 版本切换需要联网验证签名。处理：绕过 pnpm 直接运行 `wasm-pack build --target nodejs`；后续 `just agent-check` 等需要 pnpm 的命令用提权联网执行。
+- 覆盖率门禁 functions 81.81% < 90%：原因是 `goat-client.ts` 四个转发方法只有 typeof 检查。处理：补一个 stub `fetch` 的测试，真实调用官方 SDK 四个方法并断言请求 URL/body/响应映射，functions 回到 100%。
+- Hono 泛型不匹配：`registerGoatRoutes(app: Hono)` 与带 `Variables` 的 app 类型不兼容。处理：改成 `registerGoatRoutes<E extends Env>(app: Hono<E>, ...)`。
+
+### 验证
+- `cargo nextest run -p roselet-recommend -j1`：153 passed（新增 5 个 GOAT 测试）
+- `just agent-check`：typecheck 通过，35 passed，覆盖率 statements/lines 93.68%、branches 90.41%、functions 100%
+- `pnpm agent:build`：通过
+- `cargo fmt --all -- --check`：通过
+
+### 剩余外部步骤（需要用户操作）
+- GOAT 商户后台申请 API key/secret，配置 `GOATX402_*` 环境变量。
+- Testnet3 faucet 领水 + 显式钱包授权后，才能跑真实订单链路。
+
 ## 2026-07-29 会话：确定 GOAT x402 Grant 接入设计
 
 ### 问题

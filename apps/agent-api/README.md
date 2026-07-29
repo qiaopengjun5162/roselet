@@ -54,6 +54,24 @@ X402_SVM_PAY_TO=<solana-devnet-address> just agent-mcp
 
 The server exposes `roselet_reflection`. Calling it without x402 payment metadata returns a structured payment requirement; an x402-aware MCP client can sign and retry automatically.
 
+## GOAT x402 (Testnet3)
+
+Optional second payment path using the official GOAT merchant API (`goatflow-sdk-server`, DIRECT mode). Without the variables below the server starts normally and every `/v1/goat/*` route returns `503 goat_x402_not_configured`; a partial configuration fails at startup.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `GOATX402_API_URL` | no | GOAT Flow API base URL (defaults to the official Testnet3 API) |
+| `GOATX402_MERCHANT_ID` | yes (for GOAT) | Merchant ID |
+| `GOATX402_API_KEY` | yes (for GOAT) | Server-only API key |
+| `GOATX402_API_SECRET` | yes (for GOAT) | Server-only HMAC secret; never logged or returned |
+| `GOATX402_REFLECTION_AMOUNT_WEI` | yes (for GOAT) | Reflection price in wei |
+
+Endpoints:
+
+- `GET /v1/goat/merchant` returns the public merchant configuration (receive type, supported chains and tokens).
+- `POST /v1/goat/reflection/orders` accepts `{ payer, chainId, tokenSymbol, tokenContract, reflection }`, binds the input to a deterministic Rust WASM `dapp_order_id`, creates a GOAT order, and returns HTTP 402 with a base64 `PAYMENT-REQUIRED` header. No recommendation is generated at this step.
+- `POST /v1/goat/reflection/complete` accepts the same body plus `orderId`. The Rust recommendation is delivered only when the order is `INVOICED`, every order field matches the recomputed reference, and the settlement proof payload matches. `PAYMENT_CONFIRMED` is treated as pending; the proof `signature` is an unsigned checksum and is never trusted as an attestation.
+
 ## Verify
 
 ```bash
@@ -61,4 +79,4 @@ just agent-check
 pnpm agent:build
 ```
 
-Local and CI tests do not settle funds. The included client has completed x402 negotiation, Solana RPC transaction construction, signing, and facilitator simulation; an unfunded Devnet USDC account is rejected as `transaction_simulation_failed` before settlement.
+Local and CI tests do not settle funds; GOAT routes are tested with a fake client and never create real orders. The included client has completed x402 negotiation, Solana RPC transaction construction, signing, and facilitator simulation; an unfunded Devnet USDC account is rejected as `transaction_simulation_failed` before settlement.
