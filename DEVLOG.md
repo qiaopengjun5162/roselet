@@ -2,6 +2,23 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-30 会话：npm 依赖安全审计与修复
+
+### 会话目标
+对新增 goatflow-sdk-server 后的依赖树做安全审计，消除 agent-api 相关漏洞。
+
+### 完成的工作
+- `pnpm audit --prod`：全 workspace 54 个漏洞，其中 agent-api 相关 12 个 advisory（hono 7 个含 1 high CORS、fast-uri 2 个 high host confusion、body-parser 1 个 low、@hono/node-server 1 个、jsx 相关 2 个）；goatflow-sdk-server 本身无漏洞。
+- 修复：agent-api `hono` 升到 `^4.12.27`；根 `package.json` 新增 pnpm overrides `fast-uri >=3.1.4`、`body-parser >=2.3.0`。
+- 结果：54 → 50，agent-api 相关 advisory 全部消除，仅剩 `@hono/node-server <2.0.5` 的 Windows serve-static 路径穿越（agent-api 是 JSON API 不用 serve-static，生产 Linux；2.x 是 major 且会连带 MCP SDK，不升级，记录在案）。
+
+### 验证
+- `just agent-check`：39 passed，覆盖率 97.25% 不变。
+- `pnpm worker:typecheck`：通过；`pnpm worker:test`：20 passed（hono 升级对 worker-api 无回归）。
+
+### 关键约束（沉淀）
+- 新增 npm 依赖后必须跑 `pnpm audit --prod` 并按 app 过滤；`just audit` 只覆盖 Rust（cargo deny）。
+
 ## 2026-07-30 会话：补齐 GOAT 上游失败路径测试
 
 ### 会话目标
