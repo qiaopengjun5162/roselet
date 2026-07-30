@@ -2,6 +2,23 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-30 会话：参赛材料准备（Aleo + GOAT）
+
+### 会话目标
+为 Aleo Hackathon（8.1 报名截止）和 GOAT AI Builder Grants 准备可直接使用的提交材料。
+
+### 完成的工作
+- 确认 PR #4 / #5 / #6 全部 CI 绿灯（Backend/Frontend/Miniprogram/Vercel/Cloudflare Pages）。
+- 新增 `docs/HACKATHON_ALEO_SUBMISSION.md`：AI × Privacy 赛道中英文项目简介、隐私论证、Aleo 技术说明、活动期间新增内容清单、评委复现路径、诚实边界（Testnet 未部署）、未来规划。
+- 新增 `docs/GOAT_GRANT_APPLICATION.md`：按 Tally 表单 10 页逐题准备答案草稿（产品、用户、付费理由、用户流程、AI 作用、GOAT 接入方式、faucet 申请、traction）。
+
+### 剩余外部步骤（需要用户操作，按紧急度排序）
+1. **Aleo 报名 8.1 23:59 截止（最紧急）**：注册 HackAgent → https://hackathon.xyz/events/public/e7ad6199-0078-42ee-9846-b82c385e4c0e 报名。
+2. GOAT 商户后台申请 API key/secret → 配置 `GOATX402_*` → 跑一笔真实 Testnet3 订单 → 提交 Tally 申请表（答案见 `docs/GOAT_GRANT_APPLICATION.md`）。
+3. Circle Faucet 领 Solana Devnet USDC → 完成 Solana x402 真实结算。
+4. 部署 `roselet_private_vault.aleo` 到 Aleo Testnet → 补端到端交易证据（8.14 提交截止前）。
+5. 三个 PR 均绿，合并顺序 #4 → #5 → #6（合并 #4 到 main 会触发生产发布流程，需按 `docs/RELEASE_PROCESS.md` 决定时机）。
+
 ## 2026-07-29 会话：实现 GOAT x402 DIRECT 商户支付路径
 
 ### 会话目标
