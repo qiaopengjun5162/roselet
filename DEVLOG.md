@@ -15,6 +15,7 @@
 ### 验证
 - `just agent-check`：39 passed，覆盖率 97.25% 不变。
 - `pnpm worker:typecheck`：通过；`pnpm worker:test`：20 passed（hono 升级对 worker-api 无回归）。
+- 全 workspace 回归（overrides 全局生效后补跑）：`pnpm --filter web test` 208 passed；`pnpm --filter @roselet/miniprogram test` 66 passed。
 
 ### 关键约束（沉淀）
 - 新增 npm 依赖后必须跑 `pnpm audit --prod` 并按 app 过滤；`just audit` 只覆盖 Rust（cargo deny）。
