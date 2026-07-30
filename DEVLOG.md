@@ -2,6 +2,18 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-30 会话：Aleo 部署手册与名称可用性确认
+
+### 完成的工作
+- 确认 PR #6 无评审意见、最新推送 CI 全绿。
+- 只读查询确认 `roselet_private_vault.aleo` 在 Aleo Testnet 未被占用（explorer API 返回 404）。
+- 确认本机 Leo CLI 4.0.2 可用，按 `leo deploy --help` 实际参数写部署手册。
+- 新增 `docs/ALEO_TESTNET_DEPLOYMENT.md`：faucet 前置、部署命令、验证、命令行冒烟、浏览器钱包链路、提交证据清单、排障。
+
+### 关键约束（沉淀）
+- Aleo program 名部署前必须查 explorer 确认未被占用；若被抢注需同步改 `program.json`、`main.leo` 和 `NEXT_PUBLIC_ALEO_VAULT_PROGRAM_ID`。
+- Aleo 私钥只通过环境变量传入，不写 Git/文档。
+
 ## 2026-07-30 会话：参赛材料准备（Aleo + GOAT）
 
 ### 会话目标
