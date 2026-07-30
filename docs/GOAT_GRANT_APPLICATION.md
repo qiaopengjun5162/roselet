@@ -79,13 +79,13 @@ Agent 调用优质垂直 API 时缺少原生的按次支付能力：传统 API k
 ## 项目状态
 
 - Solana x402 路径：端到端已验证到 facilitator simulation，待 Devnet USDC 结算
-- GOAT 路径：商户订单/状态/proof 门控逻辑完成，35 个自动化测试通过（fake client），待商户凭据 + faucet 后跑真实 Testnet3 订单
+- GOAT 路径：商户订单/状态/proof 门控逻辑完成，39 个自动化测试通过（fake client），待商户凭据 + faucet 后跑真实 Testnet3 订单
 - 主产品（Web/小程序/后端）：生产环境运行中
 
 ## Traction
 
 - 生产环境真实用户（Web + 微信小程序）
-- 611 个自动化测试（Rust 后端 149 / Rust WASM 153 / Web 208 / 小程序 66 / Agent API 35）
+- 615 个自动化测试（Rust 后端 149 / Rust WASM 153 / Web 208 / 小程序 66 / Agent API 39）
 - 三条链的真实工程：Base Sepolia 合约 + Foundry 测试、Aleo Leo program、Solana x402 facilitator simulation
 
 ## 官网
