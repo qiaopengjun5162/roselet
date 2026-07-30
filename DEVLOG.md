@@ -2,6 +2,22 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-30 会话：补齐 GOAT 上游失败路径测试
+
+### 会话目标
+补齐 `goat-routes.ts` 未覆盖的上游失败行为（设计要求：GOAT 上游失败映射为稳定错误且不泄露凭据）。
+
+### 完成的工作
+- fake client 增加 `failOn: "merchant" | "create" | "status" | "proof"` 按方法注入失败。
+- 新增 4 个测试：orders 的 merchant/create 失败 502、complete 的 status/proof 失败 502、缺失或非法 orderId 400（含非字符串、空白）、complete 非法付款字段 400。
+- `goat-routes.ts` 覆盖率从 88.13%/85.29% 提升到 95.48%/93.24%（ statements/branches），整体 97.25%。
+
+### 遇到的问题
+- `failOn: "proof"` 用例初次失败（返回 409 而非 502）：complete 路由先校验 `dappOrderId` 匹配，未先下单时 fake 的 `lastDappOrderId` 为空导致 mismatch 先于 proof 调用。处理：该用例先走 `postOrder` 建立订单，与其他用例保持一致。
+
+### 验证
+- `just agent-check`：typecheck 通过，39 passed，覆盖率全部达标。
+
 ## 2026-07-30 会话：运行时冒烟 + Aleo 离线预演 + 演示脚本
 
 ### 完成的工作

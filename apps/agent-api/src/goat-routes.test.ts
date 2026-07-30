@@ -76,26 +76,30 @@ interface FakeOverrides {
   dappOrderId?: string;
   proof?: Partial<OrderProofResponse["payload"]>;
   fail?: boolean;
+  failOn?: "merchant" | "create" | "status" | "proof";
 }
 
 function fakeClient(overrides: FakeOverrides = {}) {
   const fake = {
     lastDappOrderId: "",
     async getMerchant(): Promise<MerchantInfo> {
-      if (overrides.fail) throw new Error("upstream down");
+      if (overrides.fail || overrides.failOn === "merchant") throw new Error("upstream down");
       return { ...MERCHANT, ...overrides.merchant };
     },
     async createOrderRaw(params: { dappOrderId: string }): Promise<X402PaymentRequired> {
+      if (overrides.failOn === "create") throw new Error("upstream down");
       fake.lastDappOrderId = params.dappOrderId;
       return x402Response("goat-order-1");
     },
     async getOrderStatus(orderId: string): Promise<OrderProof> {
+      if (overrides.failOn === "status") throw new Error("upstream down");
       return {
         ...statusProof(orderId, overrides.status ?? "INVOICED"),
         dappOrderId: overrides.dappOrderId ?? fake.lastDappOrderId,
       };
     },
     async getOrderProof(orderId: string): Promise<OrderProofResponse> {
+      if (overrides.failOn === "proof") throw new Error("upstream down");
       return {
         payload: { ...proofPayload(orderId), ...overrides.proof },
         signature: "0xchecksum",
@@ -241,5 +245,52 @@ describe("GOAT routes", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as { recommendation: { theme: { title: string } } };
     expect(body.recommendation.theme.title).toBeTruthy();
+  });
+
+  it("maps upstream failures to 502 without leaking details on order creation", async () => {
+    const merchantDown = await postOrder(goatApp(fakeClient({ failOn: "merchant" })));
+    expect(merchantDown.status).toBe(502);
+    expect(await merchantDown.json()).toEqual({ error: "goat_upstream_unavailable" });
+
+    const createDown = await postOrder(goatApp(fakeClient({ failOn: "create" })));
+    expect(createDown.status).toBe(502);
+    expect(await createDown.json()).toEqual({ error: "goat_upstream_unavailable" });
+  });
+
+  it("maps upstream failures to 502 without leaking details on completion", async () => {
+    const statusDown = await postComplete(goatApp(fakeClient({ failOn: "status" })));
+    expect(statusDown.status).toBe(502);
+    expect(await statusDown.json()).toEqual({ error: "goat_upstream_unavailable" });
+
+    const proofClient = fakeClient({ failOn: "proof" });
+    await postOrder(goatApp(proofClient));
+    const proofDown = await postComplete(goatApp(proofClient));
+    expect(proofDown.status).toBe(502);
+    expect(await proofDown.json()).toEqual({ error: "goat_upstream_unavailable" });
+  });
+
+  it("rejects a missing or malformed orderId before any upstream call", async () => {
+    const app = goatApp(fakeClient());
+
+    for (const body of [
+      ORDER_BODY,
+      { ...ORDER_BODY, orderId: "" },
+      { ...ORDER_BODY, orderId: "   " },
+      { ...ORDER_BODY, orderId: 42 },
+    ]) {
+      const response = await postComplete(app, body);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "invalid_goat_order_request" });
+    }
+  });
+
+  it("rejects invalid payment fields on completion before any upstream call", async () => {
+    const response = await postComplete(goatApp(fakeClient()), {
+      orderId: "goat-order-1",
+      ...ORDER_BODY,
+      payer: "bad",
+    });
+
+    expect(response.status).toBe(400);
   });
 });

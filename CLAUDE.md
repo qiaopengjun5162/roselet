@@ -49,8 +49,8 @@ Rust backend:   149 passed
 Rust WASM:      153 passed
 Web frontend:   208 passed
 Miniprogram:     66 passed
-Agent API:       35 passed
-Total:          611 passed
+Agent API:       39 passed
+Total:          615 passed
 
 llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   100%: flowers, petal, sky, keywords, pagination, user, docs, state
