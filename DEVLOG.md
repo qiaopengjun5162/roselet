@@ -2,6 +2,17 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-30 会话：运行时冒烟 + Aleo 离线预演 + 演示脚本
+
+### 完成的工作
+- 本地真实启动 Agent API（端口 4199）做运行时冒烟：`/health` 200；三个 `/v1/goat/*` 路由在未配置凭据时返回稳定 `503 goat_x402_not_configured`；`/v1/reflection` 未付费返回 402。server.ts 接线（不在覆盖率内）行为符合设计。
+- Aleo 离线预演：`leo execute plant_private_rose 1field 2field 3field 4field --print` 本地编译通过（program 1.49 KB / 500 KB），共识版本确定需要联网 endpoint；联网 + 命令行私钥的组合被安全策略拒绝，改为在部署手册中保留 `PRIVATE_KEY` 环境变量方式，不绕过。
+- 新增 `docs/DEMO_VIDEO_SCRIPT.md`：3-4 分钟演示视频分镜脚本（问题 → 产品 → Private Vault 重点 → 分享撤销 → Agent 支付 → 工程证据）+ 录制前检查清单。
+
+### 关键约束（沉淀）
+- 任何私钥不得以命令行参数形式与联网 endpoint 组合使用；Aleo 部署/执行一律用 `PRIVATE_KEY` 环境变量（部署手册已是此模式）。
+- 沙箱中后台启动的进程会随命令结束被清理，本地服务冒烟必须把启动、curl、kill 放在同一条命令里。
+
 ## 2026-07-30 会话：Aleo 部署手册与名称可用性确认
 
 ### 完成的工作
