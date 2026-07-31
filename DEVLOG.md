@@ -2,6 +2,18 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-07-31 会话：Aleo Hackathon 报名提交成功
+
+### 完成的工作
+- 用户按 `docs/HACKATHON_ALEO_SUBMISSION.md` 的材料完成报名：团队 Roselet、赛道 AI × Privacy、Solo（1 人）。状态：报名提交成功，待主办方审核。
+- 确认 Circle Faucet 无法程序化领取（reCAPTCHA 人机校验 + GraphQL API 需浏览器），已给用户 1 分钟手动领取指引（USDC + Solana Devnet，地址 `6MZDRo5v8K2NfdohdD76QNpSgk3GH3Aup53BeMaRAEpd`）。
+
+### 下一步（按顺序）
+1. Aleo faucet 领 Testnet credits（https://faucet.aleo.org 或 Leo Wallet 内 faucet）。
+2. 私钥以 `PRIVATE_KEY` 环境变量提供，按 `docs/ALEO_TESTNET_DEPLOYMENT.md` 部署 `roselet_private_vault.aleo`。
+3. Circle Faucet 领 Devnet USDC 后跑 Solana x402 真实结算。
+4. GOAT 商户凭据下来后跑真实 Testnet3 订单并提交 Tally（答案在 `docs/GOAT_GRANT_APPLICATION.md`）。
+
 ## 2026-07-30 会话：npm 依赖安全审计与修复
 
 ### 会话目标
