@@ -2,6 +2,204 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-08-01 会话：Aleo 部署交易预演通过
+
+### 完成的工作
+- `leo deploy --print --yes` 完整构建部署交易（含 ZK proof 生成）：共识版本 14，部署费 **6,929,725 microcredits（约 6.93 credits，公开费）**，账户地址与 .env 读取链路全部正确。
+- 非终端环境 `leo deploy` 必须加 `--yes`，否则报 `Failed to prompt user: IO error: not a terminal`；已写入部署手册。
+- 关键结论：部署只剩账户余额这一个前置条件，faucet 到账后一条命令即可完成。
+
+### 下一步
+用户完成 Aleo faucet 领取 → 确认余额 ≥ 7 credits → `leo deploy --broadcast --yes` → 端到端执行与证据补录。
+
+## 2026-08-01 会话：Aleo 部署账户就绪
+
+### 完成的工作
+- 生成 testnet 专用部署账户（`leo account new`），地址 `aleo1g58fyxeeurrn605ew6sl53fqetnu2m3zjgnzhyn7kzjk8dfceurs0jnkt4`；私钥写入 `contracts/aleo-private-vault/.env`（已验证 gitignore 覆盖）。
+- 确认 faucet.aleo.org 有 Cloudflare 人机校验（HTTP 403），无法程序化领取。
+- 确认余额查询方式：`GET /v1/testnet/program/credits.aleo/mapping/account/{address}`，未到账返回 `null`（`/v1/testnet/account/{address}` 路由不存在，勿用）。
+- 更新 `docs/ALEO_TESTNET_DEPLOYMENT.md`：账户信息、余额复查命令。
+
+### 下一步
+用户在浏览器完成 Aleo faucet 领取（粘贴上述地址）后，执行部署手册第 1-6 步。
+
+## 2026-07-31 会话：Aleo Hackathon 报名提交成功
+
+### 完成的工作
+- 用户按 `docs/HACKATHON_ALEO_SUBMISSION.md` 的材料完成报名：团队 Roselet、赛道 AI × Privacy、Solo（1 人）。状态：报名提交成功，待主办方审核。
+- 确认 Circle Faucet 无法程序化领取（reCAPTCHA 人机校验 + GraphQL API 需浏览器），已给用户 1 分钟手动领取指引（USDC + Solana Devnet，地址 `6MZDRo5v8K2NfdohdD76QNpSgk3GH3Aup53BeMaRAEpd`）。
+
+### 下一步（按顺序）
+1. Aleo faucet 领 Testnet credits（https://faucet.aleo.org 或 Leo Wallet 内 faucet）。
+2. 私钥以 `PRIVATE_KEY` 环境变量提供，按 `docs/ALEO_TESTNET_DEPLOYMENT.md` 部署 `roselet_private_vault.aleo`。
+3. Circle Faucet 领 Devnet USDC 后跑 Solana x402 真实结算。
+4. GOAT 商户凭据下来后跑真实 Testnet3 订单并提交 Tally（答案在 `docs/GOAT_GRANT_APPLICATION.md`）。
+
+## 2026-07-30 会话：npm 依赖安全审计与修复
+
+### 会话目标
+对新增 goatflow-sdk-server 后的依赖树做安全审计，消除 agent-api 相关漏洞。
+
+### 完成的工作
+- `pnpm audit --prod`：全 workspace 54 个漏洞，其中 agent-api 相关 12 个 advisory（hono 7 个含 1 high CORS、fast-uri 2 个 high host confusion、body-parser 1 个 low、@hono/node-server 1 个、jsx 相关 2 个）；goatflow-sdk-server 本身无漏洞。
+- 修复：agent-api `hono` 升到 `^4.12.27`；根 `package.json` 新增 pnpm overrides `fast-uri >=3.1.4`、`body-parser >=2.3.0`。
+- 结果：54 → 50，agent-api 相关 advisory 全部消除，仅剩 `@hono/node-server <2.0.5` 的 Windows serve-static 路径穿越（agent-api 是 JSON API 不用 serve-static，生产 Linux；2.x 是 major 且会连带 MCP SDK，不升级，记录在案）。
+
+### 验证
+- `just agent-check`：39 passed，覆盖率 97.25% 不变。
+- `pnpm worker:typecheck`：通过；`pnpm worker:test`：20 passed（hono 升级对 worker-api 无回归）。
+- 全 workspace 回归（overrides 全局生效后补跑）：`pnpm --filter web test` 208 passed；`pnpm --filter @roselet/miniprogram test` 66 passed。
+- Rust 侧审计：`just audit`（cargo deny check）advisories/bans/licenses/sources 全 ok，供应链两侧审计闭环。
+
+### 关键约束（沉淀）
+- 新增 npm 依赖后必须跑 `pnpm audit --prod` 并按 app 过滤；`just audit` 只覆盖 Rust（cargo deny）。
+
+## 2026-07-30 会话：补齐 GOAT 上游失败路径测试
+
+### 会话目标
+补齐 `goat-routes.ts` 未覆盖的上游失败行为（设计要求：GOAT 上游失败映射为稳定错误且不泄露凭据）。
+
+### 完成的工作
+- fake client 增加 `failOn: "merchant" | "create" | "status" | "proof"` 按方法注入失败。
+- 新增 4 个测试：orders 的 merchant/create 失败 502、complete 的 status/proof 失败 502、缺失或非法 orderId 400（含非字符串、空白）、complete 非法付款字段 400。
+- `goat-routes.ts` 覆盖率从 88.13%/85.29% 提升到 95.48%/93.24%（ statements/branches），整体 97.25%。
+
+### 遇到的问题
+- `failOn: "proof"` 用例初次失败（返回 409 而非 502）：complete 路由先校验 `dappOrderId` 匹配，未先下单时 fake 的 `lastDappOrderId` 为空导致 mismatch 先于 proof 调用。处理：该用例先走 `postOrder` 建立订单，与其他用例保持一致。
+
+### 验证
+- `just agent-check`：typecheck 通过，39 passed，覆盖率全部达标。
+
+## 2026-07-30 会话：运行时冒烟 + Aleo 离线预演 + 演示脚本
+
+### 完成的工作
+- 本地真实启动 Agent API（端口 4199）做运行时冒烟：`/health` 200；三个 `/v1/goat/*` 路由在未配置凭据时返回稳定 `503 goat_x402_not_configured`；`/v1/reflection` 未付费返回 402。server.ts 接线（不在覆盖率内）行为符合设计。
+- Aleo 离线预演：`leo execute plant_private_rose 1field 2field 3field 4field --print` 本地编译通过（program 1.49 KB / 500 KB），共识版本确定需要联网 endpoint；联网 + 命令行私钥的组合被安全策略拒绝，改为在部署手册中保留 `PRIVATE_KEY` 环境变量方式，不绕过。
+- 新增 `docs/DEMO_VIDEO_SCRIPT.md`：3-4 分钟演示视频分镜脚本（问题 → 产品 → Private Vault 重点 → 分享撤销 → Agent 支付 → 工程证据）+ 录制前检查清单。
+
+### 关键约束（沉淀）
+- 任何私钥不得以命令行参数形式与联网 endpoint 组合使用；Aleo 部署/执行一律用 `PRIVATE_KEY` 环境变量（部署手册已是此模式）。
+- 沙箱中后台启动的进程会随命令结束被清理，本地服务冒烟必须把启动、curl、kill 放在同一条命令里。
+
+## 2026-07-30 会话：Aleo 部署手册与名称可用性确认
+
+### 完成的工作
+- 确认 PR #6 无评审意见、最新推送 CI 全绿。
+- 只读查询确认 `roselet_private_vault.aleo` 在 Aleo Testnet 未被占用（explorer API 返回 404）。
+- 确认本机 Leo CLI 4.0.2 可用，按 `leo deploy --help` 实际参数写部署手册。
+- 新增 `docs/ALEO_TESTNET_DEPLOYMENT.md`：faucet 前置、部署命令、验证、命令行冒烟、浏览器钱包链路、提交证据清单、排障。
+
+### 关键约束（沉淀）
+- Aleo program 名部署前必须查 explorer 确认未被占用；若被抢注需同步改 `program.json`、`main.leo` 和 `NEXT_PUBLIC_ALEO_VAULT_PROGRAM_ID`。
+- Aleo 私钥只通过环境变量传入，不写 Git/文档。
+
+## 2026-07-30 会话：参赛材料准备（Aleo + GOAT）
+
+### 会话目标
+为 Aleo Hackathon（8.1 报名截止）和 GOAT AI Builder Grants 准备可直接使用的提交材料。
+
+### 完成的工作
+- 确认 PR #4 / #5 / #6 全部 CI 绿灯（Backend/Frontend/Miniprogram/Vercel/Cloudflare Pages）。
+- 新增 `docs/HACKATHON_ALEO_SUBMISSION.md`：AI × Privacy 赛道中英文项目简介、隐私论证、Aleo 技术说明、活动期间新增内容清单、评委复现路径、诚实边界（Testnet 未部署）、未来规划。
+- 新增 `docs/GOAT_GRANT_APPLICATION.md`：按 Tally 表单 10 页逐题准备答案草稿（产品、用户、付费理由、用户流程、AI 作用、GOAT 接入方式、faucet 申请、traction）。
+
+### 剩余外部步骤（需要用户操作，按紧急度排序）
+1. **Aleo 报名 8.1 23:59 截止（最紧急）**：注册 HackAgent → https://hackathon.xyz/events/public/e7ad6199-0078-42ee-9846-b82c385e4c0e 报名。
+2. GOAT 商户后台申请 API key/secret → 配置 `GOATX402_*` → 跑一笔真实 Testnet3 订单 → 提交 Tally 申请表（答案见 `docs/GOAT_GRANT_APPLICATION.md`）。
+3. Circle Faucet 领 Solana Devnet USDC → 完成 Solana x402 真实结算。
+4. 部署 `roselet_private_vault.aleo` 到 Aleo Testnet → 补端到端交易证据（8.14 提交截止前）。
+5. 三个 PR 均绿，合并顺序 #4 → #5 → #6（合并 #4 到 main 会触发生产发布流程，需按 `docs/RELEASE_PROCESS.md` 决定时机）。
+
+## 2026-07-29 会话：实现 GOAT x402 DIRECT 商户支付路径
+
+### 会话目标
+按 `docs/superpowers/specs/2026-07-29-goat-x402-agent-payment-design.md` 给 Agent API 增加官方 GOAT Testnet3 支付路径，与 Solana x402 路径并存，用于 GOAT AI Builder Grant 投递。实现计划见 `docs/superpowers/plans/2026-07-29-goat-x402-agent-payment.md`。
+
+### 完成的工作
+- `crates/recommend/src/goat.rs`：EVM 地址 / amount_wei / token_symbol 规范化 + domain-separated（`roselet-goat-x402-v1`）SHA-256 确定性 `dapp_order_id`；`lib.rs` 新增 `build_goat_order_reference_wasm` 导出并重建 `apps/agent-api/pkg`。
+- `apps/agent-api`：安装官方 `goatflow-sdk-server@0.3.0`；新增 `loadGoatConfig`（缺全部变量返回 null，部分配置启动失败）、`goat-client.ts`（凭据只留在 SDK 实例内的可注入接口）、`goat-order.ts`（WASM helper）、`goat-routes.ts` 三个路由。
+- 路由语义：`GET /v1/goat/merchant` 返回公开商户配置；`POST /v1/goat/reflection/orders` 校验 reflection + 商户 DIRECT 路由匹配后创建订单，返回 HTTP 402 + base64 `PAYMENT-REQUIRED`，此步不生成推荐；`POST /v1/goat/reflection/complete` 只有在订单 `INVOICED`、全部订单字段匹配重算引用、proof payload 匹配后才交付推荐。`PAYMENT_CONFIRMED` 返回 409 pending；`FAILED/EXPIRED/CANCELLED` 返回 402；proof 的 `signature` 只是未签名 checksum，不作为背书。
+- 未配置 GOAT 时所有 `/v1/goat/*` 返回稳定 `503 goat_x402_not_configured`，Solana 路径不受影响。
+
+### 遇到的问题
+- `just agent-wasm` 沙箱内失败：pnpm@9.15.4 版本切换需要联网验证签名。处理：绕过 pnpm 直接运行 `wasm-pack build --target nodejs`；后续 `just agent-check` 等需要 pnpm 的命令用提权联网执行。
+- 覆盖率门禁 functions 81.81% < 90%：原因是 `goat-client.ts` 四个转发方法只有 typeof 检查。处理：补一个 stub `fetch` 的测试，真实调用官方 SDK 四个方法并断言请求 URL/body/响应映射，functions 回到 100%。
+- Hono 泛型不匹配：`registerGoatRoutes(app: Hono)` 与带 `Variables` 的 app 类型不兼容。处理：改成 `registerGoatRoutes<E extends Env>(app: Hono<E>, ...)`。
+
+### 验证
+- `cargo nextest run -p roselet-recommend -j1`：153 passed（新增 5 个 GOAT 测试）
+- `just agent-check`：typecheck 通过，35 passed，覆盖率 statements/lines 93.68%、branches 90.41%、functions 100%
+- `pnpm agent:build`：通过
+- `cargo fmt --all -- --check`：通过
+
+### 剩余外部步骤（需要用户操作）
+- GOAT 商户后台申请 API key/secret，配置 `GOATX402_*` 环境变量。
+- Testnet3 faucet 领水 + 显式钱包授权后，才能跑真实订单链路。
+
+## 2026-07-29 会话：确定 GOAT x402 Grant 接入设计
+
+### 问题
+- GOAT Builder 申请表会直接询问是否已接入 GOAT x402、是否申请 Integration Faucet，以及项目状态和交易证据；现有 Solana x402/SVM Demo 不能被描述为 GOAT 基础设施接入。
+- 旧记录把“已归档的 `goat-sdk/goat`”泛化成了“GOAT 官方仓库已归档”，但当前官方 `GOATNetwork/x402` 仓库仍在维护，并发布了 `goatflow-sdk-server`。
+- GOAT programmatic x402 使用 EVM 商户订单、HMAC API 凭据和 `INVOICED` 终态，与 Solana x402 Foundation facilitator 不是同一套结算接口。
+
+### 处理
+- 确定保留 Solana x402 API/MCP，同时新增 GOAT Testnet3 `DIRECT` 支付入口，不用一条链替代另一条链。
+- 新增设计文档 `docs/superpowers/specs/2026-07-29-goat-x402-agent-payment-design.md`，定义配置、订单创建、支付后交付、错误和测试边界。
+- GOAT 订单引用由 Rust WASM 对 reflection 和付款字段做 domain-separated 绑定；推荐只能在 `INVOICED`、订单字段匹配且 proof 获取并校验通过后执行。
+- 修正项目约束：禁止的是已归档旧 SDK；新的 GOAT x402 服务端 SDK 可以作为支付接线依赖，但 API key/secret 必须只存在于服务端。
+
+### 验证
+- 对照 GOAT 官方 x402 Developer Quick Start、API Reference 和 `GOATNetwork/x402` v0.3.0 SDK 源码核对接口与状态语义。
+- `rg -n "TBD|TODO|FIXME|GOAT 官方仓库当前已归档" docs/superpowers/specs/2026-07-29-goat-x402-agent-payment-design.md AGENTS.md CLAUDE.md` 无未决占位符或旧约束。
+
+### 当前判断
+- 设计不需要钱包私钥，也不会在自动化测试中创建订单或移动资金。
+- 真实 GOAT Testnet3 结算仍需要官方审核后的 merchant ID/API 凭据、Faucet 测试资产和用户钱包授权，未完成前不能声称 GOAT 支付已上链。
+
+## 2026-07-19 会话：实现 Solana x402 Agent API 与付费 MCP Tool
+
+### 问题
+- Base 已承担公开纪念，Aleo 已承担私密记录，但“Solana 满足不同需求”仍没有可运行实现，也缺少 Grant 强调的 Agent 支付、API 收费和 MCP Tool。
+- `goat-sdk/goat` 官方仓库已经归档，继续把新功能绑定到 GOAT 会引入停止维护的核心依赖。
+- x402 SVM 初装使用 `@solana/kit` v7 时，与内部 Solana Program 包的 v5 peer 约束冲突。
+- x402 支付客户端经环境代理访问 Solana RPC 时失败；根因是 Solana Kit v5 显式 `Content-Length` 被 Undici ProxyAgent 拒绝。
+- HTTP 中间件原先在支付前完成了整份推荐计算，虽然没有泄露响应，但违背“付费后才执行核心服务”的边界。
+- Agent API 固定监听 `127.0.0.1` 且允许 `$0` 价格，前者阻止容器对外服务，后者可能把付费接口误配置成免费。
+
+### 处理
+- 新增 `apps/agent-api`：Hono `POST /v1/reflection` 使用 x402 v2 SVM `exact` 收取 Solana Devnet USDC；`/health` 保持免费。
+- 新增 stdio MCP server，暴露付费 `roselet_reflection` tool；HTTP 与 MCP 共用 x402 官方 facilitator 和同一价格/收款配置。
+- 推荐、输入清洗和错误码全部复用 `crates/recommend` 的 Node WASM，TypeScript 只负责 HTTP、MCP 和支付接线。
+- 将 `@solana/kit` / `@solana/sysvars` 固定在兼容的 v5，消除 Agent API 的全部 peer mismatch。
+- 支付客户端使用 `EnvHttpProxyAgent` 并在代理模式删除显式 `Content-Length`，让 Undici 根据 body 重算，同时保留 `NO_PROXY` 本地直连。
+- HTTP 请求在支付前仅通过 Rust WASM 校验和清洗输入；推荐引擎延迟到 x402 支付中间件放行后执行。
+- `X402_DEBUG_NETWORK=1` 只输出请求阶段、状态和公开支付要求，不输出支付签名或私钥。
+- 默认继续仅监听 `127.0.0.1`；容器或反向代理部署可显式设置 `AGENT_API_HOST=0.0.0.0`，价格必须是大于零的 USD 金额。
+- 把 Agent API 类型检查、覆盖率测试和构建加入根命令、justfile 与 GitHub Actions。
+- 新增 `docs/WEB3_GRANT_DEMO.md`，明确 Base / Aleo / Solana 三条链的不同职责和诚实完成边界。
+
+### 验证
+- `cd apps/agent-api && ./node_modules/.bin/tsc --noEmit`
+- `cd apps/agent-api && ./node_modules/.bin/vitest run` → 16 passed，statements/lines 98.51%，branches 94.44%，functions 100%
+- `cd apps/agent-api && ./node_modules/.bin/tsc`
+- `GET http://127.0.0.1:4021/health` → 200
+- 无支付 `POST /v1/reflection` → 402，`PAYMENT-REQUIRED` 解码为 x402 v2 / exact / Solana Devnet / amount 1000 / Devnet USDC
+- 官方 x402 client 已完成 Solana RPC 交易构造和签名重试；facilitator 返回 `transaction_simulation_failed`，链上查询确认付款地址不存在官方 Devnet USDC mint 的 token account。
+- MCP initialize 与 `tools/list` 成功，发现 `roselet_reflection`；无支付 `tools/call` 返回结构化 x402 要求
+- `cargo fmt --all -- --check`
+- `cargo nextest run -p roselet-recommend -j1` → 148 passed
+- Web typecheck / ESLint / Next production build / 208 coverage tests passed
+- Miniprogram typecheck / 66 coverage tests passed
+- `cargo deny check` → advisories / bans / licenses / sources 均 ok（仅既有 duplicate warnings）
+- `git diff --check`
+
+### 当前判断
+- Solana 本地闭环已具备真实官方 facilitator 协商、签名和交易模拟，不是手写的 402 模拟；但付款钱包尚无 Devnet USDC，不能声称支付已结算上链。
+- Circle 官方 Faucet 支持 Solana Devnet USDC；领取测试币后可完成最后的 settlement 验证。
+- 服务端只需要公开 `X402_SVM_PAY_TO`，不应配置或接触任何钱包私钥。
+- GOAT 类 Agent 仍可调用标准 HTTP/MCP 接口，但项目核心支付依赖应保持在活跃维护的 x402 Foundation 包上。
+
 ## 2026-07-19 会话：接通 Aleo Private Vault Web 钱包入口
 
 ### 问题

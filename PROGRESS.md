@@ -204,12 +204,13 @@
 - [x] 情绪示波器：预设模式 + 文字输入实时驱动音乐（TextAnalyzer 接口）
 
 ### 测试
-- [x] 110 个后端测试（60 集成 + 50 单元）
-- [x] 139 个 Rust WASM/推荐模块测试
-- [x] 146 个 Web 前端测试（20 套件）
+- [x] 149 个后端测试
+- [x] 148 个 Rust WASM/推荐模块测试
+- [x] 208 个 Web 前端测试（30 套件）
 - [x] 66 个小程序测试（6 套件）
-- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 91.32% statements / 96.48% lines；小程序 99.33% statements / 100% lines / 96.05% branches
-- [x] 覆盖率门禁：Web + 小程序 Jest coverage threshold 已接入本地脚本与 CI
+- [x] 16 个 Agent API 测试（6 套件）
+- [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 90.22% statements / 95.04% lines；小程序 99.33% statements / 100% lines / 96.05% branches；Agent API 98.51% statements / 94.44% branches
+- [x] 覆盖率门禁：Web + 小程序 + Agent API 已接入本地脚本与 CI
 - [x] 质量门禁：TypeScript、ESLint、cargo-deny、Next build、小程序 build 已接入本地 justfile 与 CI
 - [x] RoseCard 通用组件（消除 garden/my 重复代码）
 
@@ -245,14 +246,16 @@
 - [x] 修复星尘粒子 `left` 随机数缺少 16-bit mask 导致越界的问题
 
 ### 当前测试状态
-- Rust nextest: 249 passed
-- Web Jest: 146 passed
+- Rust nextest: 297 passed
+- Web Jest: 208 passed
 - Miniprogram Jest: 66 passed
-- Total: 461 passed
+- Agent API Vitest: 16 passed
+- Total: 587 passed
 - Rust llvm-cov workspace: 90.37% 行覆盖
-- Web Jest coverage: 91.32% statements / 96.48% lines
+- Web Jest coverage: 90.22% statements / 95.04% lines
 - Miniprogram Jest coverage: 99.33% statements / 100% lines / 96.05% branches
-- Frontend coverage gate: `pnpm test:coverage` / `just coverage`
+- Agent API Vitest coverage: 98.51% statements / 98.51% lines / 94.44% branches
+- Frontend and Agent coverage gate: `pnpm test:coverage` / `just coverage`
 - Quality gates: `just typecheck` / `just lint` / `just audit` / `just next-build` / `just miniprogram-build`
 
 ### Rust WASM 架构深化
@@ -305,10 +308,12 @@
 - [ ] **真机联调**：AppID 已有，拉起后端验证双令牌 + WASM 花瓣
 - [ ] **找 5 个真实用户试用**
 - [ ] **多语言 Spike**：若试用反馈需要英文，再按 `docs/I18N_STRATEGY.md` 从 Rust `Locale` + WASM 文案映射开始
-- [ ] Web3 / Grant 功能（Base Sepolia 与 Aleo 本地闭环已实现，待部署和真实钱包验证）
+- [ ] Web3 / Grant 功能（Base、Aleo、Solana 本地闭环已实现，待真实 testnet 结算）
   - 已实现：公开玫瑰的 ERC-721 链上纪念版、交易回执验证、详情页钱包入口
   - 已实现：Aleo `PrivateRose` / `RoseShare` record、浏览器 Rust WASM 承诺、Leo Wallet Testnet 交易入口 `/private-vault`
   - 当前上链内容：精选一句话（≤200字）+ 颜色，完整内容留链下
   - Aleo 隐私边界：原文和本地 AI 回应不发后端，钱包只提交四个不可逆 `field`
+  - 已实现：Solana Devnet x402 付费 reflection HTTP API 和 MCP tool，复用 Rust WASM 推荐核心
+  - 已验证：官方 facilitator 能力发现、HTTP 402 协商、客户端签名重试、交易模拟、MCP 初始化/工具发现/未支付调用
   - 待完成：部署 Aleo testnet program，并用有测试余额的 Leo Wallet 完成端到端交易
-  - 后续再评估 Solana 场景和 ChainAdapter trait，避免在未验证用户需求前扩张范围
+  - 待完成：从 Circle Faucet 领取 Devnet USDC 后完成真实结算

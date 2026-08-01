@@ -71,6 +71,7 @@ Earlier we evaluated Cloudflare / Render / Neon free / card-less options. Those 
 - ✨ **Fireworks** — Particle burst animation on successful plant
 - 👤 **Profile** — Personal garden and planting statistics
 - 📖 **Swagger** — Interactive API docs at `/swagger`
+- 💳 **Agent payments** — Solana Devnet x402 paid reflection API and MCP tool backed by Rust WASM
 - 🐳 **Docker** — One-command deployment via Docker Compose
 
 ## Tech Stack
@@ -83,6 +84,7 @@ Earlier we evaluated Cloudflare / Render / Neon free / card-less options. Those 
 | Auth | JWT (jsonwebtoken v9) |
 | AI | OpenAI-compatible API (async, non-blocking) |
 | WASM | Rust → wasm-bindgen → wasm-pack (112KB) |
+| Agent API | Hono + x402 SVM + MCP + Solana Devnet USDC |
 | Sound | Tone.js synthesizer |
 | Deploy | Vercel + AWS Lightsail + Docker + Caddy |
 
@@ -119,6 +121,7 @@ just check-all     # fmt + lint + audit + test
 just pre-commit    # pre-commit checks
 just db-reset      # reset database
 just wasm          # build WASM recommendation module
+just agent-check   # typecheck + test the Solana x402 Agent API
 ```
 
 ### Environment Variables
@@ -201,11 +204,12 @@ roselet/
 
 | Suite | Count | Command |
 |-------|-------|---------|
-| Backend integration + unit | 110 | `cargo nextest run --workspace --all-features -j1` |
-| Rust WASM / recommend | 139 | included above |
-| Web frontend | 146 | `pnpm --filter @roselet/web test` |
+| Backend integration + unit | 149 | `cargo nextest run -p roselet-backend -j1` |
+| Rust WASM / recommend | 148 | `cargo nextest run -p roselet-recommend -j1` |
+| Web frontend | 208 | `pnpm --filter web test` |
 | Miniprogram | 66 | `pnpm --filter @roselet/miniprogram test` |
-| **Total** | **461** | `just test` |
+| Agent API | 16 | `pnpm --filter @roselet/agent-api test` |
+| **Total** | **587** | `just test` |
 
 ## Contributing
 

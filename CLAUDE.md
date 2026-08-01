@@ -17,13 +17,14 @@ Roselet 是一个社区破冰互动 Web 应用：用户种下玫瑰（感恩）�
 ## 项目结构
 ```
 roselet/
-├── apps/web/           # Next.js 前端
-├── apps/miniprogram/      # Taro 微信小程序
-├── packages/core/         # 共享 TypeScript 类型
-├── crates/backend/     # Rust Axum 后端
-├── crates/recommend/   # Rust WASM 推荐模块
-├── Cargo.toml          # Rust workspace
-└── package.json        # pnpm workspace
+├── apps/web/          # Next.js 前端
+├── apps/miniprogram/  # Taro 微信小程序
+├── apps/agent-api/    # Solana + GOAT x402 HTTP / MCP
+├── packages/core/     # 共享 TypeScript 类型
+├── crates/backend/    # Rust Axum 后端
+├── crates/recommend/  # Rust WASM 推荐模块
+├── Cargo.toml         # Rust workspace
+└── package.json       # pnpm workspace
 ```
 
 ## 架构原则（最高优先级）
@@ -44,11 +45,12 @@ Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请
 
 ## 测试状态
 ```
-Rust backend:   145 passed
-Rust WASM:      146 passed
-Web frontend:   188 passed
+Rust backend:   149 passed
+Rust WASM:      153 passed
+Web frontend:   208 passed
 Miniprogram:     66 passed
-Total:          545 passed
+Agent API:       39 passed
+Total:          615 passed
 
 llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   100%: flowers, petal, sky, keywords, pagination, user, docs, state
@@ -58,16 +60,19 @@ llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   90%+: plant (93.06%), emotion (91.43%), store (90.21%), rose routes (94.87%)
 
 Jest coverage:
-  Web: 90.28% statements / 95.32% lines
+  Web: 90.22% statements / 95.04% lines
   Miniprogram: 99.33% statements / 100% lines / 96.05% branches
+Vitest coverage:
+  Agent API: 98.51% statements / 98.51% lines / 94.44% branches
 Coverage gates:
-  pnpm test:coverage  # Web + Miniprogram coverage threshold
+  pnpm test:coverage  # Web + Miniprogram + Agent API coverage threshold
 Quality gates:
-  pnpm typecheck      # Web + Miniprogram tsc
+  pnpm typecheck      # Web + Miniprogram + Agent API tsc
   pnpm lint           # Web ESLint
   cargo deny check    # Rust dependency audit
   cd apps/web && pnpm build  # Next production build
   cd apps/miniprogram && pnpm build:weapp  # Taro production build
+  pnpm agent:build    # Agent API production build
 ```
 
 ## WASM 模块清单（crates/recommend/src/）
@@ -124,6 +129,10 @@ Quality gates:
 - **生产密钥**：Lightsail `.env.production` 只留在服务器，不能把 `POSTGRES_PASSWORD` / `JWT_SECRET` / 私钥写入 Git 或文档
 - **Base Sepolia 链上纪念版**：只允许公开玫瑰；`ROSE_MEMORIAL_CONTRACT_ADDRESS` 和 `NEXT_PUBLIC_ROSE_MEMORIAL_CONTRACT_ADDRESS` 必须是同一合约地址。后端从 Base RPC 回执校验 `RoseMemorialMinted` 的合约地址、玫瑰编号、钱包、短句哈希和颜色，不保存或使用用户钱包私钥。
 - **Aleo 私密 Vault**：原文、本地 AI 回应和分享 nonce 只进入浏览器 Rust WASM；钱包交易只提交四个 `field`，不能发给 Roselet 后端、公开 mapping 或 Leo program input。Leo record owner 必须使用 `self.signer`，不能使用可能为程序地址的 `self.caller`。
+- **Solana x402 Agent API**：固定使用 x402 v2 SVM `exact` + Solana Devnet USDC。`X402_SVM_PAY_TO` 只配置公开收款地址，服务端不持有付款方或商户私钥；业务结果来自 `crates/recommend` 的 Node WASM，Rust 变更后运行 `just agent-wasm` 更新生成物。
+- **GOAT SDK 状态**：已归档的是旧 `goat-sdk/goat`，不要把它引入核心运行时；官方 `GOATNetwork/x402` 仍在维护。GOAT 支付使用 `goatflow-sdk-server` 的 `DIRECT` 商户订单接口，API key/secret 只留在 Agent API 服务端，Solana 标准 x402/SVM 路径继续独立保留。
+- **GOAT 交付边界**：GOAT 订单必须绑定 Rust WASM 规范化后的 reflection 与付款字段；仅在状态为 `INVOICED`、订单字段匹配且 proof 获取并校验通过后生成推荐。`PAYMENT_CONFIRMED` 不是最终交付状态，proof 的 `signature` 只是未签名 checksum，不能当作平台背书。
+- **Solana RPC 代理**：Solana Kit v5 会显式写 `Content-Length`，Undici `EnvHttpProxyAgent` 会拒绝；`apps/agent-api/src/client-network.ts` 必须在代理模式删除该 header，由 Undici 重算，不能移除这层兼容处理。
 - **Lightsail Caddy 配置源**：生产 Caddy 站点配置以 `deploy/lightsail/Caddyfile` 为仓库共享源；当前对 `127.0.0.1:3001` 开启 `lb_try_duration 15s` / `lb_try_interval 250ms`，用于在单机切镜像时尽量把短暂 `502` 转成客户端等待
 - **Lightsail Compose 项目名**：自动部署必须固定 `COMPOSE_PROJECT_NAME=roselet`，复用 `roselet_pgdata`；否则会生成 `lightsail_*` 容器/卷并和旧后端抢占 `3001`
 - **Lightsail 环境变量变更**：只改服务器 `.env.production` 后，`docker compose restart backend` 不会把新值注入现有容器；必须结合 `~/roselet/.current_backend_image` 对 backend 执行 `up -d --force-recreate`

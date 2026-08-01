@@ -1,6 +1,7 @@
 mod aleo;
 mod emotion;
 mod flowers;
+mod goat;
 mod keywords;
 mod offline;
 
@@ -16,6 +17,14 @@ pub fn build_aleo_vault_inputs_wasm(
 ) -> String {
     match aleo::build_vault_inputs(rose_id, content, ai_reply, nonce) {
         Ok(inputs) => serde_json::to_string(&inputs).unwrap_or_else(|_| "{}".into()),
+        Err(error) => serde_json::json!({ "error": error }).to_string(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn build_goat_order_reference_wasm(input_json: &str) -> String {
+    match goat::build_order_reference(input_json) {
+        Ok(reference) => serde_json::to_string(&reference).unwrap_or_else(|_| "{}".into()),
         Err(error) => serde_json::json!({ "error": error }).to_string(),
     }
 }
@@ -492,6 +501,18 @@ mod tests {
     fn test_empty_roses() {
         let result = recommend_internal(&[]);
         assert_eq!(result.color_suggestion.color, "red");
+    }
+
+    #[test]
+    fn goat_order_reference_wasm_roundtrip() {
+        let result = build_goat_order_reference_wasm(
+            r#"{"reflection":{"color":"red","gratitude":"thanks"},"payer":"0x1111111111111111111111111111111111111111","chain_id":48816,"token_symbol":"USDC","token_contract":"0x2222222222222222222222222222222222222222","amount_wei":"1000"}"#,
+        );
+        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+        assert!(parsed["dapp_order_id"].as_str().unwrap().starts_with("0x"));
+
+        let error = build_goat_order_reference_wasm("{}");
+        assert!(error.contains("error"));
     }
 
     #[test]
