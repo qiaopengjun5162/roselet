@@ -6,9 +6,16 @@
 ## 前置条件
 
 - Leo CLI 4.0.2（本机已安装：`/Users/qiaopengjun/.cargo/bin/leo`）
-- 一个 Aleo Testnet 账户（私钥 `APrivateKey1zkp...`），账户内有足够 Testnet credits 支付部署费与执行费
-- Testnet credits 获取：Aleo 官方 faucet（https://faucet.aleo.org ）或 Leo Wallet 内 Testnet faucet
+- 部署账户已生成（2026-08-01，`leo account new`，testnet 专用），地址：
+  `aleo1g58fyxeeurrn605ew6sl53fqetnu2m3zjgnzhyn7kzjk8dfceurs0jnkt4`
+  私钥已写入 `contracts/aleo-private-vault/.env`（gitignore 覆盖，不入 Git）。
+- 账户内需要有足够 Testnet credits 支付部署费与执行费；领取方式：Leo Wallet 内 Testnet faucet，或浏览器打开 https://faucet.aleo.org （有 Cloudflare 人机校验，无法程序化领取）粘贴上面的地址
 - **私钥不写入 Git、不写入文档**，只通过环境变量传入
+- 余额复查命令（`null` = 未到账，返回数字 = microcredits 已到账）：
+
+```bash
+curl -sS "https://api.explorer.provable.com/v1/testnet/program/credits.aleo/mapping/account/aleo1g58fyxeeurrn605ew6sl53fqetnu2m3zjgnzhyn7kzjk8dfceurs0jnkt4"
+```
 
 ## 1. 本地最终确认
 

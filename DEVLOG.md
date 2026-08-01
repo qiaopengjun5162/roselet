@@ -2,6 +2,17 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-08-01 会话：Aleo 部署账户就绪
+
+### 完成的工作
+- 生成 testnet 专用部署账户（`leo account new`），地址 `aleo1g58fyxeeurrn605ew6sl53fqetnu2m3zjgnzhyn7kzjk8dfceurs0jnkt4`；私钥写入 `contracts/aleo-private-vault/.env`（已验证 gitignore 覆盖）。
+- 确认 faucet.aleo.org 有 Cloudflare 人机校验（HTTP 403），无法程序化领取。
+- 确认余额查询方式：`GET /v1/testnet/program/credits.aleo/mapping/account/{address}`，未到账返回 `null`（`/v1/testnet/account/{address}` 路由不存在，勿用）。
+- 更新 `docs/ALEO_TESTNET_DEPLOYMENT.md`：账户信息、余额复查命令。
+
+### 下一步
+用户在浏览器完成 Aleo faucet 领取（粘贴上述地址）后，执行部署手册第 1-6 步。
+
 ## 2026-07-31 会话：Aleo Hackathon 报名提交成功
 
 ### 完成的工作
