@@ -2,6 +2,16 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-08-01 会话：Aleo 部署交易预演通过
+
+### 完成的工作
+- `leo deploy --print --yes` 完整构建部署交易（含 ZK proof 生成）：共识版本 14，部署费 **6,929,725 microcredits（约 6.93 credits，公开费）**，账户地址与 .env 读取链路全部正确。
+- 非终端环境 `leo deploy` 必须加 `--yes`，否则报 `Failed to prompt user: IO error: not a terminal`；已写入部署手册。
+- 关键结论：部署只剩账户余额这一个前置条件，faucet 到账后一条命令即可完成。
+
+### 下一步
+用户完成 Aleo faucet 领取 → 确认余额 ≥ 7 credits → `leo deploy --broadcast --yes` → 端到端执行与证据补录。
+
 ## 2026-08-01 会话：Aleo 部署账户就绪
 
 ### 完成的工作

@@ -17,6 +17,8 @@
 curl -sS "https://api.explorer.provable.com/v1/testnet/program/credits.aleo/mapping/account/aleo1g58fyxeeurrn605ew6sl53fqetnu2m3zjgnzhyn7kzjk8dfceurs0jnkt4"
 ```
 
+- 部署交易已预演通过（2026-08-01，`leo deploy --print --yes`，未广播）：**部署费 6,929,725 microcredits（约 6.93 credits，公开费）**，共识版本 14。faucet 领取金额需覆盖部署费 + 后续执行费。非终端环境必须加 `--yes`，否则会报 `Failed to prompt user: IO error: not a terminal`。
+
 ## 1. 本地最终确认
 
 ```bash
@@ -29,14 +31,15 @@ leo build --offline
 
 ```bash
 cd contracts/aleo-private-vault
-export PRIVATE_KEY="APrivateKey1zkp..."   # 仅当前 shell，勿落盘
 leo deploy \
   --network testnet \
   --endpoint https://api.explorer.provable.com/v1 \
-  --broadcast
+  --broadcast \
+  --yes
 ```
 
-- 部署费从账户公开余额扣除；如交易 pending，等待确认后重试查询。
+- 私钥由 `contracts/aleo-private-vault/.env` 的 `PRIVATE_KEY` 提供（leo 自动读取）。
+- 部署费（约 6.93 credits）从账户公开余额扣除；如交易 pending，等待确认后重试查询。
 - 成功后记录 **deployment transaction ID**。
 
 ## 3. 验证部署
