@@ -6,7 +6,8 @@
 
 ### 完成的工作
 - 实测当前代码可编译：`cargo check --workspace` 通过（`roselet-recommend` + `roselet-backend` 均绿）。
-- 根治构建阻塞（比上轮"固化代理方案"更彻底）：`utoipa-swagger-ui` 是 backend 的**死依赖**——整个代码库从未 `use` 它或调用 `SwaggerUi`，`/swagger` 实际靠手写的 `swagger.html` + unpkg CDN 提供 UI。它的 build script 却会在编译期强制从 GitHub 下载 Swagger UI 压缩包，受限网络下 `curl` SSL 超时（exit 28）卡死 `cargo build`。**已直接从 `crates/backend/Cargo.toml` 移除该依赖**，实测无代理 `cargo check -p roselet-backend` 也能 1.7s 干净通过；`Cargo.lock` 已同步去掉它。`main` 分支同样含此死依赖，下一步一并移除。
+- 根治构建阻塞（比上轮"固化代理方案"更彻底）：`utoipa-swagger-ui` 是 backend 的**死依赖**——整个代码库从未 `use` 它或调用 `SwaggerUi`，`/swagger` 实际靠手写的 `swagger.html` + unpkg CDN 提供 UI。它的 build script 却会在编译期强制从 GitHub 下载 Swagger UI 压缩包，受限网络下 `curl` SSL 超时（exit 28）卡死 `cargo build`。**已直接从 `crates/backend/Cargo.toml` 移除该依赖**，实测无代理 `cargo check -p roselet-backend` 也能 1.7s 干净通过；`Cargo.lock` 已同步去掉它。`main` 分支同样含此死依赖，已一并移除。
+- 修复 `config::tests` 的偶发失败（flaky）：三个测试直接改全局 `std::env`，在 `cargo test` 默认多线程下互相踩，偶发 2/65 失败。用全局 `Mutex` 串行化，且**必须**用「毒化容忍」方式拿锁——`test_production_rejects_default_jwt` 是 `#[should_panic]` 测试，panic 解栈会毒化 Mutex，否则后续测试的 `.unwrap()` 会跟着失败。验证：并行连跑 8 次全过（backend 65/0、recommend 153/0）。`main` 同步修复。
 - 补 `rust-version = "1.85"`：由依赖树推导（uuid 1.23.1 → 1.85，axum 0.8.9 → 1.80）。**必须放在各 crate 的 `[package]` 下**——放在根 `[workspace]` 会触发 `unused manifest key` 警告。
 - 移除 `crates/recommend` 的死依赖 `thiserror`（仅 Cargo.toml 声明，`src` 零使用）。
 - 对齐文档漂移：CLAUDE.md 技术栈补 MSRV 与"版本以 Cargo.toml 为准"；测试状态段加"以 CI 为准"权威注；PROGRESS.md 测试数与 CLAUDE.md 统一（WASM 148→153、Agent 16→39）并加滞后注。
