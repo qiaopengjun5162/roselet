@@ -12,6 +12,12 @@
 - 移除 `crates/recommend` 的死依赖 `thiserror`（仅 Cargo.toml 声明，`src` 零使用）。
 - 对齐文档漂移：CLAUDE.md 技术栈补 MSRV 与"版本以 Cargo.toml 为准"；测试状态段加"以 CI 为准"权威注；PROGRESS.md 测试数与 CLAUDE.md 统一（WASM 148→153、Agent 16→39）并加滞后注。
 
+### 新增功能（Web3 会员模式 · Solana 第一步）
+- 方向确认：**Web3 先只做 Solana**；默认普通模式（无 Web3），前端「会员」按钮切换进会员视图、连 Solana 钱包、把玫瑰/图片/信息上链。会员=免费开关（先做），上链=存引用（图片走 IPFS 拿 CID，链上只写元数据+CID+钱包归属）。
+- 后端：新增 `013_create_solana_mints.sql`（独立 `solana_mints` 表，TEXT 存 base58 签名/地址，JSONB 存元数据；不复用写死 84532 的 `nft_mints`）。新增 `routes/solana_onchain.rs`：`GET /api/rose/{id}/solana`（读引用，不依赖 env）与 `POST`（记录引用，校验 base58、归属、不可重复），含 base58 归一化与 3 个单元测试。已在 `routes/mod.rs` + `lib.rs` 挂载。
+- 前端（Next.js App Router）：`app/membership-context.tsx`（会员开关默认关 + 原生 `window.solana`/Phantom 连钱包，不引重钱包包）；`components/membership-panel.tsx`（会员视图：连钱包 + 上链表单，用 `@solana/web3.js` 在 **Devnet** 写一条 Memo 交易、Phantom 签名、广播后把引用 POST 后端）；`nav.tsx` 加「会员」按钮；`layout.tsx` 用 `MembershipProvider` 包住全局并挂载面板。`apps/web/package.json` 加 `@solana/web3.js ^1.98`（已 `pnpm add`）。
+- 验证：`cargo test -p roselet-backend --lib solana_onchain` 3/3 通过；`pnpm --filter web typecheck` 通过。真实浏览器内 Devnet 上链需 Phantom 切到 Devnet，待手测。
+
 ### 发现但未修复（待决策）
 - 当前分支 `codex/solana-x402-agent-api` 领先 `main` 25 个提交（含全部 Web3 功能），`main` 停在 2026-06-26，功能未合主线。
 - 最后提交 2026-08-01，约 3 个月无活动，有停滞迹象。
