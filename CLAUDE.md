@@ -6,7 +6,8 @@
 Roselet 是一个社区破冰互动 Web 应用：用户种下玫瑰（感恩）、花苞（期待）、尖刺（焦虑），形成社区花圃。
 
 ## 技术栈
-- 后端：Rust + Axum + SQLx + PostgreSQL（端口 3001）
+- 后端：Rust（**MSRV 1.85**，见根 `Cargo.toml` 的 `rust-version`；本地 `rustc 1.98.1` 实测通过）+ Axum + SQLx + PostgreSQL（端口 3001）
+- 各 crate 的具体依赖版本以 `crates/*/Cargo.toml` 为准，本文档不硬编码版本号，避免与代码漂移。
 - 前端：Next.js 16 + shadcn UI + pnpm + Tone.js（端口 3000）
 - 小程序：Taro 4 + React 18 + TypeScript + WXWebAssembly
 - 数据库：PostgreSQL（本地 roselet 数据库）
@@ -44,6 +45,7 @@ Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请
 玫瑰种下后的正文内容不可修改，也暂不提供删除入口；`PUT /api/rose/{id}` 只做 owner 设置更新，目前仅允许公开转私密，或为「公开且未送礼」的玫瑰补填 `recipient_nickname` 完成送礼。
 
 ## 测试状态
+> 以下数值随提交变化，可能滞后；**以 CI 最新执行为准**，跨文件（PROGRESS.md）若与此冲突以此处为权威。
 ```
 Rust backend:   149 passed
 Rust WASM:      153 passed
@@ -103,6 +105,7 @@ Quality gates:
 - **Next 构建不依赖 Google Fonts**：避免 `next/font/google` 在受限网络里拖垮 build；全局字体走系统中文字体栈
 - **pnpm 沙箱 fetch failed**：Codex 沙箱内 `pnpm exec` / `pnpm test:*` 可能触发 `[ERROR] fetch failed`；优先用已安装依赖重跑，必要时按审批走外部执行
 - **cargo deny advisory DB**：沙箱内可能因 `~/.cargo` 只读或网络失败不能更新 advisory DB；本地用 `https_proxy=http://127.0.0.1:7890 cargo deny check`
+- **utoipa-swagger-ui 构建期下载**：`utoipa-swagger-ui` 的 build script 会从 GitHub 下载 Swagger UI 压缩包（`SWAGGER_UI_DOWNLOAD_URL`）；受限网络下 `curl` 会 SSL 超时（exit 28），导致 `cargo check/build` 卡死。解决：构建前设 `HTTPS_PROXY=http://127.0.0.1:7890`（或可达的代理）再跑 `cargo`；CI 也必须保证能访问 GitHub 或预置离线包。
 - **虚拟 Cargo workspace clippy**：根目录没有 default-members 时，质量门禁显式跑 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`
 - **后端 nextest 本地 DB**：沙箱内可能因本地数据库连接 `Operation not permitted` 失败；用 `NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-fail-fast`
 - **已发布迁移不可改写**：`crates/backend/migrations/*.sql` 一旦在线上执行过，后续只能新增 migration，不能改旧文件哪怕只是注释；`sqlx` 会在启动时校验 checksum，不一致就报 `VersionMismatch(n)`

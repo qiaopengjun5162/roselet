@@ -205,10 +205,11 @@
 
 ### 测试
 - [x] 149 个后端测试
-- [x] 148 个 Rust WASM/推荐模块测试
+- [x] 153 个 Rust WASM/推荐模块测试
 - [x] 208 个 Web 前端测试（30 套件）
 - [x] 66 个小程序测试（6 套件）
-- [x] 16 个 Agent API 测试（6 套件）
+- [x] 39 个 Agent API 测试（6 套件）
+- 注：以上为阶段性统计，可能滞后；最新数值以 CLAUDE.md「测试状态」段与 CI 为准。
 - [x] 覆盖率：Rust workspace 90.37% 行覆盖；Web 90.22% statements / 95.04% lines；小程序 99.33% statements / 100% lines / 96.05% branches；Agent API 98.51% statements / 94.44% branches
 - [x] 覆盖率门禁：Web + 小程序 + Agent API 已接入本地脚本与 CI
 - [x] 质量门禁：TypeScript、ESLint、cargo-deny、Next build、小程序 build 已接入本地 justfile 与 CI
@@ -246,6 +247,7 @@
 - [x] 修复星尘粒子 `left` 随机数缺少 16-bit mask 导致越界的问题
 
 ### 当前测试状态
+> 历史快照（会话 #29-43 期间），最新数值以根 CLAUDE.md「测试状态」段与 CI 为准。
 - Rust nextest: 297 passed
 - Web Jest: 208 passed
 - Miniprogram Jest: 66 passed

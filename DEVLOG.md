@@ -2,6 +2,26 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-11-06 会话：项目体检 + 依赖/文档清理
+
+### 完成的工作
+- 实测当前代码可编译：`cargo check --workspace` 通过（`roselet-recommend` + `roselet-backend` 均绿）。
+- 定位并固化构建阻塞：`utoipa-swagger-ui` 的 build script 从 GitHub 下载 Swagger UI 压缩包，受限网络下 `curl` SSL 超时（exit 28）会卡死 `cargo check/build`；已在 CLAUDE.md「已知坑」写明代理方案（`HTTPS_PROXY=http://127.0.0.1:7890 cargo ...`）。
+- 补 `rust-version = "1.85"`：由依赖树推导（uuid 1.23.1 → 1.85，axum 0.8.9 → 1.80）。**必须放在各 crate 的 `[package]` 下**——放在根 `[workspace]` 会触发 `unused manifest key` 警告。
+- 移除 `crates/recommend` 的死依赖 `thiserror`（仅 Cargo.toml 声明，`src` 零使用）。
+- 对齐文档漂移：CLAUDE.md 技术栈补 MSRV 与"版本以 Cargo.toml 为准"；测试状态段加"以 CI 为准"权威注；PROGRESS.md 测试数与 CLAUDE.md 统一（WASM 148→153、Agent 16→39）并加滞后注。
+
+### 发现但未修复（待决策）
+- 当前分支 `codex/solana-x402-agent-api` 领先 `main` 25 个提交（含全部 Web3 功能），`main` 停在 2026-06-26，功能未合主线。
+- 最后提交 2026-08-01，约 3 个月无活动，有停滞迹象。
+- 小程序真机闭环、真实用户验证、Web3 真实结算（Aleo faucet / Circle USDC / GOAT 凭据）、生产备份与监控仍未完成。
+- `resolver = "2"` + `edition = "2021"`：MSRV-aware 依赖选择未启用，CI 也未用真老工具链验证 MSRV。
+
+### 下一步
+- 决定 Web3 分支是否合回 `main`（若 `main` 是生产源则需尽快合并且回归）。
+- 可选：启用 resolver "3" / edition 2024 以启用 MSRV-aware，并加 CI 老工具链验证（影响面较大）。
+- 确认项目是否续做。
+
 ## 2026-08-01 会话：Aleo 部署交易预演通过
 
 ### 完成的工作
