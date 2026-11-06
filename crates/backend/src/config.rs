@@ -65,9 +65,25 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex, MutexGuard};
+
+    // Global env vars are process-wide; serialize env-mutating tests so they
+    // don't race each other under `cargo test`'s default multi-threaded runner.
+    // Use a poison-tolerant lock: `test_production_rejects_default_jwt` panics
+    // (it's a `#[should_panic]` test), which would otherwise poison the mutex
+    // and fail the subsequent tests' `.unwrap()`.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn env_lock() -> MutexGuard<'static, ()> {
+        match ENV_LOCK.lock() {
+            Ok(g) => g,
+            Err(poisoned) => poisoned.into_inner(),
+        }
+    }
 
     #[test]
     fn test_from_env_defaults() {
+        let _guard = env_lock();
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
         std::env::remove_var("JWT_SECRET");
@@ -88,6 +104,7 @@ mod tests {
 
     #[test]
     fn test_from_env_custom() {
+        let _guard = env_lock();
         std::env::set_var("DATABASE_URL", "postgres://custom/testdb");
         std::env::set_var("PORT", "8080");
         std::env::set_var("JWT_SECRET", "my-secret-key-with-sufficient-length-32bytes");
@@ -117,6 +134,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "JWT_SECRET must be set")]
     fn test_production_rejects_default_jwt() {
+        let _guard = env_lock();
         std::env::set_var("NODE_ENV", "production");
         std::env::remove_var("JWT_SECRET");
         let _ = Config::from_env();
