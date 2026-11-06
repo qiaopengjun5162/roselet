@@ -254,6 +254,7 @@
 - Miniprogram Jest coverage: 99.33% statements / 100% lines / 96.05% branches
 - Frontend coverage gate: `pnpm test:coverage` / `just coverage`
 - Quality gates: `just typecheck` / `just lint` / `just audit` / `just next-build` / `just miniprogram-build`
+- 注：以上计数为快照，精确数字以 CI 实测为准，可能与最新提交略有滞后。
 
 ### Rust WASM 架构深化
 - [x] `audio.rs`：玫瑰属性→示波器音频参数（12 tests）

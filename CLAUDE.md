@@ -13,6 +13,7 @@ Roselet 是一个社区破冰互动 Web 应用：用户种下玫瑰（感恩）�
 - AI：OpenAI 兼容 API（异步生成个性化回复）
 - WASM：Rust → wasm-bindgen（客户端智能推荐 + 情绪分析）
 - 部署：Docker Compose（一键启动）
+- 版本与 MSRV：依赖精确版本见各 crate 的 Cargo.toml；MSRV 声明为 Rust 1.85（由依赖树推导的下限，非强制选依赖，需 resolver 3 / edition 2024 才生效）
 
 ## 项目结构
 ```
@@ -69,6 +70,8 @@ Quality gates:
   cd apps/web && pnpm build  # Next production build
   cd apps/miniprogram && pnpm build:weapp  # Taro production build
 ```
+
+> 注：以上数字为最近一次快照，精确计数以 CI（`cargo nextest` / `pnpm test:coverage`）实测为准；CLAUDE.md 与 PROGRESS.md 以本段为权威，可能滞后于最新提交。
 
 ## WASM 模块清单（crates/recommend/src/）
 | 模块 | 功能 | WASM 导出 |
@@ -128,6 +131,7 @@ Quality gates:
 - **前景音频互斥**：听一朵玫瑰 / 示波器试听前必须调用 Web `prepareForegroundAudio()`；是否停掉导航栏背景音乐由 Rust WASM `audio_playback_policy_wasm` 决定，短音效不打断背景音乐
 - **生产发布纪律**：按 `docs/RELEASE_PROCESS.md` 执行；功能开发先走分支/预览/冒烟，不要把日常优化直接当作生产发布
 - **用户可见版本**：以 Git tag / GitHub Release 为准，关于页展示的版本、commit、构建时间必须能追溯到发布记录
+- **utoipa-swagger-ui 构建期下载**：`utoipa-swagger-ui` 的 build script 会在编译期从 GitHub 下载 Swagger UI 静态包；受限网络下 `curl` 会因 SSL 超时（exit 28）卡死 `cargo build` / `cargo check`。本地构建走 `HTTPS_PROXY=http://127.0.0.1:7890`，或把资源本地化 / 换不强制下载的版本（CI 同理）
 
 ## 常用命令（justfile）
 ```bash

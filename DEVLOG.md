@@ -2,6 +2,22 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-11-06 会话：维护清理（仅元数据/文档，不改运行时行为）
+
+### 目的
+- 把安全的维护性修复从 Web3 功能分支（`codex/solana-x402-agent-api`）回植到 `main`，让主线也具备这些改进，同时不引入任何测试网 demo 代码。
+
+### 改动
+- 两个 crate 的 `[package]` 补 `rust-version = "1.85"`（MSRV 下限由依赖树推导：uuid 1.23.1 要求 1.85，axum 0.8.9 要求 1.80）。
+- `roselet-recommend` 移除死依赖 `thiserror`（Cargo.toml 声明但 `src` 零使用）。
+- `CLAUDE.md`：技术栈补 MSRV 说明；测试状态段加「以 CI 为准」权威注；已知坑新增 `utoipa-swagger-ui` 构建期 GitHub 下载导致 `cargo build` 卡死的坑与代理绕过方案。
+- `PROGRESS.md` 测试段加滞后注。
+
+### 验证
+- `cargo check --workspace`（走代理）通过；无编译错误/警告。
+- 注意：`rust-version` 必须放在各 crate 的 `[package]`，不能放在根 `[workspace]`（否则 Cargo 报 `unused manifest key`）。
+- 分支侧（Web3 分支）此前提交漏更新 `Cargo.lock`，回 main 时需重跑 `cargo check` 让锁文件与 `thiserror` 移除保持一致。
+
 ## 2026-06-26 会话：收敛 Cloudflare Pages Functions 调用范围
 
 ### 问题
