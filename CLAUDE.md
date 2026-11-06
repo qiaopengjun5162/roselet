@@ -89,6 +89,7 @@ Quality gates:
 | `offline.rs` | 乐观更新 + 花圃缓存合并 | `build_optimistic_rose_wasm`, `apply_garden_cache_action_wasm` |
 
 ## 已知坑（勿重踩）
+- **Swagger UI / 构建阻塞（已根治）**：`/swagger` 路由返回手写的 `swagger.html`，运行时经 unpkg CDN 加载 Swagger UI 资源。原先依赖 `utoipa-swagger-ui` 是死依赖（代码从未 `use` 它或调用 `SwaggerUi`），其 build script 会在编译期从 GitHub 下载 Swagger UI 压缩包（`curl` SSL 超时 exit 28），使 `cargo build` 在受限网络下卡死；**已移除该依赖**，无代理也能干净构建。
 - **reqwest 测试 502**：本地开启 Clash 代理时，加 `NO_PROXY=localhost,127.0.0.1`
 - **wasm-opt bulk-memory**：Cargo.toml 设 `wasm-opt = false`
 - **小程序 document.baseURI**：Webpack BannerPlugin 注入 document mock（非运行时 polyfill）
