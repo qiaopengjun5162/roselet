@@ -6,7 +6,7 @@
 
 ### 完成的工作
 - 实测当前代码可编译：`cargo check --workspace` 通过（`roselet-recommend` + `roselet-backend` 均绿）。
-- 定位并固化构建阻塞：`utoipa-swagger-ui` 的 build script 从 GitHub 下载 Swagger UI 压缩包，受限网络下 `curl` SSL 超时（exit 28）会卡死 `cargo check/build`；已在 CLAUDE.md「已知坑」写明代理方案（`HTTPS_PROXY=http://127.0.0.1:7890 cargo ...`）。
+- 根治构建阻塞（比上轮"固化代理方案"更彻底）：`utoipa-swagger-ui` 是 backend 的**死依赖**——整个代码库从未 `use` 它或调用 `SwaggerUi`，`/swagger` 实际靠手写的 `swagger.html` + unpkg CDN 提供 UI。它的 build script 却会在编译期强制从 GitHub 下载 Swagger UI 压缩包，受限网络下 `curl` SSL 超时（exit 28）卡死 `cargo build`。**已直接从 `crates/backend/Cargo.toml` 移除该依赖**，实测无代理 `cargo check -p roselet-backend` 也能 1.7s 干净通过；`Cargo.lock` 已同步去掉它。`main` 分支同样含此死依赖，下一步一并移除。
 - 补 `rust-version = "1.85"`：由依赖树推导（uuid 1.23.1 → 1.85，axum 0.8.9 → 1.80）。**必须放在各 crate 的 `[package]` 下**——放在根 `[workspace]` 会触发 `unused manifest key` 警告。
 - 移除 `crates/recommend` 的死依赖 `thiserror`（仅 Cargo.toml 声明，`src` 零使用）。
 - 对齐文档漂移：CLAUDE.md 技术栈补 MSRV 与"版本以 Cargo.toml 为准"；测试状态段加"以 CI 为准"权威注；PROGRESS.md 测试数与 CLAUDE.md 统一（WASM 148→153、Agent 16→39）并加滞后注。

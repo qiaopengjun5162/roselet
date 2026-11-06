@@ -105,7 +105,7 @@ Quality gates:
 - **Next 构建不依赖 Google Fonts**：避免 `next/font/google` 在受限网络里拖垮 build；全局字体走系统中文字体栈
 - **pnpm 沙箱 fetch failed**：Codex 沙箱内 `pnpm exec` / `pnpm test:*` 可能触发 `[ERROR] fetch failed`；优先用已安装依赖重跑，必要时按审批走外部执行
 - **cargo deny advisory DB**：沙箱内可能因 `~/.cargo` 只读或网络失败不能更新 advisory DB；本地用 `https_proxy=http://127.0.0.1:7890 cargo deny check`
-- **utoipa-swagger-ui 构建期下载**：`utoipa-swagger-ui` 的 build script 会从 GitHub 下载 Swagger UI 压缩包（`SWAGGER_UI_DOWNLOAD_URL`）；受限网络下 `curl` 会 SSL 超时（exit 28），导致 `cargo check/build` 卡死。解决：构建前设 `HTTPS_PROXY=http://127.0.0.1:7890`（或可达的代理）再跑 `cargo`；CI 也必须保证能访问 GitHub 或预置离线包。
+- **Swagger UI**：`/swagger` 路由返回手写的 `swagger.html`，运行时经 unpkg CDN 加载 Swagger UI 静态资源。`utoipa-swagger-ui` 依赖已移除——它此前会在编译期强制从 GitHub 下载 Swagger UI 压缩包（`curl` SSL 超时，exit 28），使 `cargo build` 在受限网络下卡死；移除后后台编译不再受该下载拖累。若需完全离线使用 Swagger UI，再把 `swagger.html` 里的 unpkg 链接改为 vendored 资源即可。
 - **虚拟 Cargo workspace clippy**：根目录没有 default-members 时，质量门禁显式跑 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`
 - **后端 nextest 本地 DB**：沙箱内可能因本地数据库连接 `Operation not permitted` 失败；用 `NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-fail-fast`
 - **已发布迁移不可改写**：`crates/backend/migrations/*.sql` 一旦在线上执行过，后续只能新增 migration，不能改旧文件哪怕只是注释；`sqlx` 会在启动时校验 checksum，不一致就报 `VersionMismatch(n)`
