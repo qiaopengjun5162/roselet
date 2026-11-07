@@ -238,6 +238,28 @@ lamports_per_byte_year = 5080     exemption_threshold = 1.0
 
 ### 10.5 操作教训
 - 探针钱包的清理顺序必须是「**先确认余款退回成功，再删除 keypair**」。本次先删了 keypair 才核对余额，导致约 0.0475 Devnet SOL 无法找回（仅测试币，无实际损失）。
+- 把余额全部转出时，**留一点零头也会失败**（`insufficient funds for rent`）：系统账户要么保持租金豁免下限，要么归零。正确做法是转出 `余额 − 5000`。
+
+### 10.6 前端一键铸造的实测（rose 自带元数据版）
+用 `apps/web/src/lib/rose-nft.ts` 的真实代码在 Devnet 铸了一枚带玫瑰寄语的 NFT：
+
+| 项 | 实测 |
+|---|---|
+| mint 账户 | **525 字节** / 3,317,240 lamports（= (525+128)×5080） |
+| ATA | 170 字节 / 1,513,840 lamports |
+| 合计租金 | **4,831,080 lamports ≈ 0.00483 SOL** |
+| 手续费 | 10,000（2 个签名 × 5000） |
+| 交易大小 | 818 字节（上限 1232，余量约 33%） |
+
+链上读回：`supply=1`、`decimals=0`、`mintAuthority=null`、`updateAuthority=<钱包>`、
+`additionalMetadata=[["roseId",…],["message",…]]`。
+
+**两个必须遵守的 Token-2022 约束（实测，不是推测）**
+
+1. **mint 账户空间必须恰好等于「当前扩展」的大小**。`getMintLen([MetadataPointer]) = 234`；若 `createAccount` 直接给 234 + 元数据空间，`InitializeMint2` 立刻报 `InvalidAccountData`（A/B/C 三种组合实测，只有「空间 = 234」通过）。元数据初始化会自己 `realloc`，所以正确姿势是：**空间给 234，lamports 按最终大小给足**；只给 234 的租金则会在交易末尾报 `InsufficientFundsForRent`。
+2. **`Transaction.sign()` 会清空已有签名**（web3.js 内部 `this.signatures = signers.map(...)`）。mint 账户的签名只能 `partialSign` 追加；钱包若丢掉它，`serialize()` 会在**广播前**抛 `Missing signature`（不花钱）。
+
+这两点意味着「按官方示例一次性预分配 mint+metadata 空间」在当前 Token-2022 程序版本上**并不可靠**——必须实跑才能发现。
 
 ---
 

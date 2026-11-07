@@ -4752,5 +4752,41 @@ Web 端打开“个人资料”时显示“加载资料失败”。
   - 复跑命令见该测试的文档注释
 
 ### 仍未做
-- 前端铸造入口（当前需要用户/脚本自己用 Token-2022 铸，后端只负责校验）
 - `nft_mints`（EVM/Base）与 `solana_nft_mints` 的展示层合并
+
+### 前端铸造入口：用户钱包自己当 mint 权限（2026-11-07）
+
+目标是把「铸成 NFT」做成一键操作，且**不引入任何自定义链上程序**。
+
+**为什么不抄 `shenqi-box/programs/token_2022_nft`**
+那个程序存在的理由是「由 PDA 当 mint 权限、把铸造规则锁死在链上」。roselet 的需求是「会员把自己的玫瑰铸成 NFT」——让**用户钱包自己当 mint 权限**，直接调 Token-2022 就够了：零新程序、零部署、零审计面，「平台不碰私钥」的边界也没破。只有当规则必须由链强制（玫瑰只能铸一次、平台控量）时才值得上程序。
+
+**新增**
+- `apps/web/src/lib/rose-nft.ts`：`mintRoseNft()`，单笔交易内完成
+  `createAccount → MetadataPointer → InitializeMint2 → InitializeMetadata → UpdateField(roseId,message) → ATA → MintTo(1) → SetAuthority(revoke)`。
+  SDK（`@solana/spl-token`、`@solana/spl-token-metadata`）**在函数内动态 import**：jsdom 缺 `TextEncoder`，静态引入会让所有渲染该组件的测试挂掉。
+- `apps/web/src/lib/solana.ts`：`utf8ByteLength` / `truncateUtf8` / `buildRoseNftFields` / `explorerAccountUrl` / `lamportsToSol`（全部 SDK-free，可单测）。
+- `apps/web/src/components/rose-nft-mint.tsx`：详情页「🌹 铸成链上 NFT」，会员模式才渲染，私密玫瑰不渲染。
+- `POST/GET /api/rose/{id}/solana/nft` 的前端封装：`getRoseNft` / `recordRoseNft`。
+
+**两个必须记下来的链上约束（都靠真机跑出来的）**
+1. **账户空间必须恰好等于当前扩展大小**。`getMintLen([MetadataPointer])` = 234 字节；如果 `createAccount` 直接给 `234 + 元数据空间`，`InitializeMint2` 会报 `InvalidAccountData`（实测三种组合，只有「空间=234」通过）。元数据初始化会自己 `realloc`，所以正确做法是**空间只给 234，lamports 按最终大小给足**（否则交易末尾报 `InsufficientFundsForRent`）。
+2. **`Transaction.sign()` 会清空已有签名**（web3.js 源码里直接 `this.signatures = signers.map(...)`）。mint 账户的签名必须用 `partialSign` 追加，钱包侧也只能「追加」。若钱包丢了 mint 签名，`serialize()` 会在**广播前**报 `Missing signature`——不花钱，但原文难懂，已在代码里包一层中文提示。
+
+**元数据取值**
+`name` = 玫瑰寄语（按 **UTF-8 字节**截断到 32B，中文 10 字；按 `String.length` 截断会超长导致初始化失败），`symbol` = `ROSE`，`uri` = 有图片时 `ipfs://<cid>`、否则指向前端玫瑰页，`additionalMetadata` 带 `roseId`（后端据此绑定行，防跨玫瑰重放）+ `message`（完整寄语，截断到 200B）。
+
+**重试语义**
+广播成功后立即 `setPending`，后端保存失败时按钮变「↻ 重试保存（不重复铸造）」。由于 mint 密钥对在浏览器内生成、签完即丢，**根本没法重铸第二枚**——这个设计天然堵住了「重试多铸一个」的坑（每枚 ≈0.0048 SOL 且不可撤销）。`confirmTransaction` 超时按软失败处理（链上可能已成功，以后端 `finalized` 核验为准）。
+
+**真机验证**
+用一次性探针钱包跑**这段真实前端代码**（`tsx` + Node 侧 CONNECT 代理 shim，因为本机直连 Devnet 不通）：
+- mint `Dhs11iijzktgppnv8aUa9fn9eosSjxxhpzyYuChF5DRv`，账户 **525 字节 / 3,317,240 lamports**（= (525+128)×5080），ATA 170 字节 / 1,513,840，合计 **≈0.00483 SOL 租金** + 10,000 lamports 手续费
+- 链上读回：`supply=1`、`decimals=0`、`mintAuthority=null`、`updateAuthority=<钱包>`、`additionalMetadata=[["roseId",…],["message",…]]`
+- 后端 `live_mint_verifies` 用该 mint **核验通过**
+- 另有一个副作用值得记：有一次探针进程被 SIGTERM 杀掉、客户端没拿到结果，但交易其实已上链——正是「客户端丢失结果、链上已生效」的真实样本，也说明后端从链上状态核验（而不是信客户端）是对的
+
+**验证门禁**：`typecheck` 通过、`lint` 0 error、前端 **34 suites / 247 tests** 全过（新增 17 条，含「保存失败重试不重复铸造」行为测试）。
+
+### 仍未做
+- 钱包里出现两枚 NFT 时的展示/选择（当前一朵玫瑰只认一个 mint，`mint_address` 唯一约束）
