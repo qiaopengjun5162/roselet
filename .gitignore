@@ -8,6 +8,8 @@ node_modules/
 out/
 apps/web/dist/
 apps/worker-api/.tmp-test/
+apps/agent-api/dist/
+apps/agent-api/coverage/
 
 # Env
 .env
@@ -20,3 +22,6 @@ apps/web/pnpm-lock.yaml
 apps/web/pnpm-workspace.yaml
 .claude/plan/
 .claude/prds/
+
+# WorkBuddy local workspace data (session memory, not project source)
+.workbuddy/

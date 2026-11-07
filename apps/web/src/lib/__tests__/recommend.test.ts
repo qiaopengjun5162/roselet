@@ -27,6 +27,12 @@ function mockWasm(overrides: Record<string, unknown> = {}) {
     getFireworkLaunches: jest.fn().mockReturnValue([{ cx: 50 }]),
     build_optimistic_rose_wasm: jest.fn().mockReturnValue({ id: "temp-1", sync_status: "pending" }),
     apply_garden_cache_action_wasm: jest.fn().mockReturnValue('{"roses":[],"total":0,"page":1,"filter":"","updated_at":"now"}'),
+    build_aleo_vault_inputs_wasm: jest.fn().mockReturnValue(JSON.stringify({
+      rose_id: "1field",
+      content_commitment: "2field",
+      ai_reply_commitment: "3field",
+      share_key: "4field",
+    })),
     ...overrides,
   };
   jest.doMock(wasmPath, () => wasm);
@@ -78,6 +84,12 @@ describe("recommend WASM wrappers", () => {
     await expect(recommend.getFireworkLaunches()).resolves.toEqual([{ cx: 50 }]);
     await expect(recommend.buildOptimisticRose("{}", "temp-1", "now", "alice")).resolves.toEqual({ id: "temp-1", sync_status: "pending" });
     await expect(recommend.applyGardenCacheAction("", "{}")).resolves.toBe('{"roses":[],"total":0,"page":1,"filter":"","updated_at":"now"}');
+    await expect(recommend.buildAleoVaultInputs("rose-1", "private", "reply", "nonce-1")).resolves.toEqual({
+      rose_id: "1field",
+      content_commitment: "2field",
+      ai_reply_commitment: "3field",
+      share_key: "4field",
+    });
 
     expect(wasm.default).toHaveBeenCalledTimes(1);
     expect(wasm.compute_layout).toHaveBeenCalledWith(JSON.stringify({
@@ -93,6 +105,16 @@ describe("recommend WASM wrappers", () => {
       starting: "foreground",
       background_playing: true,
     }));
+    expect(wasm.build_aleo_vault_inputs_wasm).toHaveBeenCalledWith("rose-1", "private", "reply", "nonce-1");
+  });
+
+  it("surfaces Aleo commitment validation errors", async () => {
+    mockWasm({
+      build_aleo_vault_inputs_wasm: jest.fn().mockReturnValue(JSON.stringify({ error: "content is required" })),
+    });
+    const { buildAleoVaultInputs } = await import("../recommend");
+
+    await expect(buildAleoVaultInputs("rose-1", "", "reply", "nonce-1")).rejects.toThrow("content is required");
   });
 
   it("returns fallback tips when WASM is not available", async () => {

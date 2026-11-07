@@ -22,7 +22,9 @@ import {
   deactivateAccount,
   getGarden,
   getRose,
+  getRoseMemorial,
   updateRose,
+  verifyRoseMemorial,
   setToken,
   setRefreshToken,
   setUser,
@@ -556,6 +558,38 @@ describe("API Client", () => {
           method: "PUT",
           body: JSON.stringify({ recipient_nickname: "小花" }),
         })
+      );
+    });
+  });
+
+  describe("rose memorial", () => {
+    it("loads a verified memorial", async () => {
+      const memorial = { tx_hash: "0xabc", on_chain_message: "Keep growing" };
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => memorial });
+
+      await expect(getRoseMemorial("rose-1")).resolves.toEqual(memorial);
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/rose/rose-1/on-chain",
+        expect.objectContaining({ headers: expect.any(Object) }),
+      );
+    });
+
+    it("submits a wallet transaction for verification", async () => {
+      setToken("test-token");
+      const memorial = { tx_hash: "0xabc", on_chain_message: "Keep growing" };
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => memorial });
+
+      await expect(verifyRoseMemorial("rose-1", {
+        tx_hash: "0xabc",
+        wallet_address: "0x0000000000000000000000000000000000000001",
+        message: "Keep growing",
+      })).resolves.toEqual(memorial);
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/rose/rose-1/on-chain",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({ Authorization: "Bearer test-token" }),
+        }),
       );
     });
   });

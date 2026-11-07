@@ -100,6 +100,31 @@
         }
       }
     },
+    "/rose/{id}/on-chain": {
+      "get": {
+        "tags": ["On-chain"],
+        "summary": "获取已验证的链上纪念版",
+        "description": "公开玫瑰的公开接口。私密玫瑰不提供链上纪念版。",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "成功；尚未创建时返回 null", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OnChainMint" } } } },
+          "404": { "description": "不存在或私密" }
+        }
+      },
+      "post": {
+        "tags": ["On-chain"],
+        "summary": "校验并记录链上纪念版",
+        "description": "仅公开玫瑰的创建者可调用。服务端从 Base Sepolia 回执验证合约地址、玫瑰编号、钱包、短句哈希和颜色。",
+        "security": [{ "Bearer": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerifyMint" } } } },
+        "responses": {
+          "200": { "description": "交易已验证", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OnChainMint" } } } },
+          "400": { "description": "交易或参数不匹配" },
+          "403": { "description": "非创建者" }
+        }
+      }
+    },
     "/garden": {
       "get": {
         "tags": ["Garden"],
@@ -265,6 +290,28 @@
         "properties": {
           "liked": { "type": "boolean" },
           "like_count": { "type": "integer" }
+        }
+      },
+      "VerifyMint": {
+        "type": "object",
+        "required": ["tx_hash", "wallet_address", "message"],
+        "properties": {
+          "tx_hash": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+          "wallet_address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+          "message": { "type": "string", "minLength": 1, "maxLength": 200 }
+        }
+      },
+      "OnChainMint": {
+        "type": "object",
+        "properties": {
+          "chain_id": { "type": "integer", "example": 84532 },
+          "contract_address": { "type": "string" },
+          "token_id": { "type": "string" },
+          "tx_hash": { "type": "string" },
+          "wallet_address": { "type": "string" },
+          "on_chain_message": { "type": "string" },
+          "message_hash": { "type": "string" },
+          "minted_at": { "type": "string", "format": "date-time" }
         }
       },
       "FeedbackRequest": {

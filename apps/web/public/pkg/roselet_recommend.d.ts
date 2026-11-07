@@ -13,6 +13,8 @@ export function apply_garden_cache_action_wasm(cache_json: string, action_json: 
  */
 export function audio_playback_policy_wasm(input_json: string): any;
 
+export function build_aleo_vault_inputs_wasm(rose_id: string, content: string, ai_reply: string, nonce: string): string;
+
 /**
  * WASM: Rust API 客户端 — 构造 URL、请求体、分页计算
  */
@@ -118,6 +120,7 @@ export interface InitOutput {
     readonly analyze_text: (a: number, b: number) => number;
     readonly apply_garden_cache_action_wasm: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly audio_playback_policy_wasm: (a: number, b: number) => number;
+    readonly build_aleo_vault_inputs_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
     readonly build_garden_url: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly build_optimistic_rose_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
     readonly build_plant_body: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;

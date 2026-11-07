@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LockKeyhole } from "lucide-react";
 import { TipTicker } from "@/components/tip-ticker";
 import { ActivityFeed } from "@/components/activity-feed";
 
@@ -53,6 +54,13 @@ export default function Home() {
             </button>
           </Link>
         </div>
+        <Link
+          href="/private-vault"
+          className="inline-flex items-center gap-1.5 text-sm text-emerald-300 hover:text-emerald-200"
+        >
+          <LockKeyhole className="size-4" aria-hidden="true" />
+          使用 Aleo 私密 Vault
+        </Link>
       </div>
     </main>
   );
