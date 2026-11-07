@@ -1,19 +1,45 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { TextDecoder, TextEncoder } from "util";
+
+// jsdom does not ship TextEncoder/TextDecoder, which the Solana mint flow uses
+// to encode the on-chain memo payload. Polyfill from Node's `util` for tests.
+const globalScope = globalThis as {
+  TextEncoder?: typeof TextEncoder;
+  TextDecoder?: typeof TextDecoder;
+};
+if (!globalScope.TextEncoder) globalScope.TextEncoder = TextEncoder;
+if (!globalScope.TextDecoder) globalScope.TextDecoder = TextDecoder;
 
 const mockUpload = jest.fn();
+const mockGetLatestBlockhash = jest.fn();
+const mockSendRawTransaction = jest.fn();
+const mockConfirmTransaction = jest.fn();
 
 // @solana/web3.js pulls in @noble/curves, which requires TextEncoder (jsdom
-// doesn't provide it). These tests never mint, so stub the SDK instead of
-// loading it — the panel only constructs a PublicKey at module scope.
+// doesn't provide it). Stub the SDK instead of loading it; the panel uses only
+// a small method surface, stubbed here so mint-flow tests stay in jsdom.
 jest.mock("@solana/web3.js", () => ({
   clusterApiUrl: () => "https://api.devnet.solana.com",
   PublicKey: class PublicKeyStub {
-    constructor(_value: string) {}
+    constructor() {}
   },
-  Connection: class ConnectionStub {},
-  Transaction: class TransactionStub {},
-  TransactionInstruction: class TransactionInstructionStub {},
+  Connection: class ConnectionStub {
+    getLatestBlockhash = mockGetLatestBlockhash;
+    sendRawTransaction = mockSendRawTransaction;
+    confirmTransaction = mockConfirmTransaction;
+  },
+  Transaction: class TransactionStub {
+    add() {
+      return this;
+    }
+    serialize() {
+      return new Uint8Array([1, 2, 3]);
+    }
+  },
+  TransactionInstruction: class TransactionInstructionStub {
+    constructor() {}
+  },
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -106,5 +132,66 @@ describe("MembershipPanel · image → IPFS CID", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("请手动填写图片 CID");
     fireEvent.change(cidInput(), { target: { value: "QmManualCid" } });
     expect(cidInput().value).toBe("QmManualCid");
+  });
+});
+
+describe("MembershipPanel · Solana mint retry safety", () => {
+  const WALLET = "5FHwkrdxntdK24hgQU8qgBjn35Y1zwhz1GZwCkP2UJnM";
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    window.solana = {
+      connect: jest
+        .fn()
+        .mockResolvedValue({ publicKey: { toBase58: () => WALLET } }),
+      signTransaction: jest
+        .fn()
+        .mockResolvedValue({ serialize: () => new Uint8Array([1, 2, 3]) }),
+      disconnect: jest.fn().mockResolvedValue(undefined),
+    };
+    mockGetLatestBlockhash.mockResolvedValue({
+      blockhash: "bh",
+      lastValidBlockHeight: 100,
+    });
+    mockSendRawTransaction.mockResolvedValue("sig-broadcast");
+    mockConfirmTransaction.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    delete window.solana;
+  });
+
+  it("retries only the backend save after a post-broadcast failure (no duplicate tx)", async () => {
+    // First save fails (backend 500), second succeeds.
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 500, text: async () => "boom" })
+      .mockResolvedValueOnce({ ok: true, status: 200, text: async () => "" });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "enter-member" }));
+    fireEvent.click(screen.getByRole("button", { name: /连接钱包/ }));
+    await screen.findByText(/钱包：/);
+
+    fireEvent.change(screen.getByPlaceholderText(/例如 550e8400/), {
+      target: { value: "550e8400-e29b-41d4-a716-446655440000" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/写一句想留在链上的话/), {
+      target: { value: "hi" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /🚀 上链/ }));
+
+    await waitFor(() => expect(mockSendRawTransaction).toHaveBeenCalledTimes(1));
+    const retry = await screen.findByRole("button", { name: /重试保存/ });
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    // The critical guarantee: retry re-saved but did NOT broadcast again.
+    expect(mockSendRawTransaction).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/已上链/)).toBeInTheDocument();
   });
 });

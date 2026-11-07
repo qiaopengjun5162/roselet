@@ -4652,3 +4652,26 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 当前状态
 - 分支 `codex/solana-mainnet-assessment`（已推远程）。A/B 产品决策（存证 vs 真 NFT、免费 vs 付费）仍待用户拍板；实际切主网需用户配付费 RPC 与真 SOL，本会话未做。
+
+## 2026-11-07 会话：阶段 1 前端（集群徽标 / 分步进度 / 重试不重复广播）
+
+### 会话目标
+把主网评估「阶段 1」的前端部分落地：让用户看清当前集群、上链分步进度，并修复「后端保存失败后重试会重复广播」的隐患。
+
+### 处理
+- 新增 `apps/web/src/lib/solana.ts`：集群判断 / 徽标 / 浏览器链接的纯函数模块，**不依赖 `@solana/web3.js`**（详情页测试的 jsdom 缺 TextEncoder，不能拉 SDK）。
+- `apps/web/src/components/membership-panel.tsx`：
+  - 顶部集群徽标（Devnet / 主网 / 自定义 RPC）+ 主网「消耗真 SOL、不可撤销」警示。
+  - 分步进度：① 准备交易 → ② 等签名 → ③ 广播 → ④ 等 finalized → ⑤ 后端核验。
+  - 广播成功后用 `pending` 固定签名与 meta；后端保存失败时按钮变「↻ 重试保存（不重复上链）」，重试只重发 POST，**不再广播第二笔**。
+  - 前端确认改为 `finalized`，与后端核验级别对齐。
+  - 确认/RPC 失败时附带「检查 Phantom 网络与集群是否一致」提示。
+- `apps/web/src/components/rose-solana-mint.tsx`：去掉写死的 devnet，改用共享 `explorerTxUrl` / `clusterLabel`。
+
+### 验证
+- `pnpm --filter web typecheck`：通过。
+- `pnpm --filter web lint`：0 error。
+- `pnpm --filter web test`：33 suites / 225 tests 全过（新增「重试不重复广播」行为测试 + `solana.ts` 单测）。
+
+### 当前状态
+- 前端阶段 1 完成并提交。实际切主网仍需用户配付费 RPC + 真 SOL；A/B 产品决策仍待拍板。
