@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Nav } from "@/components/nav";
+import { MembershipProvider } from "@/app/membership-context";
+import { MembershipPanel } from "@/components/membership-panel";
 import { CyberBackground } from "@/components/cyber-background";
 import { DayNightBackground } from "@/components/day-night-bg";
 import { FallingPetals } from "@/components/falling-petals";
@@ -24,19 +26,22 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="h-[100dvh] w-screen flex flex-col overflow-hidden overscroll-none" suppressHydrationWarning>
-        <DayNightBackground />
-        <CyberBackground />
-        <FallingPetals />
-        <RoseClickBloom />
-        <header className="sticky top-0 z-50 backdrop-blur-2xl" style={{background:"linear-gradient(135deg, rgba(15,8,30,0.92) 0%, rgba(40,12,30,0.88) 50%, rgba(15,8,30,0.92) 100%)",borderBottom:"1px solid rgba(244,63,94,0.15)",boxShadow:"0 1px 20px rgba(244,63,94,0.06)"}}>
-          <div className="max-w-4xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between">
-            <Link href="/" className="shrink-0 whitespace-nowrap text-xl font-bold text-rose-300 tracking-[0.15em]" style={{fontFamily:"Ma Shan Zheng, STXingkai, KaiTi, cursive"}}>
-              玫 · 瑰 · 源
-            </Link>
-            <Nav />
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <MembershipProvider>
+          <DayNightBackground />
+          <CyberBackground />
+          <FallingPetals />
+          <RoseClickBloom />
+          <header className="sticky top-0 z-50 backdrop-blur-2xl" style={{background:"linear-gradient(135deg, rgba(15,8,30,0.92) 0%, rgba(40,12,30,0.88) 50%, rgba(15,8,30,0.92) 100%)",borderBottom:"1px solid rgba(244,63,94,0.15)",boxShadow:"0 1px 20px rgba(244,63,94,0.06)"}}>
+            <div className="max-w-4xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between">
+              <Link href="/" className="shrink-0 whitespace-nowrap text-xl font-bold text-rose-300 tracking-[0.15em]" style={{fontFamily:"Ma Shan Zheng, STXingkai, KaiTi, cursive"}}>
+                玫 · 瑰 · 源
+              </Link>
+              <Nav />
+            </div>
+          </header>
+          <main className="flex-1 overflow-y-auto">{children}</main>
+          <MembershipPanel />
+        </MembershipProvider>
       </body>
     </html>
   );

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logout, getUser } from "@/lib/api";
+import { useOptionalMembership } from "@/app/membership-context";
 import { isBgPlaying, isMuted, startBgMusic, stopBgMusic, toggleMute } from "@/lib/sound";
 
 const MAIN_LINKS = [
@@ -45,6 +46,10 @@ export function Nav() {
 
   const authed = !!nickname;
   const isActive = (href: string) => pathname.startsWith(href);
+  // Optional: Nav also renders in unit tests without a MembershipProvider.
+  // With no provider it behaves as the plain, Web3-free app.
+  const membership = useOptionalMembership();
+  const isMember = membership?.isMember ?? false;
 
   return (
     <nav className="flex items-center gap-0.5">
@@ -111,6 +116,20 @@ export function Nav() {
           登录
         </Link>
       )}
+
+      <button
+        onClick={() => membership?.openPanel()}
+        className={`shrink-0 whitespace-nowrap text-[13px] px-3 py-1.5 rounded-full transition-all duration-200 ${
+          isMember
+            ? "bg-violet-500/20 text-violet-200 border border-violet-400/40"
+            : "text-violet-300/70 hover:text-violet-200 hover:bg-violet-500/10"
+        }`}
+        title={isMember
+          ? "重新打开会员界面（可在详情页直接给某朵玫瑰上链）"
+          : "会员模式：连接 Solana 钱包，把玫瑰/图片/信息上链"}
+      >
+        🌐 会员
+      </button>
 
       <button
         onClick={async () => {

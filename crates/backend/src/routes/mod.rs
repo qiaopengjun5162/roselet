@@ -7,6 +7,7 @@ pub mod health;
 pub mod like;
 pub mod my;
 pub mod on_chain;
+pub mod solana_onchain;
 pub mod rose;
 pub mod stats;
 pub mod ws;

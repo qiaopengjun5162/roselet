@@ -6,15 +6,28 @@
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
     "lint": "pnpm --filter web lint",
-    "typecheck": "pnpm --filter web typecheck && pnpm --filter @roselet/miniprogram typecheck",
+    "typecheck": "pnpm --filter web typecheck && pnpm --filter @roselet/miniprogram typecheck && pnpm --filter @roselet/agent-api typecheck",
     "test": "pnpm --filter web test",
-    "test:coverage": "pnpm --filter web test:coverage && pnpm --filter @roselet/miniprogram test:coverage",
+    "test:coverage": "pnpm --filter web test:coverage && pnpm --filter @roselet/miniprogram test:coverage && pnpm --filter @roselet/agent-api test",
     "worker:dev": "pnpm --filter @roselet/worker-api dev",
     "worker:test": "pnpm --filter @roselet/worker-api test",
     "worker:typecheck": "pnpm --filter @roselet/worker-api typecheck",
-    "worker:deploy": "pnpm --filter @roselet/worker-api deploy"
+    "worker:deploy": "pnpm --filter @roselet/worker-api deploy",
+    "agent:dev": "pnpm --filter @roselet/agent-api dev",
+    "agent:mcp": "pnpm --filter @roselet/agent-api mcp",
+    "agent:pay": "pnpm --filter @roselet/agent-api pay",
+    "agent:wasm": "pnpm --filter @roselet/agent-api wasm",
+    "agent:build": "pnpm --filter @roselet/agent-api build",
+    "agent:test": "pnpm --filter @roselet/agent-api test",
+    "agent:typecheck": "pnpm --filter @roselet/agent-api typecheck"
   },
   "devDependencies": {
     "playwright": "^1.60.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "fast-uri": ">=3.1.4",
+      "body-parser": ">=2.3.0"
+    }
   }
 }

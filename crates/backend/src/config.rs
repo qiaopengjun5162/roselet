@@ -10,6 +10,7 @@ pub struct Config {
     pub private_rose_monthly_limit: i64,
     pub base_sepolia_rpc_url: Option<String>,
     pub rose_memorial_contract_address: Option<String>,
+    pub solana_rpc_url: Option<String>,
     pub is_production: bool,
 }
 
@@ -55,6 +56,8 @@ impl Config {
         let rose_memorial_contract_address = env::var("ROSE_MEMORIAL_CONTRACT_ADDRESS")
             .ok()
             .filter(|address| !address.is_empty());
+        let solana_rpc_url =
+            env::var("SOLANA_RPC_URL").ok().filter(|url| !url.is_empty());
 
         Self {
             database_url: env::var("DATABASE_URL")
@@ -66,6 +69,7 @@ impl Config {
             private_rose_monthly_limit,
             base_sepolia_rpc_url,
             rose_memorial_contract_address,
+            solana_rpc_url,
             is_production,
         }
     }
@@ -74,9 +78,25 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex, MutexGuard};
+
+    // Global env vars are process-wide; serialize env-mutating tests so they
+    // don't race each other under `cargo test`'s default multi-threaded runner.
+    // Use a poison-tolerant lock: `test_production_rejects_default_jwt` panics
+    // (it's a `#[should_panic]` test), which would otherwise poison the mutex
+    // and fail the subsequent tests' `.unwrap()`.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn env_lock() -> MutexGuard<'static, ()> {
+        match ENV_LOCK.lock() {
+            Ok(g) => g,
+            Err(poisoned) => poisoned.into_inner(),
+        }
+    }
 
     #[test]
     fn test_from_env_defaults() {
+        let _guard = env_lock();
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
         std::env::remove_var("JWT_SECRET");
@@ -86,6 +106,7 @@ mod tests {
         std::env::remove_var("PRIVATE_ROSE_MONTHLY_LIMIT");
         std::env::remove_var("BASE_SEPOLIA_RPC_URL");
         std::env::remove_var("ROSE_MEMORIAL_CONTRACT_ADDRESS");
+        std::env::remove_var("SOLANA_RPC_URL");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://localhost/roselet");
@@ -97,10 +118,12 @@ mod tests {
         assert_eq!(config.private_rose_monthly_limit, 10);
         assert!(config.base_sepolia_rpc_url.is_none());
         assert!(config.rose_memorial_contract_address.is_none());
+        assert!(config.solana_rpc_url.is_none());
     }
 
     #[test]
     fn test_from_env_custom() {
+        let _guard = env_lock();
         std::env::set_var("DATABASE_URL", "postgres://custom/testdb");
         std::env::set_var("PORT", "8080");
         std::env::set_var("JWT_SECRET", "my-secret-key-with-sufficient-length-32bytes");
@@ -112,6 +135,7 @@ mod tests {
             "ROSE_MEMORIAL_CONTRACT_ADDRESS",
             "0x0000000000000000000000000000000000000001",
         );
+        std::env::set_var("SOLANA_RPC_URL", "https://api.devnet.solana.com");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://custom/testdb");
@@ -131,6 +155,10 @@ mod tests {
             config.rose_memorial_contract_address.as_deref(),
             Some("0x0000000000000000000000000000000000000001")
         );
+        assert_eq!(
+            config.solana_rpc_url.as_deref(),
+            Some("https://api.devnet.solana.com")
+        );
 
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
@@ -140,11 +168,13 @@ mod tests {
         std::env::remove_var("PRIVATE_ROSE_MONTHLY_LIMIT");
         std::env::remove_var("BASE_SEPOLIA_RPC_URL");
         std::env::remove_var("ROSE_MEMORIAL_CONTRACT_ADDRESS");
+        std::env::remove_var("SOLANA_RPC_URL");
     }
 
     #[test]
     #[should_panic(expected = "JWT_SECRET must be set")]
     fn test_production_rejects_default_jwt() {
+        let _guard = env_lock();
         std::env::set_var("NODE_ENV", "production");
         std::env::remove_var("JWT_SECRET");
         let _ = Config::from_env();

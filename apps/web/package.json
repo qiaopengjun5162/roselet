@@ -20,6 +20,7 @@
     "@demox-labs/aleo-wallet-adapter-base": "0.0.23",
     "@demox-labs/aleo-wallet-adapter-leo": "0.0.25",
     "@demox-labs/aleo-wallet-adapter-react": "0.0.22",
+    "@solana/web3.js": "^1.99.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",

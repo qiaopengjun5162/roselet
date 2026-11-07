@@ -6,7 +6,8 @@
 Roselet 是一个社区破冰互动 Web 应用：用户种下玫瑰（感恩）、花苞（期待）、尖刺（焦虑），形成社区花圃。
 
 ## 技术栈
-- 后端：Rust + Axum + SQLx + PostgreSQL（端口 3001）
+- 后端：Rust（**MSRV 1.85**，见根 `Cargo.toml` 的 `rust-version`；本地 `rustc 1.98.1` 实测通过）+ Axum + SQLx + PostgreSQL（端口 3001）
+- 各 crate 的具体依赖版本以 `crates/*/Cargo.toml` 为准，本文档不硬编码版本号，避免与代码漂移。
 - 前端：Next.js 16 + shadcn UI + pnpm + Tone.js（端口 3000）
 - 小程序：Taro 4 + React 18 + TypeScript + WXWebAssembly
 - 数据库：PostgreSQL（本地 roselet 数据库）
@@ -17,13 +18,14 @@ Roselet 是一个社区破冰互动 Web 应用：用户种下玫瑰（感恩）�
 ## 项目结构
 ```
 roselet/
-├── apps/web/           # Next.js 前端
-├── apps/miniprogram/      # Taro 微信小程序
-├── packages/core/         # 共享 TypeScript 类型
-├── crates/backend/     # Rust Axum 后端
-├── crates/recommend/   # Rust WASM 推荐模块
-├── Cargo.toml          # Rust workspace
-└── package.json        # pnpm workspace
+├── apps/web/          # Next.js 前端
+├── apps/miniprogram/  # Taro 微信小程序
+├── apps/agent-api/    # Solana + GOAT x402 HTTP / MCP
+├── packages/core/     # 共享 TypeScript 类型
+├── crates/backend/    # Rust Axum 后端
+├── crates/recommend/  # Rust WASM 推荐模块
+├── Cargo.toml         # Rust workspace
+└── package.json       # pnpm workspace
 ```
 
 ## 架构原则（最高优先级）
@@ -43,12 +45,14 @@ Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请
 玫瑰种下后的正文内容不可修改，也暂不提供删除入口；`PUT /api/rose/{id}` 只做 owner 设置更新，目前仅允许公开转私密，或为「公开且未送礼」的玫瑰补填 `recipient_nickname` 完成送礼。
 
 ## 测试状态
+> 以下数值随提交变化，可能滞后；**以 CI 最新执行为准**，跨文件（PROGRESS.md）若与此冲突以此处为权威。
 ```
-Rust backend:   145 passed
-Rust WASM:      146 passed
-Web frontend:   188 passed
+Rust backend:   149 passed
+Rust WASM:      153 passed
+Web frontend:   208 passed
 Miniprogram:     66 passed
-Total:          545 passed
+Agent API:       39 passed
+Total:          615 passed
 
 llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   100%: flowers, petal, sky, keywords, pagination, user, docs, state
@@ -58,16 +62,19 @@ llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   90%+: plant (93.06%), emotion (91.43%), store (90.21%), rose routes (94.87%)
 
 Jest coverage:
-  Web: 90.28% statements / 95.32% lines
+  Web: 90.22% statements / 95.04% lines
   Miniprogram: 99.33% statements / 100% lines / 96.05% branches
+Vitest coverage:
+  Agent API: 98.51% statements / 98.51% lines / 94.44% branches
 Coverage gates:
-  pnpm test:coverage  # Web + Miniprogram coverage threshold
+  pnpm test:coverage  # Web + Miniprogram + Agent API coverage threshold
 Quality gates:
-  pnpm typecheck      # Web + Miniprogram tsc
+  pnpm typecheck      # Web + Miniprogram + Agent API tsc
   pnpm lint           # Web ESLint
   cargo deny check    # Rust dependency audit
   cd apps/web && pnpm build  # Next production build
   cd apps/miniprogram && pnpm build:weapp  # Taro production build
+  pnpm agent:build    # Agent API production build
 ```
 
 ## WASM 模块清单（crates/recommend/src/）
@@ -98,9 +105,12 @@ Quality gates:
 - **Next 构建不依赖 Google Fonts**：避免 `next/font/google` 在受限网络里拖垮 build；全局字体走系统中文字体栈
 - **pnpm 沙箱 fetch failed**：Codex 沙箱内 `pnpm exec` / `pnpm test:*` 可能触发 `[ERROR] fetch failed`；优先用已安装依赖重跑，必要时按审批走外部执行
 - **cargo deny advisory DB**：沙箱内可能因 `~/.cargo` 只读或网络失败不能更新 advisory DB；本地用 `https_proxy=http://127.0.0.1:7890 cargo deny check`
+- **Swagger UI**：`/swagger` 路由返回手写的 `swagger.html`，运行时经 unpkg CDN 加载 Swagger UI 静态资源。`utoipa-swagger-ui` 依赖已移除——它此前会在编译期强制从 GitHub 下载 Swagger UI 压缩包（`curl` SSL 超时，exit 28），使 `cargo build` 在受限网络下卡死；移除后后台编译不再受该下载拖累。若需完全离线使用 Swagger UI，再把 `swagger.html` 里的 unpkg 链接改为 vendored 资源即可。
 - **虚拟 Cargo workspace clippy**：根目录没有 default-members 时，质量门禁显式跑 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`
 - **后端 nextest 本地 DB**：沙箱内可能因本地数据库连接 `Operation not permitted` 失败；用 `NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-fail-fast`
 - **已发布迁移不可改写**：`crates/backend/migrations/*.sql` 一旦在线上执行过，后续只能新增 migration，不能改旧文件哪怕只是注释；`sqlx` 会在启动时校验 checksum，不一致就报 `VersionMismatch(n)`
+- **Solana 会员上链核验**：`POST /api/rose/{id}/solana` 只有在后端配置了 `SOLANA_RPC_URL` 时才会用 `getTransaction` 核验交易（签名 / 付款钱包 / Memo 程序 / 交易成功 / memo 内含该 rose id 防重放）；未配置则跳过核验，生产必须配，否则可存入伪造引用。前后端 RPC 必须指向同一集群（后端 `SOLANA_RPC_URL` ↔ 前端 `NEXT_PUBLIC_SOLANA_RPC_URL`），且前端 Memo 程序 ID 必须落在后端 `MEMO_PROGRAM_IDS` 白名单内——官方标准 ID 是 `MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`（`MemoSqLa…` 是 v3 变体，也接受）。后端只存链上引用，绝不接触钱包私钥。
+- **会员模式的默认关闭边界**：默认普通模式必须**零 Web3 痕迹**。`membership-context.tsx` 用 `isMember`（模式开关）+ `panelOpen`（面板可收起）两个状态；`components/rose-solana-mint.tsx` 用「外层判断会员 + 内层才有 hooks」两层结构，保证无 `MembershipProvider` 的页面/单测不会误调 Solana API。给页面组件读会员状态时一律用 **`useOptionalMembership()`**（无 Provider 返回 null），**只有确定在 Provider 内的组件（如 `MembershipPanel`）才用会抛错的 `useMembership()`**——否则 `nav.test.tsx` 这类不包 Provider 的测试会整片失败。上链成功通过 `SOLANA_MINT_EVENT` 自定义事件通知详情页刷新徽章，不要跨组件直接传状态。
 - **托管 Postgres TLS**：Neon / Render Postgres 需要 `sqlx` 启用 `runtime-tokio-rustls`，只开 `runtime-tokio` 会在编译期 SQLx 宏连接和运行期连库时报 “TLS upgrade required”
 - **Jest 生成物冲突**：`next build` / Playwright / WASM 会生成重复 package metadata；`apps/web/jest.config.ts` 必须忽略 `.next`、`playwright/.cache`、`public/wasm`
 - **小程序云测**：必须上传体验版或线上版，开发者/管理员身份进入；本地 Jest 仍是提交前门禁，云测用于真机兼容、黑白屏、性能和 JsError 验收
@@ -124,6 +134,10 @@ Quality gates:
 - **生产密钥**：Lightsail `.env.production` 只留在服务器，不能把 `POSTGRES_PASSWORD` / `JWT_SECRET` / 私钥写入 Git 或文档
 - **Base Sepolia 链上纪念版**：只允许公开玫瑰；`ROSE_MEMORIAL_CONTRACT_ADDRESS` 和 `NEXT_PUBLIC_ROSE_MEMORIAL_CONTRACT_ADDRESS` 必须是同一合约地址。后端从 Base RPC 回执校验 `RoseMemorialMinted` 的合约地址、玫瑰编号、钱包、短句哈希和颜色，不保存或使用用户钱包私钥。
 - **Aleo 私密 Vault**：原文、本地 AI 回应和分享 nonce 只进入浏览器 Rust WASM；钱包交易只提交四个 `field`，不能发给 Roselet 后端、公开 mapping 或 Leo program input。Leo record owner 必须使用 `self.signer`，不能使用可能为程序地址的 `self.caller`。
+- **Solana x402 Agent API**：固定使用 x402 v2 SVM `exact` + Solana Devnet USDC。`X402_SVM_PAY_TO` 只配置公开收款地址，服务端不持有付款方或商户私钥；业务结果来自 `crates/recommend` 的 Node WASM，Rust 变更后运行 `just agent-wasm` 更新生成物。
+- **GOAT SDK 状态**：已归档的是旧 `goat-sdk/goat`，不要把它引入核心运行时；官方 `GOATNetwork/x402` 仍在维护。GOAT 支付使用 `goatflow-sdk-server` 的 `DIRECT` 商户订单接口，API key/secret 只留在 Agent API 服务端，Solana 标准 x402/SVM 路径继续独立保留。
+- **GOAT 交付边界**：GOAT 订单必须绑定 Rust WASM 规范化后的 reflection 与付款字段；仅在状态为 `INVOICED`、订单字段匹配且 proof 获取并校验通过后生成推荐。`PAYMENT_CONFIRMED` 不是最终交付状态，proof 的 `signature` 只是未签名 checksum，不能当作平台背书。
+- **Solana RPC 代理**：Solana Kit v5 会显式写 `Content-Length`，Undici `EnvHttpProxyAgent` 会拒绝；`apps/agent-api/src/client-network.ts` 必须在代理模式删除该 header，由 Undici 重算，不能移除这层兼容处理。
 - **Lightsail Caddy 配置源**：生产 Caddy 站点配置以 `deploy/lightsail/Caddyfile` 为仓库共享源；当前对 `127.0.0.1:3001` 开启 `lb_try_duration 15s` / `lb_try_interval 250ms`，用于在单机切镜像时尽量把短暂 `502` 转成客户端等待
 - **Lightsail Compose 项目名**：自动部署必须固定 `COMPOSE_PROJECT_NAME=roselet`，复用 `roselet_pgdata`；否则会生成 `lightsail_*` 容器/卷并和旧后端抢占 `3001`
 - **Lightsail 环境变量变更**：只改服务器 `.env.production` 后，`docker compose restart backend` 不会把新值注入现有容器；必须结合 `~/roselet/.current_backend_image` 对 backend 执行 `up -d --force-recreate`
