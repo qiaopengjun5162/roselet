@@ -24,6 +24,11 @@ pub enum AppError {
 
     #[error("{0}")]
     Internal(String),
+
+    /// A feature is intentionally unavailable (e.g. optional IPFS credentials
+    /// not configured). Unlike `Internal`, the message is safe to show users.
+    #[error("{0}")]
+    ServiceUnavailable(String),
 }
 
 impl IntoResponse for AppError {
@@ -40,6 +45,10 @@ impl IntoResponse for AppError {
             AppError::Internal(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "服务器内部错误".to_string(),
+            ),
+            AppError::ServiceUnavailable(_) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                self.to_string(),
             ),
         };
 

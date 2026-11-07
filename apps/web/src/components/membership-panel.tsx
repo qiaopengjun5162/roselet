@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Connection,
   Transaction,
@@ -9,7 +9,7 @@ import {
   clusterApiUrl,
 } from "@solana/web3.js";
 import { SOLANA_MINT_EVENT, useMembership } from "@/app/membership-context";
-import { getToken } from "@/lib/api";
+import { getToken, uploadImageToIpfs } from "@/lib/api";
 
 // Canonical SPL Memo program (Solana official docs / x402). Must match the
 // backend's MEMO_PROGRAM_IDS or server-side verification will reject the tx.
@@ -37,9 +37,14 @@ export function MembershipPanel() {
   const [roseId, setRoseId] = useState("");
   const [message, setMessage] = useState("");
   const [imageCid, setImageCid] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageGatewayUrl, setImageGatewayUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // A rose detail page can open the panel with the rose already selected.
   // Keep the input in sync whenever a new target is chosen.
@@ -52,6 +57,27 @@ export function MembershipPanel() {
   }, [mintTargetRoseId]);
 
   if (!isMember || !panelOpen) return null;
+
+  async function handleUpload() {
+    if (!imageFile) return;
+    setUploading(true);
+    setUploadError(null);
+    setStatus(null);
+    try {
+      const result = await uploadImageToIpfs(imageFile);
+      setImageCid(result.cid);
+      setImageGatewayUrl(result.gateway_url);
+      setStatus(
+        `✅ 图片已上传到 IPFS，CID 已自动填入：${result.cid.slice(0, 14)}…`,
+      );
+      setImageFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "图片上传失败");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function handleMint() {
     setError(null);
@@ -133,6 +159,8 @@ export function MembershipPanel() {
       );
       setMessage("");
       setImageCid("");
+      setImageFile(null);
+      setImageGatewayUrl(null);
       // Let the rose detail page refresh its "已上链" badge.
       window.dispatchEvent(new Event(SOLANA_MINT_EVENT));
     } catch (e) {
@@ -215,11 +243,50 @@ export function MembershipPanel() {
           className="mb-3 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none focus:border-rose-400"
         />
 
-        <label className="mb-1 block text-xs text-slate-400">图片 CID（可选，图片走 IPFS）</label>
+        <label className="mb-1 block text-xs text-slate-400">
+          图片（选一张上传到 IPFS，可选）
+        </label>
+        <div className="mb-2 flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            aria-label="选择要上链的图片"
+            onChange={(e) => {
+              setImageFile(e.target.files?.[0] ?? null);
+              setUploadError(null);
+            }}
+            className="min-w-0 flex-1 text-xs text-slate-400 file:mr-2 file:rounded-md file:border-0 file:bg-violet-500/20 file:px-2 file:py-1 file:text-xs file:text-violet-200"
+          />
+          <button
+            onClick={handleUpload}
+            disabled={!imageFile || uploading || busy}
+            className="shrink-0 rounded-lg border border-violet-400/40 px-3 py-1.5 text-xs text-violet-200 hover:bg-violet-500/10 disabled:opacity-40"
+          >
+            {uploading ? "上传中…" : "↑ 上传"}
+          </button>
+        </div>
+        {uploadError && (
+          <p className="mb-2 text-xs text-amber-300" role="alert">{uploadError}</p>
+        )}
+        {imageGatewayUrl && (
+          <a
+            href={imageGatewayUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mb-2 block text-xs text-violet-300 underline"
+          >
+            查看已上传的图片（IPFS 网关）
+          </a>
+        )}
+
+        <label className="mb-1 block text-xs text-slate-400">
+          图片 CID（上传后自动填入；也可直接手填）
+        </label>
         <input
           value={imageCid}
           onChange={(e) => setImageCid(e.target.value)}
-          placeholder="bafy…（图片先传到 IPFS 拿 CID）"
+          placeholder="bafy…（未配置上传服务时可手填已有 CID）"
           className="mb-4 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none focus:border-rose-400"
         />
 

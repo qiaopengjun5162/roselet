@@ -1,5 +1,10 @@
 use std::env;
 
+/// Default Pinata v3 upload endpoint. Override with `PINATA_UPLOAD_URL` if the
+/// provider changes its API (the classic endpoint returns `IpfsHash` while v3
+/// returns `data.cid`; the upload route accepts both response shapes).
+pub const DEFAULT_PINATA_UPLOAD_URL: &str = "https://uploads.pinata.cloud/v3/files";
+
 #[derive(Clone)]
 pub struct Config {
     pub database_url: String,
@@ -11,6 +16,11 @@ pub struct Config {
     pub base_sepolia_rpc_url: Option<String>,
     pub rose_memorial_contract_address: Option<String>,
     pub solana_rpc_url: Option<String>,
+    /// Optional IPFS pinning credential, server-side only (never exposed to
+    /// the browser). When unset, image upload returns 503 and users can still
+    /// enter a CID manually.
+    pub pinata_jwt: Option<String>,
+    pub pinata_upload_url: String,
     pub is_production: bool,
 }
 
@@ -58,6 +68,11 @@ impl Config {
             .filter(|address| !address.is_empty());
         let solana_rpc_url =
             env::var("SOLANA_RPC_URL").ok().filter(|url| !url.is_empty());
+        let pinata_jwt = env::var("PINATA_JWT").ok().filter(|jwt| !jwt.is_empty());
+        let pinata_upload_url = env::var("PINATA_UPLOAD_URL")
+            .ok()
+            .filter(|url| !url.is_empty())
+            .unwrap_or_else(|| DEFAULT_PINATA_UPLOAD_URL.to_string());
 
         Self {
             database_url: env::var("DATABASE_URL")
@@ -70,6 +85,8 @@ impl Config {
             base_sepolia_rpc_url,
             rose_memorial_contract_address,
             solana_rpc_url,
+            pinata_jwt,
+            pinata_upload_url,
             is_production,
         }
     }
@@ -107,6 +124,8 @@ mod tests {
         std::env::remove_var("BASE_SEPOLIA_RPC_URL");
         std::env::remove_var("ROSE_MEMORIAL_CONTRACT_ADDRESS");
         std::env::remove_var("SOLANA_RPC_URL");
+        std::env::remove_var("PINATA_JWT");
+        std::env::remove_var("PINATA_UPLOAD_URL");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://localhost/roselet");
@@ -119,6 +138,8 @@ mod tests {
         assert!(config.base_sepolia_rpc_url.is_none());
         assert!(config.rose_memorial_contract_address.is_none());
         assert!(config.solana_rpc_url.is_none());
+        assert!(config.pinata_jwt.is_none());
+        assert_eq!(config.pinata_upload_url, DEFAULT_PINATA_UPLOAD_URL);
     }
 
     #[test]
@@ -136,6 +157,11 @@ mod tests {
             "0x0000000000000000000000000000000000000001",
         );
         std::env::set_var("SOLANA_RPC_URL", "https://api.devnet.solana.com");
+        std::env::set_var("PINATA_JWT", "test-pinata-jwt");
+        std::env::set_var(
+            "PINATA_UPLOAD_URL",
+            "https://api.pinata.cloud/pinning/pinFileToIPFS",
+        );
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://custom/testdb");
@@ -159,6 +185,11 @@ mod tests {
             config.solana_rpc_url.as_deref(),
             Some("https://api.devnet.solana.com")
         );
+        assert_eq!(config.pinata_jwt.as_deref(), Some("test-pinata-jwt"));
+        assert_eq!(
+            config.pinata_upload_url,
+            "https://api.pinata.cloud/pinning/pinFileToIPFS"
+        );
 
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
@@ -169,6 +200,8 @@ mod tests {
         std::env::remove_var("BASE_SEPOLIA_RPC_URL");
         std::env::remove_var("ROSE_MEMORIAL_CONTRACT_ADDRESS");
         std::env::remove_var("SOLANA_RPC_URL");
+        std::env::remove_var("PINATA_JWT");
+        std::env::remove_var("PINATA_UPLOAD_URL");
     }
 
     #[test]

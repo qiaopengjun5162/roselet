@@ -2,6 +2,30 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-11-07 会话（四）：图片 → IPFS CID 闭环（会员上链最后一环）
+
+### 目的
+会员模式此前的「图片上链」只是**手填 CID**，用户得先自己把图片传到 IPFS、再复制 CID 粘进面板，链路是断的。本轮补上「选一张图 → 自动上传 → 自动填 CID → 随 Memo 交易上链 + 存后端引用」。按 CLAUDE.md「功能开发先走分支」纪律，从 `main`（`303f336`）新建 `codex/solana-ipfs-upload`。
+
+### 关键设计：后端代理，密钥绝不下发浏览器
+- AGENTS.md 明确「API key/secret 只留服务端」。因此浏览器把图片 `multipart/form-data` POST 给 Roselet 后端，后端持 `PINATA_JWT` 转发到 Pinata，**前端只拿 CID**。
+- 查证了 Pinata 当前 API（2026-11）：v3 `POST https://uploads.pinata.cloud/v3/files` 返回 `data.cid`（部分版本 `cid`）；经典 `pinFileToIPFS` 返回 `IpfsHash`。后端 **三种响应格式都兼容**，`PINATA_UPLOAD_URL` 可覆盖端点。
+- **优雅降级**：未配 `PINATA_JWT` → 后端返回 503 且消息可见（新增 `AppError::ServiceUnavailable(String)`，不像 `Internal` 会把消息藏掉），前端提示「请手动填写图片 CID」，**手填 CID 输入框保留**，普通模式零影响。
+
+### 改动
+- 后端：`config.rs` 加 `pinata_jwt` / `pinata_upload_url`（两个环境测试同步）；`Cargo.toml` 给 axum / reqwest 加 `multipart` feature（锁文件新增 `multer` / `mime_guess` / `unicase`）；`error.rs` 加 503 变体；新 `routes/ipfs.rs`（鉴权 `require_active_user_id` → 取 `file` 字段 → mime 白名单 PNG/JPEG/WebP/GIF + ≤5 MiB + 文件名清理 → reqwest multipart 转发，20s 超时 → CID 校验）；`lib.rs` 挂 `/api/ipfs/upload` 并单独设 6 MiB body limit（axum 默认 2 MiB 会挡住 5 MiB 图片）。
+- 前端：`api.ts` 加 `uploadImageToIpfs(file)`（FormData，**不手动设 Content-Type**，走 `authFetch` 以保留 401 静默刷新）；`membership-panel.tsx` 加选图控件 / 上传按钮 / 上传中与错误态 / 成功后自动填 CID + IPFS 网关预览链接，上链成功后清空图片状态；保留手填 CID。
+- 测试：后端 4 个纯函数单测（mime/大小校验、文件名清理、三种 CID 响应解析、拒绝畸形/注入值）；前端 4 个组件测试（普通模式零渲染、未选文件按钮禁用、上传成功自动填 CID + 网关链接、503 时提示且仍可手填）。前端测试用最小 `jest.mock` 桩替掉 `@solana/web3.js`（jsdom 缺 `TextEncoder` 会加载失败）。
+
+### 验证
+- `cargo test --workspace --lib`：backend **76 passed**（72 + 4 新增）/ recommend **153 passed**，零警告。
+- `pnpm --filter web typecheck` 通过；`membership-panel.test.tsx` 4/4；web 全量 jest 见本轮结果。
+
+### 上线前必做
+- 生产配 `PINATA_JWT`（否则上传按钮不可用，仅能手填 CID）；**绝不能**写成 `NEXT_PUBLIC_PINATA_JWT`。
+- 图片仍走**中心化 pinning 服务**（Pinata），CID 上链 ≠ 图片永久去中心化存储；若要更稳妥需多节点 pin 或改 web3.storage。
+- 真机联调（Phantom / Devnet）、付费会员、主网仍未做。
+
 ## 2026-11-07 会话（三）：Web3 分支合回 `main`（方案 A）
 
 ### 目的

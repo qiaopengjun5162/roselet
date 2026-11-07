@@ -280,6 +280,32 @@ export async function getSolanaMint(id: string): Promise<SolanaMint | null> {
   return res.json();
 }
 
+export interface IpfsUploadResult {
+  cid: string;
+  gateway_url: string;
+}
+
+/** Upload an image through the Roselet backend (the server holds the IPFS
+ *  credential; the browser never sees it). Returns the CID to embed in the
+ *  Solana Memo transaction and store as an on-chain reference.
+ *  Throws a user-facing message when the upload service is unavailable (503). */
+export async function uploadImageToIpfs(file: File): Promise<IpfsUploadResult> {
+  const form = new FormData();
+  form.append("file", file);
+  const token = getToken();
+  const res = await authFetch(`${API_BASE}/api/ipfs/upload`, {
+    method: "POST",
+    // Deliberately no Content-Type: the browser must set the multipart boundary.
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (!res.ok) {
+    const body: { error?: string } = await res.json().catch(() => ({}));
+    throw new Error(body.error || `图片上传失败（${res.status}）`);
+  }
+  return res.json();
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
