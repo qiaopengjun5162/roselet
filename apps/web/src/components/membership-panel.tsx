@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  ComputeBudgetProgram,
   Connection,
   Transaction,
   TransactionInstruction,
@@ -11,11 +12,15 @@ import { SOLANA_MINT_EVENT, useMembership } from "@/app/membership-context";
 import { getToken, uploadImageToIpfs } from "@/lib/api";
 import {
   CLUSTER,
+  MEMO_COMPUTE_UNIT_LIMIT,
+  PRIORITY_FEE_MICRO_LAMPORTS,
   SOLANA_RPC_URL,
   clusterLabel,
   clusterSpendsRealSol,
   clusterTone,
+  estimatedFeeLamports,
   explorerTxUrl,
+  priorityFeeLamports,
 } from "@/lib/solana";
 
 // Canonical SPL Memo program (Solana official docs / x402). Must match the
@@ -195,6 +200,10 @@ export function MembershipPanel() {
     }
 
     const wallet = walletAddress;
+    // Set once the RPC has accepted the tx. Used by the catch block to tell a
+    // "broadcast failed" error from a "broadcast ok, bookkeeping failed" one —
+    // only the former is safe to retry by building a new transaction.
+    let pinned: { signature: string; wallet: string; meta: MintMeta } | null = null;
     setBusy(true);
     try {
       const meta: MintMeta = {
@@ -211,12 +220,32 @@ export function MembershipPanel() {
       const { blockhash, lastValidBlockHeight } =
         await connection.getLatestBlockhash("finalized");
       const feePayer = new PublicKey(wallet);
-      const ix = new TransactionInstruction({
-        programId: MEMO_PROGRAM_ID,
-        keys: [],
-        data: new TextEncoder().encode(JSON.stringify(meta)) as Buffer,
-      });
-      const tx = new Transaction({ feePayer, blockhash, lastValidBlockHeight }).add(ix);
+
+      const instructions: TransactionInstruction[] = [];
+      if (PRIORITY_FEE_MICRO_LAMPORTS > 0) {
+        // Cap the CU limit *before* setting a price: priority fee is
+        // price × limit, so an unset limit means paying for the 200k default.
+        instructions.push(
+          ComputeBudgetProgram.setComputeUnitLimit({
+            units: MEMO_COMPUTE_UNIT_LIMIT,
+          }),
+          ComputeBudgetProgram.setComputeUnitPrice({
+            microLamports: PRIORITY_FEE_MICRO_LAMPORTS,
+          }),
+        );
+      }
+      instructions.push(
+        new TransactionInstruction({
+          programId: MEMO_PROGRAM_ID,
+          keys: [],
+          data: new TextEncoder().encode(JSON.stringify(meta)) as Buffer,
+        }),
+      );
+      const tx = new Transaction({
+        feePayer,
+        blockhash,
+        lastValidBlockHeight,
+      }).add(...instructions);
 
       const provider = window.solana;
       if (!provider?.signTransaction) {
@@ -229,22 +258,41 @@ export function MembershipPanel() {
       setProgress("③ 广播交易…");
       const signature = await connection.sendRawTransaction(
         signed.serialize() as Buffer,
+        // Preflight re-simulation can reject a tx the cluster would accept, and
+        // the RPC's own rebroadcast helps a tx that lands in a congested slot.
+        { skipPreflight: true, maxRetries: 5 },
       );
 
-      // The backend verifies at `finalized` commitment, so wait for the same
-      // level here; otherwise the first verify attempt may not see the tx yet.
-      setProgress("④ 等待链上最终确认…");
-      await connection.confirmTransaction(
-        { signature, blockhash, lastValidBlockHeight },
-        "finalized",
-      );
+      // Pin the signature the moment the RPC accepts it. From here a retry must
+      // only re-save: rebuilding the tx would put a *second* memo for the same
+      // rose on-chain, which is permanent and costs real SOL.
+      pinned = { signature, wallet, meta };
+      setPending(pinned);
 
-      // Broadcast succeeded. Pin it so any retry only re-saves.
-      setPending({ signature, wallet, meta });
+      // Wait for finality purely for UX. A timeout here is NOT a failure — the
+      // tx may still land, and the backend (which polls at `finalized` with its
+      // own retries) is the authority on whether it did.
+      try {
+        setProgress("④ 等待链上最终确认…");
+        await connection.confirmTransaction(
+          { signature, blockhash, lastValidBlockHeight },
+          "finalized",
+        );
+      } catch {
+        setProgress("④ 交易已广播，仍在等待最终确认…");
+      }
+
       await saveOnChainReference(signature, wallet, meta);
     } catch (e) {
       setProgress(null);
-      setError(withNetworkHint(e instanceof Error ? e.message : "上链失败"));
+      const reason = withNetworkHint(
+        e instanceof Error ? e.message : "上链失败",
+      );
+      setError(
+        pinned
+          ? `${reason}\n交易已广播（${pinned.signature.slice(0, 10)}…），重试只会重新保存到后端，不会重复上链。`
+          : reason,
+      );
     } finally {
       setBusy(false);
     }
@@ -387,6 +435,14 @@ export function MembershipPanel() {
           className="mb-4 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none focus:border-rose-400"
         />
 
+        <p className="mb-2 text-[10px] leading-relaxed text-slate-500">
+          预估手续费 ≈ {estimatedFeeLamports().toLocaleString()} lamports（基础 5000
+          {PRIORITY_FEE_MICRO_LAMPORTS > 0
+            ? ` + 优先费 ${priorityFeeLamports()}`
+            : "，未设优先费"}
+          ）· Memo 存证不创建账户，因此没有租金押金
+        </p>
+
         <button
           onClick={handleMint}
           disabled={busy || !walletAddress}
@@ -404,7 +460,7 @@ export function MembershipPanel() {
         {progress && <p className="mt-3 text-xs text-slate-300">{progress}</p>}
         {pending && (
           <p className="mt-2 text-xs text-amber-300">
-            交易已广播（签名 {pending.signature.slice(0, 10)}…），仅差后端保存。重试不会重复上链。
+            交易已广播（签名 {pending.signature.slice(0, 10)}…），仅差后端保存。重试只会重新保存，不会重复上链。
           </p>
         )}
 

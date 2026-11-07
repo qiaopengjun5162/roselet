@@ -40,6 +40,10 @@ jest.mock("@solana/web3.js", () => ({
   TransactionInstruction: class TransactionInstructionStub {
     constructor() {}
   },
+  ComputeBudgetProgram: {
+    setComputeUnitLimit: () => ({}),
+    setComputeUnitPrice: () => ({}),
+  },
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -193,5 +197,40 @@ describe("MembershipPanel · Solana mint retry safety", () => {
     // The critical guarantee: retry re-saved but did NOT broadcast again.
     expect(mockSendRawTransaction).toHaveBeenCalledTimes(1);
     expect(await screen.findByText(/已上链/)).toBeInTheDocument();
+  });
+
+  it("pins the signature when confirmation times out, so retry never re-broadcasts", async () => {
+    // The RPC accepts the tx, but waiting for `finalized` times out locally
+    // (congested cluster / slow finality). That must not look like a failed
+    // broadcast — rebuilding the tx would put a second memo on-chain.
+    mockConfirmTransaction.mockRejectedValue(
+      new Error("Transaction was not confirmed in 30.00 seconds"),
+    );
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue({ ok: false, status: 503, text: async () => "rpc busy" });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "enter-member" }));
+    fireEvent.click(screen.getByRole("button", { name: /连接钱包/ }));
+    await screen.findByText(/钱包：/);
+
+    fireEvent.change(screen.getByPlaceholderText(/例如 550e8400/), {
+      target: { value: "550e8400-e29b-41d4-a716-446655440000" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/写一句想留在链上的话/), {
+      target: { value: "hi" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /🚀 上链/ }));
+
+    await waitFor(() => expect(mockSendRawTransaction).toHaveBeenCalledTimes(1));
+    // Signature was pinned before the confirm wait -> "save only" retry path.
+    expect(await screen.findByRole("button", { name: /重试保存/ })).toBeInTheDocument();
+    expect(screen.getByText(/重试只会重新保存到后端/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /重试保存/ }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(mockSendRawTransaction).toHaveBeenCalledTimes(1);
   });
 });

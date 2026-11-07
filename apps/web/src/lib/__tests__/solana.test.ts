@@ -1,9 +1,15 @@
 import {
+  BASE_FEE_LAMPORTS,
+  MAX_PRIORITY_FEE_MICRO_LAMPORTS,
+  MEMO_COMPUTE_UNIT_LIMIT,
   clusterLabel,
   clusterSpendsRealSol,
   clusterTone,
   detectCluster,
+  estimatedFeeLamports,
   explorerTxUrl,
+  parsePriorityFeeMicroLamports,
+  priorityFeeLamports,
 } from "../solana";
 
 describe("solana cluster helpers", () => {
@@ -46,5 +52,41 @@ describe("solana cluster helpers", () => {
     expect(explorerTxUrl("sig123", "custom")).toBe(
       "https://explorer.solana.com/tx/sig123",
     );
+  });
+});
+
+describe("solana fee helpers", () => {
+  it("defaults to no priority fee when the env var is missing or bogus", () => {
+    expect(parsePriorityFeeMicroLamports(undefined)).toBe(0);
+    expect(parsePriorityFeeMicroLamports("")).toBe(0);
+    expect(parsePriorityFeeMicroLamports("   ")).toBe(0);
+    expect(parsePriorityFeeMicroLamports("abc")).toBe(0);
+    expect(parsePriorityFeeMicroLamports("-5")).toBe(0);
+    expect(parsePriorityFeeMicroLamports("0")).toBe(0);
+  });
+
+  it("parses a positive price and clamps it to the safety ceiling", () => {
+    expect(parsePriorityFeeMicroLamports("50000")).toBe(50_000);
+    expect(parsePriorityFeeMicroLamports("1500.9")).toBe(1_500);
+    expect(parsePriorityFeeMicroLamports("999999999")).toBe(
+      MAX_PRIORITY_FEE_MICRO_LAMPORTS,
+    );
+  });
+
+  it("computes priority fee as price × CU limit ÷ 1e6", () => {
+    // 50_000 microLamports/CU over 20_000 CU = 1_000 lamports.
+    expect(priorityFeeLamports(50_000)).toBe(1_000);
+    expect(priorityFeeLamports(0)).toBe(0);
+    expect(priorityFeeLamports(-1)).toBe(0);
+    // Rounds up so the displayed estimate is never lower than reality.
+    expect(priorityFeeLamports(1, 1)).toBe(1);
+  });
+
+  it("adds the 5000-lamport base fee per signature", () => {
+    expect(estimatedFeeLamports(0)).toBe(BASE_FEE_LAMPORTS);
+    expect(estimatedFeeLamports(50_000)).toBe(BASE_FEE_LAMPORTS + 1_000);
+    // A memo tx uses far less than the 200k default CU limit, so pinning the
+    // limit is what keeps the priority fee sane.
+    expect(MEMO_COMPUTE_UNIT_LIMIT).toBeLessThan(200_000);
   });
 });

@@ -57,6 +57,60 @@ export function clusterTone(cluster: SolanaCluster = CLUSTER): string {
 }
 
 /**
+ * Base fee every Solana transaction pays: 5000 lamports per signature.
+ * It is *not* a rent deposit — nothing is locked, nothing is refundable.
+ */
+export const BASE_FEE_LAMPORTS = 5_000;
+
+/**
+ * Compute-unit ceiling we request for a memo-only transaction. The memo
+ * program is cheap (cost scales with payload bytes), so 20k CU is generous
+ * while keeping `priority fee = price × limit` from ballooning.
+ */
+export const MEMO_COMPUTE_UNIT_LIMIT = 20_000;
+
+/** Hard ceiling for the configured price, so an env typo cannot burn SOL. */
+export const MAX_PRIORITY_FEE_MICRO_LAMPORTS = 1_000_000;
+
+/**
+ * Parse `NEXT_PUBLIC_SOLANA_PRIORITY_FEE_MICROLAMPORTS`.
+ *
+ * Default is 0 (no ComputeBudget instruction at all) — on Devnet a priority
+ * fee is pointless. Set it on mainnet so a congested cluster does not leave
+ * the memo tx queued indefinitely.
+ */
+export function parsePriorityFeeMicroLamports(
+  raw: string | undefined | null,
+): number {
+  if (!raw) return 0;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.min(Math.floor(value), MAX_PRIORITY_FEE_MICRO_LAMPORTS);
+}
+
+/** Configured compute-unit price (micro-lamports per CU); 0 = unset. */
+export const PRIORITY_FEE_MICRO_LAMPORTS = parsePriorityFeeMicroLamports(
+  process.env.NEXT_PUBLIC_SOLANA_PRIORITY_FEE_MICROLAMPORTS,
+);
+
+/** Priority fee in lamports: microLamports/CU × CU limit ÷ 1e6. */
+export function priorityFeeLamports(
+  microLamports: number = PRIORITY_FEE_MICRO_LAMPORTS,
+  units: number = MEMO_COMPUTE_UNIT_LIMIT,
+): number {
+  if (microLamports <= 0 || units <= 0) return 0;
+  return Math.ceil((microLamports * units) / 1_000_000);
+}
+
+/** Total lamports a single-signature memo tx is expected to spend. */
+export function estimatedFeeLamports(
+  microLamports: number = PRIORITY_FEE_MICRO_LAMPORTS,
+  units: number = MEMO_COMPUTE_UNIT_LIMIT,
+): number {
+  return BASE_FEE_LAMPORTS + priorityFeeLamports(microLamports, units);
+}
+
+/**
  * Solana Explorer URL for a transaction on the given cluster.
  *
  * Mainnet/base explorer keeps the default cluster, so no `?cluster=` suffix is

@@ -4675,3 +4675,33 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 当前状态
 - 前端阶段 1 完成并提交。实际切主网仍需用户配付费 RPC + 真 SOL；A/B 产品决策仍待拍板。
+
+## 2026-11-07 · Solana 主网就绪：修「确认超时→重复广播」+ 优先费（前端）
+
+### 背景
+对照 Solana 官方企业培训 Module 1（账户 / 租金 / 交易解剖）复核上链链路，发现三个与主网相关的实际问题。
+
+### 关键认识（来自 Module 1）
+- Solana 交易费 = 5000 lamports × 签名数 + 优先费（micro-lamports/CU × CU 上限）。
+- Rent 是**押金**不是手续费：`3480 × (128 + data_len) × 2`，关账户全额退回。
+- 我们是 Memo 存证交易，**不创建任何账户 → 零租金押金**，只有 5000 lamports 基础费 + 可选优先费。真 NFT 则要为 mint(82B) + ATA(165B) + metadata(~679B) 每朵押 ≈ 0.009 SOL（现金流占用差约 1800 倍，租金可退但 metadata 通常不可关）。
+
+### 修复 1（真 bug）：确认超时会导致重复广播
+- 原顺序：`sendRawTransaction` → `await confirmTransaction(finalized)` → `setPending`。
+  广播已成功、但等终局性超时抛错时 `pending` 仍未设，用户再点按钮会重新取 blockhash、构造新交易、**再广播一笔**，链上同一朵玫瑰出现两条 Memo（不可撤销、主网要真 SOL）。
+- 现在：RPC 接受后**立刻** `setPending({signature, wallet, meta})`，再单独 `try { confirmTransaction } catch {}` 软失败——确认超时只影响提示文案，不影响「重试=仅保存」的判定。后端本就以 finalized + 有界重试自行核验，是权威判定方。
+- 失败文案区分两种：未广播 → 「↻ 重试上链」；已广播 → 「↻ 重试保存（不重复上链）」+ 明示「重试只会重新保存到后端」。
+
+### 修复 2：优先费与广播参数
+- 新增可选 `NEXT_PUBLIC_SOLANA_PRIORITY_FEE_MICROLAMPORTS`（默认 0 = 完全不加 ComputeBudget 指令，Devnet 无需付费）。
+- 仅在配置 >0 时加 `ComputeBudgetProgram.setComputeUnitLimit(20_000)` + `setComputeUnitPrice(price)`；**先限 CU 再定价**，否则按默认 200k CU 计价会放大 10 倍。
+- `sendRawTransaction(..., { skipPreflight: true, maxRetries: 5 })`：preflight 重模拟可能拒掉集群实际会接受的交易，且借助 RPC 侧重播对抗拥堵丢块。
+- `lib/solana.ts` 增加纯函数 `parsePriorityFeeMicroLamports`（非法/负数归零 + 硬上限 1,000,000）、`priorityFeeLamports`、`estimatedFeeLamports`，面板显示「预估手续费 ≈ N lamports（基础 5000 + 优先费 X）· Memo 存证不创建账户，因此没有租金押金」。
+
+### 验证
+- `pnpm --filter web typecheck`：通过。
+- `pnpm --filter web lint`：0 error。
+- `pnpm --filter web test`：33 suites / **230 tests** 全过（新增「确认超时也不重复广播」行为测试 + 4 个费用计算单测）。
+
+### 当前状态
+- 分支 `codex/solana-mainnet-assessment`。优先级费默认关闭，主网启用前只需填一个 env，不改代码。
