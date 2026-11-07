@@ -82,7 +82,9 @@ impl RecordSolanaMint {
         if normalize_base58(&self.wallet_address, 32, 44).is_none() {
             return Err("钱包地址格式不正确（应为 base58）".into());
         }
-        if !self.on_chain_metadata.is_object() || self.on_chain_metadata.as_object().map(|o| o.is_empty()).unwrap_or(true) {
+        if !self.on_chain_metadata.is_object()
+            || self.on_chain_metadata.as_object().map(|o| o.is_empty()).unwrap_or(true)
+        {
             return Err("链上元数据必须是一个非空 JSON 对象".into());
         }
         if let Some(cid) = &self.ipfs_cid {
@@ -143,7 +145,9 @@ pub async fn record_solana_mint(
         return Err(AppError::Forbidden);
     }
     if rose.is_private {
-        return Err(AppError::BadRequest("私密玫瑰不能创建 Solana 链上记录".into()));
+        return Err(AppError::BadRequest(
+            "私密玫瑰不能创建 Solana 链上记录".into(),
+        ));
     }
 
     let existing: Option<Uuid> =
@@ -399,9 +403,7 @@ fn verify_tx_result(
 }
 
 fn account_key_pubkey(value: &JsonValue) -> Option<&str> {
-    value
-        .as_str()
-        .or_else(|| value.get("pubkey").and_then(|p| p.as_str()))
+    value.as_str().or_else(|| value.get("pubkey").and_then(|p| p.as_str()))
 }
 
 fn instruction_is_memo(ix: &JsonValue, account_keys: &[JsonValue]) -> bool {
@@ -422,7 +424,10 @@ fn instruction_is_memo(ix: &JsonValue, account_keys: &[JsonValue]) -> bool {
 
 /// Normalize a Solana base58 identifier: trim, validate charset, lowercase
 /// (base58 is case-sensitive but we keep it canonical by trimming only).
-fn normalize_base58(value: &str, min_len: usize, max_len: usize) -> Option<String> {
+///
+/// Shared with `solana_nft`, which validates mint / wallet addresses the same
+/// way. Deliberately `pub(crate)`: this is not part of the HTTP API contract.
+pub(crate) fn normalize_base58(value: &str, min_len: usize, max_len: usize) -> Option<String> {
     let value = value.trim();
     let bytes = value.as_bytes();
     if bytes.len() < min_len || bytes.len() > max_len {
@@ -507,13 +512,19 @@ mod tests {
     #[test]
     fn verify_accepts_valid_parsed_memo_tx() {
         let memo = format!("{{\"roseId\":\"{ROSE_ID}\",\"message\":\"hi\"}}");
-        assert!(verify_tx_result(&parsed_tx(SIG, WALLET, MEMO, &memo), SIG, WALLET, ROSE_ID).is_ok());
+        assert!(
+            verify_tx_result(&parsed_tx(SIG, WALLET, MEMO, &memo), SIG, WALLET, ROSE_ID).is_ok()
+        );
         // The v3 Memo program id is accepted too.
-        assert!(verify_tx_result(
-            &parsed_tx(SIG, WALLET, MEMO_PROGRAM_IDS[1], &memo),
-            SIG, WALLET, ROSE_ID
-        )
-        .is_ok());
+        assert!(
+            verify_tx_result(
+                &parsed_tx(SIG, WALLET, MEMO_PROGRAM_IDS[1], &memo),
+                SIG,
+                WALLET,
+                ROSE_ID
+            )
+            .is_ok()
+        );
     }
 
     #[test]
@@ -538,8 +549,13 @@ mod tests {
         assert!(verify_tx_result(&JsonValue::Null, SIG, WALLET, ROSE_ID).is_err());
 
         let memo = format!("{{\"roseId\":\"{ROSE_ID}\"}}");
-        let err = verify_tx_result(&parsed_tx("different-sig", WALLET, MEMO, &memo), SIG, WALLET, ROSE_ID)
-            .unwrap_err();
+        let err = verify_tx_result(
+            &parsed_tx("different-sig", WALLET, MEMO, &memo),
+            SIG,
+            WALLET,
+            ROSE_ID,
+        )
+        .unwrap_err();
         assert!(err.contains("签名"));
 
         let err = verify_tx_result(&parsed_tx(SIG, OTHER, MEMO, &memo), SIG, WALLET, ROSE_ID)
@@ -552,34 +568,41 @@ mod tests {
         let memo = format!("{{\"roseId\":\"{ROSE_ID}\"}}");
         let mut failed = parsed_tx(SIG, WALLET, MEMO, &memo);
         failed["meta"]["err"] = serde_json::json!({"InstructionError": [0, "Custom"]});
-        assert!(verify_tx_result(&failed, SIG, WALLET, ROSE_ID)
-            .unwrap_err()
-            .contains("执行失败"));
+        assert!(
+            verify_tx_result(&failed, SIG, WALLET, ROSE_ID)
+                .unwrap_err()
+                .contains("执行失败")
+        );
 
         let not_memo = parsed_tx(SIG, WALLET, OTHER, &memo);
-        assert!(verify_tx_result(&not_memo, SIG, WALLET, ROSE_ID)
-            .unwrap_err()
-            .contains("Memo"));
+        assert!(verify_tx_result(&not_memo, SIG, WALLET, ROSE_ID).unwrap_err().contains("Memo"));
 
         // Valid memo tx, but for a *different* rose (replay attempt).
         let replay = parsed_tx(SIG, WALLET, MEMO, "{\"roseId\":\"another-rose\"}");
-        assert!(verify_tx_result(&replay, SIG, WALLET, ROSE_ID)
-            .unwrap_err()
-            .contains("不匹配"));
+        assert!(verify_tx_result(&replay, SIG, WALLET, ROSE_ID).unwrap_err().contains("不匹配"));
     }
 
     #[test]
     fn classify_rpc_response_handles_found_notfound_and_error() {
         let found = serde_json::json!({"result": {"meta": {"err": null}}});
-        assert!(matches!(classify_rpc_response(&found), FetchOutcome::Found(_)));
+        assert!(matches!(
+            classify_rpc_response(&found),
+            FetchOutcome::Found(_)
+        ));
 
         // Explicit null result => not yet finalized / not found.
         let null_res = serde_json::json!({"result": null, "jsonrpc": "2.0"});
-        assert!(matches!(classify_rpc_response(&null_res), FetchOutcome::NotFound));
+        assert!(matches!(
+            classify_rpc_response(&null_res),
+            FetchOutcome::NotFound
+        ));
 
         // Missing "result" key entirely => treated as not-found (safe retry).
         let no_res = serde_json::json!({"jsonrpc": "2.0"});
-        assert!(matches!(classify_rpc_response(&no_res), FetchOutcome::NotFound));
+        assert!(matches!(
+            classify_rpc_response(&no_res),
+            FetchOutcome::NotFound
+        ));
 
         let err = serde_json::json!({"error": {"code": -32005, "message": "rate limited"}});
         match classify_rpc_response(&err) {

@@ -46,10 +46,7 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "服务器内部错误".to_string(),
             ),
-            AppError::ServiceUnavailable(_) => (
-                StatusCode::SERVICE_UNAVAILABLE,
-                self.to_string(),
-            ),
+            AppError::ServiceUnavailable(_) => (StatusCode::SERVICE_UNAVAILABLE, self.to_string()),
         };
 
         (status, Json(json!({ "error": message }))).into_response()

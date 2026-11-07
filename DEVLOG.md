@@ -4705,3 +4705,52 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 当前状态
 - 分支 `codex/solana-mainnet-assessment`。优先级费默认关闭，主网启用前只需填一个 env，不改代码。
+
+## 2026-11-07 · Token-2022 NFT 上链校验（后端）
+
+### 决策：不移植 Anchor 程序
+`shenqi-box/programs/token_2022_nft` 需要链上程序，是因为它要让 **PDA 充当 mint 权限**、把铸造规则锁在链上。而「会员把自己的玫瑰铸成 NFT」这件事，让**用户钱包自己当 mint 权限**、前端直接调 Token-2022 就够了：零新程序、零部署成本、零审计面，密钥边界仍是「用户自签、平台不碰私钥」。只有当规则必须链上强制（玫瑰只能铸一次、平台控量）时才值得上程序。
+
+### 新增 `crates/backend/src/routes/solana_nft.rs`
+- `POST /api/rose/{id}/solana/nft`（body: `mint_address`, `wallet_address`）、`GET` 同路径。
+- 迁移 `014_create_solana_nft_mints.sql`（只追加，不动 013）：`rose_id` 主键（一朵玫瑰一个 NFT）、`mint_address` 唯一（一个 mint 不能被两朵玫瑰认领）。
+- 校验**从链上状态出发**，不是从交易签名：一次 `getAccountInfo {encoding: jsonParsed, commitment: finalized}`，然后纯函数 `verify_mint_value` 逐条判定：
+  1. owner 必须是 Token-2022（经典 SPL 无法承载内联元数据）
+  2. `parsed.type == "mint"`（防止指到一个 token account）
+  3. `decimals == 0` 且 `supply == "1"`（1-of-1 的定义）
+  4. `mintAuthority == null`（供应量已冻结，否则不是 NFT）
+  5. `metadataPointer.metadataAddress == mint`（元数据必须自托管，否则可被指向别处）
+  6. `updateAuthority == wallet`（证明声明钱包确实控制该资产）
+  7. `additionalMetadata[roseId] == 当前玫瑰 ID`（绑定行记录，防跨玫瑰重放）
+- 三条设计取舍：
+  - **未配置 `SOLANA_RPC_URL` 直接 503**（不像 memo 路由那样跳过校验）——这个接口存在的意义就是校验，跳过等于存伪造引用。
+  - **元数据设为不可变（updateAuthority=null）会被拒**：仅凭链上状态无法再证明钱包归属，宁可拒绝也不猜。
+  - **`null` 结果不重试**：账户在 finalized 下不存在就是不存在；只有传输/解析失败才重试 3 次。
+
+### 真实链上验证发现的问题（关键）
+首次对真实 Devnet NFT 跑校验时**全部被拒**，原因是 RPC 实际返回的 `additionalMetadata` 是**二元组**：
+
+```json
+"additionalMetadata": [["roseId", "3f2b8c1e-..."]]
+```
+
+而 JSON-RPC 文档写的是 `[{"key": "roseId", "value": "..."}]`。只按文档解析会把所有合法 NFT 判成「缺少 roseId」。现已两种形状都支持（`parse_metadata_field`），并各留一条单测。**这就是为什么必须拿真链数据跑一次，不能只用自己编的 fixture。**
+
+### 顺手修掉的既有问题
+- `crates/backend/tests/api_test.rs` 的 `Config` 字面量缺 `solana_rpc_url` / `pinata_jwt` / `pinata_upload_url`，整个集成测试**编译不过**（前几轮加字段时漏了）；已补齐。
+- 该 crate 存在 rustfmt 漂移（config / error / ipfs / lib / solana_onchain），统一跑了一次 `cargo fmt`，纯机械变更。
+
+### 验证
+- `cargo test -p roselet-backend --lib`：**90 passed, 1 ignored**
+- `cargo clippy -p roselet-backend --lib --all-targets`：clean
+- `cargo fmt --check`：clean
+- 真机验证（`#[ignore]` 用例 `live_mint_verifies`）：对 Devnet 上真实铸出的 NFT 校验通过
+  - mint `qbLajEv22JT4spuU4Rvkpk2yqjYggjnp3dghTDMNFyE`（Token-2022，supply 1，mint 权限已撤销）
+  - 元数据：`name="Roselet Rose #1"`、`symbol="ROSE"`、`uri=ipfs://bafkrei…`、`additionalMetadata=[["roseId","3f2b8c1e-…"]]`
+  - 账户 **453 字节 / 2,951,480 lamports**，与 `(453+128)×5080` 完全吻合，实测总成本 ≈ 0.0045 SOL
+  - 演示密钥存在 `~/.config/solana/roselet-nft-demo.json`（Devnet 一次性账户）
+  - 复跑命令见该测试的文档注释
+
+### 仍未做
+- 前端铸造入口（当前需要用户/脚本自己用 Token-2022 铸，后端只负责校验）
+- `nft_mints`（EVM/Base）与 `solana_nft_mints` 的展示层合并
