@@ -155,4 +155,42 @@
 
 ---
 
+## 9. 本地先例（prior art）与成本修正
+
+盘点 `~/Code/Solana` 下 26 个项目后，与 roselet 直接相关的是下面这些（均为可直接读的本地代码，非外部参考）：
+
+| 项目 | 提供的能力 | 对 roselet 的用处 |
+|---|---|---|
+| `shenqi-box/programs/token_2022_nft` | Token-2022 NFT：`MetadataPointer` 指向 mint 自身、PDA 授权、mint 1 枚后撤销 mint 权限、`NftMinted` 事件、按 `tlv_size_of` 动态算空间 | **若走 B 路线，首选这套**：无 Metaplex 依赖、账号更少、租金更低；配套 `tests/token_2022_nft.ts` |
+| `shenqi-box/programs/metaplex_nft` | Metaplex：`mint_to` + ATA + `create_metadata_accounts_v3` + `create_master_edition_v3` | 生态兼容性最好（钱包/二级市场直接识别），但账号最多、租金最高 |
+| `solana-event-indexer` | Rust + `RpcClient` 按 slot 扫块 → `parser.rs` 解析 → sqlx/Postgres 落库，事件里含 `priority_fee_lamports` | 若数据要上链，用「程序发事件 + 索引器入库」替代逐笔 `getTransaction` 核验，检索能力更强 |
+| `secure_transfer_gate` | 用 instruction sysvar 反查调用链（防 CPI 冒充）+ `paused` 开关 + 事件 | 会员/付费程序的调用链校验范式 |
+| `solana_forge` | 同一件事的 web3.js / `@solana/kit` / gill 三套写法 | 前端 SDK 选型参考；现用 `@solana/web3.js` 已够，无需迁移 |
+| `pinocchio_*` / `blueshift_*` | 原生零拷贝程序、vault / escrow / AMM 模板 | 后续做高性价比链上程序时的模板与测试范式 |
+| `solana-storage` | 原生 on-chain storage 程序 | 「信息上链」的另一种形态，但成本远高于 Memo |
+
+### 9.1 三条上链路线的真实成本（修正版）
+
+前一版只算了 mint + metadata，**漏了 Master Edition 账户**，特此修正。按 `3480 × (128 + data_len) × 2` 实算（rent 为押金、关账户可退）：
+
+| 路线 | 链上账号 | 租金押金 | 手续费 | 合计现金流 |
+|---|---|---|---|---|
+| **A. Memo 存证**（现状） | 无（不创建账号） | **0** | 5000 lamports + 优先费 | **≈ 0.000005 SOL** |
+| **B1. Token-2022 NFT** | mint（≈151 B，含 MetadataPointer）+ 内联元数据（≈180 B）+ ATA（165 B） | ≈ 0.0032 + 0.0020 | 少量 | **≈ 0.0052 SOL/朵** |
+| **B2. Metaplex NFT** | mint(82) + ATA(165) + MetadataV3(≈679) + MasterEdition(≈282) | ≈ 0.0015+0.0020+0.0056+0.0029 | 少量 | **≈ 0.012 SOL/朵** |
+| B3. 压缩 NFT（cNFT） | 无独立账号，挂在 Merkle tree 上 | 极低 | 极低 | ≈ 0.00001 SOL/朵（**本地无先例**，需 tree + DAS 索引器） |
+
+即：Memo 比 Token-2022 便宜约 **1000 倍**，比 Metaplex 便宜约 **2400 倍**。
+两个 NFT 方案的具体 lamports 由程序自己 `msg!("... lamports required")` 打日志，实跑一次即可得到精确值（`shenqi-box/programs/token_2022_nft/src/lib.rs:72-77`）。
+
+### 9.2 由此调整的建议
+
+1. **只为「确权 / 存证」**：继续 Memo，不要为省钱而迁就 NFT；两者解决的不是同一个问题。
+2. **若确实要让玫瑰成为可转让资产**：选 **B1 Token-2022**，直接复用 `shenqi-box` 的程序结构与测试，只需把 `name/symbol/uri` 换成本朵玫瑰的元数据（`uri` 用已上传的 IPFS CID）。
+3. **除非要上 Magic Eden 等二级市场**，否则不要选 B2 Metaplex——多付一倍租金，换来的是生态兼容性。
+4. **前端不需要迁移 SDK**：`solana_forge` 已证明 web3.js 能覆盖当前需求；`@solana/kit` 只在需要更强类型/可组合性时再考虑。
+5. **数据要可查询时再引入索引器**：`solana-event-indexer` 的「扫块 + 解析 + Postgres」结构与本项目后端同栈（Rust + sqlx），可低成本移植。
+
+---
+
 *本评估基于 `main` @ `7b53fb9` 的代码事实核查，随实现演进需同步更新。*
