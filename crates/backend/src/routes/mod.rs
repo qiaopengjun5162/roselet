@@ -4,6 +4,7 @@ pub mod docs;
 pub mod feedback;
 pub mod garden;
 pub mod health;
+pub mod ipfs;
 pub mod like;
 pub mod my;
 pub mod on_chain;

@@ -1,4 +1,5 @@
 use axum::Router;
+use axum::extract::DefaultBodyLimit;
 use axum::http::HeaderValue;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
@@ -59,6 +60,13 @@ pub fn create_app(state: AppState) -> Router {
             "/api/rose/{id}/solana",
             get(routes::solana_onchain::get_solana_mint)
                 .post(routes::solana_onchain::record_solana_mint),
+        )
+        // Membership image upload: allow up to 6 MiB of multipart body so a
+        // 5 MiB image plus form overhead isn't rejected by axum's 2 MiB default.
+        .route(
+            "/api/ipfs/upload",
+            post(routes::ipfs::upload_image)
+                .layer(DefaultBodyLimit::max(6 * 1024 * 1024)),
         )
         .route("/api/my/roses", get(routes::my::get_my_roses))
         .route("/api/user/profile", get(routes::auth::profile))
