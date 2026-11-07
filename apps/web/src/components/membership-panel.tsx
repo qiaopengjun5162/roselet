@@ -11,13 +11,24 @@ import {
 import { useMembership } from "@/app/membership-context";
 import { getToken } from "@/lib/api";
 
-const MEMO_PROGRAM_ID = new PublicKey("MemoSqLaHNF36X2uS2FgoesJdziWCDCmHsu9wHHNfn9r");
+// Canonical SPL Memo program (Solana official docs / x402). Must match the
+// backend's MEMO_PROGRAM_IDS or server-side verification will reject the tx.
+const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
 // Step 1 targets Devnet. Switch to mainnet-beta when going live.
 const SOLANA_CLUSTER = "devnet";
+// Point this at the same cluster the backend verifies against (SOLANA_RPC_URL).
+const SOLANA_RPC_URL =
+  process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl(SOLANA_CLUSTER);
 
 export function MembershipPanel() {
-  const { isMember, walletAddress, connectError, connectWallet, disconnectWallet } =
-    useMembership();
+  const {
+    isMember,
+    walletAddress,
+    connectError,
+    connectWallet,
+    disconnectWallet,
+    toggleMember,
+  } = useMembership();
 
   const [roseId, setRoseId] = useState("");
   const [message, setMessage] = useState("");
@@ -56,7 +67,7 @@ export function MembershipPanel() {
 
       // Build a Solana Memo transaction (on Devnet) carrying the reference,
       // have the connected wallet sign it, then broadcast.
-      const connection = new Connection(clusterApiUrl(SOLANA_CLUSTER), "confirmed");
+      const connection = new Connection(SOLANA_RPC_URL, "confirmed");
       const { blockhash, lastValidBlockHeight } =
         await connection.getLatestBlockhash();
       const feePayer = new PublicKey(walletAddress);
@@ -126,7 +137,7 @@ export function MembershipPanel() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-rose-300">🌐 会员 · Web3 上链</h2>
           <button
-            onClick={() => useMembership().toggleMember()}
+            onClick={toggleMember}
             className="text-slate-400 hover:text-slate-200"
           >
             ✕

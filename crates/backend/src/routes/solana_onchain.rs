@@ -4,8 +4,14 @@
 //! the transaction signature, the on-chain account, the wallet that signed,
 //! an optional IPFS CID for an image, and the metadata the client claimed.
 //! It never touches the user's private key — signing happens in the wallet
-//! (browser / client) and the result is posted here. On-chain verification
-//! (checking the tx against a Solana RPC + program) is a later step.
+//! (browser / client) and the result is posted here.
+//!
+//! When `SOLANA_RPC_URL` is configured, the backend verifies the posted
+//! transaction against a Solana RPC before storing it: it checks the tx
+//! actually exists, its first signature matches what the client sent, its
+//! fee payer is the claimed wallet, and it invoked the Memo program. This
+//! prevents storing fabricated "on-chain" references. When the env var is
+//! unset the check is skipped (dev / offline fallback).
 //!
 //! This intentionally mirrors `on_chain.rs` (Base Sepolia) but uses base58
 //! (Solana) identifiers and a separate `solana_mints` table.
@@ -17,12 +23,28 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sqlx::PgPool;
+use std::sync::LazyLock;
 use uuid::Uuid;
 
 use crate::auth;
 use crate::error::AppError;
 use crate::models::rose::Rose;
 use crate::state::AppState;
+
+/// Known SPL Memo program ids. `MemoSq4gq…` is the canonical v1/v2 program
+/// used by the frontend and by Solana's own docs; `MemoSqLa…` is the v3
+/// variant. Accept both so a tx built with either still verifies.
+const MEMO_PROGRAM_IDS: [&str; 2] = [
+    "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr",
+    "MemoSqLaHNF36X2uS2FgoesJdziWCDCmHsu9wHHNfn9r",
+];
+
+static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(8))
+        .build()
+        .expect("failed to build Solana RPC HTTP client")
+});
 
 // Bitcoin/Solana base58 alphabet (excludes 0 O I l).
 const BASE58_CHARS: &[u8] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -141,6 +163,13 @@ pub async fn record_solana_mint(
         return Err(AppError::BadRequest("这笔交易已被记录".into()));
     }
 
+    // Verify the transaction really exists on Solana before storing the
+    // reference. Skipped (dev / offline fallback) when SOLANA_RPC_URL is unset;
+    // production MUST set it, otherwise fabricated references can be stored.
+    if let Some(rpc_url) = state.config.solana_rpc_url.as_deref() {
+        verify_solana_mint(rpc_url, &signature, &wallet_address, &id.to_string()).await?;
+    }
+
     let mint = sqlx::query_as::<_, SolanaMint>(
         "INSERT INTO solana_mints
          (rose_id, signature, account, wallet_address, ipfs_cid, on_chain_metadata)
@@ -180,6 +209,124 @@ async fn load_visible_rose(
         }
     }
     Ok(rose)
+}
+
+/// Ask a Solana RPC for `getTransaction` and verify the posted reference is
+/// backed by a real, successful, wallet-signed Memo transaction.
+async fn verify_solana_mint(
+    rpc_url: &str,
+    signature: &str,
+    wallet: &str,
+    rose_id: &str,
+) -> Result<(), AppError> {
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "getTransaction",
+        "params": [signature, {
+            "encoding": "jsonParsed",
+            "commitment": "confirmed",
+            "maxSupportedTransactionVersion": 0
+        }]
+    });
+
+    let response = HTTP_CLIENT
+        .post(rpc_url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("Solana RPC 请求失败: {e}")))?
+        .json::<JsonValue>()
+        .await
+        .map_err(|e| AppError::Internal(format!("Solana RPC 响应解析失败: {e}")))?;
+
+    if let Some(err) = response.get("error") {
+        if !err.is_null() {
+            return Err(AppError::Internal(format!("Solana RPC 返回错误: {err}")));
+        }
+    }
+
+    let result = response.get("result").unwrap_or(&JsonValue::Null);
+    verify_tx_result(result, signature, wallet, rose_id).map_err(AppError::BadRequest)
+}
+
+/// Pure check over a `getTransaction` `result` object. Supports both
+/// `encoding: jsonParsed` (accountKeys are objects, instructions carry
+/// `programId`/`parsed`) and `encoding: json` (accountKeys are strings,
+/// instructions carry `programIdIndex`). Kept network-free so it is unit
+/// testable.
+fn verify_tx_result(
+    result: &JsonValue,
+    signature: &str,
+    wallet: &str,
+    rose_id: &str,
+) -> Result<(), String> {
+    if result.is_null() {
+        return Err("链上查不到这笔交易（签名不存在或尚未确认）".into());
+    }
+    if let Some(err) = result.pointer("/meta/err") {
+        if !err.is_null() {
+            return Err("链上交易执行失败".into());
+        }
+    }
+
+    let signatures = result
+        .pointer("/transaction/signatures")
+        .and_then(|v| v.as_array())
+        .ok_or("链上交易缺少签名字段")?;
+    if signatures.first().and_then(|s| s.as_str()) != Some(signature) {
+        return Err("交易签名与链上记录不一致".into());
+    }
+
+    // Solana guarantees accountKeys[0] is the fee payer and a required signer.
+    let account_keys = result
+        .pointer("/transaction/message/accountKeys")
+        .and_then(|v| v.as_array())
+        .ok_or("链上交易缺少 accountKeys")?;
+    if account_keys.first().and_then(account_key_pubkey) != Some(wallet) {
+        return Err("交易的付款账户与声明的钱包地址不一致".into());
+    }
+
+    let instructions = result
+        .pointer("/transaction/message/instructions")
+        .and_then(|v| v.as_array())
+        .ok_or("链上交易缺少 instructions")?;
+    let memo_ix = instructions
+        .iter()
+        .find(|ix| instruction_is_memo(ix, account_keys))
+        .ok_or("交易未调用 Memo 程序，不是有效的上链记录")?;
+
+    // When the RPC parsed the memo text, make sure it actually references
+    // this rose — otherwise a previously-sent unrelated memo tx could be
+    // replayed to claim a mint.
+    if let Some(parsed) = memo_ix.get("parsed").and_then(|v| v.as_str()) {
+        if !parsed.contains(rose_id) {
+            return Err("链上记录内容与这朵玫瑰不匹配".into());
+        }
+    }
+    Ok(())
+}
+
+fn account_key_pubkey(value: &JsonValue) -> Option<&str> {
+    value
+        .as_str()
+        .or_else(|| value.get("pubkey").and_then(|p| p.as_str()))
+}
+
+fn instruction_is_memo(ix: &JsonValue, account_keys: &[JsonValue]) -> bool {
+    let is_memo = |p: &str| MEMO_PROGRAM_IDS.contains(&p);
+    if let Some(p) = ix.get("programId").and_then(|v| v.as_str()) {
+        return is_memo(p);
+    }
+    if ix.get("program").and_then(|v| v.as_str()) == Some("spl-memo") {
+        return true;
+    }
+    if let Some(idx) = ix.get("programIdIndex").and_then(|v| v.as_u64()) {
+        if let Some(key) = account_keys.get(idx as usize).and_then(account_key_pubkey) {
+            return is_memo(key);
+        }
+    }
+    false
 }
 
 /// Normalize a Solana base58 identifier: trim, validate charset, lowercase
@@ -237,5 +384,96 @@ mod tests {
 
         input.ipfs_cid = Some("x".repeat(200));
         assert!(input.validate().is_err()); // CID too long
+    }
+
+    const SIG: &str = "4Ny5cFGvHt4sB7vV9q2mSDcnL1pQxW8kRjA3eKuZ6bTfMhPdYsXcGwNoEaLrJiUvQ9zBtSkDpFhCmXnReWaTyUqZoLvGeJrHaKdNfBsMxQcPwEtYiUoLrTvZaGjHnDkFpSmCxWbQeAyUtViRoLpNkMdJfHsGzXcBvTaQeWyUrIoP";
+    const WALLET: &str = "5FHwkrdxntdK24hgQU8qgBjn35Y1zwhz1GZwCkP2UJnM";
+    const OTHER: &str = "9xQeWvG816bUx9EPfzHqYjpuNcM8sKtVrLdJaB2mZoSwRhCnDkFpTgEyAiUoXlMbQzWe";
+    const ROSE_ID: &str = "550e8400-e29b-41d4-a716-446655440000";
+    const MEMO: &str = MEMO_PROGRAM_IDS[0];
+
+    /// A `getTransaction` result in `jsonParsed` form.
+    fn parsed_tx(signature: &str, fee_payer: &str, program_id: &str, parsed: &str) -> JsonValue {
+        serde_json::json!({
+            "meta": {"err": null},
+            "transaction": {
+                "signatures": [signature],
+                "message": {
+                    "accountKeys": [
+                        {"pubkey": fee_payer, "signer": true, "writable": true},
+                        {"pubkey": program_id, "signer": false, "writable": false}
+                    ],
+                    "instructions": [{
+                        "program": "spl-memo",
+                        "programId": program_id,
+                        "parsed": parsed
+                    }]
+                }
+            }
+        })
+    }
+
+    #[test]
+    fn verify_accepts_valid_parsed_memo_tx() {
+        let memo = format!("{{\"roseId\":\"{ROSE_ID}\",\"message\":\"hi\"}}");
+        assert!(verify_tx_result(&parsed_tx(SIG, WALLET, MEMO, &memo), SIG, WALLET, ROSE_ID).is_ok());
+        // The v3 Memo program id is accepted too.
+        assert!(verify_tx_result(
+            &parsed_tx(SIG, WALLET, MEMO_PROGRAM_IDS[1], &memo),
+            SIG, WALLET, ROSE_ID
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn verify_supports_plain_json_encoding_program_id_index() {
+        // encoding: json -> accountKeys are strings, instructions carry an index.
+        let tx = serde_json::json!({
+            "meta": {"err": null},
+            "transaction": {
+                "signatures": [SIG],
+                "message": {
+                    "accountKeys": [WALLET, MEMO],
+                    "instructions": [{"programIdIndex": 1, "data": "abc"}]
+                }
+            }
+        });
+        // No `parsed` field, so the rose-id content check is skipped.
+        assert!(verify_tx_result(&tx, SIG, WALLET, ROSE_ID).is_ok());
+    }
+
+    #[test]
+    fn verify_rejects_missing_signature_mismatch_and_wrong_wallet() {
+        assert!(verify_tx_result(&JsonValue::Null, SIG, WALLET, ROSE_ID).is_err());
+
+        let memo = format!("{{\"roseId\":\"{ROSE_ID}\"}}");
+        let err = verify_tx_result(&parsed_tx("different-sig", WALLET, MEMO, &memo), SIG, WALLET, ROSE_ID)
+            .unwrap_err();
+        assert!(err.contains("签名"));
+
+        let err = verify_tx_result(&parsed_tx(SIG, OTHER, MEMO, &memo), SIG, WALLET, ROSE_ID)
+            .unwrap_err();
+        assert!(err.contains("钱包地址"));
+    }
+
+    #[test]
+    fn verify_rejects_failed_tx_non_memo_and_replay() {
+        let memo = format!("{{\"roseId\":\"{ROSE_ID}\"}}");
+        let mut failed = parsed_tx(SIG, WALLET, MEMO, &memo);
+        failed["meta"]["err"] = serde_json::json!({"InstructionError": [0, "Custom"]});
+        assert!(verify_tx_result(&failed, SIG, WALLET, ROSE_ID)
+            .unwrap_err()
+            .contains("执行失败"));
+
+        let not_memo = parsed_tx(SIG, WALLET, OTHER, &memo);
+        assert!(verify_tx_result(&not_memo, SIG, WALLET, ROSE_ID)
+            .unwrap_err()
+            .contains("Memo"));
+
+        // Valid memo tx, but for a *different* rose (replay attempt).
+        let replay = parsed_tx(SIG, WALLET, MEMO, "{\"roseId\":\"another-rose\"}");
+        assert!(verify_tx_result(&replay, SIG, WALLET, ROSE_ID)
+            .unwrap_err()
+            .contains("不匹配"));
     }
 }

@@ -2,6 +2,33 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-11-07 会话：Solana 会员模式补上「链上真实性核验」
+
+### 背景
+11-06 搭好的会员模式第一步里，`POST /api/rose/{id}/solana` 只把客户端传来的签名/地址原样存库，**没去链上核验**——任何人都能拿假签名声称某朵玫瑰"已上链"。本轮把这个正确性缺口堵上。
+
+### 完成的工作
+- 后端新增 `SOLANA_RPC_URL`（`config.rs`，`Option`，与 `BASE_SEPOLIA_RPC_URL` 同风格；两个 config 测试同步覆盖）。配了就用 Solana RPC `getTransaction` 核验，没配则跳过（开发/离线降级）。
+- `routes/solana_onchain.rs` 新增两层核验：`verify_solana_mint()`（RPC 请求，8s 超时）+ `verify_tx_result()`（**纯函数、可单测、不触网**）。校验：交易存在、`meta.err` 为空、首签名等于 POST 的签名、`accountKeys[0]`（fee payer）等于声明的钱包、至少一条指令调用 Memo 程序；若 RPC 返回 `parsed` memo 文本，还要求内含该 `rose_id`，**防「拿一笔无关 memo 交易重放」**。同时兼容 `jsonParsed`（`programId`/对象数组 accountKeys）与 `json`（`programIdIndex`/字符串数组）两种编码。
+- Memo 程序 ID 收敛为白名单 `MEMO_PROGRAM_IDS`（官方标准 `MemoSq4gq…` + v3 变体 `MemoSqLa…`）。**修正前端 bug**：`membership-panel.tsx` 原本用的是 `MemoSqLa…`，与后端不一致，现统一为官方标准 ID。
+- **修正前端第二个 bug**：面板关闭按钮原写成 `onClick={() => useMembership().toggleMember()}`，在事件回调里调 hook 会触发 React `Invalid hook call`；改为从顶部 `useMembership()` 解构 `toggleMember`。
+- 前端 RPC 改为可配置 `NEXT_PUBLIC_SOLANA_RPC_URL`（默认 `clusterApiUrl("devnet")`），便于与后端核验节点对齐；`.env.example` 补 `SOLANA_RPC_URL` / `NEXT_PUBLIC_SOLANA_RPC_URL` 两个变量并注明生产必须配置。
+- `CLAUDE.md`「已知坑」新增 Solana 核验条目（配置一致性 + 生产必须开核验 + 私钥不入库）。
+
+### 验证
+- `cargo test -p roselet-backend --lib solana_onchain` → 7/7 通过（原 3 个 + 新增 4 个：合法 parsed、plain json 编码、签名/钱包不符、失败交易/非 Memo/重放）。
+- `cargo test --workspace --lib` → backend **72 passed / 0 failed**、recommend **153 passed / 0 failed**，零警告。
+- `pnpm --filter web typecheck` → 通过。
+
+### 注意
+- `013_create_solana_mints.sql` 顶部注释仍写 "On-chain verification is a later step."，本轮后已过时。**刻意不改**：已提交的 migration 不可改写（哪怕只改注释），`sqlx` 启动会校验文件 checksum，不一致报 `VersionMismatch(n)`。以本条 DEVLOG 与 `solana_onchain.rs` 为准。
+- 本轮改动只落在 `codex/solana-x402-agent-api` 分支；`main` 上没有 `solana_onchain.rs` / `013` 迁移 / `solana_rpc_url` 配置，无需同步。
+
+### 仍未做（需实测或决策）
+- 浏览器内真机闭环：Phantom 切 Devnet → 点会员 → 连钱包 → 上链 → 后端核验通过，本轮**未做真机联调**（需配置 `SOLANA_RPC_URL` 且能访问 Devnet RPC）。
+- 图片→IPFS 上传（目前只是手填 CID）、把「上链」挂到玫瑰详情页免手填 ID、付费会员、主网，均未做。
+- Web3 分支是否合回 `main` 仍待拍板。
+
 ## 2026-11-06 会话：项目体检 + 依赖/文档清理
 
 ### 完成的工作

@@ -10,6 +10,7 @@ pub struct Config {
     pub private_rose_monthly_limit: i64,
     pub base_sepolia_rpc_url: Option<String>,
     pub rose_memorial_contract_address: Option<String>,
+    pub solana_rpc_url: Option<String>,
     pub is_production: bool,
 }
 
@@ -55,6 +56,8 @@ impl Config {
         let rose_memorial_contract_address = env::var("ROSE_MEMORIAL_CONTRACT_ADDRESS")
             .ok()
             .filter(|address| !address.is_empty());
+        let solana_rpc_url =
+            env::var("SOLANA_RPC_URL").ok().filter(|url| !url.is_empty());
 
         Self {
             database_url: env::var("DATABASE_URL")
@@ -66,6 +69,7 @@ impl Config {
             private_rose_monthly_limit,
             base_sepolia_rpc_url,
             rose_memorial_contract_address,
+            solana_rpc_url,
             is_production,
         }
     }
@@ -102,6 +106,7 @@ mod tests {
         std::env::remove_var("PRIVATE_ROSE_MONTHLY_LIMIT");
         std::env::remove_var("BASE_SEPOLIA_RPC_URL");
         std::env::remove_var("ROSE_MEMORIAL_CONTRACT_ADDRESS");
+        std::env::remove_var("SOLANA_RPC_URL");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://localhost/roselet");
@@ -113,6 +118,7 @@ mod tests {
         assert_eq!(config.private_rose_monthly_limit, 10);
         assert!(config.base_sepolia_rpc_url.is_none());
         assert!(config.rose_memorial_contract_address.is_none());
+        assert!(config.solana_rpc_url.is_none());
     }
 
     #[test]
@@ -129,6 +135,7 @@ mod tests {
             "ROSE_MEMORIAL_CONTRACT_ADDRESS",
             "0x0000000000000000000000000000000000000001",
         );
+        std::env::set_var("SOLANA_RPC_URL", "https://api.devnet.solana.com");
 
         let config = Config::from_env();
         assert_eq!(config.database_url, "postgres://custom/testdb");
@@ -148,6 +155,10 @@ mod tests {
             config.rose_memorial_contract_address.as_deref(),
             Some("0x0000000000000000000000000000000000000001")
         );
+        assert_eq!(
+            config.solana_rpc_url.as_deref(),
+            Some("https://api.devnet.solana.com")
+        );
 
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("PORT");
@@ -157,6 +168,7 @@ mod tests {
         std::env::remove_var("PRIVATE_ROSE_MONTHLY_LIMIT");
         std::env::remove_var("BASE_SEPOLIA_RPC_URL");
         std::env::remove_var("ROSE_MEMORIAL_CONTRACT_ADDRESS");
+        std::env::remove_var("SOLANA_RPC_URL");
     }
 
     #[test]
