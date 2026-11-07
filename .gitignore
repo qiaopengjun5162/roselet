@@ -22,3 +22,6 @@ apps/web/pnpm-lock.yaml
 apps/web/pnpm-workspace.yaml
 .claude/plan/
 .claude/prds/
+
+# WorkBuddy local workspace data (session memory, not project source)
+.workbuddy/

@@ -110,6 +110,7 @@ Quality gates:
 - **后端 nextest 本地 DB**：沙箱内可能因本地数据库连接 `Operation not permitted` 失败；用 `NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-fail-fast`
 - **已发布迁移不可改写**：`crates/backend/migrations/*.sql` 一旦在线上执行过，后续只能新增 migration，不能改旧文件哪怕只是注释；`sqlx` 会在启动时校验 checksum，不一致就报 `VersionMismatch(n)`
 - **Solana 会员上链核验**：`POST /api/rose/{id}/solana` 只有在后端配置了 `SOLANA_RPC_URL` 时才会用 `getTransaction` 核验交易（签名 / 付款钱包 / Memo 程序 / 交易成功 / memo 内含该 rose id 防重放）；未配置则跳过核验，生产必须配，否则可存入伪造引用。前后端 RPC 必须指向同一集群（后端 `SOLANA_RPC_URL` ↔ 前端 `NEXT_PUBLIC_SOLANA_RPC_URL`），且前端 Memo 程序 ID 必须落在后端 `MEMO_PROGRAM_IDS` 白名单内——官方标准 ID 是 `MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`（`MemoSqLa…` 是 v3 变体，也接受）。后端只存链上引用，绝不接触钱包私钥。
+- **会员模式的默认关闭边界**：默认普通模式必须**零 Web3 痕迹**。`membership-context.tsx` 用 `isMember`（模式开关）+ `panelOpen`（面板可收起）两个状态；`components/rose-solana-mint.tsx` 用「外层判断会员 + 内层才有 hooks」两层结构，保证无 `MembershipProvider` 的页面/单测不会误调 Solana API。给页面组件读会员状态时一律用 **`useOptionalMembership()`**（无 Provider 返回 null），**只有确定在 Provider 内的组件（如 `MembershipPanel`）才用会抛错的 `useMembership()`**——否则 `nav.test.tsx` 这类不包 Provider 的测试会整片失败。上链成功通过 `SOLANA_MINT_EVENT` 自定义事件通知详情页刷新徽章，不要跨组件直接传状态。
 - **托管 Postgres TLS**：Neon / Render Postgres 需要 `sqlx` 启用 `runtime-tokio-rustls`，只开 `runtime-tokio` 会在编译期 SQLx 宏连接和运行期连库时报 “TLS upgrade required”
 - **Jest 生成物冲突**：`next build` / Playwright / WASM 会生成重复 package metadata；`apps/web/jest.config.ts` 必须忽略 `.next`、`playwright/.cache`、`public/wasm`
 - **小程序云测**：必须上传体验版或线上版，开发者/管理员身份进入；本地 Jest 仍是提交前门禁，云测用于真机兼容、黑白屏、性能和 JsError 验收

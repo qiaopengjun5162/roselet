@@ -10,6 +10,7 @@ import { playClick, playPlant, playLike } from "@/lib/sound";
 import { RosePlayer } from "@/components/rose-player";
 import { colorEmoji, colorLabel } from "@/lib/recommend";
 import { RoseMemorial } from "@/components/rose-memorial";
+import { RoseSolanaMint } from "@/components/rose-solana-mint";
 
 function resolveRoseId(id: string): string {
   if (id !== "placeholder" || typeof window === "undefined") return id;
@@ -256,6 +257,7 @@ export function RoseDetailClient({ id }: { id: string }) {
               canMint={Boolean(isOwner)}
               onVerified={setMemorial}
             />
+            <RoseSolanaMint rose={rose} canMint={Boolean(isOwner)} />
             <div className="pt-4 border-t border-white/10 flex items-center gap-4 flex-wrap">
               <Button
                 variant="outline"

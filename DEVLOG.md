@@ -2,7 +2,33 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
-## 2026-11-07 会话：Solana 会员模式补上「链上真实性核验」
+## 2026-11-07 会话（二）：上链入口挂到玫瑰详情页，免手填 ID
+
+### 背景
+会员模式第一步里，用户必须**手动复制玫瑰 UUID 粘进面板**，体验是断的；且 `MembershipPanel` 是全局全屏遮罩，会员模式一开就挡住整个页面，根本走不到详情页。本轮把交互闭环补齐。
+
+### 完成的工作
+- `membership-context.tsx` 扩展状态：`panelOpen`（面板可收起但保持会员模式）、`mintTargetRoseId`（详情页预选的玫瑰）、`openPanel()` / `closePanel()` / `openMint(roseId)` / `clearMintTarget()`；`toggleMember()` 现在进入时自动开面板、退出时清空全部状态。新增 **`useOptionalMembership()`**（无 Provider 返回 null 而不是抛错）和 `SOLANA_MINT_EVENT` 常量。
+- **修上一轮遗留的真实回归**：`nav.test.tsx` 7 个测试此前失败——`Nav` 调用了会抛错的 `useMembership()`，但测试没包 `MembershipProvider`（上一轮只跑 typecheck 漏了）。现改用 `useOptionalMembership()`，无 Provider 时按纯普通模式渲染。基线 19/26 → 现 **26/26 全过**。
+- `membership-panel.tsx`：显示条件改 `isMember && panelOpen`；✕ 改为收起面板（`closePanel`，不再退出会员）；新增「退出会员模式」按钮；`mintTargetRoseId` 自动填入玫瑰 ID 且输入框只读，附「手动输入其它玫瑰」入口；上链成功后 `dispatchEvent(SOLANA_MINT_EVENT)` 通知详情页刷新徽章。
+- `api.ts` 新增 `SolanaMint` 类型 + `getSolanaMint(id)`（`GET /api/rose/{id}/solana`）。
+- 新组件 `components/rose-solana-mint.tsx`：**外层判断会员（默认普通模式零 Web3 痕迹）+ 内层才有 hooks**，这样无 Provider 的详情页测试不会触发新 API 调用。会员模式下：已上链显示徽章 + 寄语 + 图片 CID + Solana Explorer 链接（所有访客可见），未上链且是主人显示「🚀 把这朵玫瑰上链」按钮，点击把 `rose.id` 带入面板。监听 `SOLANA_MINT_EVENT` 自动刷新。挂在 `rose/[id]/client.tsx` 的 `RoseMemorial` 之后。
+- 新增 6 个组件单测（普通模式零渲染、无 Provider 零渲染、按钮带入 ID、已上链徽章、非主人只读、私密玫瑰不渲染），全过。
+
+### 交互约定（重要）
+- **默认普通模式完全没有 Web3**：nav 会员按钮只是入口，详情页区块、面板都不渲染。
+- 点「🌐 会员」→ 打开会员界面；点 ✕ → 收起面板但仍保持会员模式，可去浏览详情页；点「退出会员模式」→ 彻底回到纯普通 App。
+- 详情页点「把这朵玫瑰上链」→ 面板自动带 ID（只读），也允许手动切换。
+
+### 验证
+- `pnpm --filter web typecheck` 通过。
+- `pnpm test`（web 全量 jest，`--runInBand`）：**31 套件 / 214 测试全部 PASS**（耗时 ~1009s，含 `rose-solana-mint.test.tsx` 6/6、`nav.test.tsx` 26/26、详情页 `page.test.tsx`）。注意：任务被标 failed 只是沙箱拦截了 pnpm 清理临时文件的 `file-delete`，导致管道退出码异常，**与代码/测试无关**；stdout 明确 `31 passed, 214 passed`。
+- `cargo test --workspace --lib`：backend 72 passed / recommend 153 passed，零警告（本轮未动后端）。
+
+### 仍未做
+- 真机联调（Phantom / Devnet）、图片→IPFS 上传、付费会员、主网；Web3 分支是否合回 `main` 仍待拍板。
+
+## 2026-11-07 会话（一）：Solana 会员模式补上「链上真实性核验」
 
 ### 背景
 11-06 搭好的会员模式第一步里，`POST /api/rose/{id}/solana` 只把客户端传来的签名/地址原样存库，**没去链上核验**——任何人都能拿假签名声称某朵玫瑰"已上链"。本轮把这个正确性缺口堵上。

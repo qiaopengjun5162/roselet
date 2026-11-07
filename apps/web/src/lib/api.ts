@@ -172,6 +172,16 @@ export interface VerifyRoseMemorial {
   message: string;
 }
 
+/** Solana on-chain reference stored for a rose (membership / Web3 mode). */
+export interface SolanaMint {
+  signature: string;
+  account: string;
+  wallet_address: string;
+  ipfs_cid: string | null;
+  on_chain_metadata: Record<string, unknown>;
+  minted_at: string;
+}
+
 function authHeaders(): Record<string, string> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -259,6 +269,14 @@ export async function verifyRoseMemorial(id: string, data: VerifyRoseMemorial): 
     const body: { error?: string } = await res.json().catch(() => ({}));
     throw new Error(body.error || "链上交易验证失败");
   }
+  return res.json();
+}
+
+export async function getSolanaMint(id: string): Promise<SolanaMint | null> {
+  const res = await authFetch(`${READ_API_BASE}/api/rose/${id}/solana`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch Solana mint");
   return res.json();
 }
 

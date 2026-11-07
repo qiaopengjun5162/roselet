@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Connection,
   Transaction,
@@ -8,7 +8,7 @@ import {
   PublicKey,
   clusterApiUrl,
 } from "@solana/web3.js";
-import { useMembership } from "@/app/membership-context";
+import { SOLANA_MINT_EVENT, useMembership } from "@/app/membership-context";
 import { getToken } from "@/lib/api";
 
 // Canonical SPL Memo program (Solana official docs / x402). Must match the
@@ -23,11 +23,15 @@ const SOLANA_RPC_URL =
 export function MembershipPanel() {
   const {
     isMember,
+    panelOpen,
+    closePanel,
+    mintTargetRoseId,
+    clearMintTarget,
+    toggleMember,
     walletAddress,
     connectError,
     connectWallet,
     disconnectWallet,
-    toggleMember,
   } = useMembership();
 
   const [roseId, setRoseId] = useState("");
@@ -37,7 +41,17 @@ export function MembershipPanel() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isMember) return null;
+  // A rose detail page can open the panel with the rose already selected.
+  // Keep the input in sync whenever a new target is chosen.
+  useEffect(() => {
+    if (mintTargetRoseId) {
+      setRoseId(mintTargetRoseId);
+      setStatus(null);
+      setError(null);
+    }
+  }, [mintTargetRoseId]);
+
+  if (!isMember || !panelOpen) return null;
 
   async function handleMint() {
     setError(null);
@@ -119,6 +133,8 @@ export function MembershipPanel() {
       );
       setMessage("");
       setImageCid("");
+      // Let the rose detail page refresh its "已上链" badge.
+      window.dispatchEvent(new Event(SOLANA_MINT_EVENT));
     } catch (e) {
       setError(e instanceof Error ? e.message : "上链失败");
     } finally {
@@ -137,15 +153,16 @@ export function MembershipPanel() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-rose-300">🌐 会员 · Web3 上链</h2>
           <button
-            onClick={toggleMember}
+            onClick={closePanel}
             className="text-slate-400 hover:text-slate-200"
+            title="收起面板（仍保持会员模式，可继续浏览玫瑰）"
           >
             ✕
           </button>
         </div>
 
         <p className="mb-4 text-xs text-slate-400">
-          会员模式：连接 Solana 钱包，把玫瑰 / 图片 / 信息写进链上（当前 Devnet 测试网）。退出会员即回到普通模式，无任何 Web3。
+          会员模式：连接 Solana 钱包，把玫瑰 / 图片 / 信息写进链上（当前 Devnet 测试网）。点右上角 ✕ 可收起面板去浏览玫瑰，在详情页点「把这朵玫瑰上链」会自动带入 ID。
         </p>
 
         {walletAddress ? (
@@ -168,12 +185,25 @@ export function MembershipPanel() {
         )}
         {connectError && <p className="mb-3 text-xs text-red-400">{connectError}</p>}
 
-        <label className="mb-1 block text-xs text-slate-400">玫瑰 ID（要上链的玫瑰）</label>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="block text-xs text-slate-400">
+            玫瑰 ID（要上链的玫瑰）{mintTargetRoseId && <span className="ml-1 text-violet-300">· 已从当前玫瑰自动填入</span>}
+          </label>
+          {mintTargetRoseId && (
+            <button
+              onClick={clearMintTarget}
+              className="text-xs text-violet-300/70 hover:text-violet-200"
+            >
+              手动输入其它玫瑰
+            </button>
+          )}
+        </div>
         <input
           value={roseId}
           onChange={(e) => setRoseId(e.target.value)}
+          readOnly={Boolean(mintTargetRoseId)}
           placeholder="例如 550e8400-e29b-41d4-a716-446655440000"
-          className="mb-3 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none focus:border-rose-400"
+          className="mb-3 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none focus:border-rose-400 read-only:opacity-70"
         />
 
         <label className="mb-1 block text-xs text-slate-400">链上信息（玫瑰寄语）</label>
@@ -207,6 +237,13 @@ export function MembershipPanel() {
           </pre>
         )}
         {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+
+        <button
+          onClick={toggleMember}
+          className="mt-4 w-full text-center text-xs text-slate-500 hover:text-slate-300"
+        >
+          退出会员模式（回到普通界面）
+        </button>
       </div>
     </div>
   );
