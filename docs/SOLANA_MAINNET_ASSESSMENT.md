@@ -169,19 +169,26 @@
 | `pinocchio_*` / `blueshift_*` | 原生零拷贝程序、vault / escrow / AMM 模板 | 后续做高性价比链上程序时的模板与测试范式 |
 | `solana-storage` | 原生 on-chain storage 程序 | 「信息上链」的另一种形态，但成本远高于 Memo |
 
-### 9.1 三条上链路线的真实成本（修正版）
+### 9.1 三条上链路线的真实成本（Devnet 实测）
 
-前一版只算了 mint + metadata，**漏了 Master Edition 账户**，特此修正。按 `3480 × (128 + data_len) × 2` 实算（rent 为押金、关账户可退）：
+**先纠正一个流传很广的旧参数**：网上教材（含 Solana 官方培训 Module 1）写的是 `3480 × (128 + len) × 2`。实测读取 Devnet **与主网**的 `SysvarRent` 账户：
 
-| 路线 | 链上账号 | 租金押金 | 手续费 | 合计现金流 |
+```
+lamports_per_byte_year = 5080     exemption_threshold = 1.0
+⇒ 租金 = (128 + data_len) × 5080 lamports
+```
+
+即租金单价已从 6960 降到 **5080 lamports/字节**，比旧教材低约 27%。下表据此重算，Token-2022 一行是**实跑结果**（见 9.3）。
+
+| 路线 | 链上账号（实测长度） | 租金押金 | 手续费 | 合计现金流 |
 |---|---|---|---|---|
-| **A. Memo 存证**（现状） | 无（不创建账号） | **0** | 5000 lamports + 优先费 | **≈ 0.000005 SOL** |
-| **B1. Token-2022 NFT** | mint（≈151 B，含 MetadataPointer）+ 内联元数据（≈180 B）+ ATA（165 B） | ≈ 0.0032 + 0.0020 | 少量 | **≈ 0.0052 SOL/朵** |
-| **B2. Metaplex NFT** | mint(82) + ATA(165) + MetadataV3(≈679) + MasterEdition(≈282) | ≈ 0.0015+0.0020+0.0056+0.0029 | 少量 | **≈ 0.012 SOL/朵** |
+| **A. Memo 存证**（现状） | 无（不创建账号） | **0** | 5,000 lamports | **0.000005 SOL** |
+| **B1. Token-2022 NFT** | mint 352 B（含 MetadataPointer + 内联元数据）+ ATA 170 B | **0.00395724** | 5 × 5,000 | **0.00398224 SOL/朵**（实测） |
+| **B2. Metaplex NFT** | mint 82 + ATA 165 + MetadataV3 679 + MasterEdition 282 | 0.0087376 | ≈ 5 × 5,000 | **≈ 0.00876 SOL/朵**（公式估算） |
 | B3. 压缩 NFT（cNFT） | 无独立账号，挂在 Merkle tree 上 | 极低 | 极低 | ≈ 0.00001 SOL/朵（**本地无先例**，需 tree + DAS 索引器） |
 
-即：Memo 比 Token-2022 便宜约 **1000 倍**，比 Metaplex 便宜约 **2400 倍**。
-两个 NFT 方案的具体 lamports 由程序自己 `msg!("... lamports required")` 打日志，实跑一次即可得到精确值（`shenqi-box/programs/token_2022_nft/src/lib.rs:72-77`）。
+即：Memo 比 Token-2022 便宜约 **800 倍**，比 Metaplex 便宜约 **1750 倍**。若玫瑰元数据更长（`uri` 用真实 IPFS CID + 一个 `roseId` 字段），Token-2022 约涨到 **0.0045 SOL/朵**。
+两个 NFT 方案的具体 lamports 也会由程序自己 `msg!("... lamports required")` 打日志（`shenqi-box/programs/token_2022_nft/src/lib.rs:72-77`）。
 
 ### 9.2 由此调整的建议
 
@@ -190,6 +197,47 @@
 3. **除非要上 Magic Eden 等二级市场**，否则不要选 B2 Metaplex——多付一倍租金，换来的是生态兼容性。
 4. **前端不需要迁移 SDK**：`solana_forge` 已证明 web3.js 能覆盖当前需求；`@solana/kit` 只在需要更强类型/可组合性时再考虑。
 5. **数据要可查询时再引入索引器**：`solana-event-indexer` 的「扫块 + 解析 + Postgres」结构与本项目后端同栈（Rust + sqlx），可低成本移植。
+
+---
+
+## 10. Devnet 实测记录（2026-11-07）
+
+用一次性探针钱包（不污染主账户）按 `token_2022_nft` 的同款布局实跑一遍，全部数据来自链上，不是估算。
+
+### 10.1 环境事实
+| 项 | 结果 |
+|---|---|
+| 本地主账户 | `6MZDRo5v8K2NfdohdD76QNpSgk3GH3Aup53BeMaRAEpd`，Devnet 余额 ≈ 896.8 SOL |
+| `shenqi-box` 两个 NFT 程序 | 均已部署在 **Devnet**，升级权限 = 本地主账户 |
+| RPC 可达性 | **本机直连 `api.devnet.solana.com` 失败**，必须走本机代理 `http://127.0.0.1:7890`。这条同样适用于后端 `SOLANA_RPC_URL` 与前端 `NEXT_PUBLIC_SOLANA_RPC_URL` |
+| CLI | `solana-cli 3.1.14` / `spl-token-cli 5.5.0` |
+
+### 10.2 Token-2022 NFT 逐步成本（mint 布局与 `token_2022_nft` 一致）
+
+| 步骤 | 结果 | 增量成本（lamports） |
+|---|---|---|
+| `create-token --program-2022 --enable-metadata` | mint 账户 234 B | 租金 1,838,960 + fee 5,000 |
+| `initialize-metadata "Rose #1" "ROSE" "ipfs://…"` | 账户 realloc → **352 B** | 追加租金 599,440 + fee 5,000 |
+| `create-account` | ATA **170 B**（Token-2022 比经典 SPL 的 165 B 多 5 B） | 租金 1,513,840 + fee 5,000 |
+| `mint 1` | 供应量 1 | fee 5,000 |
+| `authorize … mint --disable` | mint 权限撤销，不可再增发 | fee 5,000 |
+| **合计** | | **3,982,240 lamports = 0.00398224 SOL** |
+
+其中租金占 3,957,240（99.4%），手续费仅 25,000。
+
+### 10.3 「rent 是押金」实证
+销毁那枚 NFT 后 `close` ATA，账户租金 **1,513,840 lamports 全额退回**（余额 0.04600776 → 0.0475166 SOL），只损失 5,000 lamports 手续费。这印证了 Module 1 的说法：**租金不是花费，是押金**。
+
+### 10.4 对当前代码的两个直接验证
+| 我们代码里的假设 | 实测 | 结论 |
+|---|---|---|
+| Memo 交易 CU 上限设 20,000 | 实测消耗 **6,447 CU**（Memo 程序 6,297） | 20,000 有 3 倍余量，**取值合理，不必调** |
+| Memo 交易手续费 = 5,000 lamports | `solana confirm -v` 显示 `Fee: ◎0.000005` | **成立**；优先费另加 |
+
+主网拥堵时可据此定价：`优先费(lamports) = price(microLamports/CU) × 20,000 ÷ 1e6`。例如 price=50,000 → 1,000 lamports（基础费的 20%）。
+
+### 10.5 操作教训
+- 探针钱包的清理顺序必须是「**先确认余款退回成功，再删除 keypair**」。本次先删了 keypair 才核对余额，导致约 0.0475 Devnet SOL 无法找回（仅测试币，无实际损失）。
 
 ---
 
