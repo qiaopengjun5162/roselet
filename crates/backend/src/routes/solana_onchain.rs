@@ -13,6 +13,12 @@
 //! prevents storing fabricated "on-chain" references. When the env var is
 //! unset the check is skipped (dev / offline fallback).
 //!
+//! Verification waits for `finalized` commitment (a transaction that gets
+//! reorged away on mainnet must never be stored as a mint reference) and
+//! retries transient RPC failures / the brief not-yet-finalized window
+//! instead of rejecting a legitimate mint. Semantic mismatches (wrong
+//! signature / wallet / non-Memo / replay) are permanent and never retried.
+//!
 //! This intentionally mirrors `on_chain.rs` (Base Sepolia) but uses base58
 //! (Solana) identifiers and a separate `solana_mints` table.
 
@@ -24,6 +30,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sqlx::PgPool;
 use std::sync::LazyLock;
+use tracing;
 use uuid::Uuid;
 
 use crate::auth;
@@ -211,43 +218,127 @@ async fn load_visible_rose(
     Ok(rose)
 }
 
+/// How many times we try to fetch a tx from the RPC before giving up. A
+/// freshly submitted mainnet tx may take a moment to reach `finalized`
+/// commitment or to become visible, and public RPCs are rate-limited, so we
+/// retry transient failures instead of rejecting a legitimate mint.
+const TX_FETCH_MAX_ATTEMPTS: u32 = 4;
+/// Initial backoff between fetch attempts; doubled each retry, capped.
+const TX_FETCH_BASE_BACKOFF: std::time::Duration = std::time::Duration::from_secs(1);
+const TX_FETCH_MAX_BACKOFF: std::time::Duration = std::time::Duration::from_secs(4);
+
+/// Classified outcome of inspecting one RPC `getTransaction` response.
+#[derive(Debug)]
+enum FetchOutcome<'a> {
+    /// A transaction object was returned; still needs semantic verification.
+    Found(&'a JsonValue),
+    /// RPC returned `null`: tx not found yet or not yet finalized.
+    NotFound,
+    /// Transport / parse / RPC-error: transient, safe to retry.
+    Retryable(String),
+}
+
+/// Inspect a parsed `getTransaction` JSON-RPC response and classify whether the
+/// caller should treat it as a found tx, a not-yet-available tx, or a transient
+/// failure. Pure (no network) so it can be unit-tested directly.
+fn classify_rpc_response(response: &JsonValue) -> FetchOutcome<'_> {
+    if let Some(err) = response.get("error") {
+        if !err.is_null() {
+            return FetchOutcome::Retryable(format!("Solana RPC 返回错误: {err}"));
+        }
+    }
+    let result = response.get("result").unwrap_or(&JsonValue::Null);
+    if result.is_null() {
+        FetchOutcome::NotFound
+    } else {
+        FetchOutcome::Found(result)
+    }
+}
+
 /// Ask a Solana RPC for `getTransaction` and verify the posted reference is
 /// backed by a real, successful, wallet-signed Memo transaction.
+///
+/// Uses `finalized` commitment so a transaction that later gets reorged away
+/// (rare but possible on mainnet) can never be stored as a mint reference. The
+/// fetch is retried with backoff to ride out the brief window between signing
+/// and finalization and transient RPC rate-limiting. Semantic verification
+/// failures (wrong signature / wallet / non-Memo / replay) are permanent and
+/// are *not* retried.
 async fn verify_solana_mint(
     rpc_url: &str,
     signature: &str,
     wallet: &str,
     rose_id: &str,
 ) -> Result<(), AppError> {
-    let body = serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "getTransaction",
-        "params": [signature, {
-            "encoding": "jsonParsed",
-            "commitment": "confirmed",
-            "maxSupportedTransactionVersion": 0
-        }]
-    });
+    let mut backoff = TX_FETCH_BASE_BACKOFF;
+    for attempt in 1..=TX_FETCH_MAX_ATTEMPTS {
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "getTransaction",
+            "params": [signature, {
+                "encoding": "jsonParsed",
+                "commitment": "finalized",
+                "maxSupportedTransactionVersion": 0
+            }]
+        });
 
-    let response = HTTP_CLIENT
-        .post(rpc_url)
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| AppError::Internal(format!("Solana RPC 请求失败: {e}")))?
-        .json::<JsonValue>()
-        .await
-        .map_err(|e| AppError::Internal(format!("Solana RPC 响应解析失败: {e}")))?;
+        let response = match HTTP_CLIENT.post(rpc_url).json(&body).send().await {
+            Ok(r) => r,
+            Err(e) => {
+                if attempt < TX_FETCH_MAX_ATTEMPTS {
+                    tracing::warn!(attempt, "Solana RPC 请求失败，将重试核验: {e}");
+                    sleep_backoff(backoff, &mut backoff).await;
+                    continue;
+                }
+                return Err(AppError::Internal(format!("Solana RPC 请求失败: {e}")));
+            }
+        };
 
-    if let Some(err) = response.get("error") {
-        if !err.is_null() {
-            return Err(AppError::Internal(format!("Solana RPC 返回错误: {err}")));
+        let response = match response.json::<JsonValue>().await {
+            Ok(r) => r,
+            Err(e) => {
+                if attempt < TX_FETCH_MAX_ATTEMPTS {
+                    tracing::warn!(attempt, "Solana RPC 响应解析失败，将重试核验: {e}");
+                    sleep_backoff(backoff, &mut backoff).await;
+                    continue;
+                }
+                return Err(AppError::Internal(format!("Solana RPC 响应解析失败: {e}")));
+            }
+        };
+
+        match classify_rpc_response(&response) {
+            FetchOutcome::Found(result) => {
+                // Permanent semantic check — never retried on failure.
+                return verify_tx_result(result, signature, wallet, rose_id)
+                    .map_err(AppError::BadRequest);
+            }
+            FetchOutcome::NotFound => {
+                if attempt < TX_FETCH_MAX_ATTEMPTS {
+                    tracing::debug!(attempt, "Solana 交易尚未最终确认，将重试核验");
+                    sleep_backoff(backoff, &mut backoff).await;
+                }
+            }
+            FetchOutcome::Retryable(msg) => {
+                if attempt < TX_FETCH_MAX_ATTEMPTS {
+                    tracing::warn!(attempt, "Solana RPC 暂不可用，将重试核验: {msg}");
+                    sleep_backoff(backoff, &mut backoff).await;
+                    continue;
+                }
+                return Err(AppError::Internal(format!("Solana RPC 核验失败: {msg}")));
+            }
         }
     }
 
-    let result = response.get("result").unwrap_or(&JsonValue::Null);
-    verify_tx_result(result, signature, wallet, rose_id).map_err(AppError::BadRequest)
+    Err(AppError::BadRequest(
+        "链上暂时查不到这笔交易（可能尚未最终确认，请稍后重试）".into(),
+    ))
+}
+
+/// Sleep for the current backoff, then double it (capped) for the next retry.
+async fn sleep_backoff(current: std::time::Duration, store: &mut std::time::Duration) {
+    tokio::time::sleep(current).await;
+    *store = (*store * 2).min(TX_FETCH_MAX_BACKOFF);
 }
 
 /// Pure check over a `getTransaction` `result` object. Supports both
@@ -475,5 +566,25 @@ mod tests {
         assert!(verify_tx_result(&replay, SIG, WALLET, ROSE_ID)
             .unwrap_err()
             .contains("不匹配"));
+    }
+
+    #[test]
+    fn classify_rpc_response_handles_found_notfound_and_error() {
+        let found = serde_json::json!({"result": {"meta": {"err": null}}});
+        assert!(matches!(classify_rpc_response(&found), FetchOutcome::Found(_)));
+
+        // Explicit null result => not yet finalized / not found.
+        let null_res = serde_json::json!({"result": null, "jsonrpc": "2.0"});
+        assert!(matches!(classify_rpc_response(&null_res), FetchOutcome::NotFound));
+
+        // Missing "result" key entirely => treated as not-found (safe retry).
+        let no_res = serde_json::json!({"jsonrpc": "2.0"});
+        assert!(matches!(classify_rpc_response(&no_res), FetchOutcome::NotFound));
+
+        let err = serde_json::json!({"error": {"code": -32005, "message": "rate limited"}});
+        match classify_rpc_response(&err) {
+            FetchOutcome::Retryable(msg) => assert!(msg.contains("rate limited")),
+            other => panic!("expected Retryable, got {other:?}"),
+        }
     }
 }

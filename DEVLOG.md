@@ -4628,3 +4628,27 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - 确认本轮推荐路线为“单机蓝绿切换”。
 - 编写设计文档 `docs/superpowers/specs/2026-06-25-single-node-blue-green-deploy-design.md`。
 - 设计覆盖了双槽位 compose、活动槽位状态文件、Caddy 主槽位优先转发、部署脚本切流顺序、回滚路径和受控验证标准。
+
+## 2026-11-07 会话：Solana 主网化评估 + 核验加固
+
+### 会话目标
+评估 Solana 从 Devnet 切主网的成本与风险，并落地评估文档中「阶段 1」的后端核验加固。
+
+### 发现 / 结论
+- 当前上链是 SPL Memo 交易「存证」，无自定义合约。主网化若定位存证则成本极低、无需合约审计；若要真 NFT 才需审计（大工程）。
+- 主网 vs Devnet 关键差异：真 SOL gas、交易不可逆、公共 RPC 限流需接付费 RPC、集群靠两处 env 切换、Solana 偶发重组需等 `finalized`。
+
+### 处理
+- 新增设计文档 `docs/SOLANA_MAINNET_ASSESSMENT.md`（纯方案，不动代码）。
+- `crates/backend/src/routes/solana_onchain.rs` 加固：
+  - 核验 `commitment` 由 `confirmed` 改为 `finalized`，避免重组导致存下会消失的引用。
+  - 新增 `classify_rpc_response` 分类 + `verify_solana_mint` 重试（最多 4 次、退避 1s→2s→4s），覆盖「交易尚未最终确认 / RPC 限流」短暂窗口；语义校验失败（签名/钱包/非 Memo/重放）永久拒绝、绝不重试。
+  - 加 `tracing` 可观测日志（warn/debug）。
+  - 补 `classify_rpc_response` 单元测试。
+
+### 验证
+- `cargo test -p roselet-backend --lib routes::solana_onchain`：8 passed。
+- `cargo clippy -p roselet-backend --lib`：clean。
+
+### 当前状态
+- 分支 `codex/solana-mainnet-assessment`（已推远程）。A/B 产品决策（存证 vs 真 NFT、免费 vs 付费）仍待用户拍板；实际切主网需用户配付费 RPC 与真 SOL，本会话未做。
