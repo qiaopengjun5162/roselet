@@ -291,10 +291,36 @@ lamports_per_byte_year = 5080     exemption_threshold = 1.0
 | 后端 `fmt` / `clippy` / 93 passed + 1 ignored | ✅ |
 | 前端 `tsc` / `lint` / `next build`（14 页）/ 36 suites 252 tests | ✅ |
 | kit 离线探针：构造 → 部分签名 → 编码 202B → 解码取签名 / base64 roundtrip | ✅ |
-| **kit 版 Devnet 真机铸造** | ❌ **未做** |
-| **浏览器 + Phantom 端到端签名** | ❌ **未做** |
+| kit 版 Devnet 真机铸造 | ✅ 2026-11-08 通过，见 §11.4 |
+| 浏览器 + Phantom 端到端签名 | ❌ 未做（探针以本地 keypair 模拟了 Wallet Standard「追加签名且保留已有签名」的语义，真实钱包实现仍需手测） |
 
-§10.6 的 525 字节 / 0.00483 SOL 是**旧 web3.js 实现**的实测值。换成 kit 后链上数据量预期不变（指令序列等价），但在重新真机跑通之前，不应把它当作 kit 版的实测结论。切主网之前，上面两项必须补上；主网本身还需付费 RPC 与真 SOL，x402 付费路径尚未与会员模式打通。
+### 11.4 kit 版 Devnet 实测（2026-11-08）
+
+用 `apps/web/scripts/nft-live-probe.mts` 调用**真实的 `mintRoseNft`** 在 Devnet 铸了一枚；钱包环节由本地 Devnet 密钥对模拟（解码 wire → 对 `messageBytes` 追加 payer 签名 → 重新编码）。指令构造、租金计算、广播、finality 轮询全部走生产代码。
+
+| 项 | kit 版实测 | 旧 web3.js 版（§10.6） |
+|---|---|---|
+| mint 地址 | `EQLqnjK22yuzz83FkTUstB4Gt9qp9kPmxjZQ4qXYKNKj` | `Dhs11iijzktgppnv8aUa9fn9eosSjxxhpzyYuChF5DRv` |
+| mint 账户 | **513 字节** / 3,256,280 lamports | 525 字节 / 3,317,240 lamports |
+| ATA | 170 字节 / 1,513,840 lamports（`amount=1`） | 170 字节 / 1,513,840 lamports |
+| 交易大小 | 809 字节（上限 1232） | 818 字节 |
+| 手续费 | 10,000 lamports（2 个签名） | 10,000 |
+| **总花费** | **4,780,120 lamports ≈ 0.00478 SOL** | 4,831,080 ≈ 0.00483 SOL |
+
+余额差 4,780,120 = mint 租金 + ATA 租金 + 手续费，账目闭合。**513 与 525 的 12 字节差异来自元数据内容长度不同**（寄语 / roseId 不一样），不是 SDK 差异 —— §10.6 的 525 字节不是常量，成本随寄语长度变化，按 `(128 + 实际 size) × 5080` 计算即可。
+
+链上读回（`jsonParsed` / `finalized`）：`owner=TokenzQd…`（Token-2022）、`decimals=0`、`supply="1"`、`mintAuthority=null`、`metadataPointer` 指向 mint 自身、`updateAuthority`=付款钱包、`additionalMetadata=[["roseId",…],["message",…]]`。后端 live 测试 `routes::solana_nft::tests::live_mint_verifies` 用该 mint **核验通过**。
+
+探针也验证了上一轮最担心的假设：钱包签名前 wire 上已有 **1 个签名**（mint 账户），追加 payer 签名后广播成功 —— `partiallySignTransactionMessageWithSigners` + 钱包追加签名的组合在 kit 下成立。
+
+复跑（会真实花费 Devnet SOL，脚本末尾会打印后端 live 测试所需的 `SOLANA_NFT_*` 变量）：
+
+```bash
+cd apps/web
+SOLANA_KEYPAIR=~/.config/solana/id.json pnpm verify:solana-nft
+```
+
+已连续复跑三次（后两枚 mint `8if2tejLzd7LUAawMywbr2uJHJnZTb9NgMzPj44scgJQ`、`GDc1AFbjcjzMKjGvCAwtxdXSKV3pxG5idocy9JLLNErh`），账户尺寸、交易大小与花费每次完全一致，后端 live 核验均通过；第三次是脚本最终形态（`setGlobalDispatcher` 取代覆盖 `globalThis.fetch`）后的验证。脚本带**主网护栏**：RPC 不含 `devnet` 且未显式设置 `ALLOW_MAINNET=1` 时直接拒绝运行（已实测：拒绝、且未广播任何交易）。
 
 ---
 

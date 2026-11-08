@@ -4819,3 +4819,21 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 1. **kit 版尚未在 Devnet 重新真机铸造**：评估文档 §10.6 的 525 字节 / 0.00483 SOL 是旧 web3.js 实现的实测值；链上约束不变，但 kit 的指令构造与钱包签名合并目前只做了离线探针 + 单测。
 2. **浏览器 + Phantom 端到端手测**：Wallet Standard「保留已有签名」这一行为本环境无法验证；若钱包丢了 mint 签名，代码会在广播前给出中文提示（不扣费）。
 3. 主网仍需付费 RPC 与真 SOL；x402 付费路径（`apps/agent-api/src/payment.ts`）尚未与会员模式打通。
+
+### kit 版 Devnet 真机验证（2026-11-08）
+
+把上一节的两个 ❌ 消掉一个：用 `apps/web/scripts/nft-live-probe.mts` 调用**真实的 `mintRoseNft`** 在 Devnet 铸了一枚，钱包签名环节用本地 Devnet 密钥对模拟（解码 wire → 对 `messageBytes` 追加 payer 签名 → 重新编码，语义等同 Wallet Standard）。指令构造、租金计算、广播、finality 轮询全走生产代码。
+
+- mint `EQLqnjK22yuzz83FkTUstB4Gt9qp9kPmxjZQ4qXYKNKj`，交易 `3kRkA17a…`，**809 字节**
+- 账户：mint **513 字节 / 3,256,280 lamports**，ATA 170 字节 / 1,513,840，手续费 10,000 → **总花费 4,780,120 lamports ≈ 0.00478 SOL**（余额差与三项之和完全对上）
+- 链上读回（`finalized`）：`supply=1`、`decimals=0`、`mintAuthority=null`、MetadataPointer 指向自身、`additionalMetadata` 含 roseId / message、`updateAuthority` = 付款钱包
+- 后端 `live_mint_verifies` 用该 mint **核验通过**
+- **关键假设验证**：钱包签名前 wire 上已有 1 个签名（mint 账户），追加 payer 签名后广播成功 → kit 下「部分签名 + 钱包追加」成立
+
+**修正一个认知**：旧实现实测的 525 字节 / 0.00483 SOL **不是常量**，这次是 513 字节 / 0.00478 SOL。差的 12 字节（60,960 lamports）来自元数据内容长度不同（寄语与 roseId 不一样），与 SDK 无关。成本按 `(128 + 实际 size) × 5080` 算。
+
+**沉淀**：探针整理成可复跑命令 `pnpm --filter web verify:solana-nft`（参数走 `SOLANA_KEYPAIR` / `NEXT_PUBLIC_SOLANA_RPC_URL` / `SOLANA_PROXY`），切主网前可重跑；脚本末尾会打印后端 live 测试所需的 `SOLANA_NFT_*` 变量。为它加了 `tsx` / `undici` 两个 devDependency（均已在 pnpm store 里，无新增下载）。
+
+**复跑验证**：连续跑了三次（后两枚 mint `8if2tejLzd7LUAawMywbr2uJHJnZTb9NgMzPj44scgJQ`、`GDc1AFbjcjzMKjGvCAwtxdXSKV3pxG5idocy9JLLNErh`），账户尺寸 / 交易大小 / 花费每次完全一致，后端 `live_mint_verifies` 均通过。第三次是脚本最终形态：`setGlobalDispatcher` 取代覆盖 `globalThis.fetch`（避免 undici 与 DOM `Response` 类型冲突），并把 `messageBytes` 复制成普通 `Uint8Array` 以满足 WebCrypto 的 `BufferSource` 约束。脚本带主网护栏：RPC 不含 `devnet` 且未设 `ALLOW_MAINNET=1` 时拒绝运行（实测拒绝且 0 次广播）。
+
+**仍剩**：浏览器 + Phantom 端到端手测（真实钱包的 Wallet Standard 实现未验证）；主网付费 RPC / 真 SOL / x402 打通。
