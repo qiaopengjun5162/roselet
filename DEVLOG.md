@@ -4837,3 +4837,29 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **复跑验证**：连续跑了三次（后两枚 mint `8if2tejLzd7LUAawMywbr2uJHJnZTb9NgMzPj44scgJQ`、`GDc1AFbjcjzMKjGvCAwtxdXSKV3pxG5idocy9JLLNErh`），账户尺寸 / 交易大小 / 花费每次完全一致，后端 `live_mint_verifies` 均通过。第三次是脚本最终形态：`setGlobalDispatcher` 取代覆盖 `globalThis.fetch`（避免 undici 与 DOM `Response` 类型冲突），并把 `messageBytes` 复制成普通 `Uint8Array` 以满足 WebCrypto 的 `BufferSource` 约束。脚本带主网护栏：RPC 不含 `devnet` 且未设 `ALLOW_MAINNET=1` 时拒绝运行（实测拒绝且 0 次广播）。
 
 **仍剩**：浏览器 + Phantom 端到端手测（真实钱包的 Wallet Standard 实现未验证）；主网付费 RPC / 真 SOL / x402 打通。
+
+### 钱包会话层 + 广播前校验（2026-11-08）
+
+上节的第二个 ❌ 收窄到「只剩 Phantom 扩展本身」：会话层、真浏览器环境、钱包返回交易的完整性现在都有真实验证。
+
+**新发现的安全边界**：Wallet Standard 规范**允许钱包返回被修改过的交易**（`@solana/wallet-standard-features/src/signTransaction.ts` 原文注释，为 multisig / meta-transaction 钱包留的口子）。但本项目 mint 密钥对签完即丢弃，签名只绑定当时的 `messageBytes`，钱包一旦重建交易或丢签名，交易必然失败。原先只靠 RPC 报错后猜正则文案，太晚也太含糊。
+
+| 文件 | 变化 |
+|---|---|
+| `lib/transaction-guard.ts`（新） | 纯函数：广播前逐字节比对 `messageBytes`、要求所有已有签名原样保留（允许追加）、要求钱包签名出现；任一不满足抛中文错误并**零广播零扣费** |
+| `lib/rose-nft.ts` | 钱包返回 wire 后用 kit 解码两次，接入上述校验；原 RPC 正则兜底保留为二次防线 |
+| `lib/wallet.ts` | 新增 `getWalletRegistry()`，供集成工具注册钱包时用会话层自己的注册表实例 |
+| `scripts/nft-live-probe.mts` | 改为注册一个真实 Wallet Standard 钱包，再走生产 `connectSolanaWallet()` 拿 session 交给 `mintRoseNft`；不再手写签名回调 |
+| `lib/__tests__/transaction-guard.test.ts`（新） | 11 例：改消息 / 丢 mint 签名 / 改签名字节 / 丢其他签名 / 钱包没签 / 本地就没签 / multisig 追加 / 解码形状异常 等 |
+| `lib/__tests__/wallet-session.test.ts`（新） | 9 例：真实 `getWallets().register()`，覆盖发现、Phantom 优先、过滤非 Solana 钱包、connect、签名参数（含 chain）、disconnect、各缺失能力 |
+| `components/__tests__/wallet-session.pw.tsx` + `__fixtures__/wallet-session.tsx`（新） | 真 Chromium 里用扩展真实使用的 `wallet-standard:app-ready` 事件注入钱包，点击真实会员连接按钮 |
+
+**两个踩坑（都写进注释了）**
+1. tsx 下探针的 ESM `import "@wallet-standard/app"` 与 `lib/wallet.ts` 的 CJS 副本是**两份注册表**，注册进 A 则 B 看不到（首次实跑直接失败）。解法是暴露 `getWalletRegistry()`，不再各自 import。
+2. Playwright CT 的 `page` fixture 拿到时页面已导航，`addInitScript` 不会再执行（首次 CT 连不上钱包）。解法是挂载后 `page.evaluate` 装 `app-ready` 监听器 —— `getWallets()` 是点击连接才惰性调用的，赶得上。
+
+**真机结果（第四次复跑）**：mint `Dw9oP9YtKa1GBht8oXdAPewESAMCHcQccn42hNaY5nNa`，roseId `351e3bfa-b019-45ff-9090-09dab5d5b555`，513B / 170B / 809B / **4,780,120 lamports**，与前三次完全一致；`chain=solana:devnet` 正确传给钱包；后端 `live_mint_verifies` 通过。新校验**未误伤正常钱包**。
+
+**门禁**：前端 `tsc=0` / `lint=0` / **38 suites · 268 tests** / `next build`；Playwright CT **6 tests**；后端 `fmt` / `clippy` / 93 passed + 1 ignored；`--frozen-lockfile`、`git diff --check`。
+
+**仍剩**：评估文档 §12.3 的人工 Phantom 手测清单（本机没装扩展，解锁/批准无法自动化；重点盯 chain id 是否被接受、钱包是否保留 mint 签名）；主网付费 RPC / 真 SOL / x402 打通。

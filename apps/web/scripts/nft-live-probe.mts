@@ -1,11 +1,12 @@
 /**
  * Live Devnet verification for the kit-based `mintRoseNft`.
  *
- * Calls the REAL production function. The only faked part is the wallet: a
- * local Devnet keypair signs the wire transaction the way a Wallet Standard
- * wallet would (add the fee payer's signature, KEEP the mint signature already
- * on the wire). Instruction construction, rent sizing, blockhash, broadcast
- * and finality polling all run unchanged.
+ * Calls the REAL production functions end to end: a wallet is registered with
+ * the real `@wallet-standard/app` registry, `connectSolanaWallet()` discovers
+ * and connects to it, and `mintRoseNft()` builds / partially signs / broadcasts
+ * the transaction. The only simulated part is the wallet's key material: a
+ * local Devnet keypair performs the Ed25519 signature a browser extension
+ * would otherwise do behind its UI.
  *
  * Run (from the workspace root or apps/web):
  *   pnpm --filter web verify:solana-nft
@@ -50,6 +51,12 @@ if (!/devnet/i.test(RPC) && process.env.ALLOW_MAINNET !== "1") {
 const kit = await import("@solana/kit");
 const token = await import("@solana-program/token-2022");
 const { mintRoseNft } = await import("../src/lib/rose-nft");
+const { connectSolanaWallet, getWalletRegistry, listSolanaWallets } =
+  await import("../src/lib/wallet");
+
+type RegisteredWallet = Parameters<
+  ReturnType<typeof import("@wallet-standard/app").getWallets>["register"]
+>[0];
 
 const keypairPath =
   process.env.SOLANA_KEYPAIR ??
@@ -71,39 +78,99 @@ console.log("balance before  :", before, "lamports");
 
 /** Emulates `solana:signTransaction`: add one signature, preserve the rest. */
 let signaturesOnWire = 0;
-const signTransaction = async (wire: Uint8Array): Promise<Uint8Array> => {
-  const tx = kit.getTransactionDecoder().decode(wire);
-  const signatures = { ...tx.signatures } as Record<string, Uint8Array | null>;
-  const present = Object.entries(signatures)
-    .filter(([, s]) => s != null)
-    .map(([address]) => address);
-  signaturesOnWire = present.length;
-  console.log(
-    "  [wallet] pre-existing signatures:",
-    present.length,
-    present.map((a) => a.slice(0, 8)),
-  );
-
-  // Copy into a plain Uint8Array: kit brands messageBytes with
-  // `ArrayBufferLike`, while WebCrypto's BufferSource requires a concrete
-  // ArrayBuffer. The bytes signed are identical.
-  const messageBytes = Uint8Array.from(tx.messageBytes);
-  const sig = new Uint8Array(
-    await crypto.subtle.sign("Ed25519", payer.keyPair.privateKey, messageBytes),
-  );
-  signatures[payer.address] = sig;
-  const signed = { ...tx, signatures } as typeof tx;
-  return Uint8Array.from(kit.getTransactionEncoder().encode(signed));
+let chainSeenByWallet = "(none)";
+const account = {
+  address: payer.address,
+  chains: ["solana:devnet", "solana:mainnet"] as const,
+  features: [] as string[],
 };
 
+const probeWallet = {
+  version: "1.0.0",
+  name: "Roselet Devnet Probe",
+  icon: "data:image/svg+xml,<svg/>",
+  chains: ["solana:devnet", "solana:mainnet"],
+  accounts: [account],
+  features: {
+    "standard:connect": {
+      version: "1.0.0",
+      connect: async () => ({ accounts: [account] }),
+    },
+    "solana:signTransaction": {
+      version: "1.0.0",
+      supportedTransactionVersions: ["legacy", 0],
+      signTransaction: async (
+        ...inputs: { transaction: Uint8Array; chain?: string }[]
+      ) =>
+        Promise.all(
+          inputs.map(async ({ transaction, chain }) => {
+            chainSeenByWallet = chain ?? "(none)";
+            const tx = kit.getTransactionDecoder().decode(transaction);
+            const signatures = { ...tx.signatures } as Record<
+              string,
+              Uint8Array | null
+            >;
+            const present = Object.entries(signatures)
+              .filter(([, s]) => s != null)
+              .map(([address]) => address);
+            signaturesOnWire = present.length;
+            console.log(
+              "  [wallet] pre-existing signatures:",
+              present.length,
+              present.map((a) => a.slice(0, 8)),
+            );
+
+            // Copy into a plain Uint8Array: kit brands messageBytes with
+            // `ArrayBufferLike`, while WebCrypto's BufferSource requires a
+            // concrete ArrayBuffer. The bytes signed are identical.
+            const messageBytes = Uint8Array.from(tx.messageBytes);
+            const sig = new Uint8Array(
+              await crypto.subtle.sign(
+                "Ed25519",
+                payer.keyPair.privateKey,
+                messageBytes,
+              ),
+            );
+            signatures[payer.address] = sig;
+            const signed = { ...tx, signatures } as typeof tx;
+            return {
+              signedTransaction: Uint8Array.from(
+                kit.getTransactionEncoder().encode(signed),
+              ),
+            };
+          }),
+        ),
+    },
+    "standard:disconnect": {
+      version: "1.0.0",
+      disconnect: async () => {},
+    },
+  },
+} as unknown as RegisteredWallet;
+
+// Register through the production module's OWN registry instance. Importing
+// `@wallet-standard/app` here would give tsx a second ESM/CJS copy with a
+// separate wallet list, and the session would see zero wallets.
+getWalletRegistry().register(probeWallet);
+const discovered = listSolanaWallets();
+if (!discovered.some((w) => w.name === probeWallet.name)) {
+  throw new Error("钱包注册表未发现探针钱包（会话层与注册表实例不一致）");
+}
+const session = await connectSolanaWallet();
+if (session.address !== payer.address) {
+  throw new Error(`钱包会话地址不一致: ${session.address}`);
+}
+console.log("wallet session  : Wallet Standard（真实注册表，已发现并连接）");
+
 const result = await mintRoseNft({
-  walletAddress: payer.address,
+  walletAddress: session.address,
   roseId,
   roseName,
   imageCid: null,
-  signTransaction,
+  signTransaction: session.signTransaction,
   onStep: (s) => console.log("  [step]", s),
 });
+console.log("chain given to wallet :", chainSeenByWallet);
 
 // The mint path treats a finality timeout as a soft failure, so the account
 // may not be visible yet. Poll briefly instead of failing the whole probe.
@@ -114,13 +181,13 @@ const readMint = () =>
       commitment: "finalized",
     })
     .send();
-let account = await readMint();
-for (let i = 0; i < 10 && !account.value; i++) {
+let accountInfo = await readMint();
+for (let i = 0; i < 10 && !accountInfo.value; i++) {
   await new Promise((resolve) => setTimeout(resolve, 3_000));
-  account = await readMint();
+  accountInfo = await readMint();
 }
 const info = (
-  account.value?.data as { parsed?: { info?: Record<string, unknown> } }
+  accountInfo.value?.data as { parsed?: { info?: Record<string, unknown> } }
 )?.parsed?.info;
 
 const [ata] = await token.findAssociatedTokenPda({
@@ -148,8 +215,8 @@ console.log("name / uri      :", result.name, "/", result.uri);
 console.log("mint sig kept   :", signaturesOnWire >= 1);
 
 console.log("\n=== ON-CHAIN (jsonParsed / finalized) ===");
-console.log("owner           :", account.value?.owner);
-console.log("mint space/rent :", account.value?.space, "/", account.value?.lamports);
+console.log("owner           :", accountInfo.value?.owner);
+console.log("mint space/rent :", accountInfo.value?.space, "/", accountInfo.value?.lamports);
 console.log("ATA space/rent  :", ataAccount.value?.space, "/", ataAccount.value?.lamports);
 console.log("ATA amount      :", JSON.stringify(
   (ataAccount.value?.data as { parsed?: { info?: { tokenAmount?: unknown } } })?.parsed?.info?.tokenAmount,
@@ -170,6 +237,9 @@ console.log(`SOLANA_RPC_URL=${RPC}`);
 
 if (signaturesOnWire < 1) {
   throw new Error("mint signature was lost before wallet signing");
+}
+if (chainSeenByWallet !== "solana:devnet") {
+  throw new Error(`unexpected chain passed to wallet: ${chainSeenByWallet}`);
 }
 if (info?.supply !== "1") {
   throw new Error(`unexpected supply: ${info?.supply}`);

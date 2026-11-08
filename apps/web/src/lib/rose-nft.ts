@@ -40,6 +40,10 @@ import {
   loadKit,
   sendSignedTransaction,
 } from "@/lib/solana-rpc";
+import {
+  assertWalletPreservedTransaction,
+  toWireTransactionView,
+} from "@/lib/transaction-guard";
 
 export interface MintRoseNftInput {
   /** Wallet that pays, holds the mint authority and the update authority. */
@@ -221,10 +225,34 @@ export async function mintRoseNft(
   step("③ 等待钱包签名…");
   const signed = await input.signTransaction(wire);
 
+  // Wallet Standard explicitly allows a wallet to return a *modified*
+  // transaction (multisig / meta-transaction wallets). Ours cannot tolerate
+  // that: the mint keypair is discarded right after signing locally, so its
+  // signature is the only proof the create-account instruction was approved.
+  // Check before broadcasting — a violation costs nothing here, but would
+  // otherwise surface as an opaque RPC error after a failed send.
+  const decoder = kit.getTransactionDecoder();
+  let beforeView: ReturnType<typeof toWireTransactionView>;
+  let afterView: ReturnType<typeof toWireTransactionView>;
+  try {
+    beforeView = toWireTransactionView(decoder.decode(wire));
+    afterView = toWireTransactionView(decoder.decode(signed));
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    throw new Error(
+      `钱包返回的交易无法解析（${reason}）；本次未广播、未扣费。请换一个钱包重试。`,
+    );
+  }
+  assertWalletPreservedTransaction(beforeView, afterView, {
+    requiredSigners: [mintSigner.address],
+    walletAddress: input.walletAddress,
+  });
+
   step("④ 广播交易…");
   // Preflight stays ON here (unlike the memo path): a failure is cheap to
-  // catch before broadcast, and a rejected simulation costs nothing. It is
-  // also what surfaces a wallet that dropped the mint account's signature.
+  // catch before broadcast, and a rejected simulation costs nothing. The guard
+  // above is the first line of defence; this also catches anything that can
+  // only be seen by re-simulating on the cluster (e.g. a changed account).
   let signature: string;
   try {
     signature = await sendSignedTransaction(signed, {

@@ -289,10 +289,13 @@ lamports_per_byte_year = 5080     exemption_threshold = 1.0
 | 验证项 | 状态 |
 |---|---|
 | 后端 `fmt` / `clippy` / 93 passed + 1 ignored | ✅ |
-| 前端 `tsc` / `lint` / `next build`（14 页）/ 36 suites 252 tests | ✅ |
+| 前端 `tsc` / `lint` / `next build`（14 页）/ 38 suites 268 tests | ✅ |
+| Playwright CT 真 Chromium：6 tests（含钱包会话） | ✅ 见 §12.2 |
 | kit 离线探针：构造 → 部分签名 → 编码 202B → 解码取签名 / base64 roundtrip | ✅ |
 | kit 版 Devnet 真机铸造 | ✅ 2026-11-08 通过，见 §11.4 |
-| 浏览器 + Phantom 端到端签名 | ❌ 未做（探针以本地 keypair 模拟了 Wallet Standard「追加签名且保留已有签名」的语义，真实钱包实现仍需手测） |
+| Wallet Standard 会话层（真实注册表 → 连接 → 签名 → 真机铸造） | ✅ 2026-11-08 通过，见 §12.2 |
+| 钱包返回交易的广播前完整性校验 | ✅ 11 个单测 + 真机未误伤，见 §12.1 |
+| **Phantom 扩展本身的 UI / 签名实现** | ❌ **未做**：本机未装扩展，解锁与批准无法可靠自动化；按 §12.3 清单人工确认 |
 
 ### 11.4 kit 版 Devnet 实测（2026-11-08）
 
@@ -320,7 +323,66 @@ cd apps/web
 SOLANA_KEYPAIR=~/.config/solana/id.json pnpm verify:solana-nft
 ```
 
-已连续复跑三次（后两枚 mint `8if2tejLzd7LUAawMywbr2uJHJnZTb9NgMzPj44scgJQ`、`GDc1AFbjcjzMKjGvCAwtxdXSKV3pxG5idocy9JLLNErh`），账户尺寸、交易大小与花费每次完全一致，后端 live 核验均通过；第三次是脚本最终形态（`setGlobalDispatcher` 取代覆盖 `globalThis.fetch`）后的验证。脚本带**主网护栏**：RPC 不含 `devnet` 且未显式设置 `ALLOW_MAINNET=1` 时直接拒绝运行（已实测：拒绝、且未广播任何交易）。
+已连续复跑四次（后三枚 mint `8if2tejLzd7LUAawMywbr2uJHJnZTb9NgMzPj44scgJQ`、`GDc1AFbjcjzMKjGvCAwtxdXSKV3pxG5idocy9JLLNErh`、`Dw9oP9YtKa1GBht8oXdAPewESAMCHcQccn42hNaY5nNa`），账户尺寸、交易大小与花费每次完全一致，后端 live 核验均通过；第三次是脚本最终形态（`setGlobalDispatcher` 取代覆盖 `globalThis.fetch`）后的验证，**第四次把探针升级为走真实 Wallet Standard 会话层**（见 §12.2）。脚本带**主网护栏**：RPC 不含 `devnet` 且未显式设置 `ALLOW_MAINNET=1` 时直接拒绝运行（已实测：拒绝、且未广播任何交易）。
+
+---
+
+## 12. 钱包签名的安全边界与会话层验证（2026-11-08）
+
+### 12.1 广播前先验钱包返回的交易
+
+Wallet Standard 的 `solana:signTransaction` 规范明确允许钱包**返回一笔被修改过的交易**（原文：`Returning a transaction rather than signatures allows multisig wallets, program wallets, and other wallets that use meta-transactions to return a modified, signed transaction`）。对普通转账没问题，对本项目不行：mint 密钥对在浏览器里生成、本地签完就丢弃，那枚签名只绑定**当时那串 message bytes**。钱包一旦重建交易或丢掉签名，这笔交易必然失败，而用户只会看到 RPC 一句含糊的 `signature verification failure`。
+
+现在 `lib/transaction-guard.ts` 在**广播之前**做纯函数校验，任一不满足就抛中文错误、**零广播零扣费**：
+
+| 检查 | 理由 |
+|---|---|
+| `messageBytes` 与交给钱包前逐字节一致 | 签名绑定具体消息；被改则 mint 签名必然失效 |
+| 所有已有签名原样保留（至少含 mint） | 钱包只能**追加**签名，不能丢弃；允许 multisig 追加 |
+| 付款钱包地址出现非空签名 | 确认钱包确实签了，而不是原样退回 |
+
+原先只在 `sendSignedTransaction` 抛错后用正则猜「是不是丢了签名」，属于事后兜底；现在主防线前置，正则保留为二次防线。11 个单测覆盖「改消息 / 丢 mint 签名 / 改签名字节 / 丢其他签名 / 钱包没签 / 本地就没签 / multisig 追加」等分支；第四次 Devnet 真机证明它**不误伤正常钱包**。
+
+### 12.2 会话层与真浏览器验证
+
+| 层 | 做法 | 结果 |
+|---|---|---|
+| 注册表集成 | 新增 `wallet-session.test.ts`：用真实 `getWallets().register()` 注册符合规范的钱包，跑 `connectSolanaWallet()` 全链路（发现 / Phantom 优先 / 过滤非 Solana 钱包 / connect / 签名 / disconnect / 各缺失能力） | ✅ 9 例 |
+| Devnet 真机 | `nft-live-probe.mts` 改为注册一个真实 Wallet Standard 钱包，再用**生产 `connectSolanaWallet()`** 拿到 session 交给 `mintRoseNft`；密钥签名由本地 Devnet keypair 完成 | ✅ mint `Dw9oP9Yt…`，后端 `live_mint_verifies` 通过，`chain=solana:devnet` |
+| 真浏览器 | 新增 Playwright CT `wallet-session.pw.tsx`：在 Chromium 里用扩展真实使用的 `wallet-standard:app-ready` 事件注入钱包，点击真实会员「连接钱包」按钮 | ✅ CT 共 6 tests 全过 |
+
+两个踩过的坑（都已写进代码注释）：
+
+1. **注册表会有两份实例**。tsx 下探针的 ESM `import "@wallet-standard/app"` 与 `lib/wallet.ts` 编译后的 CJS 副本各自维护钱包列表，注册进 A 则 B 看不到（首次实跑直接报「注册表未发现探针钱包」）。解法：`lib/wallet.ts` 导出 `getWalletRegistry()`，集成工具一律通过会话层自己的实例注册，不再自行 import。
+2. **Playwright CT 的 `addInitScript` 太晚**。CT 的 `page` fixture 拿到时页面已导航过，init script 不会再执行（首次 CT 因此连不上钱包）。解法：挂载后用 `page.evaluate` 安装 `app-ready` 监听器 —— `getWallets()` 是点击连接时才惰性调用的，监听器赶得上。
+
+### 12.3 仅剩的人工手测：Phantom 扩展
+
+本机未安装 Phantom 扩展，且扩展的解锁、导入私钥、批准弹窗无法可靠自动化，因此这一项必须由人在浏览器里点一遍。以下清单可直接照做（**全程 Devnet，不碰真 SOL**）：
+
+**前置**
+
+1. Chrome / Brave 安装 Phantom，钱包网络切到 **Devnet**，账户里有测试 SOL（没有就用 devnet 水龙头）。
+2. 前后端 RPC 指向同一个 Devnet 端点：前端 `NEXT_PUBLIC_SOLANA_RPC_URL`、后端 `SOLANA_RPC_URL`（后端不设会返回 503，链上核验做不了）。
+3. 启动后端与 `apps/web`，打开一朵**公开**玫瑰的详情页（私有玫瑰不出现 NFT 区块）。
+
+**步骤与观察点**
+
+| # | 操作 | 期望 |
+|---|---|---|
+| 1 | 点「会员」→「连接钱包」 | Phantom 弹出授权；页面显示钱包地址。若报「未检测到 Solana 钱包」，说明扩展未注入或被拦 |
+| 2 | 轻量存证：填 roseId + 一句话 → 上链 | 五步进度走完，给出交易签名与区块浏览器链接；后端 `GET /api/rose/{id}/solana` 有记录 |
+| 3 | 铸造 NFT：点「铸成 NFT」 | Phantom 弹窗应显示**一笔交易**（不是多笔）；批准后在区块浏览器看到 `supply=1`、`decimals=0`、`mintAuthority=null`、Token-2022 扩展含 roseId / message |
+| 4 | 回到详情页刷新 | 页面显示已保存的 mint 地址，后端 `GET /api/rose/{id}/solana/nft` 返回记录 |
+| 5 | 故意制造一次后端保存失败（如停掉后端再点） | 页面给出「重试保存」，点它只重发 POST，**不会重复广播 / 不会铸第二枚** |
+
+**三个重点风险，手测时要盯紧**
+
+- **chain id**：代码传 `chain: "solana:devnet"`（规范里该字段可选）。若 Phantom 报「不支持该网络」，先把钱包切到 Devnet 再试；仍失败则需评估去掉 `chain` 参数（代价是失去签错网的提示）。
+- **保留 mint 签名**：若页面出现「钱包丢失或改动了 mint 账户已附加的签名；本次未广播、未扣费」，说明该钱包会重建交易 —— 属于 §12.1 拦下的预期行为，换最新版 Phantom 再试。
+- **交易被重建**：若出现「钱包返回了与待签内容不同的交易」，同上，不要反复重试，记录钱包版本。
+
+手测通过后把 §11.3 最后一行改成 ✅ 并注明 Phantom 版本与日期，才具备「合主线 / 切主网」的验证条件。主网另需付费 RPC、真 SOL，以及 x402 付费路径与会员模式打通。
 
 ---
 

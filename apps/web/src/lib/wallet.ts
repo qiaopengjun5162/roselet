@@ -54,6 +54,19 @@ export interface WalletSession {
   disconnect: () => void;
 }
 
+/**
+ * The exact registry instance this module reads from.
+ *
+ * Exposed for integration harnesses (e.g. the Devnet live probe) that need to
+ * register a wallet programmatically. Bundlers can load a package twice —
+ * once as ESM, once as CJS — and each copy has its own wallet list, so a
+ * harness must register through THIS instance rather than importing
+ * `@wallet-standard/app` on its own.
+ */
+export function getWalletRegistry(): ReturnType<typeof getWallets> {
+  return getWallets();
+}
+
 /** Wallet Standard chain id for our configured cluster. */
 export function solanaChainForCluster(cluster: SolanaCluster = CLUSTER): string {
   switch (cluster) {
