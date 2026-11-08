@@ -183,7 +183,17 @@ pub async fn record_rose_nft(
     .bind(&verified.uri)
     .bind(additional)
     .fetch_one(&state.pool)
-    .await?;
+    .await
+    .map_err(|e| {
+        // `rose_id` and `mint_address` are both unique. Concurrent mint calls
+        // can both pass the pre-checks above, so the index decides — and the
+        // loser must see "already minted", not an opaque 500.
+        if crate::error::is_unique_violation(&e) {
+            AppError::BadRequest("这朵玫瑰已经铸成 NFT 了（或该 mint 已被占用）".into())
+        } else {
+            AppError::Database(e)
+        }
+    })?;
     Ok(Json(nft))
 }
 
