@@ -263,4 +263,39 @@ lamports_per_byte_year = 5080     exemption_threshold = 1.0
 
 ---
 
+## 11. 前端 SDK 迁移到 `@solana/kit`（2026-11-08）
+
+> 依据：`anza-xyz/kit` 与 `solana-foundation/solana-web3.js` 官方 README。`@solana/web3.js` v1 已进入维护模式，现行栈是 `@solana/kit` 8.x + `@solana-program/*`（Codama 生成的程序客户端）+ Wallet Standard。
+
+### 11.1 迁移对照
+
+| 层 | 旧（v1） | 新（kit） |
+|---|---|---|
+| 交易构造 | `Transaction` / `TransactionInstruction` | `createTransactionMessage` + `pipe` + `compileTransaction` |
+| 指令 | `@solana/spl-token` 手写 helper | `@solana-program/{system,memo,compute-budget,token-2022}` 生成器，layout 绑定已发布 IDL |
+| 钱包 | `window.solana.signTransaction`（Phantom 私有 API，只认 v1 对象） | Wallet Standard `standard:connect` / `solana:signTransaction`（签 wire bytes） |
+| 签名 / 广播 | `Connection.sendRawTransaction` + 手截签名字节 | kit `getTransactionDecoder` / `getSignatureFromTransaction` / `getBase64EncodedWireTransaction` |
+| 确认 | `Connection.confirmTransaction`（websocket 订阅） | `getSignatureStatuses` 轮询 `finalized`（适合代理 / 限流端点） |
+
+### 11.2 关键判断
+
+- **必须换钱包接口**：kit 交易是字节流，旧 API 会强迫继续保留 v1 作为桥接，等于长期背两套 SDK。Wallet Standard 的输入输出都是完整 wire 交易，且规范保留已有签名（mint 账户先签、钱包后追加），Phantom / Solflare / Backpack 均实现。
+- **自定义 RPC 一律按 `solana:mainnet` 上报 chain id**：低估网络会让钱包签出「看起来合法、实际在错误网络」的交易；自定义端点多数是主网代理。
+- **§10.6 的两个硬约束仍然成立**：mint 初始空间必须恰好等于当前扩展大小（kit 里是 `getMintSize([MetadataPointer])`），租金按最终尺寸 `[MetadataPointer, TokenMetadata]` 付。这是 Token-2022 **程序**的行为，与前端 SDK 无关。
+- **构建配置变更**：`tsconfig.json` 的 `target` 从 ES2017 提到 ES2020（kit 使用 BigInt），切主网前需确认目标浏览器兼容性。
+
+### 11.3 验证状态与遗留风险
+
+| 验证项 | 状态 |
+|---|---|
+| 后端 `fmt` / `clippy` / 93 passed + 1 ignored | ✅ |
+| 前端 `tsc` / `lint` / `next build`（14 页）/ 36 suites 252 tests | ✅ |
+| kit 离线探针：构造 → 部分签名 → 编码 202B → 解码取签名 / base64 roundtrip | ✅ |
+| **kit 版 Devnet 真机铸造** | ❌ **未做** |
+| **浏览器 + Phantom 端到端签名** | ❌ **未做** |
+
+§10.6 的 525 字节 / 0.00483 SOL 是**旧 web3.js 实现**的实测值。换成 kit 后链上数据量预期不变（指令序列等价），但在重新真机跑通之前，不应把它当作 kit 版的实测结论。切主网之前，上面两项必须补上；主网本身还需付费 RPC 与真 SOL，x402 付费路径尚未与会员模式打通。
+
+---
+
 *本评估基于 `main` @ `7b53fb9` 的代码事实核查，随实现演进需同步更新。*

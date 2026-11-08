@@ -250,6 +250,23 @@ export function buildRoseNftFields(input: RoseNftFieldsInput): RoseNftFields {
  */
 export const ROSE_NFT_RENT_ESTIMATE_LAMPORTS = 5_000_000;
 
+/**
+ * Recoverable part of the above: the holder's ATA (170 bytes). Burning the
+ * token and closing the token account returns this in full.
+ */
+export const ROSE_NFT_ATA_RENT_LAMPORTS = 1_513_840;
+
+/**
+ * The part of the rent that is gone for good: the 525-byte mint account.
+ *
+ * Token-2022 can only close a mint that has a `MintCloseAuthority` extension
+ * *and* a supply of 0. A rose NFT deliberately has neither (the whole point is
+ * a permanent 1-of-1), so this deposit can never be reclaimed — unlike the ATA
+ * rent above. Quoting the total as "refundable deposit" would overstate refunds
+ * by ~69%.
+ */
+export const ROSE_NFT_MINT_RENT_LAMPORTS = 3_317_240;
+
 export const LAMPORTS_PER_SOL = 1_000_000_000;
 
 /** Format lamports as a short SOL string, e.g. 4_500_000 → "0.0045". */

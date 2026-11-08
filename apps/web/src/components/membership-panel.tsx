@@ -1,20 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  ComputeBudgetProgram,
-  Connection,
-  Transaction,
-  TransactionInstruction,
-  PublicKey,
-} from "@solana/web3.js";
 import { SOLANA_MINT_EVENT, useMembership } from "@/app/membership-context";
 import { getToken, uploadImageToIpfs } from "@/lib/api";
 import {
+  type RoseMemoMeta,
+  type SendRoseMemoResult,
+  sendRoseMemo,
+} from "@/lib/rose-memo";
+import { confirmSignature } from "@/lib/solana-rpc";
+import {
   CLUSTER,
-  MEMO_COMPUTE_UNIT_LIMIT,
   PRIORITY_FEE_MICRO_LAMPORTS,
-  SOLANA_RPC_URL,
   clusterLabel,
   clusterSpendsRealSol,
   clusterTone,
@@ -22,19 +19,6 @@ import {
   explorerTxUrl,
   priorityFeeLamports,
 } from "@/lib/solana";
-
-// Canonical SPL Memo program (Solana official docs / x402). Must match the
-// backend's MEMO_PROGRAM_IDS or server-side verification will reject the tx.
-const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
-
-/** The exact payload that goes into the on-chain memo, reused when retrying a
- *  failed backend save so the stored metadata matches what is on-chain. */
-interface MintMeta {
-  roseId: string;
-  message: string;
-  imageCid: string | null;
-  createdAt: string;
-}
 
 /**
  * Append an actionable hint for the most common failure: the wallet is on a
@@ -65,6 +49,7 @@ export function MembershipPanel() {
     clearMintTarget,
     toggleMember,
     walletAddress,
+    signTransaction,
     connectError,
     connectWallet,
     disconnectWallet,
@@ -87,7 +72,7 @@ export function MembershipPanel() {
   const [pending, setPending] = useState<{
     signature: string;
     wallet: string;
-    meta: MintMeta;
+    meta: RoseMemoMeta;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,7 +115,7 @@ export function MembershipPanel() {
   async function saveOnChainReference(
     signature: string,
     wallet: string,
-    meta: MintMeta,
+    meta: RoseMemoMeta,
   ) {
     setProgress("⑤ 后端核验中…");
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -170,7 +155,7 @@ export function MembershipPanel() {
     setError(null);
     setStatus(null);
 
-    if (!walletAddress) {
+    if (!walletAddress || !signTransaction) {
       setError("请先连接钱包");
       return;
     }
@@ -203,10 +188,15 @@ export function MembershipPanel() {
     // Set once the RPC has accepted the tx. Used by the catch block to tell a
     // "broadcast failed" error from a "broadcast ok, bookkeeping failed" one —
     // only the former is safe to retry by building a new transaction.
-    let pinned: { signature: string; wallet: string; meta: MintMeta } | null = null;
+    let pinned: {
+      signature: string;
+      wallet: string;
+      meta: RoseMemoMeta;
+    } | null = null;
     setBusy(true);
     try {
-      const meta: MintMeta = {
+      const meta: RoseMemoMeta = {
+        app: "roselet",
         roseId: roseId.trim(),
         message: message.trim(),
         imageCid: imageCid.trim() || null,
@@ -215,58 +205,17 @@ export function MembershipPanel() {
 
       // Build a Solana Memo transaction carrying the reference, have the
       // connected wallet sign it, then broadcast.
-      setProgress("① 准备交易…");
-      const connection = new Connection(SOLANA_RPC_URL, "confirmed");
-      const { blockhash, lastValidBlockHeight } =
-        await connection.getLatestBlockhash("finalized");
-      const feePayer = new PublicKey(wallet);
-
-      const instructions: TransactionInstruction[] = [];
-      if (PRIORITY_FEE_MICRO_LAMPORTS > 0) {
-        // Cap the CU limit *before* setting a price: priority fee is
-        // price × limit, so an unset limit means paying for the 200k default.
-        instructions.push(
-          ComputeBudgetProgram.setComputeUnitLimit({
-            units: MEMO_COMPUTE_UNIT_LIMIT,
-          }),
-          ComputeBudgetProgram.setComputeUnitPrice({
-            microLamports: PRIORITY_FEE_MICRO_LAMPORTS,
-          }),
-        );
-      }
-      instructions.push(
-        new TransactionInstruction({
-          programId: MEMO_PROGRAM_ID,
-          keys: [],
-          data: new TextEncoder().encode(JSON.stringify(meta)) as Buffer,
-        }),
-      );
-      const tx = new Transaction({
-        feePayer,
-        blockhash,
-        lastValidBlockHeight,
-      }).add(...instructions);
-
-      const provider = window.solana;
-      if (!provider?.signTransaction) {
-        throw new Error("当前钱包不支持签名交易");
-      }
-
-      setProgress("② 等待钱包签名…");
-      const signed = await provider.signTransaction(tx);
-
-      setProgress("③ 广播交易…");
-      const signature = await connection.sendRawTransaction(
-        signed.serialize() as Buffer,
-        // Preflight re-simulation can reject a tx the cluster would accept, and
-        // the RPC's own rebroadcast helps a tx that lands in a congested slot.
-        { skipPreflight: true, maxRetries: 5 },
-      );
+      const sent: SendRoseMemoResult = await sendRoseMemo({
+        walletAddress: wallet,
+        meta,
+        signTransaction,
+        onStep: setProgress,
+      });
 
       // Pin the signature the moment the RPC accepts it. From here a retry must
       // only re-save: rebuilding the tx would put a *second* memo for the same
       // rose on-chain, which is permanent and costs real SOL.
-      pinned = { signature, wallet, meta };
+      pinned = { signature: sent.signature, wallet, meta: sent.meta };
       setPending(pinned);
 
       // Wait for finality purely for UX. A timeout here is NOT a failure — the
@@ -274,15 +223,12 @@ export function MembershipPanel() {
       // own retries) is the authority on whether it did.
       try {
         setProgress("④ 等待链上最终确认…");
-        await connection.confirmTransaction(
-          { signature, blockhash, lastValidBlockHeight },
-          "finalized",
-        );
+        await confirmSignature(sent.signature, sent.lifetime);
       } catch {
         setProgress("④ 交易已广播，仍在等待最终确认…");
       }
 
-      await saveOnChainReference(signature, wallet, meta);
+      await saveOnChainReference(sent.signature, wallet, sent.meta);
     } catch (e) {
       setProgress(null);
       const reason = withNetworkHint(

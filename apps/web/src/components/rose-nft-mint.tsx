@@ -9,8 +9,11 @@ import {
   type SolanaNft,
 } from "@/lib/api";
 import { mintRoseNft } from "@/lib/rose-nft";
+import type { SignTransactionFn } from "@/lib/solana-rpc";
 import {
   CLUSTER,
+  ROSE_NFT_ATA_RENT_LAMPORTS,
+  ROSE_NFT_MINT_RENT_LAMPORTS,
   ROSE_NFT_RENT_ESTIMATE_LAMPORTS,
   clusterLabel,
   clusterSpendsRealSol,
@@ -25,7 +28,7 @@ function withNftHint(message: string): string {
   if (/insufficient lamports|Attempt to debit|insufficient funds/i.test(message)) {
     return `${message}\n提示：钱包 SOL 不足。铸造需要约 ${lamportsToSol(
       ROSE_NFT_RENT_ESTIMATE_LAMPORTS,
-    )} SOL 的租金押金，外加少量手续费。`;
+    )} SOL 的账户租金（多数不可退回），外加少量手续费。`;
   }
   if (
     /Blockhash not found|block height exceeded|Transaction was not confirmed|simulation failed/i.test(
@@ -65,6 +68,7 @@ export function RoseNftMint({
       rose={rose}
       canMint={canMint}
       walletAddress={membership.walletAddress}
+      signTransaction={membership.signTransaction}
       openPanel={membership.openPanel}
     />
   );
@@ -74,11 +78,14 @@ function NftMintSection({
   rose,
   canMint,
   walletAddress,
+  signTransaction,
   openPanel,
 }: {
   rose: Rose;
   canMint: boolean;
   walletAddress: string | null;
+  /** Wallet Standard signer from the membership context; null until connected. */
+  signTransaction: SignTransactionFn | null;
   openPanel: () => void;
 }) {
   const [nft, setNft] = useState<SolanaNft | null>(null);
@@ -134,14 +141,8 @@ function NftMintSection({
       return;
     }
 
-    if (!walletAddress) {
+    if (!walletAddress || !signTransaction) {
       openPanel();
-      return;
-    }
-
-    const provider = window.solana;
-    if (!provider?.signTransaction) {
-      setError("未检测到 Phantom 钱包，请先连接钱包");
       return;
     }
 
@@ -153,7 +154,7 @@ function NftMintSection({
         // The rose's own words become the NFT name (truncated to 32 bytes) and
         // the full text is stored again in the `message` metadata field.
         roseName: rose.gratitude ?? rose.hope ?? rose.anxiety ?? "",
-        signTransaction: provider.signTransaction,
+        signTransaction,
         onStep: setStep,
       });
 
@@ -226,10 +227,13 @@ function NftMintSection({
         ）。铸造后供应量固定为 1，增发权限当场撤销。
       </p>
       <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
-        成本约 {lamportsToSol(ROSE_NFT_RENT_ESTIMATE_LAMPORTS)} SOL：其中绝大部分是
-        <span className="text-slate-400">租金押金</span>
-        （数据占用的保证金，销毁并关闭账户可退回），手续费仅约 0.00002 SOL。
-        比「轻量存证」贵约 1000 倍，换来的是一枚可转让、可被钱包识别的链上资产。
+        成本约 {lamportsToSol(ROSE_NFT_RENT_ESTIMATE_LAMPORTS)} SOL：其中{" "}
+        {lamportsToSol(ROSE_NFT_MINT_RENT_LAMPORTS)} SOL 是 NFT 本身的账户租金，
+        <span className="text-slate-400">会永久锁在链上</span>
+        （这枚 NFT 不设关闭权限、供应量固定为 1，无法退还）；
+        {lamportsToSol(ROSE_NFT_ATA_RENT_LAMPORTS)} SOL 是持有账户（ATA）的租金，
+        销毁后关闭该账户可退回。手续费仅约 0.00002 SOL。 比「轻量存证」贵约 1000
+        倍，换来的是一枚可转让、可被钱包识别的链上资产。
       </p>
       {clusterSpendsRealSol(CLUSTER) && (
         <p className="mt-2 text-[10px] text-amber-300">

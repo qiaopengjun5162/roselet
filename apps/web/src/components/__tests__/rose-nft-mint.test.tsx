@@ -11,11 +11,12 @@ const mockOpenPanel = jest.fn();
 let mockMembership: {
   isMember: boolean;
   walletAddress: string | null;
+  signTransaction: ((wire: Uint8Array) => Promise<Uint8Array>) | null;
   openPanel: () => void;
 } | null = null;
 
-// Mocked so the test never loads `@solana/spl-token` (@noble/curves needs
-// TextEncoder, which jsdom lacks). The component only needs the contract.
+// Mocked so the test never loads `@solana/kit` (its ESM build needs browser
+// crypto / TextEncoder that jsdom lacks). The component only needs the contract.
 jest.mock("@/lib/rose-nft", () => ({
   mintRoseNft: (...args: unknown[]) => mockMintRoseNft(...args),
 }));
@@ -60,15 +61,18 @@ describe("RoseNftMint", () => {
     mockMembership = {
       isMember: true,
       walletAddress: WALLET,
+      signTransaction: jest.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
       openPanel: mockOpenPanel,
-    };
-    (window as unknown as { solana?: unknown }).solana = {
-      signTransaction: jest.fn(),
     };
   });
 
   it("renders nothing at all in default (plain) mode", () => {
-    mockMembership = { isMember: false, walletAddress: null, openPanel: mockOpenPanel };
+    mockMembership = {
+      isMember: false,
+      walletAddress: null,
+      signTransaction: null,
+      openPanel: mockOpenPanel,
+    };
     const { container } = render(<RoseNftMint rose={rose} canMint />);
     expect(container).toBeEmptyDOMElement();
     expect(mockGetRoseNft).not.toHaveBeenCalled();
@@ -156,7 +160,12 @@ describe("RoseNftMint", () => {
   });
 
   it("asks the user to connect a wallet instead of minting without one", async () => {
-    mockMembership = { isMember: true, walletAddress: null, openPanel: mockOpenPanel };
+    mockMembership = {
+      isMember: true,
+      walletAddress: null,
+      signTransaction: null,
+      openPanel: mockOpenPanel,
+    };
     render(<RoseNftMint rose={rose} canMint />);
 
     fireEvent.click(await screen.findByRole("button", { name: /先连接钱包/ }));

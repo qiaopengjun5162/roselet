@@ -4790,3 +4790,32 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 ### 仍未做
 - 钱包里出现两枚 NFT 时的展示/选择（当前一朵玫瑰只认一个 mint，`mint_address` 唯一约束）
+
+### 前端 SDK 迁移到 @solana/kit（2026-11-08）
+
+依据官方 `anza-xyz/kit` 与 `solana-foundation/solana-web3.js` README：`@solana/web3.js` v1 已停止活跃维护，现行栈是 `@solana/kit` 8.x + `@solana-program/*`（Codama 生成的程序客户端）+ Wallet Standard。这轮把前端完整迁过去，并把上一轮 Module 2「账号校验即安全边界」的后端加固一起收口。
+
+**改动清单**
+
+| 文件 | 变化 |
+|---|---|
+| `lib/wallet.ts`（新） | 钱包会话改走 Wallet Standard（`standard:connect` / `solana:signTransaction`）；chain id 由集群推导，自定义 RPC 一律按 `solana:mainnet` 报，避免真 SOL 签错网 |
+| `lib/solana-rpc.ts`（新） | RPC 薄封装，kit 动态 import 且每页只加载一次；确认改用 `getSignatureStatuses` 轮询 `finalized`（kit 内置 confirm 依赖 websocket，对代理/限流端点不友好） |
+| `lib/rose-memo.ts`（新） | 从 `MembershipPanel` 抽出上链逻辑；memo 载荷带 `app: "roselet"` 域标签，后端 `MEMO_APP_TAG` 校验，别的产品/无标签一律拒——memo 是无结构文本，没有 Anchor 账户那样的 discriminator |
+| `lib/rose-nft.ts` | 指令改由 `@solana-program/token-2022` 生成器构造，layout 绑定已发布 IDL；初始空间 `getMintSize([MetadataPointer])`、租金按最终尺寸算（沿用评估文档 §10.6 的实测结论） |
+| `solana_onchain.rs` / `solana_nft.rs` / `error.rs` | 后端核验补 `finalized` + 域标签 + memo 内容精确解析；`additionalMetadata` 兼容对象与二元组两种形状 |
+| `package.json` / `pnpm-lock.yaml` | 新增 kit 栈及其 peer（`@solana/sysvars`、`@solana/zk-sdk`）；移除 `web3.js` / `spl-token` / `spl-token-metadata` 三个**直接**依赖，`--frozen-lockfile` 校验通过。注意 `web3.js` 仍作为 `@solana/wallet-standard` 的间接 peer 留在 lockfile 里，不属于本项目依赖声明 |
+| `tsconfig.json` | `target` ES2017 → **ES2020**（kit 用到 BigInt）；属构建配置变更，需留意目标浏览器兼容性 |
+
+**为什么必须换钱包接口**：kit 交易是**字节流**，Phantom 旧的 `window.solana.signTransaction` 只认 web3.js `Transaction` 对象；继续用就得为「桥接」保留整套 v1。Wallet Standard 直接签 wire bytes，且规范保留已有签名——mint 账户先由 `partiallySignTransactionMessageWithSigners` 签好，钱包再追加自己的，Phantom / Solflare / Backpack 都实现。
+
+**广播环节去掉手写轮子**：改用 kit 官方 `getTransactionDecoder` / `getSignatureFromTransaction` / `getBase64EncodedWireTransaction`，替掉原先手截 `wire[1..65]`、手写 base58 与 `as never` 强转。签名和广播载荷由**同一个解码对象**产出，也消除了「签名数超过 1 字节 compact-u16」时的隐患。
+
+**验证**
+- 离线探针（Node + 真实 kit）：`generateKeyPairSigner → 构造 memo 交易 → partiallySignTransactionMessageWithSigners → encode(202B) → decode → 取签名 / base64`，roundtrip 一致，证明生产签名路径在运行时成立（不只是类型通过）。
+- 门禁：后端 `fmt` / `clippy` / **93 passed + 1 ignored**；前端 `tsc` / `lint` / `next build`（14 页）全绿，**36 suites / 252 tests**（新增 `wallet.test.ts`、`solana-rpc.test.ts`）。
+
+**仍未做（切主网前必须补）**
+1. **kit 版尚未在 Devnet 重新真机铸造**：评估文档 §10.6 的 525 字节 / 0.00483 SOL 是旧 web3.js 实现的实测值；链上约束不变，但 kit 的指令构造与钱包签名合并目前只做了离线探针 + 单测。
+2. **浏览器 + Phantom 端到端手测**：Wallet Standard「保留已有签名」这一行为本环境无法验证；若钱包丢了 mint 签名，代码会在广播前给出中文提示（不扣费）。
+3. 主网仍需付费 RPC 与真 SOL；x402 付费路径（`apps/agent-api/src/payment.ts`）尚未与会员模式打通。

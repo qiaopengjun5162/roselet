@@ -1,49 +1,24 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { TextDecoder, TextEncoder } from "util";
-
-// jsdom does not ship TextEncoder/TextDecoder, which the Solana mint flow uses
-// to encode the on-chain memo payload. Polyfill from Node's `util` for tests.
-const globalScope = globalThis as {
-  TextEncoder?: typeof TextEncoder;
-  TextDecoder?: typeof TextDecoder;
-};
-if (!globalScope.TextEncoder) globalScope.TextEncoder = TextEncoder;
-if (!globalScope.TextDecoder) globalScope.TextDecoder = TextDecoder;
 
 const mockUpload = jest.fn();
-const mockGetLatestBlockhash = jest.fn();
-const mockSendRawTransaction = jest.fn();
-const mockConfirmTransaction = jest.fn();
+// The transaction plumbing is mocked at the lib boundary: these tests cover
+// the panel's orchestration (pin the signature, retry only the backend save),
+// not the Solana SDK — see `lib/rose-memo` for that.
+const mockSendRoseMemo = jest.fn();
+const mockConfirmSignature = jest.fn();
+const mockConnectWallet = jest.fn();
 
-// @solana/web3.js pulls in @noble/curves, which requires TextEncoder (jsdom
-// doesn't provide it). Stub the SDK instead of loading it; the panel uses only
-// a small method surface, stubbed here so mint-flow tests stay in jsdom.
-jest.mock("@solana/web3.js", () => ({
-  clusterApiUrl: () => "https://api.devnet.solana.com",
-  PublicKey: class PublicKeyStub {
-    constructor() {}
-  },
-  Connection: class ConnectionStub {
-    getLatestBlockhash = mockGetLatestBlockhash;
-    sendRawTransaction = mockSendRawTransaction;
-    confirmTransaction = mockConfirmTransaction;
-  },
-  Transaction: class TransactionStub {
-    add() {
-      return this;
-    }
-    serialize() {
-      return new Uint8Array([1, 2, 3]);
-    }
-  },
-  TransactionInstruction: class TransactionInstructionStub {
-    constructor() {}
-  },
-  ComputeBudgetProgram: {
-    setComputeUnitLimit: () => ({}),
-    setComputeUnitPrice: () => ({}),
-  },
+jest.mock("@/lib/rose-memo", () => ({
+  sendRoseMemo: (...args: unknown[]) => mockSendRoseMemo(...args),
+}));
+
+jest.mock("@/lib/solana-rpc", () => ({
+  confirmSignature: (...args: unknown[]) => mockConfirmSignature(...args),
+}));
+
+jest.mock("@/lib/wallet", () => ({
+  connectSolanaWallet: (...args: unknown[]) => mockConnectWallet(...args),
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -145,26 +120,21 @@ describe("MembershipPanel · Solana mint retry safety", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    window.solana = {
-      connect: jest
-        .fn()
-        .mockResolvedValue({ publicKey: { toBase58: () => WALLET } }),
-      signTransaction: jest
-        .fn()
-        .mockResolvedValue({ serialize: () => new Uint8Array([1, 2, 3]) }),
-      disconnect: jest.fn().mockResolvedValue(undefined),
-    };
-    mockGetLatestBlockhash.mockResolvedValue({
-      blockhash: "bh",
-      lastValidBlockHeight: 100,
+    mockConnectWallet.mockResolvedValue({
+      address: WALLET,
+      signTransaction: jest.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+      disconnect: jest.fn(),
     });
-    mockSendRawTransaction.mockResolvedValue("sig-broadcast");
-    mockConfirmTransaction.mockResolvedValue(undefined);
+    mockSendRoseMemo.mockImplementation(async ({ meta }: { meta: unknown }) => ({
+      signature: "sig-broadcast",
+      lifetime: { blockhash: "bh", lastValidBlockHeight: 100n },
+      meta,
+    }));
+    mockConfirmSignature.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    delete window.solana;
   });
 
   it("retries only the backend save after a post-broadcast failure (no duplicate tx)", async () => {
@@ -189,13 +159,13 @@ describe("MembershipPanel · Solana mint retry safety", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /🚀 上链/ }));
 
-    await waitFor(() => expect(mockSendRawTransaction).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockSendRoseMemo).toHaveBeenCalledTimes(1));
     const retry = await screen.findByRole("button", { name: /重试保存/ });
     fireEvent.click(retry);
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     // The critical guarantee: retry re-saved but did NOT broadcast again.
-    expect(mockSendRawTransaction).toHaveBeenCalledTimes(1);
+    expect(mockSendRoseMemo).toHaveBeenCalledTimes(1);
     expect(await screen.findByText(/已上链/)).toBeInTheDocument();
   });
 
@@ -203,7 +173,7 @@ describe("MembershipPanel · Solana mint retry safety", () => {
     // The RPC accepts the tx, but waiting for `finalized` times out locally
     // (congested cluster / slow finality). That must not look like a failed
     // broadcast — rebuilding the tx would put a second memo on-chain.
-    mockConfirmTransaction.mockRejectedValue(
+    mockConfirmSignature.mockRejectedValue(
       new Error("Transaction was not confirmed in 30.00 seconds"),
     );
     const fetchMock = jest
@@ -224,13 +194,13 @@ describe("MembershipPanel · Solana mint retry safety", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /🚀 上链/ }));
 
-    await waitFor(() => expect(mockSendRawTransaction).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockSendRoseMemo).toHaveBeenCalledTimes(1));
     // Signature was pinned before the confirm wait -> "save only" retry path.
     expect(await screen.findByRole("button", { name: /重试保存/ })).toBeInTheDocument();
     expect(screen.getByText(/重试只会重新保存到后端/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /重试保存/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(mockSendRawTransaction).toHaveBeenCalledTimes(1);
+    expect(mockSendRoseMemo).toHaveBeenCalledTimes(1);
   });
 });
