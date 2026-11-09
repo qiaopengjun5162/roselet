@@ -43,7 +43,7 @@
 
 配套把 `app` / `roseId` 两个键名提为后端常量 `MEMO_APP_FIELD` / `MEMO_ROSE_ID_FIELD`，让测试引用的是后端唯一事实来源；生产逻辑零行为变化，不新增依赖、不改模块可见性。
 
-**故意破坏验证**：改程序 ID、删 override、改 app tag、改字段名，4 种漂移全部让测试失败，恢复原文件后通过，前端文件无残留。门禁：`cargo fmt --all -- --check` / `cargo clippy -p roselet-backend --all-targets -- -D warnings` / `cargo test --workspace --lib` 均绿（backend 94 passed + 1 ignored，recommend 153 passed）。另注：`cargo clippy --workspace --all-targets` 会在 `crates/recommend/src/goat.rs:125` 报**既有**的 `useless_format`（与本改动无关），现有门禁口径是 `--lib`，本轮未动该无关文件。
+**故意破坏验证**：改程序 ID、删 override、改 app tag、改字段名，4 种漂移全部让测试失败，恢复原文件后通过，前端文件无残留。门禁：`cargo fmt --all -- --check` / `cargo clippy -p roselet-backend --all-targets -- -D warnings` / `cargo test --workspace --lib` 均绿（backend 94 passed + 1 ignored，recommend 153 passed）。随后清掉 `crates/recommend/src/goat.rs:125` 的既有 `useless_format`：那个 `format!` 没有占位符、只有 `{{` / `}}` 转义，改成普通 `&str` 字面量时**必须同步反转义花括号**，只换成 `.to_string()` 会产出非法 JSON；已用脚本比对新旧字符串逐字相等，`normalizes_equivalent_payment_fields_to_same_reference` 单独通过。至此 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`（CLAUDE.md 规定的严格口径）`RC=0`。CI / pre-commit 仍是 `cargo clippy --all-features -- -D warnings`（不含 `--all-targets`），是否收紧待单独决定。
 
 ## 2026-11-07 会话（四）：图片 → IPFS CID 闭环（会员上链最后一环）
 

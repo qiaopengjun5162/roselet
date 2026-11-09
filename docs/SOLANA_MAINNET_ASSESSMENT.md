@@ -444,7 +444,9 @@ Wallet Standard 的 `solana:signTransaction` 规范明确允许钱包**返回一
 
 **故意破坏验证**：改程序 ID、删 override、改 app tag、改字段名，4 种漂移均使测试失败；恢复后通过，前端文件无残留。门禁 `cargo fmt --all -- --check` / `cargo clippy -p roselet-backend --all-targets -- -D warnings` / `cargo test --workspace --lib` 全绿（backend 94 passed + 1 ignored；recommend 153 passed）。
 
-> 注：`cargo clippy --workspace --all-targets -- -D warnings` 会在 `crates/recommend/src/goat.rs:125` 报**既有**的 `useless_format`，与本改动无关；仓库现有门禁口径是 `--lib`，本轮未改该无关文件。
+> 补充：初稿提到的 `crates/recommend/src/goat.rs:125` 既有 `useless_format` 已在本轮清理——那个 `format!` 没有占位符、只有 `{{` / `}}` 转义，改成普通 `&str` 字面量时必须同步把花括号反转义，否则会产出非法 JSON；已用脚本比对新旧字符串逐字相等，并单独跑该测试通过。至此 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`（CLAUDE.md 规定的严格口径）`RC=0`。
+>
+> 仍待单独决定：CI（`.github/workflows/build.yml`）与 pre-commit 用的是 `cargo clippy --all-features -- -D warnings`，**不含 `--all-targets`**——这正是测试代码里的 lint 债务能长期存在的原因。是否把 CI 口径收紧到 CLAUDE.md 的严格版，需评估对其他贡献者的影响后再定。
 
 ---
 
