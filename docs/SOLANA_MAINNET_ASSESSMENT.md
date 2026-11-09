@@ -295,7 +295,8 @@ lamports_per_byte_year = 5080     exemption_threshold = 1.0
 | kit 版 Devnet 真机铸造 | ✅ 2026-11-08 通过，见 §11.4 |
 | Wallet Standard 会话层（真实注册表 → 连接 → 签名 → 真机铸造） | ✅ 2026-11-08 通过，见 §12.2 |
 | 钱包返回交易的广播前完整性校验 | ✅ 11 个单测 + 真机未误伤，见 §12.1 |
-| **Phantom 扩展本身的 UI / 签名实现** | ❌ **未做**：本机未装扩展，解锁与批准无法可靠自动化；按 §12.3 清单人工确认 |
+| 浏览器端到端：真实 UI → Wallet Standard 连接 → 浏览器内 Ed25519 签名 → 广播 → 链上核验 | ✅ 2026-11-09 通过，见 §13 |
+| **Phantom 扩展本身的解锁 / 批准 UI** | ❌ **仍待人工**：扩展弹窗无法可靠自动化；按 §12.3 清单确认 |
 
 ### 11.4 kit 版 Devnet 实测（2026-11-08）
 
@@ -358,7 +359,7 @@ Wallet Standard 的 `solana:signTransaction` 规范明确允许钱包**返回一
 
 ### 12.3 仅剩的人工手测：Phantom 扩展
 
-本机未安装 Phantom 扩展，且扩展的解锁、导入私钥、批准弹窗无法可靠自动化，因此这一项必须由人在浏览器里点一遍。以下清单可直接照做（**全程 Devnet，不碰真 SOL**）：
+本机**已安装** Phantom 扩展，但扩展的解锁与批准弹窗无法可靠自动化，因此这一项仍须由人在浏览器里点一遍。好消息是：除「扩展自身 UI」外的整条链路（会员面板 → 连接 → 浏览器内签名 → 广播 → 链上核验）已由 §13 的自动化 E2E 跑通，手测重点因此收窄为「Phantom 是否按预期连接、是否返回未改动的已签交易」。以下清单可直接照做（**全程 Devnet，不碰真 SOL**）：
 
 **前置**
 
@@ -382,7 +383,53 @@ Wallet Standard 的 `solana:signTransaction` 规范明确允许钱包**返回一
 - **保留 mint 签名**：若页面出现「钱包丢失或改动了 mint 账户已附加的签名；本次未广播、未扣费」，说明该钱包会重建交易 —— 属于 §12.1 拦下的预期行为，换最新版 Phantom 再试。
 - **交易被重建**：若出现「钱包返回了与待签内容不同的交易」，同上，不要反复重试，记录钱包版本。
 
-手测通过后把 §11.3 最后一行改成 ✅ 并注明 Phantom 版本与日期，才具备「合主线 / 切主网」的验证条件。主网另需付费 RPC、真 SOL，以及 x402 付费路径与会员模式打通。
+手测通过后把 §11.3 最后一行改成 ✅ 并注明 Phantom 版本与日期，才具备「合主线 / 切主网」的验证条件。主网另需付费 RPC、真 SOL，以及 x402 付费路径与会员模式打通。另注意：devnet / testnet 的 `requestAirdrop` 在 2026-11-08 实测已返回 410（水龙头停服），手测所需测试 SOL 需自备；自动化替代方案见 §13。
+
+## 13. 浏览器端到端验证闭环（2026-11-09）
+
+### 13.1 结论
+
+`pnpm verify:phantom:local` → ✅ **PHANTOM E2E PASSED**。真实 Chromium 打开生产构建的 App → 点「🌐 会员」→「连接钱包」→ 浏览器内用 WebCrypto Ed25519 对 Memo 交易签名 → 广播到**本地 `solana-test-validator`** → `getTransaction(jsonParsed)` 核验 `app=roselet`、`roseId` 一致、`meta.err=null`、fee payer = 已连接钱包。
+
+这把 §11.3 中「除扩展弹窗外」的所有环节从代码推断变成实测。**Phantom 扩展自身的解锁 / 批准 UI 仍需 §12.3 人工手测**。
+
+### 13.2 为什么最终采用这套方案
+
+| 尝试 | 结果 | 结论 |
+|---|---|---|
+| 真 Devnet + `requestAirdrop` | `410 Gone`；devnet / testnet / 多个第三方 RPC 均停服 | 公网 faucet 已废，测试钱包注资通道不可用 |
+| `--load-extension` 加载 MV3 假 Phantom | 扩展不加载（`__fakePhantomAddress=null`），headful / headless 皆然 | 改用 `page.addInitScript` 在 MAIN 世界注入同一个 Wallet Standard 钱包 |
+| `next dev` + Playwright | 27 个 JS chunk 全部 200、无异常，但 React 不挂载；Turbopack HMR websocket `ERR_INVALID_HTTP_RESPONSE`，mock 掉 HMR 后仍不 hydration | 换 `next build` + `next start`：生产构建 hydration 正常，也更贴近线上 |
+| 本地验证器默认 genesis | 交易落块但执行返回 `ProgramAccountNotFound` | 默认不含 SPL Memo 程序；从 devnet `solana account` 导出 executable account，用 `--account` 在 genesis 加载 |
+
+最终链路完全自包含：不碰外网 faucet、不花真 SOL、无需后端 `localhost:3001`（广播在浏览器内完成，后端只负责记账；E2E 直接以链上数据为真相来源，不依赖 UI 成功文案）。
+
+### 13.3 E2E 揪出的真实 bug：Memo 程序 ID 前后端不一致
+
+- `@solana-program/memo` 的 `getAddMemoInstruction()` 默认程序地址是 **`Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH`**；
+- 但 `crates/backend/src/routes/solana_onchain.rs` 的核验白名单只认 **`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`** / `MemoSqLa…`；
+- `src/lib/rose-memo.ts` 虽导出并注释了 `MEMO_PROGRAM_ADDRESS`，却没传给指令构造器 → **前端实际发出的交易会被后端链上核验拒绝**。这不是测试环境问题，是生产路径 bug。
+
+**已修**：`getAddMemoInstruction({ memo, signers }, { programAddress: MEMO_PROGRAM_ADDRESS })`，显式钉到后端白名单认可的官方 SPL Memo 程序。
+
+### 13.4 假钱包实现的三个坑
+
+1. **交易线格式**：签名数 compact-u16 从**第 0 字节**开始；v0 的 `0x80` 版本前缀在 **message 内部**，不在交易首字节。按「首字节判 legacy / versioned」或从 offset 1 读签名数，都会让账户表整体错位 → `myIndex=-1` → 返回未签名交易 → kit 报 `#5663012 FEE_PAYER_SIGNATURE_MISSING`。
+2. **固定密钥**：WebCrypto `importKey("raw", …)` 只支持 Ed25519 **公钥**；导入私钥会抛错并静默 fallback 到随机密钥，导致预注资地址每次对不上。改用 PKCS#8 私钥 + `exportKey("raw")` 取公钥，地址固定为 `2X3N2CD…`。
+3. **签名归属**：签名写入 `myIndex * 64` 处（fee payer 通常是账户表第 0 项），且必须覆盖**完整 message（含版本前缀）**。
+
+### 13.5 新增交付物
+
+| 文件 / 入口 | 作用 |
+|---|---|
+| `apps/web/scripts/phantom-e2e.mts`、`pnpm verify:phantom` | E2E 主体；自动探测真 Phantom 扩展，找不到则注入假钱包；主网 RPC 需 `ALLOW_MAINNET=1` 才放行 |
+| `apps/web/scripts/fake-phantom-extension/` | Wallet Standard 假钱包，真实 WebCrypto Ed25519 签名；可作 MV3 扩展加载，也可由 E2E 注入 |
+| `apps/web/scripts/phantom-e2e-local.sh`、`pnpm verify:phantom:local` | 一键闭环：导出 Memo 程序账户 → 起本地验证器并注资 → 生产构建 → 起服务 → 跑 E2E |
+| `next.config.ts` 的 `E2E_SKIP_TYPECHECK` | 默认关闭；仅 E2E 置 1，跳过受限沙盒里会挂住的 build 内 tsc，独立 `pnpm typecheck` 仍是权威门禁 |
+
+### 13.6 已知环境限制
+
+本轮执行沙盒里 `pnpm typecheck` / `jest` 会在 TypeScript worker 处超时，`next build` 会触发批量删除保护（`.next/trace`）——均属执行环境限制；生产构建本体编译成功且 E2E 通过。合主线前应在正常开发机重跑 `pnpm typecheck && pnpm lint && pnpm test && pnpm build`。
 
 ---
 

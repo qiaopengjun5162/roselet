@@ -14,7 +14,9 @@
     "test:coverage": "jest --coverage --runInBand",
     "test:watch": "jest --watch",
     "test:pw": "playwright test -c playwright-ct.config.ts",
-    "verify:solana-nft": "tsx scripts/nft-live-probe.mts"
+    "verify:solana-nft": "tsx scripts/nft-live-probe.mts",
+    "verify:phantom": "tsx scripts/phantom-e2e.mts",
+    "verify:phantom:local": "bash scripts/phantom-e2e-local.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

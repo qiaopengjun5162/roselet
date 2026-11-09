@@ -2,6 +2,41 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-11-09 会话：Phantom 端到端验证闭环（浏览器 → 签名 → 链上核验）
+
+### 目的
+闭合评估文档 §11.3 最后一个 ❌：此前只验证到「Wallet Standard 会话层 + 离线/真机探针」，没把「真实浏览器 UI → 钱包签名 → 广播 → 链上核验」整条串起来。用户指出 Phantom 已装、测试也可用其它方式，因此本轮做自动化 E2E，而不是只留一张人工清单。
+
+### 结论
+`pnpm verify:phantom:local` → ✅ **PHANTOM E2E PASSED**。真实 Chromium 点「🌐 会员」→「连接钱包」→ 浏览器内 WebCrypto Ed25519 签名 Memo 交易 → 广播到本地 `solana-test-validator` → `getTransaction(jsonParsed)` 核验 `app=roselet` / `roseId` 一致 / `meta.err=null` / fee payer = 已连接钱包。详见 `docs/SOLANA_MAINNET_ASSESSMENT.md` §13。
+
+### 关键决策（都是被实测推翻后改的）
+- **不用公网 faucet**：devnet / testnet 的 `requestAirdrop` 已返回 `410 Gone`，多个第三方 RPC 也不通 → 改跑本地 `solana-test-validator`，自带注资、无需外网、不花真 SOL。
+- **不用 MV3 假扩展**：`--load-extension` 在该 Playwright 启动方式下不加载（`__fakePhantomAddress=null`，headful / headless 皆然）→ 改 `page.addInitScript` 在 MAIN 世界注入同一个 Wallet Standard 钱包，签名仍是真实 WebCrypto Ed25519。
+- **不用 `next dev`**：Turbopack HMR websocket 在沙盒里 `ERR_INVALID_HTTP_RESPONSE`，27 个 chunk 全部 200 但 React 不 hydration，点「会员」无反应；mock 掉 HMR 后仍不 hydration → 改 `next build` + `next start`，生产构建 hydration 立即正常。
+- **本地验证器要补 Memo 程序**：默认 genesis 无 SPL Memo，交易落块但执行返回 `ProgramAccountNotFound` → 从 devnet `solana account` 导出 executable account，用 `--account` 在 genesis 加载（需全新 ledger）。
+- **E2E 不依赖后端**：广播发生在浏览器页面内（`sendRoseMemo` → `sendSignedTransaction`），后端 `localhost:3001` 只记账；因此以链上数据为真相来源，不 gate 在 UI 成功文案上。
+
+### 揪出并修复的真实 bug（不是测试环境问题）
+`@solana-program/memo` 的 `getAddMemoInstruction()` 默认用 `Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH`，而后端 `crates/backend/src/routes/solana_onchain.rs` 的核验白名单只认 `MemoSq4…` / `MemoSqLa…`。`src/lib/rose-memo.ts` 虽导出 `MEMO_PROGRAM_ADDRESS` 却没传给指令构造器 → 前端实际发出的交易会被后端链上核验拒绝。已改为 `getAddMemoInstruction(input, { programAddress: MEMO_PROGRAM_ADDRESS })`。
+
+### 假钱包踩的坑
+- **交易线格式**：签名数 compact-u16 从**第 0 字节**读；v0 的 `0x80` 版本前缀在 **message 内部**，不在交易首字节。解析错位会让账户表整体偏移 → `myIndex=-1` → 返回未签名交易 → kit 报 `#5663012 FEE_PAYER_SIGNATURE_MISSING`。
+- **固定密钥**：WebCrypto `importKey("raw")` 只支持 Ed25519 **公钥**，导入私钥会抛错并静默回退随机密钥 → 地址每次变、预注资永远对不上。改用 PKCS#8 私钥 + `exportKey("raw")` 取公钥，地址固定为 `2X3N2CD…`。
+- 签名写 `myIndex*64` 处（fee payer 通常是账户表第 0 项），必须覆盖完整 message（含版本前缀）。
+
+### 改动文件
+- 新增 `apps/web/scripts/phantom-e2e.mts`、`scripts/fake-phantom-extension/{manifest.json,content.js}`、`scripts/phantom-e2e-local.sh`；`package.json` 加 `verify:phantom` / `verify:phantom:local`。
+- `apps/web/src/lib/rose-memo.ts`：显式指定 Memo 程序地址（生产 bug 修复）。
+- `apps/web/next.config.ts`：加 `E2E_SKIP_TYPECHECK` 开关（默认关闭，仅 E2E 置 1，绕开受限沙盒里挂住的 build 内 tsc；独立 `pnpm typecheck` 仍是权威门禁）。
+- `docs/SOLANA_MAINNET_ASSESSMENT.md`：§11.3 拆成「自动化已通过 / 扩展 UI 待人工」两行，§12.3 更正「本机未装 Phantom」，新增 §13 全量记录。
+
+### 上线前必做
+- 真 Phantom 扩展仍需在 Devnet 人工按 §12.3 走一遍（解锁 / 批准弹窗无法可靠自动化），通过后把 §11.3 最后一行的 ❌ 改 ✅ 并注明 Phantom 版本与日期。
+- devnet 水龙头已停服，手测所需测试 SOL 需自备。
+- 主网仍需付费 RPC、真 SOL、x402 付费路径与会员模式打通。
+- 受限沙盒里 `pnpm typecheck` / `jest` 会超时、`next build` 被批量删除保护拦截，属执行环境限制；合主线前在正常开发机重跑全量门禁。
+
 ## 2026-11-07 会话（四）：图片 → IPFS CID 闭环（会员上链最后一环）
 
 ### 目的

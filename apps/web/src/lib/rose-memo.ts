@@ -89,12 +89,19 @@ export async function sendRoseMemo(
     );
   }
   instructions.push(
-    getAddMemoInstruction({
-      memo: JSON.stringify(input.meta),
-      // The memo program only checks signatures it is given; passing the fee
-      // payer keeps the "wallet attested to this text" reading explicit.
-      signers: [feePayer],
-    }),
+    getAddMemoInstruction(
+      {
+        memo: JSON.stringify(input.meta),
+        // The memo program only checks signatures it is given; passing the fee
+        // payer keeps the "wallet attested to this text" reading explicit.
+        signers: [feePayer],
+      },
+      // `@solana-program/memo` defaults to Memo4c2pN8…, which is NOT in the
+      // backend's MEMO_PROGRAM_IDS whitelist (MemoSq4gq… / MemoSqLa…). Without
+      // this override the tx lands on-chain but server-side verification
+      // rejects it — caught by the browser E2E against a local validator.
+      { programAddress: kit.address(MEMO_PROGRAM_ADDRESS) },
+    ),
   );
 
   const message = kit.pipe(
