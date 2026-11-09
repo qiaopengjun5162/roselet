@@ -431,6 +431,21 @@ Wallet Standard 的 `solana:signTransaction` 规范明确允许钱包**返回一
 
 本轮执行沙盒里 `pnpm typecheck` / `jest` 会在 TypeScript worker 处超时，`next build` 会触发批量删除保护（`.next/trace`）——均属执行环境限制；生产构建本体编译成功且 E2E 通过。合主线前应在正常开发机重跑 `pnpm typecheck && pnpm lint && pnpm test && pnpm build`。
 
+### 13.7 防回归：跨语言常量契约测试
+
+§13.3 的 Memo 程序 ID 漂移不是第一次：DEVLOG 2026-11-07 已记过一次同类问题（前端组件直接写 `MemoSqLa…`）。根因是 Rust 与 TS 各写一份字符串，编译器无法交叉校验。为此在 `crates/backend/src/routes/solana_onchain.rs` 的 `mod tests` 增加 `frontend_memo_contract_matches_backend`：测试运行时读 `apps/web/src/lib/rose-memo.ts`，逐项断言——
+
+1. `MEMO_PROGRAM_ADDRESS` 落在后端 `MEMO_PROGRAM_IDS` 白名单内，且等于首选（canonical）ID；
+2. `getAddMemoInstruction` 调用点显式传入 `programAddress:` 并引用共享常量，**专门防默认值回归**；
+3. `app` 标签与 `MEMO_APP_TAG` 一致、`roseId` 字段名与解析器读取的键一致；
+4. 行为级校验：按前端 interface 形状构造的 memo 能被 `parse_rose_memo()` 接受。
+
+配套把 `app` / `roseId` 键名提为后端常量 `MEMO_APP_FIELD` / `MEMO_ROSE_ID_FIELD`，让测试引用后端唯一事实来源而非复制字面量；生产逻辑零行为变化，不加依赖、不改模块可见性。
+
+**故意破坏验证**：改程序 ID、删 override、改 app tag、改字段名，4 种漂移均使测试失败；恢复后通过，前端文件无残留。门禁 `cargo fmt --all -- --check` / `cargo clippy -p roselet-backend --all-targets -- -D warnings` / `cargo test --workspace --lib` 全绿（backend 94 passed + 1 ignored；recommend 153 passed）。
+
+> 注：`cargo clippy --workspace --all-targets -- -D warnings` 会在 `crates/recommend/src/goat.rs:125` 报**既有**的 `useless_format`，与本改动无关；仓库现有门禁口径是 `--lib`，本轮未改该无关文件。
+
 ---
 
 *本评估基于 `main` @ `7b53fb9` 的代码事实核查，随实现演进需同步更新。*

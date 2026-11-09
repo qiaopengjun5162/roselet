@@ -37,6 +37,14 @@
 - 主网仍需付费 RPC、真 SOL、x402 付费路径与会员模式打通。
 - 受限沙盒里 `pnpm typecheck` / `jest` 会超时、`next build` 被批量删除保护拦截，属执行环境限制；合主线前在正常开发机重跑全量门禁。
 
+### 补充（同日）：跨语言常量契约测试，防止第三次 Memo 漂移
+
+前后端分属两个 workspace、常量各写一份，编译器管不到：2026-11-07 已发生过一次同类漂移（组件里直接用 `MemoSqLa…`），本轮 §13.3 是第二次。在 `crates/backend/src/routes/solana_onchain.rs` 的 `mod tests` 新增 `frontend_memo_contract_matches_backend`：测试运行时通过 `env!("CARGO_MANIFEST_DIR")` 读 `apps/web/src/lib/rose-memo.ts`，断言 ① 前端 `MEMO_PROGRAM_ADDRESS` 在后端 `MEMO_PROGRAM_IDS` 白名单内且等于首选 ID；② `getAddMemoInstruction` 调用点显式传 `programAddress:` 且引用共享常量（专门防默认值回归）；③ `app` 标签与 `MEMO_APP_TAG` 一致、`roseId` 字段名与解析器读取的键一致；④ 按前端 interface 形状构造的 memo 能被 `parse_rose_memo()` 接受（行为级而非纯字符串匹配）。
+
+配套把 `app` / `roseId` 两个键名提为后端常量 `MEMO_APP_FIELD` / `MEMO_ROSE_ID_FIELD`，让测试引用的是后端唯一事实来源；生产逻辑零行为变化，不新增依赖、不改模块可见性。
+
+**故意破坏验证**：改程序 ID、删 override、改 app tag、改字段名，4 种漂移全部让测试失败，恢复原文件后通过，前端文件无残留。门禁：`cargo fmt --all -- --check` / `cargo clippy -p roselet-backend --all-targets -- -D warnings` / `cargo test --workspace --lib` 均绿（backend 94 passed + 1 ignored，recommend 153 passed）。另注：`cargo clippy --workspace --all-targets` 会在 `crates/recommend/src/goat.rs:125` 报**既有**的 `useless_format`（与本改动无关），现有门禁口径是 `--lib`，本轮未动该无关文件。
+
 ## 2026-11-07 会话（四）：图片 → IPFS CID 闭环（会员上链最后一环）
 
 ### 目的

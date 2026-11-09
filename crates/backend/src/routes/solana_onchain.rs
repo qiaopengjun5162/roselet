@@ -55,6 +55,12 @@ const MEMO_PROGRAM_IDS: [&str; 2] = [
 /// claim. Optional for older clients, but validated whenever present.
 const MEMO_APP_TAG: &str = "roselet";
 
+/// JSON field names in the memo payload. Kept as constants rather than inline
+/// literals so the cross-language contract test below can assert that the
+/// TypeScript interface declares exactly the keys this Rust parser reads.
+const MEMO_APP_FIELD: &str = "app";
+const MEMO_ROSE_ID_FIELD: &str = "roseId";
+
 static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(8))
@@ -476,14 +482,14 @@ fn parse_rose_memo(text: &str, rose_id: &str) -> Result<JsonValue, String> {
         .map_err(|_| "链上记录不是有效的 JSON（可能来自其它应用）".to_string())?;
     let object = parsed.as_object().ok_or("链上记录不是 JSON 对象，无法确认属于这朵玫瑰")?;
 
-    if let Some(app) = object.get("app").and_then(|v| v.as_str()) {
+    if let Some(app) = object.get(MEMO_APP_FIELD).and_then(|v| v.as_str()) {
         if !app.eq_ignore_ascii_case(MEMO_APP_TAG) {
             return Err(format!("链上记录属于其它应用（app={app}）"));
         }
     }
 
     let declared = object
-        .get("roseId")
+        .get(MEMO_ROSE_ID_FIELD)
         .and_then(|v| v.as_str())
         .map(str::trim)
         .ok_or("链上记录缺少 roseId 字段，无法确认属于这朵玫瑰")?;
@@ -800,5 +806,100 @@ mod tests {
             FetchOutcome::Retryable(msg) => assert!(msg.contains("rate limited")),
             other => panic!("expected Retryable, got {other:?}"),
         }
+    }
+
+    /// Path to the TypeScript half of the memo contract, resolved from the
+    /// crate manifest so the test does not depend on the current directory.
+    const WEB_ROSE_MEMO_MODULE: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../apps/web/src/lib/rose-memo.ts"
+    );
+
+    /// Return the quoted string literal that follows `marker` in the TS source.
+    fn ts_quoted_after<'a>(source: &'a str, marker: &str) -> &'a str {
+        let start = source
+            .find(marker)
+            .unwrap_or_else(|| panic!("frontend memo module is missing `{marker}`"))
+            + marker.len();
+        let rest = &source[start..];
+        let end = rest
+            .find('"')
+            .unwrap_or_else(|| panic!("unterminated string literal after `{marker}`"));
+        &rest[..end]
+    }
+
+    /// The Rust backend and the web frontend live in separate workspaces, so no
+    /// compiler checks that their memo contract agrees. It has already drifted
+    /// twice: once a frontend component used the v3 Memo program, and once
+    /// `getAddMemoInstruction` silently used its own default program id
+    /// (`Memo4c2pN8...`), which this verifier's whitelist rejects. Pin every
+    /// shared literal here by reading the frontend module at test time.
+    #[test]
+    fn frontend_memo_contract_matches_backend() {
+        let src = std::fs::read_to_string(WEB_ROSE_MEMO_MODULE).unwrap_or_else(|e| {
+            panic!(
+                "cannot read {WEB_ROSE_MEMO_MODULE}: {e}. \
+                 This contract test needs a full workspace checkout."
+            )
+        });
+
+        // 1. The program the frontend builds instructions with must be one the
+        //    backend accepts — and the canonical one, not the v3 variant.
+        let frontend_program = ts_quoted_after(&src, "MEMO_PROGRAM_ADDRESS = \"");
+        assert!(
+            MEMO_PROGRAM_IDS.contains(&frontend_program),
+            "frontend MEMO_PROGRAM_ADDRESS ({frontend_program}) is not in the \
+             backend whitelist {MEMO_PROGRAM_IDS:?}"
+        );
+        assert_eq!(
+            frontend_program, MEMO_PROGRAM_IDS[0],
+            "frontend must use the canonical SPL Memo program"
+        );
+
+        // 2. The instruction builder must be told that id *explicitly*. Its
+        //    default (Memo4c2pN8...) is not whitelisted; omitting this config
+        //    is exactly the regression this test exists to catch.
+        let call_site = src
+            .find("getAddMemoInstruction(")
+            .expect("frontend no longer builds a memo instruction");
+        // Slice by lines (not bytes) so a comment containing non-ASCII text
+        // can never land on an invalid UTF-8 boundary.
+        let call: String = src[call_site..].lines().take(15).collect::<Vec<_>>().join("\n");
+        assert!(
+            call.contains("programAddress:"),
+            "getAddMemoInstruction must override its default program id"
+        );
+        assert!(
+            call.contains("MEMO_PROGRAM_ADDRESS"),
+            "getAddMemoInstruction must use the shared MEMO_PROGRAM_ADDRESS constant"
+        );
+
+        // 3. Payload field names and the domain tag.
+        assert_eq!(
+            ts_quoted_after(&src, &format!("{MEMO_APP_FIELD}: \"")),
+            MEMO_APP_TAG,
+            "frontend app tag drifted from the backend"
+        );
+        assert!(
+            src.contains(&format!("{MEMO_ROSE_ID_FIELD}: string;")),
+            "frontend payload must declare `{MEMO_ROSE_ID_FIELD}`"
+        );
+
+        // 4. Behavioural check: a memo shaped like the TS interface must be
+        //    accepted by the Rust parser (not just share the same strings).
+        let mut payload = serde_json::Map::new();
+        payload.insert(
+            MEMO_APP_FIELD.to_string(),
+            JsonValue::String(MEMO_APP_TAG.to_string()),
+        );
+        payload.insert(
+            MEMO_ROSE_ID_FIELD.to_string(),
+            JsonValue::String(ROSE_ID.to_string()),
+        );
+        let memo = JsonValue::Object(payload).to_string();
+        assert!(
+            parse_rose_memo(&memo, ROSE_ID).is_ok(),
+            "backend parser rejected a frontend-shaped memo: {memo}"
+        );
     }
 }
