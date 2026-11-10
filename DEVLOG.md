@@ -4906,3 +4906,31 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **门禁**：前端 `tsc=0` / `lint=0` / **38 suites · 268 tests** / `next build`；Playwright CT **6 tests**；后端 `fmt` / `clippy` / 93 passed + 1 ignored；`--frozen-lockfile`、`git diff --check`。
 
 **仍剩**：评估文档 §12.3 的人工 Phantom 手测清单（本机没装扩展，解锁/批准无法自动化；重点盯 chain id 是否被接受、钱包是否保留 mint 签名）；主网付费 RPC / 真 SOL / x402 打通。
+
+### 收紧 clippy 门禁对齐项目标准（2026-11-10）
+- 背景：`CLAUDE.md:112` 与 `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md:158` 早已规定严格口径 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`，但 CI(`build.yml`)、pre-commit、justfile 三处实际仍用宽松版 `cargo clippy --all-features -- -D warnings`（缺 `--workspace --all-targets`，不查 test/bench，靠人工才抓得到 `goat.rs` 的 `useless_format`）。
+- 改动：上述三处统一换成严格口径；nextest 补 `--workspace`（保留 `-j1` 串行保护测试库）。涉及 `.github/workflows/build.yml`（:41 clippy / :63 nextest）、`.pre-commit-config.yaml`（:13）、`justfile`（:22 / :82 / :151 / :158 / :163）。commit `33da98d`，已 push `codex/solana-mainnet-assessment`。
+- 前提核实：后端无任何 `sqlx::query!` 编译期宏（test 用运行时 `sqlx::query`），故收紧 `--all-targets` 编译 test 目标**不需要** `SQLX_OFFLINE` / `DATABASE_URL`，CI 不会因此挂。
+- 本地验证：严格 clippy `RC=0`；`cargo fmt --all -- --check` 通过；`cargo nextest run -p roselet-recommend --all-features` 153 passed。
+- CI：PR #7 四个 Actions job 中 Backend Tests / Frontend Tests 红——**但查 `ce6fa16`（改动前）同样两红**，属分支既有问题，非本次门禁改动导致；Miniprogram / Agent API 与 Cloudflare / Vercel 两外部 check 均绿。本次改动已用与 CI 相同命令本地验证通过，未引入新红。修复这两个既有失败不在本次 scope（PR #7 为 Draft，文档已标注前端沙盒门禁限制）。
+
+### CI 两个既有红的定位与后端修复（2026-11-10）
+用 `gh run view 42745597178 --log-failed`（`gh` 带 token 才能读 job 日志；`gh api .../actions/jobs/{id}/logs` 无鉴权会 403）逐 step 定位，**修正了上节「改动前后都红」的粗略结论——两个 commit 红的原因不同**：
+- `33da98d` 的 **Clippy step 在 CI 全新环境（ubuntu + stable）✓ 通过**，证实收紧 clippy 没有把 CI 搞红。`Backend Tests` 实际挂在下一步 `Audit dependencies`（`cargo deny check`），后续 migrations / nextest / tests 全被跳过。
+- `Frontend Tests` 挂在最后的 `Test`（`pnpm --filter web test:coverage`），前面 Typecheck / ESLint / Next build 全 ✓。
+
+**Backend 修复：一批 2026 年新 RUSTSEC 公告（不是单个漏洞）**。CI 日志里共 7 条：`RUSTSEC-2026-0258`(h2)、`0285`/`0346`/`0348`/`0349`(rustls)、`0382`(rustls-webpki)、`0386`(tokio)、`0381`(webpki-roots)。`deny.toml` 的 `[advisories] ignore = []`，项目没有用 ignore 绕过，所以走真实升级：
+| crate | 旧 | 新 |
+|---|---|---|
+| `h2` | 0.4.14 | 0.4.20 |
+| `rustls` | 0.23.40 | 0.23.46 |
+| `rustls-webpki` | 0.103.13 | 0.103.16 |
+| `tokio` | 1.52.3 | 1.54.1（1.52.3 正落在 0386 漏洞区间） |
+| `webpki-roots` | 1.0.8 | 1.0.10 |
+
+命令：`cargo update -p webpki-roots@1.0.8 --precise 1.0.10`，再 `cargo update -p h2 -p rustls -p rustls-webpki -p tokio`。**只改 `Cargo.lock`（11 行），不动 `Cargo.toml`**。
+验证：`cargo deny check` → `advisories ok, bans ok, licenses ok, sources ok`（剩余 duplicate / yanked 均为 warning，不 fail）；`cargo fmt --all -- --check` RC=0；严格 clippy RC=0（依赖升级后全量重编译）；`cargo test --workspace --lib` → backend 94 passed + 1 ignored、recommend 153 passed。
+
+**Frontend 红的根因（未改，待决策）**：jest **268 tests 全过**，但全局覆盖率 `statements 86.66% < 90%`、`functions 83.6% < 85%`（`apps/web/jest.config.ts` 门槛）。主要拖累是本分支新增的 `src/lib/rose-nft.ts`（289 行）只有 **8.16%** 覆盖率（88–283 行几乎没单测）、`solana-rpc.ts` 42.85%。属新增 Web3 代码未补单测的技术债，不是配置错误（`jest.config.ts` 未配 `collectCoverageFrom`，只统计被 import 的文件）。**不要通过降低 `coverageThreshold` 或加 `coveragePathIgnorePatterns` 来绕过**——那与「收紧门禁」方向相反，需用户拍板补测试还是留待合主线前专项处理。
+
+**经验**：`cargo deny check` 的 advisory DB 是外部滚动更新的，CI 会「无代码变更突然变红」；本地复现时可能比 CI 多/少报几条（DB 版本差异），要按 `RUSTSEC-*` 全量修，别只修日志 tail 看到的最后一条。
