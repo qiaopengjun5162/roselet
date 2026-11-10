@@ -4934,3 +4934,18 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **Frontend 红的根因（未改，待决策）**：jest **268 tests 全过**，但全局覆盖率 `statements 86.66% < 90%`、`functions 83.6% < 85%`（`apps/web/jest.config.ts` 门槛）。主要拖累是本分支新增的 `src/lib/rose-nft.ts`（289 行）只有 **8.16%** 覆盖率（88–283 行几乎没单测）、`solana-rpc.ts` 42.85%。属新增 Web3 代码未补单测的技术债，不是配置错误（`jest.config.ts` 未配 `collectCoverageFrom`，只统计被 import 的文件）。**不要通过降低 `coverageThreshold` 或加 `coveragePathIgnorePatterns` 来绕过**——那与「收紧门禁」方向相反，需用户拍板补测试还是留待合主线前专项处理。
 
 **经验**：`cargo deny check` 的 advisory DB 是外部滚动更新的，CI 会「无代码变更突然变红」；本地复现时可能比 CI 多/少报几条（DB 版本差异），要按 `RUSTSEC-*` 全量修，别只修日志 tail 看到的最后一条。
+
+### Frontend 覆盖率补测试转绿（2026-11-10）
+按「补测试、不降门槛」推进 `statements 86.66% < 90%` 的缺口（`functions 83.6%` 同批处理）：
+
+**第一步：`rose-nft.ts` 单测**（`src/lib/__tests__/rose-nft.test.ts`，9 tests）。组件测试把 `@/lib/rose-nft` 整个 mock 掉，`mintRoseNft`（最不可逆的链上动作）覆盖率只有 8.16%。桩掉懒加载 SDK 后测真实编排：按最终 mint 尺寸注资、9 指令单交易、广播前 wallet-preserved 交易守卫、preflight 开关、进度回调、**finality 超时不算失败（绝不给二次 mint 入口）**。文件覆盖率 8.16% → 100% stmts/funcs/lines，全局 `functions 83.6% → 85.48%` 过线，`statements 86.66% → 88.72%`。中途踩了 `input.onStep.mock.calls` 的 TS2339（`Partial<MintRoseNftInput>` 展开把 `onStep` 拓宽成联合类型，`.mock` 不保证存在）——改在测试内显式持有 `jest.fn()` 变量，`tsc --noEmit` RC=0。
+
+**第二步：精确缺口定位**。jest 文本报告的「Uncovered Line #s」对一行多语句文件有误导（recommend.ts 的包装函数全是单行多语句，行号显示一片「未覆盖」但断言明明命中）。用 `--coverageReporters=json` 读 `coverage-final.json` 的 `statementMap`/`s` 计数器才拿到真相：`recommend.ts` 173 条语句 33 条真没跑——全部是「WASM 不可用」早退分支 + 「WASM 调用抛错」catch 兜底；`solana-rpc.ts` 的 `fetchBlockhash`/`fetchRentExemptionLamports`/`confirmSignature` 整个函数没测。**诊断期间做过两个临时探针测试验证 `jest.resetModules()` 是否清零计数器——结论：不清零、跨实例累计（46→52）**，计数机制没问题，就是真缺测。探针用完即删。
+
+**第三步：补 9 个测试**：
+- `recommend.test.ts` +2：init 失败时全部 21 个 wrapper 的降级兜底（null/空数组/TS fallback/`WASM 加载失败` throw）；14 个 WASM 函数逐个抛错时 catch 兜底返回 null。
+- `solana-rpc.test.ts` +7：`fetchBlockhash`（finalized blockhash 解包）、`fetchRentExemptionLamports`、`confirmSignature` 全分支（finalized 返回 / 链上 err 抛错 / confirmed 轮询后 finalized / blockhash 过期抛错 / 超时抛错）。
+
+验证：19 tests passed；`tsc --noEmit` RC=0；`eslint` RC=0。沙盒里 jest `--coverage` 全量跑会被 OOM 杀（SIGTERM 137），全局覆盖率以 CI `test:coverage` 为准。
+
+**经验**：① 覆盖率「明明执行了却没计数」先出 json 报告查 `s` 计数器，别信文本报告的行号（一行多语句会误导）；② 沙盒跑 jest 单文件可用绝对路径 + `--config`（cwd 跨命令会丢，`pnpm exec` 触发 GVM_ROOT 报错）；③ `jest.doMock`+`resetModules` 与 hoisted `jest.mock` 两种 mock 模式计数都可靠。
