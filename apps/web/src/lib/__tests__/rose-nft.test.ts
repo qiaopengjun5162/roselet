@@ -228,10 +228,11 @@ describe("mintRoseNft", () => {
   });
 
   it("reports progress in order and returns the on-chain identity", async () => {
-    const input = makeInput();
+    const onStep = jest.fn();
+    const input = makeInput({ onStep });
     const result = await mintRoseNft(input);
 
-    const steps = input.onStep.mock.calls.map((call) => String(call[0]));
+    const steps = onStep.mock.calls.map((call) => String(call[0]));
     expect(steps).toHaveLength(5);
     expect(steps[0]).toContain("生成 mint 密钥对");
     expect(steps[1]).toContain("读取租金");
@@ -294,7 +295,8 @@ describe("mintRoseNft", () => {
 
   it("treats a finality timeout as success and never offers a second mint", async () => {
     mockConfirm.mockRejectedValueOnce(new Error("confirmation timeout"));
-    const input = makeInput();
+    const onStep = jest.fn();
+    const input = makeInput({ onStep });
 
     // A timeout must NOT throw: the tx is already broadcast, and throwing
     // would make the UI offer a retry that creates a SECOND NFT.
@@ -302,7 +304,7 @@ describe("mintRoseNft", () => {
 
     expect(result.signature).toBe(SIGNATURE);
     expect(mockSend).toHaveBeenCalledTimes(1);
-    const steps = input.onStep.mock.calls.map((call) => String(call[0]));
+    const steps = onStep.mock.calls.map((call) => String(call[0]));
     expect(steps[steps.length - 1]).toContain("仍在等待最终确认");
   });
 });
