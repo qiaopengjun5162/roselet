@@ -4949,3 +4949,5 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 验证：19 tests passed；`tsc --noEmit` RC=0；`eslint` RC=0。沙盒里 jest `--coverage` 全量跑会被 OOM 杀（SIGTERM 137），全局覆盖率以 CI `test:coverage` 为准。
 
 **经验**：① 覆盖率「明明执行了却没计数」先出 json 报告查 `s` 计数器，别信文本报告的行号（一行多语句会误导）；② 沙盒跑 jest 单文件可用绝对路径 + `--config`（cwd 跨命令会丢，`pnpm exec` 触发 GVM_ROOT 报错）；③ `jest.doMock`+`resetModules` 与 hoisted `jest.mock` 两种 mock 模式计数都可靠。
+
+**CI 结果（run 42773483053，commit `60aae63`）：四个 job 全部 success，本分支首次全绿。** Frontend Test 全局覆盖率 `statements 91.29%`（≥90）、`branches 79.29%`（≥70）、`functions 86.41%`（≥85）、`lines 93.93%`（≥90）四项全过，286 tests 全过；`recommend.ts` 81.5%→**100% stmts**、`solana-rpc.ts` 42.85%→**100% 全项**。至此 Frontend 覆盖率与 Backend cargo-deny 两个既有红全部修复（后端见上节依赖升级 `a353cfc`）。
