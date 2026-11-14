@@ -4990,4 +4990,8 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 本地门禁全绿：`cargo fmt --all -- --check` RC=0、严格 clippy RC=0、`cargo test --workspace --lib` → backend 94+1 ignored / recommend **157 passed**（153+4）；Web `recommend.test.ts` 10 passed、`eslint` RC=0、`tsc --noEmit` RC=0（后台 4m43s）；小程序 `wasm.test.ts` 1 passed、`tsc --noEmit` RC=0。
 
-边界：新增 1 个 Rust 测试文件、改 2 个 TS 兜底文件 + 1 个既有断言 + 清单/DEVLOG；未改配置 / 工作流 / 依赖，未合 PR #7。
+边界：新增 1 个 Rust 测试文件、改 2 个 TS 兜底文件 + 1 个既有断言 + 清单/DEVLOG；未改配置 / 工作流 / 依赖，未合 PR #7。契约测试只锁「常量 / 文案型」兜底，**行为型**兜底（Web `recommend.ts:98,102,123-124,129-131` 的音频策略 / `buildGardenUrl` / `buildPlantBody`，小程序 `wasm.ts:47-54,112` 的同名函数与 `colorOptions`）仍未覆盖，需等共享包抽取后靠单一实现解决；UI 里另有硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`），是另一类双份维护。
+
+**CI 结果（run `43607696977`，commit `8a2fc6e`）：四个 job 全部 success。** Frontend 41 suites / 308 tests 全过，全局覆盖率 `statements 91.51%` / `branches 79.53%` / `functions 86.78%` / `lines 94.1%` 四项全过（与补测前持平），`recommend.ts` 100% stmts/funcs/lines；Miniprogram 66 tests / 99.33%，Agent API 97.25%。Rust 侧 4 个契约测试在 CI 全新环境同样通过（recommend 157 passed）。
+
+**环境问题与确定性解法（更新此前「重试碰运气」的做法）**：push 连续遇 `HTTP2 framing layer` 与 `CONNECT tunnel failed, response 502`；`git -c http.version=HTTP/1.1` 仍 502、`env -u HTTPS_PROXY -u HTTP_PROXY ... git push` 直连 75s 超时；**`git -c http.proxy=http://127.0.0.1:7890 push origin HEAD` 一次成功**（本机 Clash 代理）。以后遇 502 直接用这条，不必反复重试。推完照例用 `gh api repos/qiaopengjun5162/roselet/git/ref/heads/codex/solana-mainnet-assessment --jq '.object.sha'` 与本地 `git rev-parse HEAD` 对齐，确认本地/远端同为 `8a2fc6e`。

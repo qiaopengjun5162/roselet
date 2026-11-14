@@ -176,7 +176,15 @@
 
 **有效性验证**：先让测试在真实漂移下跑出 `1 failed`（`left: Some("🌸") / right: Some("🌹")`）；再做 3 组 mutation（改 Web 颜色 emoji、改小程序颜色 label、改 tips 文案），3 条静态测试分别 `FAILED`、全部 `CAUGHT`，随后自动恢复源码并重跑 `4 passed`。
 
-本地门禁：`cargo fmt --all -- --check` RC=0、严格 clippy RC=0、`cargo test --workspace --lib` → backend 94+1 ignored / recommend **157 passed**（含新增 4）；Web `recommend.test.ts` 10 passed、`eslint` RC=0；小程序 `wasm.test.ts` 1 passed、`tsc --noEmit` RC=0。
+本地门禁：`cargo fmt --all -- --check` RC=0、严格 clippy RC=0、`cargo test --workspace --lib` → backend 94+1 ignored / recommend **157 passed**（含新增 4）；Web `recommend.test.ts` 10 passed、`eslint` RC=0、`tsc --noEmit` RC=0；小程序 `wasm.test.ts` 1 passed、`tsc --noEmit` RC=0。
+
+**仍未覆盖的「行为型」兜底**（契约测试只能锁常量 / 文案，锁不了构造逻辑，需等共享包抽取后靠单一实现解决）：Web `recommend.ts:98,102` 音频策略、`:123-124` `buildGardenUrl`、`:129-131` `buildPlantBody`；小程序 `wasm.ts:47-54` `buildPlantBody`、`:112` `colorOptions`。另外 UI 里还有硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`），不属于 WASM 兜底，是另一类双份维护。
+
+### 6.4 CI 结果与一次确定性的 push 解法
+
+**CI 结果（run `43607696977`，commit `8a2fc6e`）：四个 job 全部 success。** Frontend 41 suites / 308 tests 全过，全局覆盖率 `statements 91.51%` / `branches 79.53%` / `functions 86.78%` / `lines 94.1%` 四项全过（与补测前持平）；`recommend.ts` 100% stmts/funcs/lines。Miniprogram 66 tests / 99.33%，Agent API 97.25%。4 个新契约测试在 CI 全新环境同样通过（recommend 157 passed）。
+
+**push 的确定性解法**：这次沙盒代理连续 `HTTP2 framing layer` / `CONNECT 502`，`http.version=HTTP/1.1`、清掉 env 代理直连（75s 超时）都失败；最终 `git -c http.proxy=http://127.0.0.1:7890 push origin HEAD` 一次成功——本机 Clash 代理可用。以后遇 502 不必盲目重试，直接用这条；推完仍用 `gh api repos/<owner>/<repo>/git/ref/heads/<branch>` 对齐本地 `git rev-parse HEAD`，别把「本地已 commit」当成「已推送」。
 
 ---
 
