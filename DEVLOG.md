@@ -4962,3 +4962,16 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **边界**：本次只新增清单文档，未改任何产品代码 / 配置 / 工作流，未合 PR #7（合主线会触发 `workflow_run` 生产部署，属不可逆外部动作），未做跨端重构。
 
 **环境问题与处理**：push 连续遇 `Error in the HTTP2 framing layer` 与 `CONNECT tunnel failed, response 502`（沙盒代理抖动），`git -c http.version=HTTP/1.1` 绕不过 502，默认 `git push` 第三次重试成功。**验证必须用 `gh api repos/<owner>/<repo>/git/ref/heads/<branch> --jq '.object.sha'` 对比本地 `git rev-parse HEAD`**——否则容易把「本地已 commit」误判成「已推送」。
+
+### 链上不可逆路径补真单测 + D1 重新评估（2026-11-14 晚）
+按 `docs/TEAM_REVIEW_CHECKLIST.md` 的 D2 落地：新增 `apps/web/src/lib/__tests__/rose-memo.test.ts`（10 例）与 `chain.test.ts`（12 例），共 22 例。此前这两个模块只被 `membership-panel.test.tsx` / `rose-memorial.test.tsx` 整体 mock，真实实现零单测。
+
+锁住的契约：
+- `sendRoseMemo`：必须显式传 `{ programAddress: MEMO_PROGRAM_ADDRESS }`（`@solana-program/memo` 默认 `Memo4c2pN8…` 不在后端白名单，是浏览器 E2E 抓到过的真实生产 bug）；compute-budget 先 limit 后 price、priority fee=0 时两条都不加、v0 message + feePayer + blockhash、编码 wire 交给钱包签名、`skipPreflight:true` / `maxRetries:5`、返回即结束不等 finality（超时不重播）、钱包拒绝与广播失败都要抛出且不吞错。
+- `mintRoseMemorial`：`roseId` 去横线后 pad 到 32 字节、颜色 `red/white/yellow → 0/1/2`、切 Base Sepolia、等 1 个确认；无钱包 / 无账户 / 合约地址无效 / 颜色非法 / 编号非法 / 回执失败全部抛错。
+
+本地验证：jest 22 passed；`tsc --noEmit` RC=0（前台两次被沙盒 SIGTERM 137 杀掉，改后台任务 6m29s 跑完 RC=0）；`eslint` RC=0。jest `--coverage` 在沙盒跑 10m+ 未完成，已主动停掉，全局覆盖率以 CI `test:coverage` 为准。
+
+**D1 重新评估（修正此前子代理结论）**：`apps/miniprogram/src/utils/wasm.ts:46-69,105-112` 与 `apps/web/src/lib/recommend.ts:50-61,96-100,121-124` 的「双份业务逻辑」其实是 **WASM 加载失败 / 抛错时的降级兜底**（`COLOR_FALLBACK`、`buildPlantBody` fallback 等）。WASM 不可用时，放在 WASM 里的兜底同样跑不了，因此「把兜底搬进 Rust WASM」逻辑上不成立。正确做法：① 兜底数据 / 纯函数抽到跨端共享包 `packages/core`；② 加契约测试锁住 fallback 与 Rust WASM 输出一致（复用 `frontend_memo_contract_matches_backend` 的「运行时读前端 TS 断言常量」模式）；③ WASM 仍是唯一权威实现，TS 只留最小降级。该项涉及 `just agent-wasm` 构建链与两端调用方，**本轮未动**，已写入清单 §6.2。
+
+边界：只新增测试文件并更新清单文档，未改产品代码 / 配置 / 工作流，未合 PR #7。

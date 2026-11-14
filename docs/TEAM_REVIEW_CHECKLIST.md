@@ -98,8 +98,8 @@
 
 | # | 检查项 | 判定标准 | 依据 |
 |---|---|---|---|
-| D1 | 业务逻辑双份维护（最高优先） | Web 与小程序各自复制了颜色文案 / 日期格式化 / 音频策略 / 请求体构造，违反「跨端逻辑放 Rust WASM」；已因此出过 Memo 程序 ID 漂移的真实生产 bug | `AGENTS.md`「必须遵守」第 2-4 条；`apps/web/src/lib/recommend.ts:50,56,59,61,81,96-100,121-124,127`；`apps/miniprogram/src/utils/wasm.ts:46-69,105-112`；`DEVLOG.md` Memo 修复记录 |
-| D2 | 最不可逆的链上路径没真单测 | `rose-memo.ts`、`chain.ts` 被组件测试整体 mock 掉，需补独立单测 | `apps/web/src/lib/`；对照片段已由 `rose-nft.test.ts` 补到 100% |
+| D1 | 业务逻辑双份维护（最高优先，**结论已修订，见 §6**） | Web 与小程序各有一套降级兜底（颜色文案 / 日期 / 音频策略 / 请求体），容易漂移；已因此出过 Memo 程序 ID 不一致的真实生产 bug。**注意：这些是「WASM 不可用」时的兜底，不能简单搬进 WASM** | `AGENTS.md`「必须遵守」第 2-4 条；`apps/web/src/lib/recommend.ts:50-61,96-100,121-124`；`apps/miniprogram/src/utils/wasm.ts:46-69,105-112`；`DEVLOG.md` Memo 修复记录 |
+| D2 | ~~最不可逆的链上路径没真单测~~ **已完成（见 §6）** | `rose-memo.ts`、`chain.ts` 曾被组件测试整体 mock 掉，现已各有独立单测（22 例） | `apps/web/src/lib/__tests__/rose-memo.test.ts`、`chain.test.ts` |
 | D3 | live RPC 测试长期 `#[ignore]` | 唯一一处 `#[ignore]`，需约定「何时手动跑、谁跑」 | `crates/backend/src/routes/solana_nft.rs:668` |
 | D4 | 生产路径 panic 风险 | 非测试代码 37 处 `.unwrap()` / `.expect()` / `panic!` / `unsafe`，其中 22 处集中在 `crates/recommend/src/lib.rs`；WASM 序列化失败或锁中毒会 panic | 当日复核统计；`crates/backend/src/rate_limit.rs` |
 | D5 | 超长生产文件拆分 | `solana_onchain.rs` 905、`solana_nft.rs` 687、`recommend/lib.rs` 645、`api.ts` 540、`plant/page.tsx` 471、`emotion.rs` 462、`garden.rs` 449、`membership-panel.tsx` 429；优先拆 `solana_onchain.rs`（里面还混着读前端 TS 的契约测试） | 当日复核统计 |
@@ -112,7 +112,7 @@
 
 - [ ] **E1**：PR #7 是否转 ready-for-review 并合主线？CI 已全绿、MERGEABLE，但 B1 手测未做。合主线会触发 `Deploy Backend` 的 `workflow_run`，属于生产动作。
 - [ ] **E2**：主网化是否单独立项？`SOLANA_MAINNET_ASSESSMENT.md:141-146` 的建议是「先在 Devnet 验证 PMF，再走阶段 1」，且 `PRODUCT.md:68` 明确 DAU<10000 不考虑 Web3。
-- [ ] **E3**：先做哪个代码项？我建议 D1（双份兜底收敛）优先于 D5（拆文件）。
+- [ ] **E3**：先做哪个代码项？建议按 §6 修订后的 D1 做（共享包 + 契约测试），优先于 D5 拆文件；D2 已完成。
 
 ---
 
@@ -128,12 +128,36 @@
 
 ---
 
-## 5. 本次盘点没有动的东西（边界）
+## 5. 盘点轮次的边界（2026-11-14 白天）
 
 - 没有修改任何产品代码、配置或工作流。
 - **没有**合 PR #7（会触发生产部署，属不可逆外部动作）。
 - **没有**做 D1 重构（跨 Web / 小程序 / WASM 的大改）。
-- 只新增了本清单文档，并按项目规则 commit + push；纯文档变更不会触发 `Deploy Backend`。
+- 盘点轮次只新增了本清单文档，并按项目规则 commit + push；纯文档变更不会触发 `Deploy Backend`。
+- 后续轮次的改动见 §6：仅新增测试文件，仍不触碰产品代码 / 配置 / 工作流。
+
+---
+
+## 6. 后续进展（2026-11-14 晚）
+
+### 6.1 D2 已完成：链上不可逆路径补真单测
+
+新增 `apps/web/src/lib/__tests__/rose-memo.test.ts`（10 例）与 `chain.test.ts`（12 例），共 22 例；本地 `jest` 全过、`tsc --noEmit` RC=0、`eslint` RC=0。锁住两处服务端会校验的编码契约：
+
+- `sendRoseMemo`：必须显式传 `{ programAddress: MEMO_PROGRAM_ADDRESS }`，禁止 SDK 默认的 `Memo4c2pN8…`（浏览器 E2E 抓到过的真实生产 bug）；compute-budget 指令顺序（先 limit 后 price）、`skipPreflight: true` / `maxRetries: 5`，以及「本函数不等 finality，超时不重播」的边界。
+- `mintRoseMemorial`：`roseId → bytes32`、颜色 `red/white/yellow → 0/1/2`、必须切 Base Sepolia、等 1 个确认；无钱包 / 无账户 / 地址无效 / 颜色非法 / 编号非法 / 回执失败全部抛错，不静默当成功。
+
+### 6.2 D1 重新评估：不能简单「搬进 Rust WASM」
+
+复核源码后发现，所谓「双份业务逻辑」主要是 **WASM 加载失败或调用抛错时的降级兜底**：`apps/miniprogram/src/utils/wasm.ts:46-69`（`buildPlantBody` fallback）、`:105-112`（`COLOR_FALLBACK`）、`apps/web/src/lib/recommend.ts:50-61`（tips fallback）、`:96-100`、`:121-124`。**WASM 都不可用时，放在 WASM 里的兜底同样跑不了**，所以「把兜底搬进 WASM」逻辑上不成立，上表 D1 的笼统描述已据此修订。
+
+正确的收敛方向：
+
+1. 兜底**数据与纯函数**抽到跨端共享包（项目已有 `packages/core` / `@roselet/core`，小程序已引用其类型），Web 与小程序都从那里取，消除两份硬编码；
+2. 加**契约测试**锁住 fallback 与 Rust WASM 正常输出一致（复用 `crates/backend/src/routes/solana_onchain.rs` 的 `frontend_memo_contract_matches_backend` 模式：运行时读前端 TS 断言常量），防住 Memo 程序 ID 那类漂移；
+3. Rust WASM 继续做唯一权威实现，TS 侧只保留「不可用时的最小降级」。
+
+这项**仍未动**：涉及 WASM 构建链（`just agent-wasm`）与两端调用方，需单独排期，不宜顺手改。
 
 ---
 
