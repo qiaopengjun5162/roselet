@@ -122,9 +122,14 @@ mod tests {
     #[test]
     fn normalizes_equivalent_payment_fields_to_same_reference() {
         let baseline = build_order_reference(&input_json()).unwrap();
-        let equivalent = build_order_reference(&format!(
-            r#"{{"reflection":{{"gratitude":"thanks","color":"red"}},"payer":"0x1111111111111111111111111111111111111111","chain_id":48816,"token_symbol":"usdc","token_contract":"0x2222222222222222222222222222222222222222","amount_wei":"01000"}}"#
-        ))
+        // A plain &str literal: the previous `format!` had no placeholders,
+        // only `{{` / `}}` escapes. Replacing it with `.to_string()` while
+        // keeping those escapes would emit invalid JSON, so the braces are
+        // unescaped here. Still deliberately differs from `input_json()` in
+        // field order, token symbol case and leading zeros.
+        let equivalent = build_order_reference(
+            r#"{"reflection":{"gratitude":"thanks","color":"red"},"payer":"0x1111111111111111111111111111111111111111","chain_id":48816,"token_symbol":"usdc","token_contract":"0x2222222222222222222222222222222222222222","amount_wei":"01000"}"#,
+        )
         .unwrap();
 
         assert_eq!(baseline, equivalent);

@@ -41,6 +41,12 @@ async fn create_test_app() -> (axum::Router, PgPool) {
         private_rose_monthly_limit: DEFAULT_PRIVATE_ROSE_MONTHLY_LIMIT,
         base_sepolia_rpc_url: None,
         rose_memorial_contract_address: None,
+        // Unset on purpose: the Solana routes fall back to "skip verification"
+        // (memo) or 503 (NFT) when no RPC is configured, so integration tests
+        // never reach the network.
+        solana_rpc_url: None,
+        pinata_jwt: None,
+        pinata_upload_url: roselet_backend::config::DEFAULT_PINATA_UPLOAD_URL.to_string(),
         is_production: false,
     };
     let state = roselet_backend::state::AppState::new(pool.clone(), config);

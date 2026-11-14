@@ -46,14 +46,22 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "服务器内部错误".to_string(),
             ),
-            AppError::ServiceUnavailable(_) => (
-                StatusCode::SERVICE_UNAVAILABLE,
-                self.to_string(),
-            ),
+            AppError::ServiceUnavailable(_) => (StatusCode::SERVICE_UNAVAILABLE, self.to_string()),
         };
 
         (status, Json(json!({ "error": message }))).into_response()
     }
+}
+
+/// True when a `sqlx` error is a unique-constraint violation.
+///
+/// The on-chain reference endpoints check "is this rose / mint already
+/// recorded?" and then insert. Two concurrent requests can both pass that
+/// check, so the unique index is the real guarantee — the equivalent of
+/// Anchor's atomic `init`. Recognising the violation lets the loser of the race
+/// get a 400 ("already recorded") instead of a 500.
+pub fn is_unique_violation(err: &sqlx::Error) -> bool {
+    err.as_database_error().map(|e| e.is_unique_violation()).unwrap_or(false)
 }
 
 #[cfg(test)]

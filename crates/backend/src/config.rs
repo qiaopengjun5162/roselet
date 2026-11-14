@@ -66,8 +66,7 @@ impl Config {
         let rose_memorial_contract_address = env::var("ROSE_MEMORIAL_CONTRACT_ADDRESS")
             .ok()
             .filter(|address| !address.is_empty());
-        let solana_rpc_url =
-            env::var("SOLANA_RPC_URL").ok().filter(|url| !url.is_empty());
+        let solana_rpc_url = env::var("SOLANA_RPC_URL").ok().filter(|url| !url.is_empty());
         let pinata_jwt = env::var("PINATA_JWT").ok().filter(|jwt| !jwt.is_empty());
         let pinata_upload_url = env::var("PINATA_UPLOAD_URL")
             .ok()

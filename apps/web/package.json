@@ -13,14 +13,25 @@
     "test": "jest",
     "test:coverage": "jest --coverage --runInBand",
     "test:watch": "jest --watch",
-    "test:pw": "playwright test -c playwright-ct.config.ts"
+    "test:pw": "playwright test -c playwright-ct.config.ts",
+    "verify:solana-nft": "tsx scripts/nft-live-probe.mts",
+    "verify:phantom": "tsx scripts/phantom-e2e.mts",
+    "verify:phantom:local": "bash scripts/phantom-e2e-local.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@demox-labs/aleo-wallet-adapter-base": "0.0.23",
     "@demox-labs/aleo-wallet-adapter-leo": "0.0.25",
     "@demox-labs/aleo-wallet-adapter-react": "0.0.22",
-    "@solana/web3.js": "^1.99.0",
+    "@solana-program/compute-budget": "^0.20.0",
+    "@solana-program/memo": "^0.16.0",
+    "@solana-program/system": "^0.16.0",
+    "@solana-program/token-2022": "^0.20.1",
+    "@solana/kit": "^8.6.0",
+    "@solana/sysvars": "^8.0.0",
+    "@solana/wallet-standard": "^1.1.8",
+    "@solana/zk-sdk": "^0.5.4",
+    "@wallet-standard/app": "^1.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
@@ -50,6 +61,8 @@
     "playwright": "^1.60.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.11",
-    "typescript": "^5"
+    "tsx": "4.23.1",
+    "typescript": "^5",
+    "undici": "7.28.0"
   }
 }

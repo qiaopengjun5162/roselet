@@ -9,20 +9,8 @@ import {
   type ReactNode,
 } from "react";
 
-// Phantom / Solana wallet providers inject a `solana` object on window.
-declare global {
-  interface Window {
-    solana?: {
-      isPhantom?: boolean;
-      publicKey?: { toBase58: () => string };
-      isConnected?: boolean;
-      connect: () => Promise<{ publicKey: { toBase58: () => string } }>;
-      disconnect: () => Promise<void>;
-      // Phantom signs a transaction and returns it (still a Transaction with serialize()).
-      signTransaction?: (transaction: unknown) => Promise<{ serialize: () => Uint8Array }>;
-    };
-  }
-}
+import type { SignTransactionFn } from "@/lib/solana-rpc";
+import { type WalletSession, connectSolanaWallet } from "@/lib/wallet";
 
 interface MembershipContextValue {
   /** Whether the Web3 / membership UI is active. Default OFF — normal app has no Web3. */
@@ -44,6 +32,12 @@ interface MembershipContextValue {
   clearMintTarget: () => void;
   /** Connected Solana wallet address (base58), or null. */
   walletAddress: string | null;
+  /**
+   * Sign a compiled transaction (wire bytes) with the connected wallet, and
+   * return the signed bytes. Null until a wallet is connected. Signing goes
+   * through the Wallet Standard — see `lib/wallet.ts`.
+   */
+  signTransaction: SignTransactionFn | null;
   connectError: string | null;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
@@ -56,26 +50,26 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [mintTargetRoseId, setMintTargetRoseId] = useState<string | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [session, setSession] = useState<WalletSession | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
 
   const connectWallet = useCallback(async () => {
     setConnectError(null);
-    if (typeof window === "undefined" || !window.solana) {
-      setConnectError("未检测到 Solana 钱包（请安装 Phantom 等浏览器插件）");
-      return;
-    }
+    if (typeof window === "undefined") return;
     try {
-      const res = await window.solana.connect();
-      setWalletAddress(res.publicKey.toBase58());
+      const next = await connectSolanaWallet();
+      setSession(next);
+      setWalletAddress(next.address);
     } catch (e) {
       setConnectError(e instanceof Error ? e.message : "连接钱包失败");
     }
   }, []);
 
   const disconnectWallet = useCallback(() => {
-    window.solana?.disconnect().catch(() => {});
+    session?.disconnect();
+    setSession(null);
     setWalletAddress(null);
-  }, []);
+  }, [session]);
 
   const toggleMember = useCallback(() => {
     const next = !isMember;
@@ -113,6 +107,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       openMint,
       clearMintTarget,
       walletAddress,
+      signTransaction: session?.signTransaction ?? null,
       connectError,
       connectWallet,
       disconnectWallet,
@@ -127,6 +122,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       openMint,
       clearMintTarget,
       walletAddress,
+      session,
       connectError,
       connectWallet,
       disconnectWallet,

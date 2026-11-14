@@ -19,7 +19,7 @@ clean:
 
 # 运行所有测试
 test:
-    NO_PROXY=localhost,127.0.0.1 cargo nextest run --all-features -j1
+    NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features -j1
     cd apps/web && pnpm test
     cd apps/miniprogram && pnpm test
     cd apps/agent-api && pnpm test
@@ -79,7 +79,7 @@ check:
 
 # clippy lint
 clippy:
-    cargo clippy --all-features -- -D warnings
+    cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings
 
 # 格式化检查
 format:
@@ -148,19 +148,19 @@ db-reset:
 # 完整检查（格式 + lint + 审计 + 测试）
 check-all:
     cargo fmt --all -- --check
-    cargo clippy --all-features -- -D warnings
+    cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings
     cargo deny check
     pnpm typecheck
     pnpm lint
     cd apps/web && pnpm build
     pnpm agent:build
     pnpm agent:test
-    cargo nextest run --all-features -j1
+    cargo nextest run --workspace --all-features -j1
 
 # 提交前检查
 pre-commit:
     cargo fmt --all -- --check
-    cargo clippy --all-features -- -D warnings
+    cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings
     cargo deny check
     pnpm typecheck
     pnpm lint

@@ -11,6 +11,7 @@ import { RosePlayer } from "@/components/rose-player";
 import { colorEmoji, colorLabel } from "@/lib/recommend";
 import { RoseMemorial } from "@/components/rose-memorial";
 import { RoseSolanaMint } from "@/components/rose-solana-mint";
+import { RoseNftMint } from "@/components/rose-nft-mint";
 
 function resolveRoseId(id: string): string {
   if (id !== "placeholder" || typeof window === "undefined") return id;
@@ -258,6 +259,7 @@ export function RoseDetailClient({ id }: { id: string }) {
               onVerified={setMemorial}
             />
             <RoseSolanaMint rose={rose} canMint={Boolean(isOwner)} />
+            <RoseNftMint rose={rose} canMint={Boolean(isOwner)} />
             <div className="pt-4 border-t border-white/10 flex items-center gap-4 flex-wrap">
               <Button
                 variant="outline"
