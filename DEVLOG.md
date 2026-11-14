@@ -4975,3 +4975,5 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **D1 重新评估（修正此前子代理结论）**：`apps/miniprogram/src/utils/wasm.ts:46-69,105-112` 与 `apps/web/src/lib/recommend.ts:50-61,96-100,121-124` 的「双份业务逻辑」其实是 **WASM 加载失败 / 抛错时的降级兜底**（`COLOR_FALLBACK`、`buildPlantBody` fallback 等）。WASM 不可用时，放在 WASM 里的兜底同样跑不了，因此「把兜底搬进 Rust WASM」逻辑上不成立。正确做法：① 兜底数据 / 纯函数抽到跨端共享包 `packages/core`；② 加契约测试锁住 fallback 与 Rust WASM 输出一致（复用 `frontend_memo_contract_matches_backend` 的「运行时读前端 TS 断言常量」模式）；③ WASM 仍是唯一权威实现，TS 只留最小降级。该项涉及 `just agent-wasm` 构建链与两端调用方，**本轮未动**，已写入清单 §6.2。
 
 边界：只新增测试文件并更新清单文档，未改产品代码 / 配置 / 工作流，未合 PR #7。
+
+**CI 结果（run `43603278426`，commit `b33fc1f`）：四个 job 全部 success。** Frontend Test 41 suites / 308 tests 全过，全局覆盖率 `statements 91.51%` / `branches 79.53%` / `functions 86.78%` / `lines 94.1%` 四项全过（补测前 91.29%）；`chain.ts`、`rose-memo.ts` 均 100% 全项。Miniprogram 66 tests / 99.33%，Solana x402 Agent API 97.25%。此前「沙盒跑不动全局覆盖率」的缺口由 CI 补齐，未降任何门槛。

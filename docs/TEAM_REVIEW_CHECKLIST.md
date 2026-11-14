@@ -147,6 +147,8 @@
 - `sendRoseMemo`：必须显式传 `{ programAddress: MEMO_PROGRAM_ADDRESS }`，禁止 SDK 默认的 `Memo4c2pN8…`（浏览器 E2E 抓到过的真实生产 bug）；compute-budget 指令顺序（先 limit 后 price）、`skipPreflight: true` / `maxRetries: 5`，以及「本函数不等 finality，超时不重播」的边界。
 - `mintRoseMemorial`：`roseId → bytes32`、颜色 `red/white/yellow → 0/1/2`、必须切 Base Sepolia、等 1 个确认；无钱包 / 无账户 / 地址无效 / 颜色非法 / 编号非法 / 回执失败全部抛错，不静默当成功。
 
+**CI 结果（run `43603278426`，commit `b33fc1f`）：四个 job 全部 success。** Frontend 41 suites / 308 tests 全过，全局覆盖率 `statements 91.51%` / `branches 79.53%` / `functions 86.78%` / `lines 94.1%` 四项全过（较补测前的 91.29% 继续提升）；`chain.ts` 与 `rose-memo.ts` 双双 **100% 全项**。小程序 66 tests / 99.33%，Agent API 97.25%。
+
 ### 6.2 D1 重新评估：不能简单「搬进 Rust WASM」
 
 复核源码后发现，所谓「双份业务逻辑」主要是 **WASM 加载失败或调用抛错时的降级兜底**：`apps/miniprogram/src/utils/wasm.ts:46-69`（`buildPlantBody` fallback）、`:105-112`（`COLOR_FALLBACK`）、`apps/web/src/lib/recommend.ts:50-61`（tips fallback）、`:96-100`、`:121-124`。**WASM 都不可用时，放在 WASM 里的兜底同样跑不了**，所以「把兜底搬进 WASM」逻辑上不成立，上表 D1 的笼统描述已据此修订。
