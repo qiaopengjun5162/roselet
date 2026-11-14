@@ -107,6 +107,9 @@ const COLOR_FALLBACK: ColorMeta[] = [
   { id: 'white', label: '白玫瑰', emoji: '🤍' },
   { id: 'yellow', label: '黄玫瑰', emoji: '💛' },
 ];
-export function colorEmoji(color: string): string { if (!api) return COLOR_FALLBACK.find(c => c.id === color)?.emoji ?? '🌸'; try { return api.color_emoji(color); } catch { return '🌸'; } }
-export function colorLabel(color: string): string { if (!api) return COLOR_FALLBACK.find(c => c.id === color)?.label ?? color; try { return api.color_label(color); } catch { return color; } }
+// Unknown colours fall back to the first registered colour, matching
+// crates/recommend/src/color.rs `find()`. The Rust contract test reads these
+// literals, so a drift in either fallback fails `cargo test -p roselet-recommend`.
+export function colorEmoji(color: string): string { if (!api) return COLOR_FALLBACK.find(c => c.id === color)?.emoji ?? '🌹'; try { return api.color_emoji(color); } catch { return '🌹'; } }
+export function colorLabel(color: string): string { if (!api) return COLOR_FALLBACK.find(c => c.id === color)?.label ?? '红玫瑰'; try { return api.color_label(color); } catch { return '红玫瑰'; } }
 export function colorOptions(): ColorMeta[] { if (!api) return COLOR_FALLBACK; try { return api.color_options() as ColorMeta[]; } catch { return COLOR_FALLBACK; } }

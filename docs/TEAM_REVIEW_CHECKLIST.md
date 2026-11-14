@@ -98,7 +98,7 @@
 
 | # | 检查项 | 判定标准 | 依据 |
 |---|---|---|---|
-| D1 | 业务逻辑双份维护（最高优先，**结论已修订，见 §6**） | Web 与小程序各有一套降级兜底（颜色文案 / 日期 / 音频策略 / 请求体），容易漂移；已因此出过 Memo 程序 ID 不一致的真实生产 bug。**注意：这些是「WASM 不可用」时的兜底，不能简单搬进 WASM** | `AGENTS.md`「必须遵守」第 2-4 条；`apps/web/src/lib/recommend.ts:50-61,96-100,121-124`；`apps/miniprogram/src/utils/wasm.ts:46-69,105-112`；`DEVLOG.md` Memo 修复记录 |
+| D1 | 双份兜底收敛（**第一步已完成，见 §6.3**；结论已修订，见 §6.2） | Web 与小程序各有一套降级兜底（颜色文案 / tips / 音频策略 / 请求体），容易漂移；已因此出过 Memo 程序 ID 不一致的真实生产 bug。**已装网**：4 个 Rust↔TS 契约测试锁住颜色三元组、未知颜色兜底、tips 文案，并抓到且修复了未知颜色 `🌸`↔`🌹` 的真实漂移。**仍待做**：把兜底数据抽到已有的 `@roselet/core`（Web 尚无 workspace 依赖）。注意这些是「WASM 不可用」时的兜底，不能简单搬进 WASM | `AGENTS.md`「必须遵守」第 2-4 条；`crates/recommend/src/contract.rs`；`apps/web/src/lib/recommend.ts:50-61,96-100,121-124,151-157`；`apps/miniprogram/src/utils/wasm.ts:46-69,105-114`；`DEVLOG.md` Memo 修复记录 |
 | D2 | ~~最不可逆的链上路径没真单测~~ **已完成（见 §6）** | `rose-memo.ts`、`chain.ts` 曾被组件测试整体 mock 掉，现已各有独立单测（22 例） | `apps/web/src/lib/__tests__/rose-memo.test.ts`、`chain.test.ts` |
 | D3 | live RPC 测试长期 `#[ignore]` | 唯一一处 `#[ignore]`，需约定「何时手动跑、谁跑」 | `crates/backend/src/routes/solana_nft.rs:668` |
 | D4 | 生产路径 panic 风险 | 非测试代码 37 处 `.unwrap()` / `.expect()` / `panic!` / `unsafe`，其中 22 处集中在 `crates/recommend/src/lib.rs`；WASM 序列化失败或锁中毒会 panic | 当日复核统计；`crates/backend/src/rate_limit.rs` |
@@ -112,7 +112,7 @@
 
 - [ ] **E1**：PR #7 是否转 ready-for-review 并合主线？CI 已全绿、MERGEABLE，但 B1 手测未做。合主线会触发 `Deploy Backend` 的 `workflow_run`，属于生产动作。
 - [ ] **E2**：主网化是否单独立项？`SOLANA_MAINNET_ASSESSMENT.md:141-146` 的建议是「先在 Devnet 验证 PMF，再走阶段 1」，且 `PRODUCT.md:68` 明确 DAU<10000 不考虑 Web3。
-- [ ] **E3**：先做哪个代码项？建议按 §6 修订后的 D1 做（共享包 + 契约测试），优先于 D5 拆文件；D2 已完成。
+- [ ] **E3**：D2 已完成、D1 的契约测试已完成，剩「兜底抽到 `@roselet/core`」。下一步做哪个？建议先收尾 D1（共享包抽取），再 D5 拆文件；但这会动 `apps/web/package.json` 与 lockfile，需单独排期。
 
 ---
 
@@ -121,7 +121,7 @@
 1. **合主线**：PR #7 CI 已全绿，21 个 commit 长期悬在分支上本身就是风险。合之前先做 B1 手测，或者明确接受「手测后补」。
 2. **生产配置与发布流程收口**：C1-C9，尤其 `ADMIN_USER_IDS`、Vercel 四个变量、tag 驱动发布。
 3. **找 5 个真实用户**（A1 + A2）：`PRODUCT.md:74` 说这是当前唯一要做的事。
-4. **代码质量**：D1 → D2 → D3，守住覆盖率四项门槛和严格 clippy。
+4. **代码质量**：D2 已完成；D1 的契约测试已完成、剩共享包抽取；然后 D3。守住覆盖率四项门槛和严格 clippy。
 5. **主网化单独立项**，别混在日常迭代里。
 
 一句话提醒：这里有个**错配** —— 产品文档说「先验证有没有人用」，但最近 21 个 commit 几乎全扑在 Web3 和门禁上。门禁补齐是好事，但它不是产品目标。
@@ -134,7 +134,7 @@
 - **没有**合 PR #7（会触发生产部署，属不可逆外部动作）。
 - **没有**做 D1 重构（跨 Web / 小程序 / WASM 的大改）。
 - 盘点轮次只新增了本清单文档，并按项目规则 commit + push；纯文档变更不会触发 `Deploy Backend`。
-- 后续轮次的改动见 §6：仅新增测试文件，仍不触碰产品代码 / 配置 / 工作流。
+- 后续轮次的改动见 §6：D2 仅新增测试；D1 第一步新增契约测试，并修正 4 处 TS 兜底字面量与 1 处写死旧值的既有断言（属行为修正，不是重构）。全程未碰配置 / 工作流 / 依赖，也未合 PR #7。
 
 ---
 
@@ -159,7 +159,24 @@
 2. 加**契约测试**锁住 fallback 与 Rust WASM 正常输出一致（复用 `crates/backend/src/routes/solana_onchain.rs` 的 `frontend_memo_contract_matches_backend` 模式：运行时读前端 TS 断言常量），防住 Memo 程序 ID 那类漂移；
 3. Rust WASM 继续做唯一权威实现，TS 侧只保留「不可用时的最小降级」。
 
-这项**仍未动**：涉及 WASM 构建链（`just agent-wasm`）与两端调用方，需单独排期，不宜顺手改。
+第 2 步（契约测试）已于本轮完成，见 §6.3；第 1 步（共享包抽取）**仍未动**：Web 侧尚无 `@roselet/core` 的 workspace 依赖（只有 `next.config.ts:8` 的 `transpilePackages`），需要改 `apps/web/package.json` 与 `pnpm-lock.yaml` 并验证两端打包，不宜顺手改。
+
+### 6.3 D1 第一步已落地：Rust↔TS 兜底契约测试
+
+新增 `crates/recommend/src/contract.rs`（4 个 `#[test]`，`lib.rs` 挂 `#[cfg(test)] mod contract`），复用后端 `frontend_memo_contract_matches_backend` 的模式：测试时按 `CARGO_MANIFEST_DIR` 读两份前端 TS 源码，逐项与 Rust 权威函数比对：
+
+| 测试 | 锁住什么 |
+|---|---|
+| `web_colour_fallbacks_match_rust_wasm` | `recommend.ts` 的 `_CE` / `_CL` 与 `color_emoji` / `color_label` 一致 |
+| `miniprogram_colour_fallbacks_match_rust_wasm` | `wasm.ts` 的 `COLOR_FALLBACK` 三元组、顺序与 Rust `COLORS` 一致 |
+| `unknown_colour_fallbacks_match_rust_wasm` | 两端未知颜色的最终兜底字面量等于 Rust `find()` 的回退值 |
+| `web_tip_fallbacks_are_copied_from_rust_authority` | Web 的 home/login/plant/garden 兜底文案必须是 `tips.rs` 权威文案池的成员，且 4 个 context 齐全 |
+
+**抓到并修复了一处真实漂移**：`color.rs:29-31` 的 `find()` 对未知颜色回退到首个注册色（🌹 / 红玫瑰），但两端 TS 兜底回退到 `🌸` / 原始 color 值；更麻烦的是 `recommend.test.ts:244-245` **把旧的错误值写死成了断言**，等于把漂移固化了。现已把 4 处兜底与那 1 处断言统一到 Rust 语义，并在 TS 侧加注释指明契约测试会读这些字面量。
+
+**有效性验证**：先让测试在真实漂移下跑出 `1 failed`（`left: Some("🌸") / right: Some("🌹")`）；再做 3 组 mutation（改 Web 颜色 emoji、改小程序颜色 label、改 tips 文案），3 条静态测试分别 `FAILED`、全部 `CAUGHT`，随后自动恢复源码并重跑 `4 passed`。
+
+本地门禁：`cargo fmt --all -- --check` RC=0、严格 clippy RC=0、`cargo test --workspace --lib` → backend 94+1 ignored / recommend **157 passed**（含新增 4）；Web `recommend.test.ts` 10 passed、`eslint` RC=0；小程序 `wasm.test.ts` 1 passed、`tsc --noEmit` RC=0。
 
 ---
 

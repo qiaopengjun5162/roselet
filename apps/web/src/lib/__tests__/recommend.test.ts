@@ -241,8 +241,10 @@ describe("recommend WASM wrappers", () => {
     await expect(recommend.buildPlantBody("red", "g", null, null, true)).resolves.toBe(
       JSON.stringify({ color: "red", gratitude: "g", anxiety: null, hope: null, is_private: true })
     );
-    expect(recommend.colorEmoji("missing")).toBe("🌸");
-    expect(recommend.colorLabel("missing")).toBe("missing");
+    // Rust WASM is the authority: an unknown colour falls back to the first
+    // registered colour. crates/recommend/src/contract.rs pins these literals.
+    expect(recommend.colorEmoji("missing")).toBe("🌹");
+    expect(recommend.colorLabel("missing")).toBe("红玫瑰");
     await expect(recommend.burstFireworks(0, 0, 1, 0)).resolves.toEqual([]);
     await expect(recommend.getFireworkLaunches()).resolves.toEqual([]);
     await expect(recommend.audioPlaybackPolicy({ starting: "foreground", background_playing: true })).resolves.toEqual({ stop_background: true });

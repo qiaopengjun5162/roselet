@@ -150,8 +150,11 @@ export async function buildAleoVaultInputs(roseId: string, content: string, aiRe
 // 颜色元数据 — 同步调用（WASM 已加载则走 Rust，否则 TS 兜底保证首屏不闪）
 const _CE: Record<string, string> = { red: "🌹", white: "🤍", yellow: "💛" };
 const _CL: Record<string, string> = { red: "红玫瑰", white: "白玫瑰", yellow: "黄玫瑰" };
-export function colorEmoji(color: string): string { try { return wasmModule?.color_emoji(color) ?? _CE[color] ?? "🌸"; } catch { return _CE[color] ?? "🌸"; } }
-export function colorLabel(color: string): string { try { return wasmModule?.color_label(color) ?? _CL[color] ?? color; } catch { return _CL[color] ?? color; } }
+// Unknown colours fall back to the first registered colour, matching
+// crates/recommend/src/color.rs `find()`. Keep these literals in sync with
+// the Rust authority — contract.rs asserts it at test time.
+export function colorEmoji(color: string): string { try { return wasmModule?.color_emoji(color) ?? _CE[color] ?? "🌹"; } catch { return _CE[color] ?? "🌹"; } }
+export function colorLabel(color: string): string { try { return wasmModule?.color_label(color) ?? _CL[color] ?? "红玫瑰"; } catch { return _CL[color] ?? "红玫瑰"; } }
 
 // Fireworks — 粒子算法全量 Rust WASM 驱动
 export async function burstFireworks(cx: number, cy: number, count: number, idOffset: number) {

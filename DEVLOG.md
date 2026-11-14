@@ -4977,3 +4977,17 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 边界：只新增测试文件并更新清单文档，未改产品代码 / 配置 / 工作流，未合 PR #7。
 
 **CI 结果（run `43603278426`，commit `b33fc1f`）：四个 job 全部 success。** Frontend Test 41 suites / 308 tests 全过，全局覆盖率 `statements 91.51%` / `branches 79.53%` / `functions 86.78%` / `lines 94.1%` 四项全过（补测前 91.29%）；`chain.ts`、`rose-memo.ts` 均 100% 全项。Miniprogram 66 tests / 99.33%，Solana x402 Agent API 97.25%。此前「沙盒跑不动全局覆盖率」的缺口由 CI 补齐，未降任何门槛。
+
+### D1 第一步：Rust↔TS 兜底契约测试（2026-11-14 深夜）
+
+按 §6.2 的第 ② 步落地：新增 `crates/recommend/src/contract.rs`（4 个 `#[test]`，`lib.rs` 挂 `#[cfg(test)] mod contract`），复用后端 `frontend_memo_contract_matches_backend` 模式，测试时按 `CARGO_MANIFEST_DIR` 读 `apps/web/src/lib/recommend.ts` 与 `apps/miniprogram/src/utils/wasm.ts`，与 Rust 权威函数比对：Web `_CE`/`_CL` ↔ `color_emoji`/`color_label`；小程序 `COLOR_FALLBACK` 三元组与顺序 ↔ `color.rs` 的 `COLORS`；两端未知颜色最终兜底 ↔ `find()` 回退值；Web tips 兜底文案必须是 `tips.rs` 权威池成员且 4 个 context 齐全。
+
+**抓到并修复真实漂移**：`color.rs:29-31` 的 `find()` 对未知颜色回退首个注册色（🌹 / 红玫瑰），但两端 TS 兜底是 `🌸` / 原始 color 值；更麻烦的是 `recommend.test.ts:244-245` 把旧错误值写死成了断言，等于把漂移固化。已把 4 处兜底 + 1 处断言统一到 Rust 语义，并在 TS 侧注释指明契约测试会读这些字面量。这是**行为修正**而非重构：只影响「传入非法颜色」这类异常输入。
+
+**有效性验证**：先在真实漂移下跑出 `1 failed`（`left: Some("🌸") / right: Some("🌹")`）；再做 3 组 mutation（Web 颜色 emoji、小程序颜色 label、tips 文案），3 条静态测试分别 `FAILED`、全部 `CAUGHT`；脚本自动恢复源码后重跑 `4 passed`。
+
+**D1 方向再精确一步**：`@roselet/core` 共享包**早已存在**（`packages/core/src/index.ts`），小程序已用 `workspace:*` + tsconfig paths + jest mapper 引用；但 Web 侧没有 workspace 依赖，只有 `next.config.ts:8` 的 `transpilePackages`。所以「共享包抽取」不是新建包，而是给 Web 补依赖 + 把兜底数据挪进已有包（会动 `pnpm-lock.yaml`，需验证两端打包）。**本轮未动**，留单独排期——先装网再重构才安全。
+
+本地门禁全绿：`cargo fmt --all -- --check` RC=0、严格 clippy RC=0、`cargo test --workspace --lib` → backend 94+1 ignored / recommend **157 passed**（153+4）；Web `recommend.test.ts` 10 passed、`eslint` RC=0、`tsc --noEmit` RC=0（后台 4m43s）；小程序 `wasm.test.ts` 1 passed、`tsc --noEmit` RC=0。
+
+边界：新增 1 个 Rust 测试文件、改 2 个 TS 兜底文件 + 1 个既有断言 + 清单/DEVLOG；未改配置 / 工作流 / 依赖，未合 PR #7。
