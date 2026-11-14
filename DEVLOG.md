@@ -4951,3 +4951,14 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **经验**：① 覆盖率「明明执行了却没计数」先出 json 报告查 `s` 计数器，别信文本报告的行号（一行多语句会误导）；② 沙盒跑 jest 单文件可用绝对路径 + `--config`（cwd 跨命令会丢，`pnpm exec` 触发 GVM_ROOT 报错）；③ `jest.doMock`+`resetModules` 与 hoisted `jest.mock` 两种 mock 模式计数都可靠。
 
 **CI 结果（run 42773483053，commit `60aae63`）：四个 job 全部 success，本分支首次全绿。** Frontend Test 全局覆盖率 `statements 91.29%`（≥90）、`branches 79.29%`（≥70）、`functions 86.41%`（≥85）、`lines 93.93%`（≥90）四项全过，286 tests 全过；`recommend.ts` 81.5%→**100% stmts**、`solana-rpc.ts` 42.85%→**100% 全项**。至此 Frontend 覆盖率与 Backend cargo-deny 两个既有红全部修复（后端见上节依赖升级 `a353cfc`）。
+
+### 团队检查清单与全仓盘点（2026-11-14）
+四路只读盘点（功能完成度 / 代码质量 / CI 与生产就绪 / Web3 主网专项）汇总成 `docs/TEAM_REVIEW_CHECKLIST.md`：按产品、前端钱包、运维发布、代码质量、决策层五组派活，每条带判定标准与 `文件:行号`，可直接转发打勾。
+
+生成当日核准的实时数据：分支 `codex/solana-mainnet-assessment` 领先 main 21 个 commit / 49 文件 / +7607 −355；PR #7 仍 `Draft + MERGEABLE`；最近两次 CI（`42774870396`、`42773483053`）4/4 job 全绿；两次 `Deploy Backend` 均 `skipped`（非 main 分支，未误触发生产部署）。代码侧复核：手写源码 `TODO/FIXME/HACK` 0 处；非测试代码 `.unwrap()/.expect()/panic!/unsafe` 共 37 处（22 处集中在 `crates/recommend/src/lib.rs`）；唯一 `#[ignore]` 测试在 `crates/backend/src/routes/solana_nft.rs:668`；超 400 行的生产文件 8 个，最长 `solana_onchain.rs` 905 行。
+
+结论：**内测可用，但「发布流程」和「主网上线」没闭环**。建议顺序：① 合 PR #7 主线 → ② 生产配置与发布流程收口 → ③ 找 5 个真实用户试用 → ④ 代码质量（先收敛 TS 双份兜底）→ ⑤ 主网化单独立项。另记一个错配：`PRODUCT.md:68,74` 说「DAU<10000 不考虑 Web3、当前唯一要做的是找 5 个人试用」，但最近 21 个 commit 几乎全在 Web3 与门禁上。
+
+**边界**：本次只新增清单文档，未改任何产品代码 / 配置 / 工作流，未合 PR #7（合主线会触发 `workflow_run` 生产部署，属不可逆外部动作），未做跨端重构。
+
+**环境问题与处理**：push 连续遇 `Error in the HTTP2 framing layer` 与 `CONNECT tunnel failed, response 502`（沙盒代理抖动），`git -c http.version=HTTP/1.1` 绕不过 502，默认 `git push` 第三次重试成功。**验证必须用 `gh api repos/<owner>/<repo>/git/ref/heads/<branch> --jq '.object.sha'` 对比本地 `git rev-parse HEAD`**——否则容易把「本地已 commit」误判成「已推送」。
