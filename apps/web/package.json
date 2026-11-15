@@ -23,6 +23,7 @@
     "@demox-labs/aleo-wallet-adapter-base": "0.0.23",
     "@demox-labs/aleo-wallet-adapter-leo": "0.0.25",
     "@demox-labs/aleo-wallet-adapter-react": "0.0.22",
+    "@roselet/core": "workspace:*",
     "@solana-program/compute-budget": "^0.20.0",
     "@solana-program/memo": "^0.16.0",
     "@solana-program/system": "^0.16.0",

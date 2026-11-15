@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@roselet/core": ["../../packages/core/src/index.ts"]
     }
   },
   "include": [

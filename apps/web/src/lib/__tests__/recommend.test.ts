@@ -177,8 +177,10 @@ describe("recommend WASM wrappers", () => {
     await expect(recommend.buildGardenUrl("http://x", 1, 20, "red")).resolves.toBe(
       "http://x/api/garden?page=1&per_page=20&color=red"
     );
+    // Rust WASM skips blank text fields entirely (serde skip_serializing_if),
+    // so the shared fallback must not emit `anxiety: null, hope: null`.
     await expect(recommend.buildPlantBody("red", "g", null, null, true)).resolves.toBe(
-      JSON.stringify({ color: "red", gratitude: "g", anxiety: null, hope: null, is_private: true })
+      JSON.stringify({ color: "red", gratitude: "g", is_private: true })
     );
     await expect(recommend.burstFireworks(0, 0, 1, 0)).resolves.toEqual([]);
     await expect(recommend.getFireworkLaunches()).resolves.toEqual([]);
@@ -238,8 +240,10 @@ describe("recommend WASM wrappers", () => {
     await expect(recommend.buildGardenUrl("http://x", 2, 10, "red")).resolves.toBe(
       "http://x/api/garden?page=2&per_page=10&color=red"
     );
+    // Rust WASM skips blank text fields entirely (serde skip_serializing_if),
+    // so the shared fallback must not emit `anxiety: null, hope: null`.
     await expect(recommend.buildPlantBody("red", "g", null, null, true)).resolves.toBe(
-      JSON.stringify({ color: "red", gratitude: "g", anxiety: null, hope: null, is_private: true })
+      JSON.stringify({ color: "red", gratitude: "g", is_private: true })
     );
     // Rust WASM is the authority: an unknown colour falls back to the first
     // registered colour. crates/recommend/src/contract.rs pins these literals.

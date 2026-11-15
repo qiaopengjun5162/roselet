@@ -167,6 +167,9 @@ importers:
       '@demox-labs/aleo-wallet-adapter-react':
         specifier: 0.0.22
         version: 0.0.22(react@19.2.4)
+      '@roselet/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@solana-program/compute-budget':
         specifier: ^0.20.0
         version: 0.20.0(@solana/kit@8.6.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6))

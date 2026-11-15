@@ -20,6 +20,7 @@ const config: Config = {
   },
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^@roselet/core$": "<rootDir>/../../packages/core/src/index.ts",
   },
   transform: {
     "^.+\\.tsx?$": "ts-jest",
