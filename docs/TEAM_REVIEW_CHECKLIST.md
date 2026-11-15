@@ -191,14 +191,28 @@
 §6.2 第 ① 步落地。两端 WASM 不可用时的兜底数据 / 纯函数，全部收敛到已有的 `@roselet/core`（`packages/core/src/fallbacks.ts`），Web 与小程序改从该包取，删掉本地硬编码。
 
 - 新增共享源：`COLOR_META`（红/白/黄，顺序 = Rust `COLORS`）、`TIPS`（4 context，逐字取自 `tips.rs`）、`audioPlaybackPolicy` / `buildGardenUrl` / `buildPlantBody` 兜底纯函数，按 Rust WASM 权威语义实现。
-- Web 接包：`apps/web/package.json` 加 `workspace:*` 依赖 + `jest.config.ts` mapper + `tsconfig.json` paths；`pnpm-lock.yaml` 补 importer。小程序 `config/index.ts:39` 早已预埋 `include.add(/packages\/core/)`，无需改构建链。
+- Web 接包：`apps/web/package.json` 加 `workspace:*` 依赖 + `jest.config.ts` mapper + `tsconfig.json` paths；`pnpm-lock.yaml` 补 importer。Web 侧 `next.config.ts:8` 已有 `transpilePackages: ["@roselet/core"]`，无需改动。
+- **小程序构建链（本节初版结论有误，已订正）**：`config/index.ts` 原先的 `chain.module.rule("ts").include.add(/packages\/core/)` 挂在**不存在的 `ts` rule** 上，是静默 no-op；之前判「早已预埋、无需改构建链」是错的。改成值导入后 `@roselet/core`（`main` 指向未编译的 `src/index.ts`）第一次真正进入 webpack 打包图，直接 `ModuleParseError`。最终修法见 §6.6。
 - 契约测试升级为「单源守卫」：`contract.rs` 新增 `frontends_import_shared_fallbacks`（确认两端不再硬编码、已引共享包）+ `shared_behaviour_fallbacks_keep_rust_semantics`（读 `fallbacks.ts` 锁住 3 类行为输出）；新增 `apps/web/src/lib/__tests__/core-fallbacks.test.ts`。
 
 **本次又修复 3 处真实语义漂移**（行为不一致，非纯重复）：`buildPlantBody` 跳过 null 字段、`buildGardenUrl` 省略 `color=all`、未知颜色兜底 `🌹`/`红玫瑰`（且 `recommend.test.ts` 旧断言已把错误值固化，一并改正）。
 
-提交 `3c5e683`，远端 SHA `3c5e6834ed41c97e3bbe8e46c0cf62e96f1a8c76`；CI run `43677042851` 待跑。
+提交 `3c5e683`，远端 SHA `3c5e6834ed41c97e3bbe8e46c0cf62e96f1a8c76`。此后 CI 连红两次（clippy 文档 lint、小程序构建链），均已在 §6.6 记录并修复；以最终 CI run 结论为准。
 
 **§6.3 末尾「仍未覆盖的行为型兜底」现已收敛**——那一批全部改为调用 `@roselet/core`，靠单一实现消除双份维护。剩的唯一一类独立双份维护是 UI 层硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`），属另一议题，不在本次范围。
+
+### 6.6 两处只在 CI 暴露的问题（2026-11-15，均已修复）
+
+`3c5e683` 之后本地门禁全绿但 CI 连红两次，都是本地盲区：
+
+| run | 失败 job | 根因 | 修复 |
+|---|---|---|---|
+| `43677042851` | Backend clippy | `contract.rs:16` 模块文档 bullet 后未缩进文字，clippy 1.100 `doc-lazy-continuation`（`-D warnings` 下报 `exit 101`）；本地同版本但命中缓存没报 | 列表与末段间加空 `//!` 行（`6596d34`） |
+| `43677473995` | Miniprogram Build | `ModuleParseError: Unexpected token / export type`，来自 `packages/core/src/fallbacks.ts`。`@roselet/core` 的 `main` 是未编译 `src/index.ts`，改值导入后首次进入 webpack 打包图；Taro v4 真正跑 babel-loader 的 rule 名是 **`script`**（`MiniWebpackModule.js:159`），原 `rule("ts")` 是空 rule 从未生效 | `mini.webpackChain` 里 alias 到 `packages/core/src` + `rule("script").include.add(coreSrc)`；CI `build.yml:142` 只跑 `build:weapp`，改 mini 即可 |
+
+本地验证：`NODE_OPTIONS=--max-old-space-size=6144 taro build --type weapp` → `✔ Webpack Compiled successfully`、RC=0。详见 `DEVLOG.md`「D1 收尾后连修两处 CI 红」。
+
+**给检查者的提醒**：① 本地 clippy/tsc/jest 全绿 ≠ CI 绿，push 后必须确认新 run；② webpackChain 挂 `.rule(name)` 前先确认 name 存在，挂错是静默 no-op；③ 「共享包从 `import type` 改成值导入」必须两端都跑**生产构建**，光过单测/类型检查不够。
 
 ---
 

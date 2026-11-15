@@ -5017,4 +5017,22 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 **边界**：动了 `apps/web/package.json` + `pnpm-lock.yaml`（新增 workspace 依赖，需验证两端打包），这是此前刻意留到「装网后」才做的一步；未合 PR #7、未动主网配置 / 工作流。UI 层硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`）仍属另一类双份维护，不在本次范围。
 
-提交 `3c5e683`，远端 SHA `3c5e6834ed41c97e3bbe8e46c0cf62e96f1a8c76`（用 `git -c http.proxy=http://127.0.0.1:7890 push origin HEAD` 推送）。CI run `43677042851` 排队待跑，结论见下条。
+提交 `3c5e683`，远端 SHA `3c5e6834ed41c97e3bbe8e46c0cf62e96f1a8c76`（用 `git -c http.proxy=http://127.0.0.1:7890 push origin HEAD` 推送）。
+
+### D1 收尾后连修两处 CI 红（2026-11-15）
+
+`3c5e683` 之后 CI 连红两次，都是本地绿灯没覆盖到的盲区，逐一记录：
+
+**第一次（run `43677042851`）：Backend clippy `doc-lazy-continuation`。** `crates/recommend/src/contract.rs:16` 的模块文档注释里，bullet 列表后紧跟一行未缩进文字，clippy 1.100（本地同版本，但本地命中缓存没报）把它当列表续行，`-D warnings` 下报错 `exit 101`。修法：列表与末段之间加一个空 `//!` 行，让其成为独立段落。提交 `6596d34`。
+
+**第二次（run `43677473995`）：Miniprogram Build `ModuleParseError`。** 报错 `Unexpected token (11:7) / export type TipContext ...`，来自 `packages/core/src/fallbacks.ts`。根因不在代码而在 Taro 构建链：
+
+- `@roselet/core` 是 workspace 包，`package.json` 的 `main` 直接指向未编译的 `src/index.ts`。之前两端只 `import type`，运行时被 TS 擦除，这个包**从未真正进入 webpack 打包图**；D1 改成值导入（真调共享兜底函数）后第一次被打包。
+- Taro v4 小程序端真正跑 babel-loader 的 rule 名是 **`script`**（`node_modules/@tarojs/webpack5-runner/dist/webpack/MiniWebpackModule.js:159`），默认 `include` 只有 `sourceDir` + 「node_modules 里带 taro 的包」。`config/index.ts` 里原先那句 `chain.module.rule("ts").include.add(/packages\/core/)` 挂的是**不存在的 `ts` rule**——等于凭空建了个没有 loader 的空 rule，从来没生效。之前盘点把它判成「已预埋、无需改构建链」是错的，本次订正。
+- pnpm 把 `@roselet/core` 软链进 `node_modules`，webpack 看到的路径既不在 `sourceDir`、包名也不含 `taro`，于是整包 `.ts` 文件没有 loader，`export type` 直接 parse 失败。
+
+修法（`apps/miniprogram/config/index.ts` 的 `mini.webpackChain`）：`chain.resolve.alias.set("@roselet/core", <packages/core/src 绝对路径>)` 给一个可预测路径，再 `chain.module.rule("script").include.add(coreSrc)` 把它纳入真正的 babel-loader rule。CI `build.yml:142` 只跑 `build:weapp`，改 `mini` 即覆盖，h5 未动。
+
+**验证**：本地 `bash -c 'NODE_OPTIONS=--max-old-space-size=6144 ./node_modules/.bin/taro build --type weapp'` → `✔ Webpack Compiled successfully in 2.98s`、RC=0，`ModuleParseError` 消失。（沙盒里 zsh 的 GVM profile 会往 stderr 掺噪声、默认内存会被 SIGTERM，均用 bash + 加大堆绕开；末尾 `@tarojs/taro-loader/lib/page` 是 webpack 缓存告警 `<w>`，不影响编译。）
+
+**经验**：① 本地 clippy / tsc / jest 全绿 ≠ CI 绿——缓存和「值导入 vs 类型导入」这类打包图差异只有干净 CI 能暴露，push 后必须确认新 run；② 往 webpackChain 挂 `.rule(name)` 前先确认 name 真存在，挂错名字是静默 no-op；③ 「共享包改值导入」必须同时验证两端**生产构建**，光过单测/类型检查不够。
