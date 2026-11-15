@@ -10,12 +10,12 @@ import { playClick, playPlant, playComplete } from "@/lib/sound";
 import { getRecommendation, validatePlantInput, type Recommendation } from "@/lib/recommend";
 import { Fireworks } from "@/components/fireworks";
 import { RosePlayer } from "@/components/rose-player";
+import { COLOR_FALLBACK, colorLabelFallback } from "@roselet/core";
 
-const COLORS = [
-  { id: "red", label: "红玫瑰", emoji: "🌹", gradient: "from-red-100 to-red-50", accent: "text-red-600" },
-  { id: "white", label: "白玫瑰", emoji: "🤍", gradient: "from-gray-100 to-gray-50", accent: "text-gray-600" },
-  { id: "yellow", label: "黄玫瑰", emoji: "💛", gradient: "from-amber-100 to-amber-50", accent: "text-amber-600" },
-] as const;
+// 颜色元数据统一来自 @roselet/core（Rust WASM `color_options` 为权威）。
+// 原先这里另存了一份 id/label/emoji，还带着从未被使用的 gradient/accent。
+// crates/recommend/src/contract.rs 会守卫本文件不再复制颜色文案。
+const COLORS = COLOR_FALLBACK;
 
 type Field = "gratitude" | "anxiety" | "hope";
 
@@ -194,7 +194,7 @@ export default function PlantPage() {
                     onClick={() => { playClick(); setColor(rec.color_suggestion.color); setStep("interactive"); }}
                     className="w-full text-left rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 hover:bg-rose-500/20 transition-colors cursor-pointer"
                   >
-                    <p className="text-sm font-medium text-rose-300">推荐颜色：{rec.color_suggestion.color === "red" ? "红玫瑰" : rec.color_suggestion.color === "white" ? "白玫瑰" : "黄玫瑰"}</p>
+                    <p className="text-sm font-medium text-rose-300">推荐颜色：{colorLabelFallback(rec.color_suggestion.color)}</p>
                     <p className="text-xs text-slate-400">{rec.color_suggestion.reason}</p>
                   </button>
                 </>

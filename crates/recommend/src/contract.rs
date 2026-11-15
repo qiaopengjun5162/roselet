@@ -30,6 +30,18 @@ const MINIPROGRAM_WASM: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../apps/miniprogram/src/utils/wasm.ts"
 );
+const WEB_PLANT_PAGE: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../apps/web/src/app/plant/page.tsx"
+);
+const WEB_GARDEN_PAGE: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../apps/web/src/app/garden/page.tsx"
+);
+const WEB_PROFILE_PAGE: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../apps/web/src/app/profile/page.tsx"
+);
 
 const COLOUR_IDS: [&str; 3] = ["red", "white", "yellow"];
 const UNKNOWN_COLOUR: &str = "not-a-registered-colour";
@@ -248,4 +260,39 @@ fn shared_behaviour_fallbacks_keep_rust_semantics() {
         background_playing: true,
     });
     assert!(policy.stop_background);
+}
+
+#[test]
+fn web_ui_pages_use_shared_colour_metadata() {
+    // The plant / garden / profile pages used to keep a fourth, fifth and
+    // sixth copy of the colour table (ids, labels and emojis), plus a ternary
+    // that mapped a recommended colour to a hard-coded Chinese label. They now
+    // compose UI-only styles on top of `@roselet/core`.
+    //
+    // `🌹` is intentionally NOT checked on the plant page: it is also the icon
+    // for the "gratitude" input field, which is unrelated to colour metadata.
+    // The shared table itself is pinned to Rust by the tests above.
+    for (name, path) in [
+        ("plant page", WEB_PLANT_PAGE),
+        ("garden page", WEB_GARDEN_PAGE),
+        ("profile page", WEB_PROFILE_PAGE),
+    ] {
+        let src = read(path);
+        assert!(
+            src.contains("from \"@roselet/core\"") || src.contains("from '@roselet/core'"),
+            "{name} must import @roselet/core for its colour metadata"
+        );
+        for literal in ["红玫瑰", "白玫瑰", "黄玫瑰", "🤍", "💛"] {
+            assert!(
+                !src.contains(literal),
+                "{name} hard-codes `{literal}` instead of using the shared colour table"
+            );
+        }
+        for table_marker in ["id: \"red\"", "id: \"white\"", "id: \"yellow\"", "const COLORS = ["] {
+            assert!(
+                !src.contains(table_marker),
+                "{name} still declares a local colour table (`{table_marker}`)"
+            );
+        }
+    }
 }
