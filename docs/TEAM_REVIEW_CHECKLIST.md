@@ -186,6 +186,20 @@
 
 **push 的确定性解法**：这次沙盒代理连续 `HTTP2 framing layer` / `CONNECT 502`，`http.version=HTTP/1.1`、清掉 env 代理直连（75s 超时）都失败；最终 `git -c http.proxy=http://127.0.0.1:7890 push origin HEAD` 一次成功——本机 Clash 代理可用。以后遇 502 不必盲目重试，直接用这条；推完仍用 `gh api repos/<owner>/<repo>/git/ref/heads/<branch>` 对齐本地 `git rev-parse HEAD`，别把「本地已 commit」当成「已推送」。
 
+### 6.5 D1 收尾完成：共享兜底单一实现（2026-11-15）
+
+§6.2 第 ① 步落地。两端 WASM 不可用时的兜底数据 / 纯函数，全部收敛到已有的 `@roselet/core`（`packages/core/src/fallbacks.ts`），Web 与小程序改从该包取，删掉本地硬编码。
+
+- 新增共享源：`COLOR_META`（红/白/黄，顺序 = Rust `COLORS`）、`TIPS`（4 context，逐字取自 `tips.rs`）、`audioPlaybackPolicy` / `buildGardenUrl` / `buildPlantBody` 兜底纯函数，按 Rust WASM 权威语义实现。
+- Web 接包：`apps/web/package.json` 加 `workspace:*` 依赖 + `jest.config.ts` mapper + `tsconfig.json` paths；`pnpm-lock.yaml` 补 importer。小程序 `config/index.ts:39` 早已预埋 `include.add(/packages\/core/)`，无需改构建链。
+- 契约测试升级为「单源守卫」：`contract.rs` 新增 `frontends_import_shared_fallbacks`（确认两端不再硬编码、已引共享包）+ `shared_behaviour_fallbacks_keep_rust_semantics`（读 `fallbacks.ts` 锁住 3 类行为输出）；新增 `apps/web/src/lib/__tests__/core-fallbacks.test.ts`。
+
+**本次又修复 3 处真实语义漂移**（行为不一致，非纯重复）：`buildPlantBody` 跳过 null 字段、`buildGardenUrl` 省略 `color=all`、未知颜色兜底 `🌹`/`红玫瑰`（且 `recommend.test.ts` 旧断言已把错误值固化，一并改正）。
+
+提交 `3c5e683`，远端 SHA `3c5e6834ed41c97e3bbe8e46c0cf62e96f1a8c76`；CI run `43677042851` 待跑。
+
+**§6.3 末尾「仍未覆盖的行为型兜底」现已收敛**——那一批全部改为调用 `@roselet/core`，靠单一实现消除双份维护。剩的唯一一类独立双份维护是 UI 层硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`），属另一议题，不在本次范围。
+
 ---
 
 ## 附：数字怎么来的（可复核）

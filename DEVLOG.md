@@ -4995,3 +4995,26 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **CI 结果（run `43607696977`，commit `8a2fc6e`）：四个 job 全部 success。** Frontend 41 suites / 308 tests 全过，全局覆盖率 `statements 91.51%` / `branches 79.53%` / `functions 86.78%` / `lines 94.1%` 四项全过（与补测前持平），`recommend.ts` 100% stmts/funcs/lines；Miniprogram 66 tests / 99.33%，Agent API 97.25%。Rust 侧 4 个契约测试在 CI 全新环境同样通过（recommend 157 passed）。
 
 **环境问题与确定性解法（更新此前「重试碰运气」的做法）**：push 连续遇 `HTTP2 framing layer` 与 `CONNECT tunnel failed, response 502`；`git -c http.version=HTTP/1.1` 仍 502、`env -u HTTPS_PROXY -u HTTP_PROXY ... git push` 直连 75s 超时；**`git -c http.proxy=http://127.0.0.1:7890 push origin HEAD` 一次成功**（本机 Clash 代理）。以后遇 502 直接用这条，不必反复重试。推完照例用 `gh api repos/qiaopengjun5162/roselet/git/ref/heads/codex/solana-mainnet-assessment --jq '.object.sha'` 与本地 `git rev-parse HEAD` 对齐，确认本地/远端同为 `8a2fc6e`。
+
+### D1 收尾：共享兜底单一实现（2026-11-15）
+
+把 §6.2 计划的第 ① 步也落地了——把两端 WASM 不可用时的兜底数据 / 纯函数收敛到已有的 `@roselet/core`，不再双份硬编码。
+
+新增 `packages/core/src/fallbacks.ts`：`COLOR_META`（红/白/黄三元组，顺序即 Rust `COLORS`）、`TIPS`（4 个 context 文案，逐字取自 `tips.rs` 权威池）、`audioPlaybackPolicy` / `buildGardenUrl` / `buildPlantBody` 的兜底纯函数，**全部按 Rust WASM 权威语义实现**；`packages/core/src/index.ts` 统一导出。小程序 `config/index.ts:39` 早就预埋了 `chain.module.rule("ts").include.add(/packages\/core/)`，运行时引用这条路不用改构建链。
+
+改接：
+- `apps/web/src/lib/recommend.ts`：删掉本地 `_CE`/`_CL`/`COLOR_FALLBACK` 式硬编码 + `tips`/`audioPlaybackPolicy`/`buildGardenUrl`/`buildPlantBody` 的兜底分支，改为 `import { ... } from "@roselet/core"` 调共享实现；`apps/web/package.json` 加 `"@roselet/core": "workspace:*"`、`jest.config.ts` 加 `"^@roselet/core$": "<rootDir>/../../packages/core/src"` mapper、`tsconfig.json` 加 paths；`pnpm-lock.yaml` 补 importer 条目。
+- `apps/miniprogram/src/utils/wasm.ts`：删掉本地 `COLOR_FALLBACK` 与 `buildPlantBody` 兜底，改从 `@roselet/core` 取。
+
+**这次又抓到并修复 3 处真实语义漂移**（不是「重复代码」那么简单，是行为不一致）：
+1. `buildPlantBody`：TS 兜底把 `gratitude/anxiety/hope` 为 `null` 时也拼成 `null` 字段；Rust `skip_serializing_if` 会整个省略 → 已修 TS 跳过 null。
+2. `buildGardenUrl`：TS 兜底 `color=all` 时也拼 `&color=all`；Rust 明确跳过 `"all"` → 已修 TS 跳过。
+3. 未知颜色兜底：`recommend.test.ts:244-245` 把旧的错误值（`🌸`、原始 color）**写死成断言**，等于固化漂移 → 改为 Rust 权威 `🌹` / `红玫瑰`。
+
+`crates/recommend/src/contract.rs` 升级为「单源守卫」：`frontends_import_shared_fallbacks`（正则确认两端 TS 已 `import ... from "@roselet/core"` 且不再有本地 `COLOR_FALLBACK` 数组/旧兜底分支）、`shared_behaviour_fallbacks_keep_rust_semantics`（运行时读 `fallbacks.ts`，断言 `buildGardenUrl(undefined)` 不拼 `color`、含 `all` 时省略、`buildPlantBody` 跳过 null、`audioPlaybackPolicy` 前台切歌规则）；并把原先的常量型 4 例保留。新增 `apps/web/src/lib/__tests__/core-fallbacks.test.ts`（8 例）锁住 TS 侧共享兜底输出。
+
+本地门禁全绿：`cargo fmt` RC=0；严格 clippy RC=0（后台）；`cargo test -p roselet-recommend contract` 5 passed；Web `tsc --noEmit` RC=0（后台）、`eslint` RC=0、`jest` recommend+core-fallbacks 17 passed；小程序 `tsc --noEmit` RC=0、`jest` 66 passed。
+
+**边界**：动了 `apps/web/package.json` + `pnpm-lock.yaml`（新增 workspace 依赖，需验证两端打包），这是此前刻意留到「装网后」才做的一步；未合 PR #7、未动主网配置 / 工作流。UI 层硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`）仍属另一类双份维护，不在本次范围。
+
+提交 `3c5e683`，远端 SHA `3c5e6834ed41c97e3bbe8e46c0cf62e96f1a8c76`（用 `git -c http.proxy=http://127.0.0.1:7890 push origin HEAD` 推送）。CI run `43677042851` 排队待跑，结论见下条。

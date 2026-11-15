@@ -13,6 +13,7 @@
 //!   * both front-ends really import it instead of hard-coding literals again;
 //!   * the behavioural fallbacks keep the Rust semantics (static markers,
 //!     because Rust cannot execute TypeScript).
+//!
 //! They need a full workspace checkout, not just this crate.
 
 use std::fs;
