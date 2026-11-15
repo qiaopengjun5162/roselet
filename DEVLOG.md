@@ -5038,3 +5038,18 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **经验**：① 本地 clippy / tsc / jest 全绿 ≠ CI 绿——缓存和「值导入 vs 类型导入」这类打包图差异只有干净 CI 能暴露，push 后必须确认新 run；② 往 webpackChain 挂 `.rule(name)` 前先确认 name 真存在，挂错名字是静默 no-op；③ 「共享包改值导入」必须同时验证两端**生产构建**，光过单测/类型检查不够。
 
 **最终 CI（run `43702959085`，commit `1e5ddfa`）：`conclusion: success`，四个 job 全部 success**（Backend Tests / Miniprogram Build / Frontend Tests / Solana x402 Agent API）。连修两处后本分支重新全绿，PR #7 保持 `Draft + MERGEABLE`。
+
+### D1 最后一公里：UI 颜色元数据收口（2026-11-15 晚）
+
+`dba3ef2` 之后代码侧只剩一处明确的双份维护：Web 的 `plant` / `garden` / `profile` 三个页面各存了一份颜色 id/label/emoji，`plant/page.tsx:197` 还用三元表达式把推荐色映射成硬编码中文标签。本轮全部改为组合 `@roselet/core` 的共享数据：
+
+- `plant/page.tsx`：`const COLORS = COLOR_FALLBACK`，删掉从未被使用的 `gradient` / `accent` 字段；推荐色文案改 `colorLabelFallback(rec.color_suggestion.color)`。
+- `garden/page.tsx`：筛选项保留 UI 专属「全部」，其余由 `colorOptionsFallback().map()` 生成。
+- `profile/page.tsx`：统计卡片改为 `colorOptionsFallback().map()`，只保留按颜色 id 索引的 Tailwind 配色与 `red_count` / `white_count` / `yellow_count` 查表。
+- `crates/recommend/src/contract.rs` 新增守卫 `web_ui_pages_use_shared_colour_metadata`：三个页面必须 `import ... from "@roselet/core"`，且不得再出现颜色中文标签、`🤍` / `💛`、本地颜色表标记（`id: "red"` 等、`const COLORS = [`）。`plant` 页面 `FIELD_CONFIG.gratitude.icon` 的 `🌹` 是字段图标而非颜色元数据，注释里明确豁免，不纳入 emoji 检查。
+
+**边界**：只动 Web 三个页面 + 一个 Rust 契约测试；未改 `packages/core`、小程序、生产配置。至此「颜色元数据」在 Rust WASM（权威）→ `@roselet/core`（共享兜底）→ 两端 UI 之间只剩一份可维护数据，代码侧盘点项全部闭环。
+
+本地门禁：`cargo fmt` + 严格 clippy RC=0、`cargo test -p roselet-recommend contract` 6 passed、Web `tsc --noEmit` RC=0、三个页面 `eslint` RC=0、5 个 jest 套件 42 例全过。
+
+提交 `3ec602c`，CI run `43723942421`（headSha `3ec602c8e7ae2efa27762ab9fae1bd5468175fcd`）`conclusion: success`，四个 job 全部 success。PR #7 仍 `Draft + MERGEABLE`；`Deploy Backend` 仍 skipped——`.github/workflows/deploy-backend.yml:25` 只在 `workflow_run.conclusion == 'success' && head_branch == 'main'` 时触发，所以「合到 main」就是那个会真正部署生产后端的动作。

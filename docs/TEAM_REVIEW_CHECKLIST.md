@@ -199,7 +199,7 @@
 
 提交 `3c5e683`，远端 SHA `3c5e6834ed41c97e3bbe8e46c0cf62e96f1a8c76`。此后 CI 连红两次（clippy 文档 lint、小程序构建链），均已在 §6.6 记录并修复。**最终 CI（run `43702959085`，commit `1e5ddfa`）四个 job 全部 success，重新全绿**；PR #7 保持 `Draft + MERGEABLE`。
 
-**§6.3 末尾「仍未覆盖的行为型兜底」现已收敛**——那一批全部改为调用 `@roselet/core`，靠单一实现消除双份维护。剩的唯一一类独立双份维护是 UI 层硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`），属另一议题，不在本次范围。
+**§6.3 末尾「仍未覆盖的行为型兜底」现已收敛**——那一批全部改为调用 `@roselet/core`，靠单一实现消除双份维护。当时单独留下的 UI 层硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`）已在 §6.7 收口，不再存在。
 
 ### 6.6 两处只在 CI 暴露的问题（2026-11-15，均已修复）
 
@@ -213,6 +213,14 @@
 本地验证：`NODE_OPTIONS=--max-old-space-size=6144 taro build --type weapp` → `✔ Webpack Compiled successfully`、RC=0。详见 `DEVLOG.md`「D1 收尾后连修两处 CI 红」。
 
 **给检查者的提醒**：① 本地 clippy/tsc/jest 全绿 ≠ CI 绿，push 后必须确认新 run；② webpackChain 挂 `.rule(name)` 前先确认 name 存在，挂错是静默 no-op；③ 「共享包从 `import type` 改成值导入」必须两端都跑**生产构建**，光过单测/类型检查不够。
+
+### 6.7 最后一处双份维护已收口，代码侧盘点全部闭环（2026-11-15 晚）
+
+§6.5 边界里留的「UI 层硬编码颜色选项」已处理：`plant` / `garden` / `profile` 三页不再各存颜色表，`plant` 的推荐色三元硬编码也删掉，统一组合 `@roselet/core` 的共享数据，仅保留 UI 专属样式；`contract.rs` 新增 `web_ui_pages_use_shared_colour_metadata` 守卫，防止以后再复制。至此颜色元数据只剩一份：Rust WASM（权威）→ `@roselet/core`（共享兜底）→ 两端 UI。
+
+提交 `3ec602c`，CI run `43723942421`（headSha `3ec602c…`）`conclusion: success`，四个 job 全部 success；`Deploy Backend` 仍 skipped。
+
+**结论：§6.2 / §6.3 / §6.5 / §6.6 / §6.7 的代码侧盘点项全部闭环，工作树干净、分支与远端一致。** 剩下的是需要真人 / 决策的事项，按建议顺序：① 找 5 个真实用户试用（`PRODUCT.md:74` 写「当前唯一要做的事」）；② 真 Phantom 扩展人工手测（现有 `verify:phantom*` 是注入 fake wallet + 本地 validator 的 E2E，真扩展签名尚未人验）；③ 合 PR #7 —— `.github/workflows/deploy-backend.yml:25` 只在 `head_branch == 'main'` 且 CI success 时部署生产后端，所以这一步是**不可逆的外部动作**，需明确拍板；④ 主网化单独立项。
 
 ---
 
