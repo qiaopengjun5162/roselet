@@ -197,7 +197,7 @@
 
 **本次又修复 3 处真实语义漂移**（行为不一致，非纯重复）：`buildPlantBody` 跳过 null 字段、`buildGardenUrl` 省略 `color=all`、未知颜色兜底 `🌹`/`红玫瑰`（且 `recommend.test.ts` 旧断言已把错误值固化，一并改正）。
 
-提交 `3c5e683`，远端 SHA `3c5e6834ed41c97e3bbe8e46c0cf62e96f1a8c76`。此后 CI 连红两次（clippy 文档 lint、小程序构建链），均已在 §6.6 记录并修复；以最终 CI run 结论为准。
+提交 `3c5e683`，远端 SHA `3c5e6834ed41c97e3bbe8e46c0cf62e96f1a8c76`。此后 CI 连红两次（clippy 文档 lint、小程序构建链），均已在 §6.6 记录并修复。**最终 CI（run `43702959085`，commit `1e5ddfa`）四个 job 全部 success，重新全绿**；PR #7 保持 `Draft + MERGEABLE`。
 
 **§6.3 末尾「仍未覆盖的行为型兜底」现已收敛**——那一批全部改为调用 `@roselet/core`，靠单一实现消除双份维护。剩的唯一一类独立双份维护是 UI 层硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`），属另一议题，不在本次范围。
 

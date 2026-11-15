@@ -5036,3 +5036,5 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **验证**：本地 `bash -c 'NODE_OPTIONS=--max-old-space-size=6144 ./node_modules/.bin/taro build --type weapp'` → `✔ Webpack Compiled successfully in 2.98s`、RC=0，`ModuleParseError` 消失。（沙盒里 zsh 的 GVM profile 会往 stderr 掺噪声、默认内存会被 SIGTERM，均用 bash + 加大堆绕开；末尾 `@tarojs/taro-loader/lib/page` 是 webpack 缓存告警 `<w>`，不影响编译。）
 
 **经验**：① 本地 clippy / tsc / jest 全绿 ≠ CI 绿——缓存和「值导入 vs 类型导入」这类打包图差异只有干净 CI 能暴露，push 后必须确认新 run；② 往 webpackChain 挂 `.rule(name)` 前先确认 name 真存在，挂错名字是静默 no-op；③ 「共享包改值导入」必须同时验证两端**生产构建**，光过单测/类型检查不够。
+
+**最终 CI（run `43702959085`，commit `1e5ddfa`）：`conclusion: success`，四个 job 全部 success**（Backend Tests / Miniprogram Build / Frontend Tests / Solana x402 Agent API）。连修两处后本分支重新全绿，PR #7 保持 `Draft + MERGEABLE`。
