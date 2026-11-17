@@ -5078,3 +5078,17 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **验证命令与结果**：Web `tsc --noEmit` RC=0、改动文件 `eslint` RC=0、`jest --config jest.config.ts --coverage --runInBand` → 44 套件 326 例全过、覆盖率 `91.85 / 80.11 / 87.24 / 94.39`（门槛 90/70/85/90）；Rust `cargo fmt --all -- --check` + 严格 clippy RC=0。新增 `member-only.test.tsx`（4 例）、`membership-banner.test.tsx`（3 例），并把首页 / 种花页 / 详情页 / private-vault 的断言改成「普通模式不显示、会员版才显示」。
 
 **排查坑**：jest 直接把 `src/app/rose/[id]/__tests__/page.test.tsx` 当参数时，`[id]` 会被当成正则字符类而匹配不到文件（显示 7 个套件而不是 8 个）。改用 `--runTestsByPath 'src/app/rose/[id]/__tests__/page.test.tsx'` 单独跑，20 例全过。以后带方括号的动态路由测试一律用 `--runTestsByPath`。
+
+### 同轮 CI 红：cargo deny 新增 chrono 无人维护公告（2026-11-17，已修）
+
+前端改动 CI run `44108875609` 里 Frontend Tests（含 `Next build`）/ Miniprogram Build / Solana x402 Agent API 三个 job 全绿，但 **Backend Tests 的 `Audit dependencies` 失败**：`error[unmaintained]: chrono is unmaintained`，ID `RUSTSEC-2026-0543`。
+
+**原因**：与本轮代码无关。11-15 同一分支的 CI（`43724740907`）还是全绿，这两天 RustSec 公告库新增了这条——`chrono` 被标记为无人维护，**所有版本受影响**，公告自己写 `Solution: No safe upgrade is available!`，所以 `cargo update` 解决不了。`chrono` 被 `roselet-backend` / `roselet-recommend` 直接用做日期格式化，还被 `sqlx-core` / `sqlx-postgres` 间接依赖，短期无法移除，只能单独排期迁移到 `jiff` / `time`。
+
+**处理**（保持审计严格，不整体关掉）：
+- `deny.toml` 的 `[advisories].ignore` 只加这一个 ID `RUSTSEC-2026-0543`，并写注释说明：这是「unmaintained」提示、不是已知可利用 CVE；无安全升级可用；迁移另立任务。
+- 顺带把 `warning[yanked]: spin 0.9.8` 消掉：`cargo update -p spin` → `0.9.9`（只锁 1 个包，其余 135 个不变），`Cargo.lock` 同步。
+
+**验证命令**：`cargo deny check` RC=0 且 `advisories ok, bans ok, licenses ok, sources ok`（yanked 警告也消失）；`cargo fmt --all -- --check` RC=0；严格 clippy RC=0；`cargo test -p roselet-recommend contract` 6 passed。
+
+**经验**：`cargo deny` 会随 RustSec 公告库变化，在**没改任何依赖**的情况下把 CI 变红；本地 `cargo deny check` 能直接复现（本地 0.19.0 与 CI 同结果），不用等 CI。遇到「无安全升级可用」的 unmaintained 公告，正确做法是显式 ignore 单个 ID + 写明迁移计划，而不是降级审计或假装没看见。
