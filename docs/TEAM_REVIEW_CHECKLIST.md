@@ -27,10 +27,10 @@
 
 | 项目 | 状态 | 依据 |
 |---|---|---|
-| 当前分支 | `codex/solana-mainnet-assessment`，工作树干净，本地/远端同为 `382149f` | `git status --short`、`git rev-parse HEAD`、远端 ref API |
+| 当前分支 | `codex/solana-mainnet-assessment`，工作树干净、本地与远端一致（SHA 每次提交都会变，以 `git rev-parse HEAD` 为准，别照抄快照里的旧值） | `git status --short`、`git rev-parse HEAD`、远端 ref API |
 | PR #7 | OPEN / Draft / MERGEABLE，2026-11-17 有更新 | `gh pr view 7`；https://github.com/qiaopengjun5162/roselet/pull/7 |
-| 分支与 main 差距 | 领先 35 个 commit、78 文件、+9352 −455，全部未合主线 | `git rev-list --left-right --count origin/main...HEAD`、`git diff --shortstat origin/main...HEAD` |
-| CI | run `44110631326` 四个 job 全 `success` | `gh run view 44110631326` |
+| 分支与 main 差距 | 核准时约 35 个 commit / 78 文件 / +9352 −455，全部未合主线（会随提交变化，用右侧命令现查） | `git rev-list --left-right --count origin/main...HEAD`、`git diff --shortstat origin/main...HEAD` |
+| CI | 最近一次四关全绿：`44114213700`（每次 push 都会出新 run，以 `gh run list --limit 1` 为准） | `gh run view <run> --json conclusion,jobs` |
 | 生产部署 | `Deploy Backend` 为 `skipped`（分支非 main，未误触发） | `gh run list`；`.github/workflows/deploy-backend.yml:25` |
 | Web 测试 | 全量 `jest --coverage` 44 套件 / 326 例全过 | 本地全量运行 + CI |
 | 覆盖率 | statements 91.85 / branches 80.11 / functions 87.24 / lines 94.39，四项全过（门槛 90/70/85/90） | `apps/web/jest.config.ts` |

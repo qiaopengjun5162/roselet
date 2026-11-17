@@ -5108,4 +5108,6 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 
 **明确没做**：文章阶段 4 的「定时巡检」可闭环第三次 CI 红（依赖公告只在 push 时才发现），但加每周 workflow 属运维策略变更、会持续产生运行记录，留给用户点头；阶段 1 云端 / Main Bot 三挡权限 / 多人 SOP 对单人项目不适用；项目已有的 Rust↔TS 契约测试就是文章「交付物契约」的雏形，保持即可。§6.8 表里 7 项代码优化同样不动，等 5 人试用结果。
 
-**验证**：`just --list` 能列出 `ci-local`、`just --dry-run ci-local` 能完整展开四段脚本（recipe 解析通过）；`git diff --check` RC=0。本次纯文档 / justfile 改动，不改产品代码、不改 CI 配置、不合 PR；push 后按惯例用 `gh run view <run> --json conclusion,jobs` 确认四关全绿。
+**验证**：`just --list` 能列出 `ci-local`、`just --dry-run ci-local` 能完整展开四段脚本（recipe 解析通过）；`git diff --check` RC=0；`just --list` 的说明行也改成可直读的用法。本次纯文档 / justfile 改动，不改产品代码、不改 CI 配置、不合 PR。**最终 CI run `44114213700`（headSha `6a659ee`）：`conclusion: success`，Backend Tests / Miniprogram Build / Frontend Tests / Solana x402 Agent API 四个 job 全 `success`，`Deploy Backend` 未触发。** 仅有两条非阻断弃用提醒（Node.js 20 action 被强制跑在 Node 24、ubuntu-latest 将迁 Ubuntu 26）。
+
+**自查补记**：§1 快照初版把 HEAD 写死成 `382149f`，一提交就过期——已改成「以 `git rev-parse HEAD` 为准」，CI 行同理改成「以 `gh run list --limit 1` 为准」。凡是会随提交变化的数字，快照里一律写复核命令而不是写死值。
