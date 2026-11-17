@@ -5053,3 +5053,28 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 本地门禁：`cargo fmt` + 严格 clippy RC=0、`cargo test -p roselet-recommend contract` 6 passed、Web `tsc --noEmit` RC=0、三个页面 `eslint` RC=0、5 个 jest 套件 42 例全过。
 
 提交 `3ec602c`，CI run `43723942421`（headSha `3ec602c8e7ae2efa27762ab9fae1bd5468175fcd`）`conclusion: success`，四个 job 全部 success。PR #7 仍 `Draft + MERGEABLE`；`Deploy Backend` 仍 skipped——`.github/workflows/deploy-backend.yml:25` 只在 `workflow_run.conclusion == 'success' && head_branch == 'main'` 时触发，所以「合到 main」就是那个会真正部署生产后端的动作。
+
+### 前端会员版边界修复：普通界面零 Web3 痕迹（2026-11-17）
+
+**问题**：用户指出前端把 Web3 功能直接展示给所有用户，而本意是「点会员功能切换过去，只有会员才看到连接钱包 / 上链」。核对后发现 `CLAUDE.md`「会员模式的默认关闭边界」**早就规定默认零 Web3 痕迹**，是实现只做了一半：`MembershipProvider`（默认 off）、`MembershipPanel`、右上角「🌐 会员」入口、`RoseSolanaMint` / `RoseNftMint` 的内部 gate 都在，但漏了四处：
+
+1. 首页 `page.tsx` 底部「使用 Aleo 私密 Vault」链接，所有人可见；
+2. 种花页 `plant/page.tsx` 同样的链接，又挂了一次；
+3. `/private-vault` **整页无 gate**，直接输网址就能进，内含「连接 Leo Wallet / 种下私密玫瑰」完整链上操作；
+4. 详情页 `RoseMemorial`（Base Sepolia 链上纪念版）无条件渲染。
+
+另外「点会员」只弹一个浮层、刷新即回普通版，用户感知不到「切换到会员版」。
+
+**修法**：
+
+- 新增 `components/member-only.tsx`（`MemberOnly`）：用 `useOptionalMembership()`，非会员 / 无 Provider 一律返回 null，作为**唯一**入口级门闩；同步在 `CLAUDE.md` 补成硬约束。
+- 新增 `components/membership-banner.tsx`：会员模式在 header 下显示状态条「🌐 会员版 · Web3 功能已解锁」，提供「打开上链面板」与「返回普通版」，让切换看得见；挂到 `layout.tsx`。
+- 首页 / 种花页的 Aleo 链接、详情页三个链上区块统一包 `<MemberOnly>`；`RoseSolanaMint` / `RoseNftMint` 原有内部 gate 保留作双保险。
+- `/private-vault` 重构：`PrivateVaultPage` 先判会员，非会员只渲染「会员版功能」提示卡 + 切换按钮；`new LeoWalletAdapter` / `WalletProvider` 移进 `MemberVault` 子组件，普通模式连适配器都不实例化。
+- `nav.tsx` 入口文案改「🌐 会员版」并加 `aria-pressed`。
+
+**边界**：`isMember` 仍是前端视图开关，未加付费 / 后端权限（项目仍在 `PRODUCT.md` 的「找 5 人试用」阶段）；未做会员状态持久化（刷新回普通版 = 默认零 Web3，更安全）；普通模式详情页仍会读一次 `getRoseMemorial`（只读后端记录、不展示），列为后续优化。
+
+**验证命令与结果**：Web `tsc --noEmit` RC=0、改动文件 `eslint` RC=0、`jest --config jest.config.ts --coverage --runInBand` → 44 套件 326 例全过、覆盖率 `91.85 / 80.11 / 87.24 / 94.39`（门槛 90/70/85/90）；Rust `cargo fmt --all -- --check` + 严格 clippy RC=0。新增 `member-only.test.tsx`（4 例）、`membership-banner.test.tsx`（3 例），并把首页 / 种花页 / 详情页 / private-vault 的断言改成「普通模式不显示、会员版才显示」。
+
+**排查坑**：jest 直接把 `src/app/rose/[id]/__tests__/page.test.tsx` 当参数时，`[id]` 会被当成正则字符类而匹配不到文件（显示 7 个套件而不是 8 个）。改用 `--runTestsByPath 'src/app/rose/[id]/__tests__/page.test.tsx'` 单独跑，20 例全过。以后带方括号的动态路由测试一律用 `--runTestsByPath`。

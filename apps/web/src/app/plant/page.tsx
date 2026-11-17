@@ -10,6 +10,7 @@ import { playClick, playPlant, playComplete } from "@/lib/sound";
 import { getRecommendation, validatePlantInput, type Recommendation } from "@/lib/recommend";
 import { Fireworks } from "@/components/fireworks";
 import { RosePlayer } from "@/components/rose-player";
+import { MemberOnly } from "@/components/member-only";
 import { COLOR_FALLBACK, colorLabelFallback } from "@roselet/core";
 
 // 颜色元数据统一来自 @roselet/core（Rust WASM `color_options` 为权威）。
@@ -166,13 +167,16 @@ export default function PlantPage() {
           <div className="text-center space-y-2">
             <h2 className="text-xl font-bold text-rose-300">选择玫瑰的颜色</h2>
             <p className="text-slate-400">每种颜色代表不同的心情</p>
-            <Link
-              href="/private-vault"
-              className="inline-flex items-center gap-1.5 text-sm text-emerald-300 hover:text-emerald-200"
-            >
-              <LockKeyhole className="size-4" aria-hidden="true" />
-              使用 Aleo 私密 Vault
-            </Link>
+            {/* Web3 入口：普通界面零痕迹，只有切换到会员版才出现 */}
+            <MemberOnly>
+              <Link
+                href="/private-vault"
+                className="inline-flex items-center gap-1.5 text-sm text-emerald-300 hover:text-emerald-200"
+              >
+                <LockKeyhole className="size-4" aria-hidden="true" />
+                使用 Aleo 私密 Vault
+              </Link>
+            </MemberOnly>
           </div>
           {/* Recommendation Card */}
           {(recLoading || rec) && (

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Nav } from "@/components/nav";
 import { MembershipProvider } from "@/app/membership-context";
 import { MembershipPanel } from "@/components/membership-panel";
+import { MembershipBanner } from "@/components/membership-banner";
 import { CyberBackground } from "@/components/cyber-background";
 import { DayNightBackground } from "@/components/day-night-bg";
 import { FallingPetals } from "@/components/falling-petals";
@@ -39,6 +40,7 @@ export default function RootLayout({
               <Nav />
             </div>
           </header>
+          <MembershipBanner />
           <main className="flex-1 overflow-y-auto">{children}</main>
           <MembershipPanel />
         </MembershipProvider>

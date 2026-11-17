@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LockKeyhole } from "lucide-react";
 import { TipTicker } from "@/components/tip-ticker";
 import { ActivityFeed } from "@/components/activity-feed";
+import { MemberOnly } from "@/components/member-only";
 
 export default function Home() {
   return (
@@ -54,13 +55,16 @@ export default function Home() {
             </button>
           </Link>
         </div>
-        <Link
-          href="/private-vault"
-          className="inline-flex items-center gap-1.5 text-sm text-emerald-300 hover:text-emerald-200"
-        >
-          <LockKeyhole className="size-4" aria-hidden="true" />
-          使用 Aleo 私密 Vault
-        </Link>
+        {/* Web3 入口：普通界面零痕迹，只有切换到会员版才出现 */}
+        <MemberOnly>
+          <Link
+            href="/private-vault"
+            className="inline-flex items-center gap-1.5 text-sm text-emerald-300 hover:text-emerald-200"
+          >
+            <LockKeyhole className="size-4" aria-hidden="true" />
+            使用 Aleo 私密 Vault
+          </Link>
+        </MemberOnly>
       </div>
     </main>
   );

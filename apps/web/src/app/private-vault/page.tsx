@@ -6,6 +6,7 @@ import { DecryptPermission } from "@demox-labs/aleo-wallet-adapter-base";
 import { WalletProvider, useWallet } from "@demox-labs/aleo-wallet-adapter-react";
 import { LeoWalletAdapter, LeoWalletName } from "@demox-labs/aleo-wallet-adapter-leo";
 import { Button } from "@/components/ui/button";
+import { useOptionalMembership } from "@/app/membership-context";
 import { ALEO_NETWORK, ALEO_PROGRAM_ID, createPrivateRoseTransaction } from "@/lib/aleo";
 import { buildAleoVaultInputs, getRecommendation } from "@/lib/recommend";
 
@@ -116,7 +117,8 @@ function VaultForm() {
   );
 }
 
-export default function PrivateVaultPage() {
+/** 只有会员分支才实例化 Aleo 适配器，普通模式连钱包代码都不会挂载。 */
+function MemberVault() {
   const [wallets] = useState(() => [new LeoWalletAdapter({ appName: "Roselet" })]);
   return (
     <WalletProvider
@@ -129,4 +131,38 @@ export default function PrivateVaultPage() {
       <VaultForm />
     </WalletProvider>
   );
+}
+
+/** 非会员直接输网址进来：只给切换入口，不展示任何 Web3 操作。 */
+function MemberRequired() {
+  const membership = useOptionalMembership();
+  return (
+    <main className="relative z-10 mx-auto max-w-2xl px-4 py-12">
+      <div className="space-y-5 rounded-2xl border border-violet-400/25 bg-violet-500/5 p-6">
+        <p className="text-sm text-violet-200">🌐 会员版功能</p>
+        <h1 className="text-2xl font-semibold text-slate-100">Aleo 私密 Vault 只在会员版开放</h1>
+        <p className="text-sm leading-6 text-slate-400">
+          连接钱包、创建私密链上记录属于 Web3 功能，普通界面不展示这些操作。
+          请先在右上角切换到「会员版」。
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            onClick={() => membership?.openPanel()}
+            className="bg-violet-500/20 text-violet-100 hover:bg-violet-500/30"
+          >
+            切换到会员版
+          </Button>
+          <Link href="/" className="text-sm text-slate-400 hover:text-rose-300">
+            返回普通界面
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function PrivateVaultPage() {
+  const membership = useOptionalMembership();
+  if (!membership?.isMember) return <MemberRequired />;
+  return <MemberVault />;
 }

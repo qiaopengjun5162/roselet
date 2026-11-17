@@ -1,6 +1,14 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+// 默认按会员渲染，保留原有钱包流程用例；单独一个用例切到普通模式验证拦截。
+let memberMode = true;
+const mockOpenPanel = jest.fn();
+jest.mock("@/app/membership-context", () => ({
+  useOptionalMembership: () => ({ isMember: memberMode, openPanel: mockOpenPanel }),
+}));
+afterEach(() => { memberMode = true; });
+
 const mockSelect = jest.fn();
 const mockConnect = jest.fn();
 const mockRequestTransaction = jest.fn();
@@ -69,6 +77,17 @@ describe("PrivateVaultPage", () => {
     });
     mockCreatePrivateRoseTransaction.mockReturnValue({ transaction: true });
     mockRequestTransaction.mockResolvedValue("wallet-request-1");
+  });
+
+  it("普通模式直接输网址也看不到任何钱包操作", () => {
+    memberMode = false;
+    render(<PrivateVaultPage />);
+
+    expect(screen.getByText("Aleo 私密 Vault 只在会员版开放")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("写下一段不想公开的感恩、焦虑或期待")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "种下私密玫瑰" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "切换到会员版" }));
+    expect(mockOpenPanel).toHaveBeenCalledTimes(1);
   });
 
   it("requires private content before requesting the wallet", () => {
