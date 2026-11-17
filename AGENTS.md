@@ -1,6 +1,6 @@
 # AGENTS.md - Roselet
 
-> 新会话开始时，先读 `DEVLOG.md` 了解上次进度。
+> 新会话开始时，**先读 `docs/TEAM_REVIEW_CHECKLIST.md` 的 §0 / §1**（一页纸现场快照：现在到哪了、卡在哪、最该做什么、先别做什么），再按需查 `DEVLOG.md`（5000+ 行）看细节。不要把长日志当入口，也不要凭记忆判断项目进度。
 
 这是 Codex 的项目入口文件。完整项目规则、架构约束、命令速查和测试状态以 `CLAUDE.md` 为共享源，避免两份长文档重复维护后漂移。
 
@@ -36,6 +36,9 @@
 - 修改后按风险运行对应检查；Rust 测试使用 `cargo-nextest`。
 - Web/小程序/Agent API 覆盖率门禁使用 `just coverage` 或根目录 `pnpm test:coverage`。
 - 质量门禁使用 `just typecheck`、`just lint`、`just audit`、`just next-build`；`just check-all` / `just pre-commit` 已包含这些检查。
+- **push 前跑 `just ci-local`，不要只跑 `just pre-commit`**：后者不含 Web 覆盖率门槛和小程序 `taro build --type weapp`，历史上两次造成「本地全绿 / CI 红」。CI 的四个 job 以 `just ci-local` 为本地等价。
+- **每次 CI 红，修复必须带一条防复发的可执行检查**（补进 `just ci-local`、加测试 / lint 规则 / 契约守卫三选一）。只改坏掉的那一行不算修完，否则同一个坑会反复踩；把根因和防复发措施一起写进 `DEVLOG.md`。
+- 纸面规则不算数：`CLAUDE.md` 写了「默认零 Web3 痕迹」却漏了四处入口，直到补上门闩测试和契约守卫才真正守住。新增架构约束时同时问一句「哪条自动检查会在它再被破坏时报错」。
 - 每次代码或项目文档变更都要 commit 并 push。
 - 遇到问题先解决；解决后把问题、原因、处理方式、验证命令记录到 `DEVLOG.md`。
 - 可复用经验沉淀到 `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`，不要只留在会话记录里。

@@ -152,6 +152,8 @@ Quality gates:
 
 - **会员图片上传（IPFS）**：`POST /api/ipfs/upload` 是后端代理上传，`PINATA_JWT` 只留在服务端，**禁止**加 `NEXT_PUBLIC_` 前缀或下发到浏览器（AGENTS.md 密钥纪律）。未配置时返回 503 且消息可见（`AppError::ServiceUnavailable`），前端降级为手填 CID，不影响普通模式。该路由单独设了 6 MiB body limit（axum 默认 2 MiB 会挡住 5 MiB 图片）；后端校验 mime 白名单 / 大小 / 文件名清理，并兼容 Pinata v3 `data.cid`、`cid`、经典 `IpfsHash` 三种响应。前端 `uploadImageToIpfs()` 用 FormData，**不要手动设 Content-Type**，否则 multipart boundary 丢失。测试里 `@solana/web3.js` 在 jsdom 下会因缺 `TextEncoder` 加载失败，用最小 `jest.mock` 桩替掉即可（测试不触发上链）。
 
+- **本地全绿 ≠ CI 绿**：`just check-all` / `just pre-commit` 缺 Web 覆盖率门槛和小程序 `taro build --type weapp`，曾因此两次 CI 红（clippy doc-lint 缓存漏报、`@roselet/core` 值导入后首次进 webpack 打包图导致 TS parse error）。push 前跑 `just ci-local`；每次 CI 红的修复要顺带落一条防复发检查。
+
 ## 常用命令（justfile）
 ```bash
 just dev              # 启动完整开发环境（后端 3001 + 前端 3000）
@@ -159,6 +161,7 @@ just build            # 编译后端
 just test             # 运行所有测试
 just check-all        # 完整检查（格式 + lint + 审计 + 测试）
 just pre-commit       # 提交前检查（格式化 + lint + 测试）
+just ci-local         # push 前跑：与 CI 四个 job 等价（含覆盖率门槛 + 小程序生产构建）
 just db-init          # 数据库初始化（创建 + 迁移）
 just db-reset         # 数据库重置
 just migrate          # 运行数据库迁移

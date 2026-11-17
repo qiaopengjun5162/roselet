@@ -5092,3 +5092,20 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **验证命令**：`cargo deny check` RC=0 且 `advisories ok, bans ok, licenses ok, sources ok`（yanked 警告也消失）；`cargo fmt --all -- --check` RC=0；严格 clippy RC=0；`cargo test -p roselet-recommend contract` 6 passed。
 
 **经验**：`cargo deny` 会随 RustSec 公告库变化，在**没改任何依赖**的情况下把 CI 变红；本地 `cargo deny check` 能直接复现（本地 0.19.0 与 CI 同结果），不用等 CI。遇到「无安全升级可用」的 unmaintained 公告，正确做法是显式 ignore 单个 ID + 写明迁移计划，而不是降级审计或假装没看见。
+
+---
+
+## 2026-11-17（晚）对照 LoopForge 文章：只借「把经验变成自动守着的规矩」
+
+**输入**：用户给了一篇公众号文章《登上 GitHub Trending｜腾讯开源 LoopForge》（腾讯开源 / 腾讯技术工程，2026-11-17），问本项目可借鉴 / 可落实之处。文章讲团队级 AI 研发平台的五步演进：云端 7×24 → 共享会话 + Main Bot → 工程级 SOP（五层标准 / 客观门禁 / 主副驾接管）→ 定时与 Issue 自动化 → 工程级 RSI 复盘自进化。核心句是「把人的工程经验转化为系统的运行秩序」。
+
+**判断（最重要）**：**不要照搬**。文章解决的是「团队用 AI 写代码时，人的注意力成为瓶颈」；本项目瓶颈正好相反——代码与门禁过剩、`PRODUCT.md:74` 写的「找 5 个人试用」仍是 0，最近 35 个提交几乎全在 Web3 / 门禁 / 契约测试。照 L1→L5 往上堆只会放大偏差。逐条对照写在 `docs/TEAM_REVIEW_CHECKLIST.md` §6.9。
+
+**只借三处，且都落在「不改产品代码」的范围**：
+1. **本地门禁 ≠ CI 门禁**（文章「客观门禁不通过绝不放行」）。`just check-all` / `just pre-commit` 缺 `pnpm --filter web test:coverage`（CI 硬门槛）与 `cd apps/miniprogram && pnpm build:weapp`（小程序生产构建），历史上正是这两处造成「本地全绿 / CI 红」。→ `justfile` 新增 `ci-local`，按 `build.yml` 四个 job 原样复刻（含三处 WASM 前置与 `scripts/init-miniprogram.sh`），注明前置条件（wasm-pack / cargo-deny / nextest / 本地 Postgres + `DATABASE_URL`）。
+2. **「复盘 → 改写流程」要真的闭环**（文章「工程级 RSI 外环」）。本项目 DEVLOG 5094 行复盘很全，但三次 CI 红（clippy doc-lazy-continuation、Taro `rule("ts")` 空规则、`chrono` 新公告）都只修了坏的那一行，没有落防复发检查；还出现过复盘结论写错要事后订正。→ `AGENTS.md` / `CLAUDE.md` 写死两条：push 前跑 `just ci-local`；**每次 CI 红的修复必须同时落一条防复发的可执行检查**，并把根因一并记进 DEVLOG。
+3. **同一个现场**（文章「共享会话」）。本项目是单人 + AI，没有多人割裂，但跨会话割裂真实存在：日志 5094 行、规则分散两份、用户反复说「继续」。→ **不新建文档**（多一份文档只会更割裂），把清单 §0 / §1 更新成一页纸现场快照（现在到哪、卡在哪、最该做 / 先别做），`AGENTS.md` 指定新会话先读这里。
+
+**明确没做**：文章阶段 4 的「定时巡检」可闭环第三次 CI 红（依赖公告只在 push 时才发现），但加每周 workflow 属运维策略变更、会持续产生运行记录，留给用户点头；阶段 1 云端 / Main Bot 三挡权限 / 多人 SOP 对单人项目不适用；项目已有的 Rust↔TS 契约测试就是文章「交付物契约」的雏形，保持即可。§6.8 表里 7 项代码优化同样不动，等 5 人试用结果。
+
+**验证**：`just --list` 能列出 `ci-local`、`just --dry-run ci-local` 能完整展开四段脚本（recipe 解析通过）；`git diff --check` RC=0。本次纯文档 / justfile 改动，不改产品代码、不改 CI 配置、不合 PR；push 后按惯例用 `gh run view <run> --json conclusion,jobs` 确认四关全绿。

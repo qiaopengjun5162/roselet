@@ -1,32 +1,41 @@
 # Roselet 项目盘点与团队检查清单
 
-> 生成日期：2026-11-14
+> 生成日期：2026-11-14；**§0 / §1 已于 2026-11-17 更新为新会话入口（一页纸现场快照）**。
 > 依据：一次全仓只读盘点（功能完成度 / 代码质量 / CI 与生产就绪 / Web3 主网专项四路检查）+ 项目文档原文。所有结论带 `文件:行号`，关键数字已于生成当日复核。
-> 用法：按第 3 节分头检查，在 `- [ ]` 打勾，把「实际结果」填回去，不确定的写「待确认」不要猜。
+> 用法：新会话先读 §0 / §1；派活按第 3 节分头检查，在 `- [ ]` 打勾，把「实际结果」填回去，不确定的写「待确认」不要猜。历史进展看 §6，细节看 `DEVLOG.md`。
 
 ---
 
-## 0. 一句话结论
+## 0. 一句话结论（2026-11-17 更新；新会话先读这一节）
 
-**核心产品做完了、生产也跑着，但「发布流程」和「主网上线」两件事没闭环。**
-现在最该做的不是加功能，而是：合主线 → 生产配置与发布流程收口 → 找真实用户试用。
+**代码侧已经干净、四关 CI 全绿；现在真正缺的不是功能，是「有没有人真的会用」。**
 
-阶段判断：**内测可用，但不是「主网就绪」，也不是「发布流程成熟」**。核心功能在 AWS Lightsail 上跑着，Web3 只是 Devnet / 本地验证闭环，主网进度为 0。
+`PRODUCT.md` 写着「当前唯一要做的事：找 5 个人试用，看他们会不会回来」，`README.md` 自评 `User validation 20%`；但最近 35 个提交几乎全在 Web3、门禁、契约测试上。**别把「工程流程做得更漂亮」当成项目进展。**
+
+**现在最该做的三件事（都要真人，不是代码）**
+1. **找 5 个真实用户试用，看会不会回来** ← 最高优先级，也是唯一能验证产品的事
+2. 用真的 Phantom 扩展手点一遍上链（现有 `verify:phantom*` 跑的是注入的假钱包 + 本地 validator）
+3. 决定是否合 PR #7 —— 这一步等于部署生产后端，不可逆，需人拍板
+
+**这轮先别做**：继续堆 Web3 / 门禁 / 重构；`MembershipPanel` 拆分、付费会员权限、主网化、`chrono` 迁移都等第 1 项有结果再排期。理由与逐条对照见 §6.9。
+
+阶段判断：内测可用、生产在跑；Web3 只到 Devnet / 本地验证闭环，主网进度 0；发布流程已有 `docs/RELEASE_PROCESS.md` 但尚未按它走完一次正式发布。
 
 ---
 
-## 1. 现状快照（2026-11-14 实时核准）
+## 1. 现状快照（2026-11-17 实时核准）
 
 | 项目 | 状态 | 依据 |
 |---|---|---|
-| 当前分支 | `codex/solana-mainnet-assessment` | `git branch --show-current` |
-| 工作树 | 干净，无未提交改动 | `git status --short` |
-| PR #7 | OPEN / Draft / MERGEABLE，未转正式 | `gh pr view 7`；https://github.com/qiaopengjun5162/roselet/pull/7 |
-| 分支与 main 差距 | 21 个 commit、49 文件、+7607 −355 全部未合主线 | `git rev-list --count main..HEAD`、`git diff --shortstat main...HEAD` |
-| CI | 最近两次全绿（4/4 job）：`42774870396`、`42773483053` | `gh run list` |
-| 生产部署 | 两次 `Deploy Backend` 均为 `skipped`（分支非 main，未误触发） | 同上 |
-| 测试量 | Web 286 / 小程序 66 / backend 94+1 ignored / recommend 153 | CI 日志、`DEVLOG.md` |
-| 覆盖率 | statements 91.29 / branches 79.29 / functions 86.41 / lines 93.93，四项全过 | `apps/web/jest.config.ts:13-19` 门槛；CI run `42773483053` |
+| 当前分支 | `codex/solana-mainnet-assessment`，工作树干净，本地/远端同为 `382149f` | `git status --short`、`git rev-parse HEAD`、远端 ref API |
+| PR #7 | OPEN / Draft / MERGEABLE，2026-11-17 有更新 | `gh pr view 7`；https://github.com/qiaopengjun5162/roselet/pull/7 |
+| 分支与 main 差距 | 领先 35 个 commit、78 文件、+9352 −455，全部未合主线 | `git rev-list --left-right --count origin/main...HEAD`、`git diff --shortstat origin/main...HEAD` |
+| CI | run `44110631326` 四个 job 全 `success` | `gh run view 44110631326` |
+| 生产部署 | `Deploy Backend` 为 `skipped`（分支非 main，未误触发） | `gh run list`；`.github/workflows/deploy-backend.yml:25` |
+| Web 测试 | 全量 `jest --coverage` 44 套件 / 326 例全过 | 本地全量运行 + CI |
+| 覆盖率 | statements 91.85 / branches 80.11 / functions 87.24 / lines 94.39，四项全过（门槛 90/70/85/90） | `apps/web/jest.config.ts` |
+| Rust 契约 | `cargo test -p roselet-recommend contract` 6 例；严格 clippy / fmt / `cargo deny` 全 0 | 本地 + CI |
+| 用户验证 | **仍是 0**：5 人试用未开始 | `PRODUCT.md:74`、`README.md` 进度条 |
 
 ---
 
@@ -241,6 +250,25 @@
 | 7 | `chrono` 无人维护 | `RUSTSEC-2026-0543` 已在本轮 `deny.toml` 显式豁免（公告写「无安全升级可用」）；真正解法是迁移到 `jiff` / `time`，需单独排期 |
 
 **结论**：用户主诉（Web3 不该默认暴露）已解决；上表 1 是真正需要产品决策的边界，2–5 属代码整洁度，可下一轮排期。
+
+### 6.9 对照腾讯开源 LoopForge 文章：可以借鉴什么、不可以照搬什么（2026-11-17）
+
+**文章**：《登上 GitHub Trending｜腾讯开源 LoopForge》（公众号「腾讯开源」，2026-11-17）。讲团队级 AI 研发平台的五步演进：① 云端 7×24 工作区 ② 共享会话 + 唯一 Main Bot + 三挡权限代批 ③ 工程级 SOP（五层标准 / 客观门禁当场自愈 / 主副驾随时接管） ④ 定时巡检与 Issue 全链路自动化 ⑤ 工程级 RSI（复盘开处方 → 改写 SOP 与门禁）。最值钱的一句：**「把人的工程经验转化为系统的运行秩序」**。
+
+**总判断：不要照搬。** 文章治的是「团队用 AI 写代码时，人的注意力成了瓶颈」；本项目的瓶颈恰好相反——代码与门禁已经过剩，**用户验证为 0**（`PRODUCT.md:74` 写「当前唯一要做的事：找 5 个人试用」，最近 35 个提交几乎全在 Web3 / 门禁 / 契约测试）。照 L1→L5 往上堆只会把偏差放大。§0 列的三件事没有一件是靠写代码解决的。
+
+| 文章做法 | 本项目现状 | 判断 / 本轮动作 |
+|---|---|---|
+| ③ 客观门禁「不通过绝不放行」 | clippy / cargo deny / 覆盖率门槛 / Rust↔TS 契约测试都在；上一轮还刚把「零 Web3 痕迹」从纸面规则变成门闩测试 | **已具备，别重复加**。真缺口是「本地跑的门禁 ≠ CI 跑的门禁」：`just pre-commit` 漏了 Web 覆盖率与小程序 `taro build`，两次造成 CI 红 → 本轮补 `just ci-local` |
+| ⑤ 复盘开处方、改写流程，下次不再踩 | DEVLOG 5094 行 + §6.6 复盘齐全，但三次 CI 红都只修了坏的那一行；还出现过复盘结论写错要事后订正 | **能借，本轮落地**：`AGENTS.md` / `CLAUDE.md` 写死「每次 CI 红必须落一条防复发的可执行检查」，并让 `just ci-local` 成为默认载体 |
+| ② 一个共享会话 / 同一个现场 | 单人 + AI，无多人割裂；但跨会话割裂真实存在：日志 5094 行、规则分散两份、用户反复说「继续」 | **能借，本轮落地**：不新建文档（多一份只会更割裂），把 §0 / §1 更新成一页纸现场快照，`AGENTS.md` 指定新会话先读 |
+| ④ 定时巡检、无人值守 | CI 只在 push / PR 触发；`chrono` 公告正是「没改代码却变红」才被发现；两条弃用提醒一直挂着 | **能借，本轮没做**：加每周定时审计 workflow 属运维策略变更、会持续产生运行记录，需你点头。它闭环的正是第三次 CI 红 |
+| ① 云端 7×24 / ② Main Bot 三挡权限代批 / ③ 多人角色 SOP | 单人项目；高风险动作（合主线 = 部署生产）本来就一直留给人工拍板 | **不适用** |
+| ③ 五层标准里的「交付物契约」 | `crates/recommend/src/contract.rs` 的 Rust↔TS 契约测试就是雏形 | **已有雏形**，保持即可，不必上平台化 SOP |
+
+**本轮实际改动**：`justfile`（新增 `ci-local`）、`AGENTS.md`（新会话入口 + 两条硬规则）、`CLAUDE.md`（命令表 + 「本地全绿 ≠ CI 绿」坑）、本清单 §0 / §1 / §6.9、`DEVLOG.md`、工作日志。**没动任何产品代码、没动 CI 配置、没合 PR。**
+
+**明确没做（不是漏了）**：§6.8 表里 7 项代码优化、每周定时巡检 workflow、主网化立项 —— 都等「5 人试用」有结果再排期。
 
 ---
 
