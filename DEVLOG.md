@@ -5385,3 +5385,22 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **验收**：本地生产构建 390×844 + 桌面，会员态 / 非会员态截图目视花瓣不再透入内容、文字与输入框清晰、无新裁切；两档 `horizontalOverflow=0`、pageerror 0。网络仍 Devnet。Web 46 套件 345 例全过，typecheck / lint ✓。
 
 **边界**：纯 Web 样式 + 一条守卫测试；钱包逻辑、Aleo WASM、会员门闩、`crates/`、后端均未动，`should_deploy=false`。
+
+---
+
+## 十六续：Solana 连接改成多钱包选择器（2026-11-18 23:10）
+
+**为什么**：用户反馈「钱包连接应该使用组件，可以连接多个钱包多条链」。查证现状：Solana 侧底层 `lib/wallet.ts` 用 Wallet Standard，`listSolanaWallets()` 本就能发现所有已装钱包，但 `connectSolanaWallet()` 写死「优先 Phantom 否则第一个」，UI 也只有一个「连接钱包（Phantom）」按钮——用户根本没得选。Aleo 侧硬编码单个 LeoWalletAdapter。用户拍板：**先做 Solana 侧多钱包选择，链保持 Devnet 不变**。
+
+**技术取舍（2026 查证）**：官方 kit 栈（本项目所用，刻意不带 web3.js）目前**没有开箱即用的钱包选择弹窗**——`@solana/react-hooks` 官方教程是让你用 shadcn dialog 自己搭。旧的 `@solana/wallet-adapter-react-ui` 有现成弹窗但依赖 web3.js，与项目「去掉 web3.js」架构冲突。故选择自建轻量选择器，不引入新依赖。另确认「一个组件连多链」不存在：Solana 与 Aleo 生态不兼容；界面切主网更是禁区（后端只认 Devnet 回执，切主网=花真钱+验证对不上）。
+
+**改法**：
+- `lib/wallet.ts`：`connectSolanaWallet(walletName?)` 按名选钱包（不传保持旧行为，兼容 E2E）；新增 `listSolanaWalletOptions()`（只给名字/icon）和 `onSolanaWalletsChanged(listener)`（订阅 registry register/unregister，扩展延迟注入也能刷新）。
+- `app/membership-context.tsx`：新增 `solanaWallets` state（挂载时取 + 订阅变化），`connectWallet(walletName?)` 透传钱包名。
+- `components/membership-panel.tsx`：单个连接按钮换成钱包列表——0 个钱包给安装引导（Phantom/Solflare/Backpack 链接）；1 个一步连；多个列出「连接 <名字>」各自按钮，带 icon。顺带把网络报错提示里写死的「Phantom 网络」改成「钱包网络」。
+
+**防复发**：`lib/__tests__/wallet.test.ts` 新增 2 例——按名选必须连指定钱包、不传名仍 Phantom 优先；`membership-panel.test.tsx` 新增 3 例——0 钱包显示安装引导、多钱包列出全部且点谁传谁的名字、单钱包一步连。3 个 mock 了 `@/lib/wallet` 的测试同步补 `listSolanaWalletOptions`/`onSolanaWalletsChanged`。
+
+**验收**：本地生产构建 + 真浏览器，注入 3 个假 Wallet Standard 钱包：列出 3 个连接按钮，点 Solflare 后显示其地址（`Solfla…1111`，非 Phantom），无报错；不注入钱包时显示安装引导、无连接按钮。Web 46 套件 350 例全过，typecheck/lint ✓。
+
+**边界**：只动 Solana 连接 UI 与其测试链；Aleo Vault、链配置（仍 Devnet）、后端、`crates/`、签名逻辑均未动，`should_deploy=false`。

@@ -8,6 +8,7 @@ const mockUpload = jest.fn();
 const mockSendRoseMemo = jest.fn();
 const mockConfirmSignature = jest.fn();
 const mockConnectWallet = jest.fn();
+let mockSolanaWallets: Array<{ name: string; icon?: string }> = [];
 
 jest.mock("@/lib/rose-memo", () => ({
   sendRoseMemo: (...args: unknown[]) => mockSendRoseMemo(...args),
@@ -19,6 +20,8 @@ jest.mock("@/lib/solana-rpc", () => ({
 
 jest.mock("@/lib/wallet", () => ({
   connectSolanaWallet: (...args: unknown[]) => mockConnectWallet(...args),
+  listSolanaWalletOptions: () => mockSolanaWallets,
+  onSolanaWalletsChanged: () => () => {},
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -120,6 +123,7 @@ describe("MembershipPanel · Solana mint retry safety", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSolanaWallets = [{ name: "Phantom" }];
     mockConnectWallet.mockResolvedValue({
       address: WALLET,
       signTransaction: jest.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
@@ -147,7 +151,7 @@ describe("MembershipPanel · Solana mint retry safety", () => {
 
     renderPanel();
     fireEvent.click(screen.getByRole("button", { name: "enter-member" }));
-    fireEvent.click(screen.getByRole("button", { name: /连接钱包/ }));
+    fireEvent.click(screen.getByRole("button", { name: /连接 Phantom/ }));
     await screen.findByText(/钱包：/);
 
     fireEvent.change(screen.getByPlaceholderText(/例如 550e8400/), {
@@ -183,7 +187,7 @@ describe("MembershipPanel · Solana mint retry safety", () => {
 
     renderPanel();
     fireEvent.click(screen.getByRole("button", { name: "enter-member" }));
-    fireEvent.click(screen.getByRole("button", { name: /连接钱包/ }));
+    fireEvent.click(screen.getByRole("button", { name: /连接 Phantom/ }));
     await screen.findByText(/钱包：/);
 
     fireEvent.change(screen.getByPlaceholderText(/例如 550e8400/), {
@@ -202,5 +206,57 @@ describe("MembershipPanel · Solana mint retry safety", () => {
     fireEvent.click(screen.getByRole("button", { name: /重试保存/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(mockSendRoseMemo).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("MembershipPanel · multi-wallet chooser", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSolanaWallets = [];
+    mockConnectWallet.mockResolvedValue({
+      address: "5FHwkrdxntdK24hgQU8qgBjn35Y1zwhz1GZwCkP2UJnM",
+      signTransaction: jest.fn().mockResolvedValue(new Uint8Array([1])),
+      disconnect: jest.fn(),
+    });
+  });
+
+  it("shows install hints when no Solana wallet is detected", () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "enter-member" }));
+    expect(screen.getByText(/未检测到 Solana 钱包/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Phantom/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^连接 / })).not.toBeInTheDocument();
+  });
+
+  it("lists every detected wallet and connects the one clicked", async () => {
+    mockSolanaWallets = [
+      { name: "Phantom" },
+      { name: "Solflare" },
+      { name: "Backpack" },
+    ];
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "enter-member" }));
+
+    expect(screen.getByText(/检测到 3 个钱包/)).toBeInTheDocument();
+    const phantom = screen.getByRole("button", { name: /连接 Phantom/ });
+    const solflare = screen.getByRole("button", { name: /连接 Solflare/ });
+    const backpack = screen.getByRole("button", { name: /连接 Backpack/ });
+    expect(phantom).toBeInTheDocument();
+    expect(solflare).toBeInTheDocument();
+    expect(backpack).toBeInTheDocument();
+
+    // Clicking a specific wallet must pass its name to connectSolanaWallet.
+    fireEvent.click(solflare);
+    await waitFor(() => expect(mockConnectWallet).toHaveBeenCalledWith("Solflare"));
+    expect(mockConnectWallet).toHaveBeenCalledTimes(1);
+  });
+
+  it("a single detected wallet is a one-click connect", () => {
+    mockSolanaWallets = [{ name: "Solflare" }];
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "enter-member" }));
+    // No "N wallets" hint when there is only one.
+    expect(screen.queryByText(/检测到 \d+ 个钱包/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /连接 Solflare/ })).toBeInTheDocument();
   });
 });

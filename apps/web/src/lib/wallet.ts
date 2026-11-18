@@ -81,6 +81,12 @@ export function solanaChainForCluster(cluster: SolanaCluster = CLUSTER): string 
   }
 }
 
+/** A wallet the chooser can render: name + optional icon, no signing methods. */
+export interface SolanaWalletOption {
+  name: string;
+  icon?: string;
+}
+
 /** Solana wallets currently registered with the page (empty when none installed). */
 export function listSolanaWallets(): StandardWallet[] {
   return getWallets()
@@ -92,20 +98,42 @@ export function listSolanaWallets(): StandardWallet[] {
     .map((wallet) => wallet as unknown as StandardWallet);
 }
 
+/** Lightweight list for the wallet chooser UI (names + icons only). */
+export function listSolanaWalletOptions(): SolanaWalletOption[] {
+  return listSolanaWallets().map((w) => ({ name: w.name, icon: w.icon }));
+}
+
+/**
+ * Subscribe to installed-wallet changes (extensions can inject after page load).
+ * Returns an unsubscribe function. Used by the membership context to keep the
+ * chooser list fresh without polling.
+ */
+export function onSolanaWalletsChanged(listener: () => void): () => void {
+  const registry = getWallets();
+  const offRegister = registry.on("register", () => listener());
+  const offUnregister = registry.on("unregister", () => listener());
+  return () => { offRegister(); offUnregister(); };
+}
+
 /**
  * Connect to a Solana wallet and return a session.
  *
- * Prefers Phantom when several wallets are installed (the one our users
- * actually have), otherwise the first registered wallet. The account picker is
- * left to the wallet itself: `standard:connect` returns the accounts the user
+ * `walletName` (when given) selects a specific installed wallet — the UI shows
+ * one button per detected wallet and passes the chosen name here. When omitted,
+ * we fall back to the old behaviour (prefer Phantom, else the first wallet) so
+ * existing callers and the E2E harness keep working. The account picker is left
+ * to the wallet itself: `standard:connect` returns the accounts the user
  * approved, and we take the first.
  */
-export async function connectSolanaWallet(): Promise<WalletSession> {
+export async function connectSolanaWallet(walletName?: string): Promise<WalletSession> {
   const wallets = listSolanaWallets();
   if (wallets.length === 0) {
     throw new Error("未检测到 Solana 钱包（请安装 Phantom 等浏览器插件）");
   }
-  const wallet = wallets.find((w) => /phantom/i.test(w.name)) ?? wallets[0];
+  const requested = walletName
+    ? wallets.find((w) => w.name === walletName)
+    : undefined;
+  const wallet = requested ?? wallets.find((w) => /phantom/i.test(w.name)) ?? wallets[0];
 
   const connect = wallet.features["standard:connect"];
   if (!connect) {

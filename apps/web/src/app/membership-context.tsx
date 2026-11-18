@@ -4,13 +4,20 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 
 import type { SignTransactionFn } from "@/lib/solana-rpc";
-import { type WalletSession, connectSolanaWallet } from "@/lib/wallet";
+import {
+  type SolanaWalletOption,
+  type WalletSession,
+  connectSolanaWallet,
+  listSolanaWalletOptions,
+  onSolanaWalletsChanged,
+} from "@/lib/wallet";
 
 interface MembershipContextValue {
   /** Whether the Web3 / membership UI is active. Default OFF — normal app has no Web3. */
@@ -39,7 +46,10 @@ interface MembershipContextValue {
    */
   signTransaction: SignTransactionFn | null;
   connectError: string | null;
-  connectWallet: () => Promise<void>;
+  /** Installed Solana wallets, for the chooser. Empty on the server / no extension. */
+  solanaWallets: SolanaWalletOption[];
+  /** Connect a specific wallet by name; omit the name to keep the old auto-pick. */
+  connectWallet: (walletName?: string) => Promise<void>;
   disconnectWallet: () => void;
 }
 
@@ -52,12 +62,21 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [session, setSession] = useState<WalletSession | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [solanaWallets, setSolanaWallets] = useState<SolanaWalletOption[]>([]);
 
-  const connectWallet = useCallback(async () => {
+  // Extensions may register after hydration; refresh on mount and on any
+  // register/unregister event so the chooser never shows a stale empty list.
+  useEffect(() => {
+    const refresh = () => setSolanaWallets(listSolanaWalletOptions());
+    refresh();
+    return onSolanaWalletsChanged(refresh);
+  }, []);
+
+  const connectWallet = useCallback(async (walletName?: string) => {
     setConnectError(null);
     if (typeof window === "undefined") return;
     try {
-      const next = await connectSolanaWallet();
+      const next = await connectSolanaWallet(walletName);
       setSession(next);
       setWalletAddress(next.address);
     } catch (e) {
@@ -109,6 +128,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       walletAddress,
       signTransaction: session?.signTransaction ?? null,
       connectError,
+      solanaWallets,
       connectWallet,
       disconnectWallet,
     }),
@@ -124,6 +144,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       walletAddress,
       session,
       connectError,
+      solanaWallets,
       connectWallet,
       disconnectWallet,
     ],

@@ -3,6 +3,8 @@ import "@testing-library/jest-dom";
 
 jest.mock("@/lib/wallet", () => ({
   connectSolanaWallet: jest.fn(),
+  listSolanaWalletOptions: () => [],
+  onSolanaWalletsChanged: () => () => {},
 }));
 
 import { MembershipProvider, useMembership } from "@/app/membership-context";

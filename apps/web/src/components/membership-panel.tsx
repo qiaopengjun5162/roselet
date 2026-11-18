@@ -35,7 +35,7 @@ function withNetworkHint(message: string): string {
     "block height exceeded",
   ];
   if (networkish.some((needle) => message.includes(needle))) {
-    return `${message}\n提示：请确认 Phantom 网络与当前集群（${clusterLabel(CLUSTER)}）一致。`;
+    return `${message}\n提示：请确认钱包网络与当前集群（${clusterLabel(CLUSTER)}）一致。`;
   }
   return message;
 }
@@ -53,6 +53,7 @@ export function MembershipPanel() {
     connectError,
     connectWallet,
     disconnectWallet,
+    solanaWallets,
   } = useMembership();
 
   const [roseId, setRoseId] = useState("");
@@ -291,12 +292,39 @@ export function MembershipPanel() {
             </button>
           </div>
         ) : (
-          <button
-            onClick={connectWallet}
-            className="mb-4 w-full rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            🔌 连接钱包（Phantom）
-          </button>
+          <div className="mb-4 space-y-2">
+            {solanaWallets.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/15 px-3 py-3 text-xs text-slate-400">
+                <p>未检测到 Solana 钱包，请先安装一个再连接：</p>
+                <div className="mt-2 flex gap-3">
+                  <a href="https://phantom.app/download" target="_blank" rel="noreferrer" className="text-violet-300 hover:underline">Phantom ↗</a>
+                  <a href="https://solflare.com/download" target="_blank" rel="noreferrer" className="text-violet-300 hover:underline">Solflare ↗</a>
+                  <a href="https://backpack.app/download" target="_blank" rel="noreferrer" className="text-violet-300 hover:underline">Backpack ↗</a>
+                </div>
+              </div>
+            ) : (
+              <>
+                {solanaWallets.length > 1 && (
+                  <p className="text-xs text-slate-400">检测到 {solanaWallets.length} 个钱包，选一个连接：</p>
+                )}
+                {solanaWallets.map((wallet) => (
+                  <button
+                    key={wallet.name}
+                    onClick={() => connectWallet(wallet.name)}
+                    className="flex w-full items-center gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+                  >
+                    {wallet.icon ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={wallet.icon} alt="" className="size-5 rounded-sm" />
+                    ) : (
+                      <span aria-hidden="true">🔌</span>
+                    )}
+                    <span>连接 {wallet.name}</span>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
         )}
         {connectError && <p className="mb-3 text-xs text-red-400">{connectError}</p>}
 

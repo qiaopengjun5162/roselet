@@ -5,6 +5,8 @@ import "@testing-library/jest-dom";
 // 与 membership-panel.test.tsx 的做法一致。
 jest.mock("@/lib/wallet", () => ({
   connectSolanaWallet: jest.fn(),
+  listSolanaWalletOptions: () => [],
+  onSolanaWalletsChanged: () => () => {},
 }));
 
 import { MembershipProvider, useMembership } from "@/app/membership-context";

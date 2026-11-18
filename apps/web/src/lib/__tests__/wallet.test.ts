@@ -38,3 +38,45 @@ describe("listSolanaWallets", () => {
     expect(listSolanaWallets()).toEqual([]);
   });
 });
+
+describe("connectSolanaWallet selection", () => {
+  // A standard wallet with the two features connectSolanaWallet uses.
+  function wallet(name: string) {
+    return {
+      name,
+      chains: ["solana:devnet"],
+      features: {
+        "standard:connect": { connect: jest.fn().mockResolvedValue({
+          accounts: [{ address: `${name}-addr`, chains: ["solana:devnet"] }],
+        }) },
+        "solana:signTransaction": { signTransaction: jest.fn() },
+        "standard:disconnect": { disconnect: jest.fn() },
+      },
+    };
+  }
+
+  it("connects the wallet chosen by name, not the first one", async () => {
+    const { connectSolanaWallet } = await import("../wallet");
+    const phantom = wallet("Phantom");
+    const solflare = wallet("Solflare");
+    mockGetWallets.mockReturnValue({ get: () => [phantom, solflare] } as never);
+
+    const session = await connectSolanaWallet("Solflare");
+
+    expect(solflare.features["standard:connect"].connect).toHaveBeenCalledTimes(1);
+    expect(phantom.features["standard:connect"].connect).not.toHaveBeenCalled();
+    expect(session.address).toBe("Solflare-addr");
+  });
+
+  it("keeps the old Phantom-first behaviour when no name is given", async () => {
+    const { connectSolanaWallet } = await import("../wallet");
+    const solflare = wallet("Solflare");
+    const phantom = wallet("Phantom");
+    mockGetWallets.mockReturnValue({ get: () => [solflare, phantom] } as never);
+
+    await connectSolanaWallet();
+
+    expect(phantom.features["standard:connect"].connect).toHaveBeenCalledTimes(1);
+    expect(solflare.features["standard:connect"].connect).not.toHaveBeenCalled();
+  });
+});
