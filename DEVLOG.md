@@ -5179,3 +5179,13 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **边界**：本轮纯只读 + 本地验证 + 文档，未合并 PR、未改生产配置 / 后端代码 / CI、未加新门禁。清单新增 **§8 上线前体检**，并订正 §0 / §1 / §7.1（补「别发预览链接」）。合 PR #7 仍留真人拍板。
 
 **经验（跨会话有用）**：`gh api repos/<owner>/<repo>/deployments?sha=<sha>` + `/deployments/<id>/statuses` 能拿到 Vercel 预览 URL 与状态；判断「预览能不能给外人用」必须看 `curl -I` 的 Location，success 不等于可访问；判断「别的域名能不能接现有后端」用带 Origin 的 OPTIONS 预检看有没有 `access-control-allow-origin`。
+
+## 2026-11-18（四续）用户拍板：PR #7 已合到 main，线上换版完成
+
+**动作**：用户明确选择「合 PR #7」→ `gh pr ready 7`（原来是 Draft）→ 等 `44235047934` 四关全绿后 `gh pr merge 7 --squash`，main 到 `e36bd4a`（04:15:21 UTC）。合并触发的 main CI `44236051431` 四 job success；`Deploy Backend` `44236874463` **success**（日志 `Backend deployment files changed: deploying backend.`，命中 `014_create_solana_nft_mints.sql`），镜像构建推送 + Lightsail 拉起 + `roselet-db-1 Healthy` 均正常。Vercel 生产部署 `main e36bd4a` 完成。
+
+**§8.4 上线检查**：① 真实浏览器访问线上首页，可见 Web3 入口 **0**；HTML 源码仍含 1 处 Aleo 字符串，是 Next 把 `MemberOnly` 的隐藏子组件序列化进 RSC 数据，不可见、属预期，判断可见性必须按 DOM 文字而不是 `grep` 源码。② `/private-vault` 显示「只在会员版开放」、可连接钱包的按钮 0。③ `health=200`、`activity=200`，CI 与 Deploy Backend 双 success。
+
+**文档**：清单加 §8.6 执行结果，§0 顶部加「最新状态」横幅，订正 §0 三件事 / §1 的 PR #7 与线上版本行 / §7.1 界面前提 / §8.3 的 Draft 描述，避免新会话读到过期结论。**本条为纯文档提交，不含后端路径，不会再触发后端部署。**
+
+**边界与剩余**：真 Phantom 扩展手测、5 人试用仍需真人；后者是 `PRODUCT.md:74` 的最高优先级，试用入口 https://roselet-web.vercel.app 与 §7.3 操作卡现在可以直接用。回滚抓手 `.previous_backend_image` 本次未使用。

@@ -8,6 +8,8 @@
 
 ## 0. 一句话结论（2026-11-17 更新；新会话先读这一节）
 
+> **⚠️ 2026-11-18 12:15 最新状态以这一条为准**：用户已拍板**合并 PR #7 到 main（`e36bd4a`）**。main CI 四关 success、`Deploy Backend` success、迁移 `014` 随新镜像启动执行；Vercel 已换版，线上经真实浏览器验收为「普通版零 Web3、`/private-vault` 已上闩」，后端 `health` / `activity` 均 200。**下文 §1 / §6.8 / §7.1 / §8 里「未上线 / 待合并 / 仍是 Draft」都是合并前快照，不要据此判断现状**；执行记录见 §8.6。
+
 **代码侧已经干净、四关 CI 全绿；现在真正缺的不是功能，是「有没有人真的会用」。**
 
 `PRODUCT.md` 写着「当前唯一要做的事：找 5 个人试用，看他们会不会回来」，`README.md` 自评 `User validation 20%`；但最近 35 个提交几乎全在 Web3、门禁、契约测试上。**别把「工程流程做得更漂亮」当成项目进展。**
@@ -15,7 +17,7 @@
 **现在最该做的三件事（都要真人，不是代码）**
 1. **找 5 个真实用户试用，看会不会回来** ← 最高优先级，也是唯一能验证产品的事
 2. 用真的 Phantom 扩展手点一遍上链（现有 `verify:phantom*` 跑的是注入的假钱包 + 本地 validator）
-3. 决定是否合 **PR #7** —— 合它会部署一次生产后端，需人拍板；**合了之后线上界面才会变成「普通版零 Web3」**
+3. ~~决定是否合 PR #7~~ → **2026-11-18 已完成**：用户拍板合并，线上界面已变成「普通版零 Web3」，执行记录见 §8.6。**现在只剩第 1 项和第 2 项要做**
 
 **2026-11-18 补 · 线上界面与产品意图不一致；「纯前端单独上线」已探明走不通**
 
@@ -37,7 +39,8 @@
 | 项目 | 状态 | 依据 |
 |---|---|---|
 | 当前分支 | 主草稿 `codex/solana-mainnet-assessment`；探路分支 `codex/member-gate-frontend-only` 保留（PR #8 已关闭）。两者工作树干净（SHA 以 `git rev-parse HEAD` 为准，别照抄旧值） | `git status --short`、`git rev-parse HEAD` |
-| PR #7 | OPEN / Draft / MERGEABLE，含 79 个文件的 Web3 + 后端改动，**当前唯一干净的上线路径** | `gh pr view 7`；https://github.com/qiaopengjun5162/roselet/pull/7 |
+| PR #7 | **MERGED（2026-11-18 04:15 UTC）**，squash 到 `e36bd4a`；合并触发 `Deploy Backend` success。执行记录见 §8.6 | `gh pr view 7 --json state,mergedAt`；https://github.com/qiaopengjun5162/roselet/pull/7 |
+| 线上版本 | **已换版**：Vercel 生产部署 `main e36bd4a`；真实浏览器验收「普通版零 Web3、私密页已上闩」，后端 health / activity 200 | §8.6、`gh api .../deployments?environment=Production` |
 | PR #8 | **已关闭**（2026-11-18 探路用）：纯前端门闩在 main 基线上三个 CI job 全绿，但 Backend Tests 因 main 自身 rustfmt / cargo deny 欠账而红；结论改为直接合 #7 | `gh pr view 8 --json state`；https://github.com/qiaopengjun5162/roselet/pull/8 |
 | 上线前体检 | **§8**：预览地址被 Vercel 登录保护、外部域名被 CORS 白名单拦；本地生产构建 + 真实 Chromium 实测「普通版零 Web3 / 会员版可逆」；PR #7 仍是 Draft，合并前需 `gh pr ready 7` | §8；`gh pr view 7 --json isDraft` |
 | 分支与 main 差距 | 草稿核准时约 35 个 commit / 78 文件 / +9352 −455，全部未合主线（会随提交变化，用右侧命令现查） | `git rev-list --left-right --count origin/main...HEAD`、`git diff --shortstat origin/main...HEAD` |
@@ -292,8 +295,8 @@
 ### 7.1 前提（组织者先看，别漏）
 
 - **试用入口只有一个**：https://roselet-web.vercel.app （手机浏览器直接打开，不用装东西）。
-- **现在线上跑的是已发布的正式版**。最近改的「会员版 / 把 Web3 入口收起来」还在草稿 PR #7 里**没有上线**；不要拿草稿分支的截图或说明发给试用者，一切以他们实际打开的页面为准。
-- **界面前提（2026-11-18 补）**：在 PR #7 合并前，试用者仍会在首页看到「使用 Aleo 私密 Vault」入口，也能直接打开 `/private-vault`。这不是本轮要验证的东西，**不要向试用者解释、不要引导他们点**；如果一周后的三个问题里有人主动提到，把原话记下来即可。若希望试用者看到的是「普通版零 Web3」的目标界面，需先合 PR #7 让 Vercel 重新部署 —— 这一步会同时部署一次后端，属于要拍板的线上动作（见 §0 / §8）。
+- **现在线上跑的是 2026-11-18 合并后的新版本**（PR #7 已合到 main）。「会员版 / 把 Web3 入口收起来」**已经上线**；不要拿旧截图或草稿分支的说明发给试用者，一切以他们实际打开的页面为准。
+- **界面前提（2026-11-18 合并后订正）**：试用者看到的就是**目标界面**——首页没有「使用 Aleo 私密 Vault」，直接打开 `/private-vault` 也只会看到「只在会员版开放」。右上角仍留着「🌐 会员版」入口，但那不是本轮要验证的东西，**不要向试用者解释、不要引导他们点**；如果一周后的三个问题里有人主动提到，把原话记下来即可。
 - **别发预览链接**：Vercel 为该草稿生成的 Preview 地址需要 Vercel 账号登录才能打开，试用者进不去；也不能另找一个临时域名顶替（后端跨域白名单一拦，种花就失败）。**发给试用者的只能是 https://roselet-web.vercel.app**，理由与实测见 §8.1。
 - 小程序的微信登录和真机联调还没做完（`PROGRESS.md:310-311`），这一轮**不走小程序**。
 - 试用者可能写下真实情绪：别截图外传、别公开讨论谁写了什么；公开还是私密由试用者自己选。信任是前提（`PRODUCT.md:79`）。
@@ -391,7 +394,7 @@
 4. 后端进程启动时执行 `sqlx::migrate!("./migrations").run(&pool)`（`crates/backend/src/main.rs:16`），自动跑新迁移 `014_create_solana_nft_mints.sql`：只是 `CREATE TABLE` + `CREATE INDEX`，**不改已有表、不动已有数据**（新增的 NFT 上链记录表，会员版才用得到）。
 5. Vercel 自动部署前端，线上界面变成「普通版零 Web3」。
 
-**合并前一个小动作**：PR #7 目前仍是 **Draft**，`gh pr merge` 之前要先 `gh pr ready 7`（或网页点 Ready for review）。
+**合并前的小动作（已执行）**：体检时 PR #7 仍是 **Draft**，合并前先执行 `gh pr ready 7`，再用 `gh pr merge 7 --squash` 合并。
 
 ### 8.4 合完之后三个 10 秒检查
 
@@ -401,7 +404,21 @@
 
 ### 8.5 边界
 
-本轮只做**只读探测 + 本地验证 + 文档**：没有合并任何 PR、没有改生产配置、没有动后端代码、没有加新门禁。合 PR #7 仍需真人一句「合」。实证截图（普通首页 / 会员版）仅在本次会话留证，未入库。
+体检阶段只做**只读探测 + 本地验证 + 文档**：没有合并任何 PR、没有改生产配置、没有动后端代码、没有加新门禁。实证截图（普通首页 / 会员版）仅在本次会话留证，未入库。**用户拍板后已执行合并，见 §8.6。**
+
+### 8.6 执行结果（2026-11-18 04:15–04:30 UTC）
+
+| 时间线 | 结果 |
+|---|---|
+| `gh pr ready 7` → `gh pr merge 7 --squash` | PR #7 **MERGED**，main 到 `e36bd4a`（04:15:21 UTC）；等待最后一个 Pending job 转绿后才合，合并前四关全 `success` |
+| main CI `44236051431` | 四 job 全 `success` |
+| `Deploy Backend` `44236874463` | **success**；日志 `Backend deployment files changed: deploying backend.`，命中 `crates/backend/migrations/014_create_solana_nft_mints.sql`；镜像构建推送、Lightsail `docker compose up -d`、`Container roselet-db-1 Healthy` 均正常 |
+| Vercel 生产部署 | `main e36bd4a` 部署完成，前端换版 |
+| §8.4 三项检查 | ① 线上首页真实浏览器**可见 Web3 入口 0**（HTML 源码里仍有 1 处 Aleo 字符串，是 Next 把隐藏子组件序列化进 RSC 数据，不可见，属预期）；② `/private-vault` 显示「只在会员版开放」、钱包按钮 0；③ `health=200`、`activity=200`，CI 与 Deploy Backend 双 success |
+
+**现在可以开始 5 人试用了**：试用入口仍是 https://roselet-web.vercel.app ，直接转发 §7.3 操作卡即可；§7.1 的界面前提已按新版本订正。剩余真人事项：找 5 人试用（最高优先级）、真 Phantom 扩展手测。
+
+**回滚抓手**：`scripts/lightsail-deploy.sh:31` 写下的 `.previous_backend_image`；本次无需使用。
 
 ---
 
