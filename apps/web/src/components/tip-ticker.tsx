@@ -33,9 +33,11 @@ export function TipTicker({ context }: TipTickerProps) {
 
   if (tips.length === 0) return null;
 
+  // 别改回单行 truncate：390px 手机下最长的纸条会被切掉 48px、显示成「…」，
+  // 小白看到的是一个坏掉的控件，而不是一句提示。允许换行（最多自然两行）。
   return (
-    <div className="mx-auto max-w-xl overflow-hidden rounded-full border border-amber-200/10 bg-amber-100/5 px-4 py-2 text-xs text-amber-100/80 shadow-[0_0_24px_rgba(251,191,36,0.08)] backdrop-blur">
-      <p className="truncate">
+    <div className="mx-auto max-w-xl rounded-2xl border border-amber-200/10 bg-amber-100/5 px-4 py-2.5 text-xs text-amber-100/80 shadow-[0_0_24px_rgba(251,191,36,0.08)] backdrop-blur">
+      <p className="text-center leading-relaxed">
         <span className="mr-2 text-amber-200/70">小纸条</span>
         {tips[index]?.text}
       </p>

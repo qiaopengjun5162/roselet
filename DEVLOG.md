@@ -5327,3 +5327,23 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **边界**：只动 Web 种花页 + 登录页的错误映射；公开/送礼/私密三种成功文案、会员门闩、`crates/`、小程序、生产配置全部未动，`should_deploy=false`。
 
 **验证**：`pnpm build` ✓；typecheck / lint ✓；`test:coverage` ✓（46 套件 342 例，覆盖率四道门槛过）。
+
+---
+
+## 十三续：小纸条不再被切成「…」，第三块卡少切 11px（2026-11-18 20:30）
+
+**为什么**：十一续列出了两处视觉瑕疵，本轮按用户「继续」先清它们。390×844 线上实测：纸条 `white-space: nowrap` + `text-overflow: ellipsis`，最长一条 27 字被切掉 **48px**，直接显示成省略号 —— 用户看到的是一个坏控件，不是一句提示。第三块「尖刺」卡在 `737..878`，视口底 844，底部 **34px** 不可见（整页只比视口高 34px，滑动可达，不是够不着）。
+
+**改法（只碰两个 Web 文件）**：
+- `components/tip-ticker.tsx`：去掉 `truncate` / `overflow-hidden`，容器从 `rounded-full` 改 `rounded-2xl`，文字居中 + `leading-relaxed`，允许自然换成两三行；
+- `app/page.tsx`：手机端行距 `space-y-10` 收成 `space-y-6`（`md:` 仍是 40px）。
+
+**取舍（两处必须一起改）**：纸条换行后多占约 32px，如果只改纸条，第三块卡会被切得更多。收行距正好把它抵消 —— 净效果 `scrollH 821 → 810`，第三块卡被切 `34px → 23px`，同时纸条零截断。没有为了「塞满第一屏」把卡片内边距再压小：内容继续向下延伸本身就是可滚动的提示，硬塞进 844px 反而是设计异味。
+
+**防复发**：`components/__tests__/tip-ticker.test.tsx` 新增 1 例，读源码断言不含 `truncate` / `whitespace-nowrap` / `text-ellipsis`。断言前先剥掉注释 —— 注释里会解释「为什么不能用某个类」，不剥会自己判红（第一次跑就是这么红的）。把 `truncate` 加回去实测报红，删掉后 3/3 绿。
+
+**真浏览器验收（本地生产构建，390×844，零写入）**：纸条 `h=61px`、`truncated=false`、`overflowPx=0`、`white-space: normal`，文字完整可读；主按钮 `258/302` 仍在第一屏；`h1` `top=118` 未被裁；第三块卡由切 34px 变切 23px。目视截图确认纸条不再像坏控件、排版未挤成一团。
+
+**边界**：只动 Web 两个文件 + 1 个测试；`crates/`、小程序、生产配置未动，`should_deploy=false`。
+
+**验证**：`pnpm build` ✓；typecheck / lint ✓；`test:coverage` ✓（46 套件 343 例，覆盖率四道门槛过）。本地量测时控制台的 CORS 报错来自本地 3100 访问 `localhost:3001` 的既有配置，线上同一脚本 `errors: []`，与本次改动无关。

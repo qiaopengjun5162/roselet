@@ -11,7 +11,9 @@ export default function Home() {
       {/* 中央光晕 */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-rose-500/8 blur-3xl pointer-events-none" />
 
-      <div className="max-w-2xl w-full text-center space-y-10">
+      {/* 手机端行距收紧到 24px（桌面仍 40px）：纸条改成可换行后会多占约 32px，
+          这里恰好把它抵消，避免第三块说明卡被切掉更多。 */}
+      <div className="max-w-2xl w-full text-center space-y-6 md:space-y-10">
         {/* 标题 */}
         <div className="space-y-3">
           <div className="text-7xl" style={{filter: "drop-shadow(0 0 24px rgba(244,63,94,0.7))"}}>🌹</div>
