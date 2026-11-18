@@ -22,6 +22,16 @@ import Home from "../page";
 describe("Home", () => {
   afterEach(() => { memberMode = false; });
 
+  // 「一句话讲不清楚就不是好项目」：首屏这句话是产品定位，不是装饰文案。
+  // 有人把它改回抽象口号时，这条测试要红，而不是等试用者看不懂才被发现。
+  it("首屏用一句话讲清产品要做什么", () => {
+    render(<Home />);
+    expect(
+      screen.getByText("写一句，种一朵玫瑰，一周后看看自己长出了什么"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("等待宇宙的回响")).not.toBeInTheDocument();
+  });
+
   it("普通模式零 Web3 痕迹", () => {
     render(<Home />);
     expect(

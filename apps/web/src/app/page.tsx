@@ -17,7 +17,7 @@ export default function Home() {
           <h1 className="text-5xl font-bold font-brush text-transparent font-[KaiTi],楷体,serif bg-clip-text bg-gradient-to-r from-rose-300 via-pink-200 to-purple-300">
             Roselet
           </h1>
-          <p className="text-xl tracking-[0.25em] font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-200 to-amber-100 drop-shadow-[0_0_30px_rgba(244,63,94,0.15)]">在星空下种下你的情绪，等待宇宙的回响</p>
+          <p className="text-lg md:text-xl tracking-[0.06em] font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-200 to-amber-100 drop-shadow-[0_0_30px_rgba(244,63,94,0.15)]">写一句，种一朵玫瑰，一周后看看自己长出了什么</p>
         </div>
 
         <TipTicker context="home" />

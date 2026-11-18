@@ -87,7 +87,7 @@ function LoginForm() {
             disabled={loading || !nickname.trim()}
             className="w-full py-3 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? "进入中..." : "进入花圃"}
+            {loading ? "准备中..." : "继续种花"}
           </button>
         </form>
       </div>

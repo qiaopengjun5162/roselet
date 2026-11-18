@@ -37,7 +37,7 @@ describe("LoginPage", () => {
     render(<LoginPage />);
     expect(screen.getByPlaceholderText("你想叫什么名字？")).toBeInTheDocument();
     expect(screen.getByTestId("tip-login")).toBeInTheDocument();
-    expect(screen.getByText("进入花圃")).toBeInTheDocument();
+    expect(screen.getByText("继续种花")).toBeInTheDocument();
   });
 
   it("should show error on register failure", async () => {
@@ -46,7 +46,7 @@ describe("LoginPage", () => {
     fireEvent.change(screen.getByPlaceholderText("你想叫什么名字？"), {
       target: { value: "alice" },
     });
-    fireEvent.click(screen.getByText("进入花圃"));
+    fireEvent.click(screen.getByText("继续种花"));
     await waitFor(() => {
       expect(screen.getByText("登录失败，请重试")).toBeInTheDocument();
     });
@@ -61,7 +61,7 @@ describe("LoginPage", () => {
     fireEvent.change(screen.getByPlaceholderText("你想叫什么名字？"), {
       target: { value: "alice" },
     });
-    fireEvent.click(screen.getByText("进入花圃"));
+    fireEvent.click(screen.getByText("继续种花"));
     await waitFor(() => {
       expect(register).toHaveBeenCalledWith("alice", undefined);
     });
