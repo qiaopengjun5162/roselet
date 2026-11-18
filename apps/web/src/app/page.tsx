@@ -21,6 +21,22 @@ export default function Home() {
           <p className="text-lg md:text-xl tracking-[0.06em] font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-200 to-amber-100 drop-shadow-[0_0_30px_rgba(244,63,94,0.15)]">{PRODUCT_ONE_LINER_ZH}</p>
         </div>
 
+        {/* 主按钮紧跟产品一句话：390px 手机上三块说明卡会纵向堆叠，把按钮
+            挤到折叠线以下 —— 没耐心的人打开看不到入口就走了。说明卡下移，
+            按钮本身和文案都不改。 */}
+        <div className="flex gap-4 justify-center">
+          <Link href="/plant">
+            <button className="px-8 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/30 hover:shadow-rose-500/50 hover:-translate-y-0.5 transition-all">
+              种一朵玫瑰
+            </button>
+          </Link>
+          <Link href="/garden">
+            <button className="px-8 py-3 rounded-full font-semibold text-sm glass-card text-slate-200 hover:-translate-y-0.5 transition-all">
+              参观花圃
+            </button>
+          </Link>
+        </div>
+
         <TipTicker context="home" />
         <ActivityFeed />
 
@@ -43,19 +59,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 按钮 */}
-        <div className="flex gap-4 justify-center">
-          <Link href="/plant">
-            <button className="px-8 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/30 hover:shadow-rose-500/50 hover:-translate-y-0.5 transition-all">
-              种一朵玫瑰
-            </button>
-          </Link>
-          <Link href="/garden">
-            <button className="px-8 py-3 rounded-full font-semibold text-sm glass-card text-slate-200 hover:-translate-y-0.5 transition-all">
-              参观花圃
-            </button>
-          </Link>
-        </div>
         {/* Web3 入口：普通界面零痕迹，只有切换到会员版才出现 */}
         <MemberOnly>
           <Link

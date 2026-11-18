@@ -33,6 +33,19 @@ describe("Home", () => {
     expect(screen.queryByText("等待宇宙的回响")).not.toBeInTheDocument();
   });
 
+  // 「毫无耐心、点两下没反应就关掉」：按钮必须紧跟一句话，不能排在提示条、
+  // 动态或三块说明卡之后 —— 手机 390px 下三块卡会纵向堆叠，把按钮挤到
+  // 折叠线以下。用 DOM 顺序守住，别等试用者找不到入口才发现。
+  it("主按钮排在所有说明内容之前（手机第一屏能点到）", () => {
+    render(<Home />);
+    const button = screen.getByRole("button", { name: "种一朵玫瑰" });
+    const isAfter = (el: Element) =>
+      Boolean(button.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(isAfter(screen.getByTestId("tip-ticker"))).toBe(true);
+    expect(isAfter(screen.getByTestId("activity-feed"))).toBe(true);
+    expect(isAfter(screen.getByText("玫瑰", { selector: "h3" }))).toBe(true);
+  });
+
   it("普通模式零 Web3 痕迹", () => {
     render(<Home />);
     expect(

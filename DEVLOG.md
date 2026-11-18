@@ -5266,3 +5266,19 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **本机门禁环境限制（非代码问题，跨会话有用）**：本轮 `just ci-local` 第 1 关（`cargo fmt` / 严格 clippy / `cargo deny` / 337 Rust 测试）、第 2 关（wasm-pack / tsc / eslint / `next build` / 46 套件 336 例、覆盖率 91.85·80.11·87.24·94.39）**均全绿**；第 3 关 `taro build --type weapp` 被本机 WorkBuddy 沙盒注入的 `node-brokered-fs-shim` 干扰，webpack `PackFileCacheStrategy` 写缓存报 `ENOENT`（清掉 `dist` / `.cache` 重跑稳定复现，webpack 已跑到 92%）。本轮未碰 `apps/miniprogram` / `apps/agent-api` / `crates/` / 构建配置，且 HEAD 基线 `be18d24` 在八续已完整跑过四关，故以 CI 四 job 复核为准。另外 `cargo deny` **每次都会重新 fetch** RustSec 公告库，必须走本机代理 7890（热缓存无效）；但全局代理会让 Taro 卡住甚至 20 分钟无输出，两者不能同时设 —— 本机只能分段跑，CI 无此限制。
 
 **顺带发现的欠账（本轮按范围未修）**：门禁重新生成 `apps/web/public/pkg` 时，暴露仓库内已提交的 WASM 产物落后 Rust 源码（缺 `build_goat_order_reference_wasm`，wasm 432410→441463 bytes）。`apps/web/package.json` 的 `prebuild` 只在产物不存在时造 stub，Vercel 直接用仓库里的产物，即线上跑的是旧 WASM。本轮按「只补一条测试」的范围 `git restore` 回退这 4 个生成物，保持零线上变化；是否同步需单独排期，并先确认 GOAT 路径是否受影响。
+
+---
+
+## 十续：把「种一朵玫瑰」提到手机第一屏（2026-11-18 16:55）
+
+**为什么**：用户按「一句话讲不清就不是好项目 / 假设用户毫无耐心、点两下没反应就关掉」的尺子，选了「先修『打开看不到按钮』」。之前把这个点标成「等 5 人试用反馈」，但实测证明它不是偏好问题，是**功能不可用**：390×844 真实 Chromium 量线上首页，主按钮 `y=884 / bottom=928`，屏幕高 844，且 `scrollHeight=844`、`body { overflow-y: hidden }` —— 页面不能滚动，按钮永远看不到也点不到，手机用户连种花入口都摸不着。这时候就发 5 个人，一周后测到的一定是「找不到按钮」，直接污染唯一指标「会不会自己回来」。
+
+**改动（只调顺序，最小）**：`apps/web/src/app/page.tsx` 把按钮区从「三块说明卡之后」移到「标题之后、TipTicker 之前」；按钮文案、样式、链接、起昵称 / 光点输入 / 会员入口全部未动。三块说明卡下移，桌面端 `md:grid-cols-3` 不变。
+
+**防复发**：`apps/web/src/app/__tests__/page.test.tsx` 新增 1 例，用 `compareDocumentPosition` 断言主按钮必须排在 TipTicker、ActivityFeed、第一张说明卡之前 —— 以后有人把说明卡挪回按钮上方会红，不用等真人找不到入口才发现。
+
+**实测对比（390×844 真实 Chromium，零写入）**：线上改前按钮 `y=884 / bottom=928`（屏幕外、不可滚动）；本地生产构建改后 `y=263 / bottom=307`，h1 `y=107` 未被裁、pageerror 0。量测脚本 `/tmp/roselet-firstscreen.mjs` 只读 DOM rect，临时文件不进仓库。
+
+**顺带发现（本轮按范围未修）**：`body` 仍是 `overflow-y: hidden` 且 `scrollHeight=844`，说明卡下移后第三块与页尾内容在 390px 下依旧看不到（主按钮已不受影响）。是否放开滚动属于下一轮范围，等试用反馈。
+
+**验证**：本地 `pnpm build` ✓、Web typecheck / lint / test:coverage ✓（46 套件 337 例、覆盖率四道门槛过）。第 3/4 关沿用九续结论（本机 WorkBuddy 沙盒 `node-brokered-fs-shim` 会让 Taro webpack 写缓存报 ENOENT），以 CI 四 job 为准；本轮未碰 `apps/miniprogram` / `apps/agent-api` / `crates/`。
