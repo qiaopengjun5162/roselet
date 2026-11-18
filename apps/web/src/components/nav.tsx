@@ -52,12 +52,12 @@ export function Nav() {
   const isMember = membership?.isMember ?? false;
 
   return (
-    <nav className="flex items-center gap-0.5">
+    <nav className="flex items-center gap-0 sm:gap-0.5 min-w-0">
       {MAIN_LINKS.map(link => (
         <Link
           key={link.href}
           href={link.href}
-          className={`shrink-0 whitespace-nowrap text-[13px] px-2 sm:px-3 py-1.5 rounded-full transition-all duration-200 ${
+          className={`shrink-0 whitespace-nowrap text-[13px] px-1.5 sm:px-3 py-1.5 rounded-full transition-all duration-200 ${
             isActive(link.href)
               ? "bg-rose-500/15 text-rose-300 font-medium"
               : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
@@ -73,11 +73,11 @@ export function Nav() {
         <div className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className={`shrink-0 whitespace-nowrap text-[13px] px-3 py-1.5 rounded-full transition-all duration-200 ${
+            className={`shrink-0 whitespace-nowrap text-[13px] px-2 sm:px-3 py-1.5 rounded-full transition-all duration-200 ${
               menuOpen ? "bg-rose-500/15 text-rose-300" : "text-amber-300/80 hover:text-amber-200 hover:bg-amber-500/5"
             }`}
           >
-            ✨ {nickname} ▾
+            ✨ <span className="inline-block max-w-14 sm:max-w-none truncate align-bottom">{nickname}</span> ▾
           </button>
           {menuOpen && (
             <>
@@ -120,7 +120,8 @@ export function Nav() {
       <button
         onClick={() => membership?.openPanel()}
         aria-pressed={isMember}
-        className={`shrink-0 whitespace-nowrap text-[13px] px-3 py-1.5 rounded-full transition-all duration-200 ${
+        aria-label="会员版"
+        className={`shrink-0 whitespace-nowrap text-[13px] px-1.5 sm:px-3 py-1.5 rounded-full transition-all duration-200 ${
           isMember
             ? "bg-violet-500/20 text-violet-200 border border-violet-400/40"
             : "text-violet-300/70 hover:text-violet-200 hover:bg-violet-500/10"
@@ -129,7 +130,7 @@ export function Nav() {
           ? "当前是会员版：点击重新打开上链面板，或点顶部状态条「返回普通版」"
           : "切换到会员版：连接 Solana 钱包，把玫瑰/图片/信息上链"}
       >
-        🌐 会员版
+        🌐<span className="hidden sm:inline"> 会员版</span>
       </button>
 
       <button
@@ -152,7 +153,7 @@ export function Nav() {
             setBgPlaying(isBgPlaying());
           }
         }}
-        className="text-[13px] text-slate-500 hover:text-slate-300 px-1.5 sm:px-2 py-1 transition-colors sm:ml-1"
+        className="hidden min-[375px]:inline-flex text-[13px] text-slate-500 hover:text-slate-300 px-1.5 sm:px-2 py-1 transition-colors sm:ml-1"
         title={muted || !bgPlaying ? "开启声音" : "关闭声音"}
       >
         {muted || !bgPlaying ? "🔇" : "🔊"}

@@ -27,7 +27,7 @@ HTMLCanvasElement.prototype.getContext = jest.fn().mockReturnValue({
 
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { PLANTED_CONFIRMATION, PLANTED_TITLE } from "@roselet/core";
+import { PLANTED_CONFIRMATION, PLANTED_CONFIRMATION_PRIVATE, PLANTED_TITLE } from "@roselet/core";
 
 // 门闩本身由 member-only.test.tsx 验证；这里控制会员模式，确认种花页确实
 // 把 Aleo 入口放进了门闩。
@@ -142,6 +142,13 @@ describe("PlantPage", () => {
         is_private: true,
       }));
     });
+
+    // 私密玫瑰不进公共花圃：种完不能说「留在花圃里」，入口要给「我的花圃」。
+    expect(screen.getByText(PLANTED_CONFIRMATION_PRIVATE)).toBeInTheDocument();
+    expect(screen.queryByText(PLANTED_CONFIRMATION)).not.toBeInTheDocument();
+    const myGarden = screen.getByText("查看我的花圃");
+    fireEvent.click(myGarden);
+    expect(mockPush).toHaveBeenCalledWith("/my");
   });
 
   it("disables private toggle when a recipient is entered", () => {

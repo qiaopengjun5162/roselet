@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   PLANTED_CONFIRMATION,
+  PLANTED_CONFIRMATION_PRIVATE,
   PLANTED_TITLE,
   PRODUCT_ONE_LINER_EN,
   PRODUCT_ONE_LINER_ZH,
@@ -38,6 +39,16 @@ describe("产品一句话：所有载体只允许一个来源", () => {
     expect(PRODUCT_ONE_LINER_ZH).toContain(RETURN_PROMISE);
     expect(PLANTED_CONFIRMATION).toContain(RETURN_PROMISE);
     expect(PLANTED_TITLE).toBe("种好了");
+  });
+
+  it("私密玫瑰的种完反馈不得说「留在花圃里」（它不进公共花圃）", () => {
+    // garden.rs 只查 is_private = false：私密玫瑰去 /garden 必然找不到。
+    // 所以私密反馈不能复用公开那句，且必须指向「我的花圃」。
+    expect(PLANTED_CONFIRMATION_PRIVATE).toContain(RETURN_PROMISE);
+    expect(PLANTED_CONFIRMATION_PRIVATE).not.toBe(PLANTED_CONFIRMATION);
+    expect(PLANTED_CONFIRMATION_PRIVATE).not.toContain("已经留在花圃里");
+    expect(read(WEB_PLANT)).toContain("PLANTED_CONFIRMATION_PRIVATE");
+    expect(read(WEB_PLANT)).toContain('"/my"');
   });
 
   it("Markdown 载体（README / 试用转发卡）显示同一句", () => {

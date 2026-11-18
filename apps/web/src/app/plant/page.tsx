@@ -14,6 +14,7 @@ import { MemberOnly } from "@/components/member-only";
 import {
   COLOR_FALLBACK,
   PLANTED_CONFIRMATION,
+  PLANTED_CONFIRMATION_PRIVATE,
   PLANTED_TITLE,
   colorLabelFallback,
 } from "@roselet/core";
@@ -262,7 +263,9 @@ export default function PlantPage() {
             <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-300 to-purple-300">
               {PLANTED_TITLE}
             </h2>
-            <p className="text-slate-400">{PLANTED_CONFIRMATION}</p>
+            <p className="text-slate-400">
+              {isPrivate ? PLANTED_CONFIRMATION_PRIVATE : PLANTED_CONFIRMATION}
+            </p>
           </div>
           {/* 玫瑰声音可视化 — 烟花落定后自动播放 */}
           <div className="flex justify-center animate-text-reveal" style={{ animationDelay: "1.2s" }}>
@@ -290,10 +293,10 @@ export default function PlantPage() {
           {/* 按钮 */}
           <div className="flex gap-3 justify-center animate-text-reveal" style={{ animationDelay: "0.3s" }}>
             <button
-              onClick={() => router.push("/garden")}
+              onClick={() => router.push(isPrivate ? "/my" : "/garden")}
               className="px-6 py-2.5 rounded-full text-sm font-medium glass-card text-slate-200 hover:border-white/30 transition-all"
             >
-              查看花圃
+              {isPrivate ? "查看我的花圃" : "查看花圃"}
             </button>
             <button
               className="px-6 py-2.5 rounded-full text-sm font-medium bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/30 hover:shadow-rose-500/50 hover:-translate-y-0.5 transition-all"

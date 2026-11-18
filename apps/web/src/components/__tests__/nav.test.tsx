@@ -53,6 +53,15 @@ describe("Nav", () => {
     expect(screen.getByText("登录")).toBeInTheDocument();
   });
 
+  it("keeps the member entry reachable when its label collapses on mobile", () => {
+    // 390px 下顶栏只剩 250px 可用宽度，会员版只留 🌐 图标；文字隐藏后
+    // 必须靠 aria-label 保住可访问名，否则按钮变成无名图标。
+    render(<Nav />);
+    const member = screen.getByRole("button", { name: "会员版" });
+    expect(member).toBeInTheDocument();
+    expect(member.textContent).toContain("会员版");
+  });
+
   it("active link has highlight", () => {
     render(<Nav />);
     const gardenLink = screen.getByText("花圃").closest("a");
