@@ -5167,3 +5167,15 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **最终结论（需要真人拍板）**：想让线上界面变成「普通版零 Web3、点会员版才切换」，**唯一干净路径是合 PR #7** —— 一次部署同时带上门闩上线与三处基线修复。不合就按 §7.1 在旧界面上跑 5 人试用，不向试用者解释 Web3 入口。合 PR #7 会触发 `Deploy Backend`，我没有执行。
 
 **防复发 / 经验**：① 基于 main 起新分支时，不能只跑 Web 四关就以为 CI 会绿 —— main 基线自带覆盖率 / fmt / deny 三处欠账；push 前至少跑 `cargo fmt --all -- --check`、`cargo deny check`、`pnpm --filter web test:coverage`（`just ci-local` 里有等价项，但那是草稿分支的 recipe，main 基线没有）。② 切分支后必须 `pnpm install --frozen-lockfile`，否则 TS2307。③ 本机 `~/.zshrc:174` 的 GVM 未设会让 `pnpm build` / `just next-build` 静默失败，用 `sh -c` 直接调 `next build`。④ 判断「合 main 会不会部署后端」要看 `should_deploy` 路径过滤，不是只看分支名。
+
+## 2026-11-18（三续）上线前体检：两条近路堵死，合 PR #7 是唯一路径
+
+**只读探测结论**：① Vercel 给草稿最新提交 `28d14ec` 建了 Preview 部署（deployment `7873534643`，success，URL `roselet-rae0irin3-...vercel.app`），但 `curl -I` 返回 302 → `vercel.com/sso-api` → 登录页，**开了登录保护，外人进不去**；② 生产后端 `ALLOWED_ORIGINS` 白名单（`crates/backend/src/lib.rs:27-33`），用陌生域名对 `https://roselet.47.131.238.0.sslip.io/api/rose` 发 OPTIONS，返回 200 但**无 `access-control-allow-origin`** → 另起域名接现有后端会被浏览器拦。两条「不部署就给试用者看新界面」的近路都不通。线上首页实测仍有 `Aleo` / `Vault` / `private-vault` 字样，与清单 §0 判断一致；`/health` 与 `/api/activity/recent` 均 200。
+
+**本地生产构建 + 真实浏览器实证**：草稿分支 `next build` 14 页全生成 → `next start` → Playwright Chromium 检查：普通首页 / 种花页 / 详情页可见 Web3 入口 0；直输 `/private-vault` 只有门闩提示，可点按钮仅 `🌐 会员版 / 🔇 / 切换到会员版`（钱包按钮 0）；点右上角会员版后状态条 + Aleo 入口 + `aria-pressed=true` + 上链面板均出现；「弹层内退出会员模式」与「✕ 收起面板 → 状态条返回普通版」两条路径都能让入口归零。**小瑕疵**：弹层遮罩 `z-[60]` 盖住状态条 `z-40`，弹层打开时状态条「返回普通版」点不到，但弹层自带退出按钮，不影响使用，记为待打磨。
+
+**合并影响面**：`git diff --shortstat origin/main...HEAD` 79 文件 / +9578 −456；唯一新迁移 `014_create_solana_nft_mints.sql` 只是 `CREATE TABLE` + `CREATE INDEX`，启动由 `crates/backend/src/main.rs:16` 的 `sqlx::migrate!` 自动执行，不动已有数据；`scripts/lightsail-deploy.sh:31` 写 `.previous_backend_image` 作为回滚抓手。PR #7 仍为 **Draft**，合并前需 `gh pr ready 7`。
+
+**边界**：本轮纯只读 + 本地验证 + 文档，未合并 PR、未改生产配置 / 后端代码 / CI、未加新门禁。清单新增 **§8 上线前体检**，并订正 §0 / §1 / §7.1（补「别发预览链接」）。合 PR #7 仍留真人拍板。
+
+**经验（跨会话有用）**：`gh api repos/<owner>/<repo>/deployments?sha=<sha>` + `/deployments/<id>/statuses` 能拿到 Vercel 预览 URL 与状态；判断「预览能不能给外人用」必须看 `curl -I` 的 Location，success 不等于可访问；判断「别的域名能不能接现有后端」用带 Origin 的 OPTIONS 预检看有没有 `access-control-allow-origin`。

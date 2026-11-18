@@ -24,6 +24,7 @@
 - **main 基线共三处欠账**（覆盖率 / rustfmt / cargo deny），全都只在草稿分支修好过。这解释了为什么 PR #7 一直绿、而任何基于 main 的新 PR 都会红。
 - **订正误判**：`deploy-backend.yml` 除 `head_branch == 'main'` 外还有 `Detect backend deployment changes` 路径过滤，只有 `Cargo.*` / `crates/backend` / `crates/recommend` / `deploy/lightsail` / `Dockerfile.backend` 等变化才 `should_deploy=true`。**纯前端改动合 main 不会重启生产后端**；「合到 main = 部署生产后端」只在 #7 这种含后端改动时成立（§6.8 结尾旧说法已订正）。
 - **订正覆盖率口径**：§1 里的 `91.85 / 80.11 / 87.24 / 94.39` 是**草稿分支**的值；**main 基线原本只有 `87.32 / 84.71`**，低于 `jest.config.ts` 写死的 90 / 85 门槛。探路 PR #8 曾用 main 基线上真实行为测试补到 `90.06 / 76.09 / 85.79`（没调低门槛），这段补测留在保留分支里，日后若要再拆可直接复用。
+- **又堵死两条近路（2026-11-18 再补）**：Vercel 的 PR 预览地址存在且部署成功，但**开了登录保护**（外人被踢到 `vercel.com/login`）；另起域名接现有后端也会被 `ALLOWED_ORIGINS` 跨域白名单拦掉。因此「不部署就给试用者看新界面」没有中间选项，只能合 #7 或按 §7.1 用旧界面。详见 **§8 上线前体检**（含本地生产构建 + 真实浏览器实测、合并会动到什么、回滚抓手）。
 
 **这轮先别做**：继续堆 Web3 / 门禁 / 重构；`MembershipPanel` 拆分、付费会员权限、主网化、`chrono` 迁移都等第 1 项有结果再排期。理由与逐条对照见 §6.9。
 
@@ -38,6 +39,7 @@
 | 当前分支 | 主草稿 `codex/solana-mainnet-assessment`；探路分支 `codex/member-gate-frontend-only` 保留（PR #8 已关闭）。两者工作树干净（SHA 以 `git rev-parse HEAD` 为准，别照抄旧值） | `git status --short`、`git rev-parse HEAD` |
 | PR #7 | OPEN / Draft / MERGEABLE，含 79 个文件的 Web3 + 后端改动，**当前唯一干净的上线路径** | `gh pr view 7`；https://github.com/qiaopengjun5162/roselet/pull/7 |
 | PR #8 | **已关闭**（2026-11-18 探路用）：纯前端门闩在 main 基线上三个 CI job 全绿，但 Backend Tests 因 main 自身 rustfmt / cargo deny 欠账而红；结论改为直接合 #7 | `gh pr view 8 --json state`；https://github.com/qiaopengjun5162/roselet/pull/8 |
+| 上线前体检 | **§8**：预览地址被 Vercel 登录保护、外部域名被 CORS 白名单拦；本地生产构建 + 真实 Chromium 实测「普通版零 Web3 / 会员版可逆」；PR #7 仍是 Draft，合并前需 `gh pr ready 7` | §8；`gh pr view 7 --json isDraft` |
 | 分支与 main 差距 | 草稿核准时约 35 个 commit / 78 文件 / +9352 −455，全部未合主线（会随提交变化，用右侧命令现查） | `git rev-list --left-right --count origin/main...HEAD`、`git diff --shortstat origin/main...HEAD` |
 | CI | 草稿最近四关全绿 `44224512958`；探路 PR #8 的 run `44230925065` 为 `failure`（仅 Backend Tests，其余三关 success） | `gh run view <run> --json conclusion,jobs` |
 | 生产部署 | `Deploy Backend` 为 `skipped`（分支非 main）。**另**：合 main 是否真部署还要过 `should_deploy` 路径过滤，纯前端 PR 不会部署；PR #7 含后端路径，合它会真部署 | `.github/workflows/deploy-backend.yml` 的 `Detect backend deployment changes` |
@@ -291,7 +293,8 @@
 
 - **试用入口只有一个**：https://roselet-web.vercel.app （手机浏览器直接打开，不用装东西）。
 - **现在线上跑的是已发布的正式版**。最近改的「会员版 / 把 Web3 入口收起来」还在草稿 PR #7 里**没有上线**；不要拿草稿分支的截图或说明发给试用者，一切以他们实际打开的页面为准。
-- **界面前提（2026-11-18 补）**：在 PR #7 合并前，试用者仍会在首页看到「使用 Aleo 私密 Vault」入口，也能直接打开 `/private-vault`。这不是本轮要验证的东西，**不要向试用者解释、不要引导他们点**；如果一周后的三个问题里有人主动提到，把原话记下来即可。若希望试用者看到的是「普通版零 Web3」的目标界面，需先合 PR #7 让 Vercel 重新部署 —— 这一步会同时部署一次后端，属于要拍板的线上动作（见 §0）。
+- **界面前提（2026-11-18 补）**：在 PR #7 合并前，试用者仍会在首页看到「使用 Aleo 私密 Vault」入口，也能直接打开 `/private-vault`。这不是本轮要验证的东西，**不要向试用者解释、不要引导他们点**；如果一周后的三个问题里有人主动提到，把原话记下来即可。若希望试用者看到的是「普通版零 Web3」的目标界面，需先合 PR #7 让 Vercel 重新部署 —— 这一步会同时部署一次后端，属于要拍板的线上动作（见 §0 / §8）。
+- **别发预览链接**：Vercel 为该草稿生成的 Preview 地址需要 Vercel 账号登录才能打开，试用者进不去；也不能另找一个临时域名顶替（后端跨域白名单一拦，种花就失败）。**发给试用者的只能是 https://roselet-web.vercel.app**，理由与实测见 §8.1。
 - 小程序的微信登录和真机联调还没做完（`PROGRESS.md:310-311`），这一轮**不走小程序**。
 - 试用者可能写下真实情绪：别截图外传、别公开讨论谁写了什么；公开还是私密由试用者自己选。信任是前提（`PRODUCT.md:79`）。
 
@@ -350,6 +353,55 @@
 - **组织者必须是真人**：找人、转发、观察、收原话，AI 代替不了。
 - 结果写进本节末尾或 `DEVLOG.md`，并把 §1 的「用户验证」从 0 改成实际完成数。
 - 这一步没做完之前，§6.8 的代码优化、主网化、付费会员权限、合 PR #7 **都不排期**。
+
+---
+
+## 8. 合 PR #7 上线前体检（2026-11-18 实证）
+
+> 回答两个问题：合了之后用户到底看到什么？合这一步会动到什么、出事怎么退？
+> **结论：合 PR #7 是让线上界面变对的唯一可行路径**；另外两条「不动生产也能换界面」的近路已实测堵死，见 §8.1。
+
+### 8.1 两条近路实测都不通（所以别再找「不部署也能试用新界面」的办法）
+
+| 近路 | 实测结果 | 依据 |
+|---|---|---|
+| 把 Vercel 的 PR 预览地址发给试用者 | 预览确实存在且部署成功（deployment `7873534643`，`state=success`，URL `https://roselet-rae0irin3-qiaopengjuns-projects.vercel.app`），但打开会被 302 踢到 `vercel.com/sso-api` → 登录页：**这个预览开了 Vercel 登录保护，外人进不去** | `gh api repos/qiaopengjun5162/roselet/deployments/<sha>/statuses`；`curl -I` 的 `location` 响应头 |
+| 另起一个对外前端域名，让它连现在的生产后端 | 生产后端用 `ALLOWED_ORIGINS` 白名单（`crates/backend/src/lib.rs:27-33`、`config.rs:47`）。用陌生域名发 `OPTIONS` 预检，返回 200 但**没有 `access-control-allow-origin`** → 浏览器会拦掉所有种花请求，试用直接失败 | 实测 `OPTIONS https://roselet.47.131.238.0.sslip.io/api/rose`；白名单值见 `docs/AWS_LIGHTSAIL_DEPLOYMENT.md:361` |
+
+也就是说：要么合 #7，要么试用继续用旧界面（§7.1）。**没有「不部署也能换界面」的中间选项**。顺带确认线上正式版首页确实仍有 `Aleo` / `Vault` / `private-vault` 字样，与 §0 的判断一致。
+
+### 8.2 合上去之后用户看到什么（本地生产构建 + 真实 Chromium 实测）
+
+在草稿分支 `28d14ec` 上跑 `next build`（14 页全部生成）→ `next start` → Playwright Chromium 真点一遍：
+
+| 场景 | 实测结果 |
+|---|---|
+| 普通模式首页 / 种花页 / 详情页 | 可见 Web3 入口 **0** |
+| 直接输 `/private-vault` | 只显示「Aleo 私密 Vault 只在会员版开放」；可点按钮仅 `🌐 会员版 / 🔇 / 切换到会员版`，**钱包按钮 0** |
+| 点右上角「🌐 会员版」 | 会员状态条出现、Aleo 入口出现、`aria-pressed=true`、上链面板弹出 |
+| 返回普通版 | 两条路径都验过：① 弹层内「退出会员模式」；②「✕ 收起面板 → 状态条『返回普通版』」。两条都能让 Web3 入口归零 |
+
+**一个不影响使用、但值得记的小瑕疵**：上链面板打开时，深色遮罩（`z-[60]`）盖住状态条（`z-40`），状态条上的「返回普通版」此时点不到；弹层里自带「退出会员模式（回到普通界面）」，所以用户仍能退出。列为待打磨项，不阻断上线。
+
+### 8.3 合这一步会动到什么（按时间顺序，大白话）
+
+1. CI 四个 job 重跑一次（草稿分支最近 `44231425251` 四关全绿；合到 main 后会再跑一次）。
+2. `Deploy Backend` 被 `workflow_run` 触发；`should_deploy` 看到 `Cargo.lock` / `crates/backend/**` / `migrations/014...` 变化 → `true`。
+3. 构建并推送 `ghcr.io/.../roselet-backend:<sha>` 镜像，Lightsail 拉新镜像 `docker compose up -d db backend`。脚本先把旧镜像名写进 `.previous_backend_image`（`scripts/lightsail-deploy.sh:31`），**出事可退回旧镜像**。
+4. 后端进程启动时执行 `sqlx::migrate!("./migrations").run(&pool)`（`crates/backend/src/main.rs:16`），自动跑新迁移 `014_create_solana_nft_mints.sql`：只是 `CREATE TABLE` + `CREATE INDEX`，**不改已有表、不动已有数据**（新增的 NFT 上链记录表，会员版才用得到）。
+5. Vercel 自动部署前端，线上界面变成「普通版零 Web3」。
+
+**合并前一个小动作**：PR #7 目前仍是 **Draft**，`gh pr merge` 之前要先 `gh pr ready 7`（或网页点 Ready for review）。
+
+### 8.4 合完之后三个 10 秒检查
+
+1. 打开 https://roselet-web.vercel.app → 首页不该出现「Aleo / Vault / 连接钱包」。
+2. 直接打开 https://roselet-web.vercel.app/private-vault → 只看到「只在会员版开放」。
+3. `curl https://roselet.47.131.238.0.sslip.io/health` 返回 200，且 `gh run list --limit 2` 里 CI 与 Deploy Backend 都 success。异常时以 `.previous_backend_image` 为回滚抓手。
+
+### 8.5 边界
+
+本轮只做**只读探测 + 本地验证 + 文档**：没有合并任何 PR、没有改生产配置、没有动后端代码、没有加新门禁。合 PR #7 仍需真人一句「合」。实证截图（普通首页 / 会员版）仅在本次会话留证，未入库。
 
 ---
 
