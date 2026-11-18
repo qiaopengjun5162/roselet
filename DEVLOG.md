@@ -5149,3 +5149,21 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **产出与验证**：`codex/member-gate-frontend-only` 提交 `451cb60`，16 个文件全在 `apps/web/` 下，PR #8（OPEN / 非 Draft / MERGEABLE，**未合并**）。本地 Web 四关：`tsc --noEmit` RC=0、`eslint` 0 error（1 个既存 warning）、`jest --coverage` 35 套件 243 例全过且四项门槛全过、`next build` compiled successfully + 14 个静态页生成完成。
 
 **边界**：没有合并任何 PR（合 main 是线上动作，留给用户点头）；没有改生产配置 / CI 配置；没有动后端路径（这正是 `should_deploy=false` 的依据）；草稿分支本轮只改文档。PR #8 与 #7 改同一批前端文件，建议先合 #8 再把 #7 rebase 到新 main 解冲突。
+
+---
+
+## 2026-11-18（再续）探路结论修正：PR #8 CI 红，已关闭；直接合 PR #7
+
+**上一节的结论被 CI 推翻了，这里订正。** run `44230925065` `conclusion: failure`：四个 job 里 Frontend Tests / Miniprogram Build / Solana x402 Agent API 全 `success`，只有 **Backend Tests 的 `Check formatting` 失败**（后续 Clippy / Audit / Tests 全被 skipped）。本地 `rustfmt 1.11.0-stable (2026-11-09)` 与 CI 完全一致：17 处、7 个文件全在 `crates/backend/src/`。
+
+**顺带查出的第三处 main 基线欠账**：本地 `cargo fmt --all` 修到 RC=0 后再跑 `cargo deny check`，`advisories FAILED` —— `RUSTSEC-2026-0543`（chrono unmaintained，全部版本受影响、公告自称无安全升级）与 `spin 0.9.8` yanked；main 的 `deny.toml` 是 `ignore = []`，草稿分支的单 ID 豁免和 `Cargo.lock` 的 spin 升级都没进 main。也就是说 Backend Tests 就算过了 fmt，下一步还会在 Audit 红。
+
+**fmt 差异是否改了逻辑**：`error.rs` 合并单行去掉尾逗号、`routes/mod.rs` 是 `pub mod` 字母重排、`solana_onchain.rs` 全是换行与尾逗号；逐文件去空白比哈希后不同的三处都属于上述情况，无语义变化。但仍**撤销了这批 fmt 改动**，单独留着没有意义。
+
+**为什么不继续修下去**：要补齐 fmt + deny，必须改 `crates/backend/**`、`Cargo.lock`、`deny.toml`，正好命中 `deploy-backend.yml` 的部署路径 —— 修完合 main 照样重建后端镜像，代价与合 PR #7 相同，还多出与 #7 的冲突。而 PR #8 的门闩代码本来就是 #7 的子集，关掉不损失任何实现；main 基线三处欠账（覆盖率 / rustfmt / cargo deny）的修复**全都已在 #7 里且 CI 全绿**。继续搬等于把 #7 重做一遍，正是 §0 说的「别把工程流程做得更漂亮当项目进展」。
+
+**动作**：`git checkout -- crates/backend/src` 撤销 fmt；`gh pr close 8` 并留说明评论；分支 `codex/member-gate-frontend-only` 与提交 `451cb60`（16 个前端文件 + 覆盖率补测）保留，日后若 #7 拆分可直接复用。清单 §0 / §1 / §6.8 / §7.1 已按这个结论订正。
+
+**最终结论（需要真人拍板）**：想让线上界面变成「普通版零 Web3、点会员版才切换」，**唯一干净路径是合 PR #7** —— 一次部署同时带上门闩上线与三处基线修复。不合就按 §7.1 在旧界面上跑 5 人试用，不向试用者解释 Web3 入口。合 PR #7 会触发 `Deploy Backend`，我没有执行。
+
+**防复发 / 经验**：① 基于 main 起新分支时，不能只跑 Web 四关就以为 CI 会绿 —— main 基线自带覆盖率 / fmt / deny 三处欠账；push 前至少跑 `cargo fmt --all -- --check`、`cargo deny check`、`pnpm --filter web test:coverage`（`just ci-local` 里有等价项，但那是草稿分支的 recipe，main 基线没有）。② 切分支后必须 `pnpm install --frozen-lockfile`，否则 TS2307。③ 本机 `~/.zshrc:174` 的 GVM 未设会让 `pnpm build` / `just next-build` 静默失败，用 `sh -c` 直接调 `next build`。④ 判断「合 main 会不会部署后端」要看 `should_deploy` 路径过滤，不是只看分支名。
