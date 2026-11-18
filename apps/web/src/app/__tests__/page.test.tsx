@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { PRODUCT_ONE_LINER_ZH } from "@roselet/core";
 
 jest.mock("@/components/tip-ticker", () => ({
   TipTicker: () => <div data-testid="tip-ticker" />,
@@ -27,7 +28,7 @@ describe("Home", () => {
   it("首屏用一句话讲清产品要做什么", () => {
     render(<Home />);
     expect(
-      screen.getByText("写一句，种一朵玫瑰，一周后看看自己长出了什么"),
+      screen.getByText(PRODUCT_ONE_LINER_ZH),
     ).toBeInTheDocument();
     expect(screen.queryByText("等待宇宙的回响")).not.toBeInTheDocument();
   });

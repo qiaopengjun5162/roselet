@@ -27,6 +27,7 @@ HTMLCanvasElement.prototype.getContext = jest.fn().mockReturnValue({
 
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { PLANTED_CONFIRMATION, PLANTED_TITLE } from "@roselet/core";
 
 // 门闩本身由 member-only.test.tsx 验证；这里控制会员模式，确认种花页确实
 // 把 Aleo 入口放进了门闩。
@@ -120,11 +121,9 @@ describe("PlantPage", () => {
     fireEvent.click(screen.getByText("确定并种下"));
     await waitFor(() => {
       expect(createRose).toHaveBeenCalled();
-      expect(screen.getByText("种好了")).toBeInTheDocument();
+      expect(screen.getByText(PLANTED_TITLE)).toBeInTheDocument();
       // 种完这一下是唯一能给出「为什么一周后回来」的位置，别改回抽象口号。
-      expect(
-        screen.getByText("这一朵已经留在花圃里。一周后回来，看看自己长出了什么。"),
-      ).toBeInTheDocument();
+      expect(screen.getByText(PLANTED_CONFIRMATION)).toBeInTheDocument();
     });
   });
 

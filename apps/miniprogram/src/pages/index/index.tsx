@@ -3,6 +3,7 @@ import Taro from "@tarojs/taro";
 import { getToken } from "@/utils/storage";
 import { NavBar, TOTAL_HEADER_HEIGHT } from "@/components/NavBar";
 import { useBloomTap } from "@/components/BloomTap";
+import { PRODUCT_ONE_LINER_ZH_LINE_1, PRODUCT_ONE_LINER_ZH_LINE_2 } from "@roselet/core";
 import styles from "./index.module.css";
 export default function Index() {
   const { handleTap, bloomsView } = useBloomTap()
@@ -19,8 +20,8 @@ export default function Index() {
         <View className={styles.glow} />
         <Text className={`${styles.emoji} fade-in-up`}>🌹</Text>
         <Text className={`${styles.title} fade-in-up-d1`} style={{ fontFamily: 'STXingkai, KaiTi, 楷体, serif' }}>Roselet</Text>
-        <Text className={`${styles.tagline} fade-in-up-d1`}>写一句，种一朵玫瑰</Text>
-        <Text className={`${styles.taglineSub} fade-in-up-d2`}>一周后看看自己长出了什么</Text>
+        <Text className={`${styles.tagline} fade-in-up-d1`}>{PRODUCT_ONE_LINER_ZH_LINE_1}</Text>
+        <Text className={`${styles.taglineSub} fade-in-up-d2`}>{PRODUCT_ONE_LINER_ZH_LINE_2}</Text>
 
         <View className={`${styles.cards} fade-in-up-d2`}>
           <View className={`${styles.card} ${styles.cardGratitude}`}>

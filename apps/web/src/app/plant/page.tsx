@@ -11,7 +11,12 @@ import { getRecommendation, validatePlantInput, type Recommendation } from "@/li
 import { Fireworks } from "@/components/fireworks";
 import { RosePlayer } from "@/components/rose-player";
 import { MemberOnly } from "@/components/member-only";
-import { COLOR_FALLBACK, colorLabelFallback } from "@roselet/core";
+import {
+  COLOR_FALLBACK,
+  PLANTED_CONFIRMATION,
+  PLANTED_TITLE,
+  colorLabelFallback,
+} from "@roselet/core";
 
 // 颜色元数据统一来自 @roselet/core（Rust WASM `color_options` 为权威）。
 // 原先这里另存了一份 id/label/emoji，还带着从未被使用的 gradient/accent。
@@ -255,9 +260,9 @@ export default function PlantPage() {
           {/* 文字渐显 */}
           <div className="space-y-3 animate-text-reveal">
             <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-300 to-purple-300">
-              种好了
+              {PLANTED_TITLE}
             </h2>
-            <p className="text-slate-400">这一朵已经留在花圃里。一周后回来，看看自己长出了什么。</p>
+            <p className="text-slate-400">{PLANTED_CONFIRMATION}</p>
           </div>
           {/* 玫瑰声音可视化 — 烟花落定后自动播放 */}
           <div className="flex justify-center animate-text-reveal" style={{ animationDelay: "1.2s" }}>
