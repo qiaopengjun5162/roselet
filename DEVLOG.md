@@ -5250,3 +5250,19 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **防复发**：新增 `apps/web/src/lib/__tests__/product-one-liner.test.ts`（5 例），测试时读源码：Markdown 载体（两个 README + §7.3 转发卡）必须含同一句；三处 UI 必须 `import from "@roselet/core"` 且不得硬编码整句或承诺片段；两行可拼回主句；用户可见载体不得改回「等待宇宙的回响」。手法与 `crates/recommend/src/contract.rs` 的「读源码防漂移」一致。**守卫放在 Web 测试侧而不是 `crates/recommend`**：后者命中 `deploy-backend.yml` 的路径过滤，为一句静态标语重启生产后端不划算；Web 测试同样被 `just ci-local` 与 CI Frontend Tests 跑到。
 
 **边界**：纯工程收口，零用户可见变化、不动流程/交互/布局、不动 `crates/`，`should_deploy=false`。README 与转发卡是 Markdown，无法 import 常量，只能靠契约测试比对——这是刻意的取舍，不是漏改。
+
+---
+
+## 九续：把「普通版零图片上传」焊成自动检查（2026-11-18 15:50）
+
+**为什么**：用户问「这个别人可不可以上传图片呀？」。只读查证：全站唯一选图控件在 `apps/web/src/components/membership-panel.tsx:341`（会员版上链面板），标签「选择要上链的图片」，流程是选图 → IPFS/Pinata → CID → 写进 Solana Memo 链上记录（`crates/backend/src/routes/ipfs.rs:1-10`）；`migrations/001_create_rose.sql` 的 roses 表只有颜色和三句话，**没有图片列**；唯一 `ipfs_cid` 在 `013_create_solana_mints.sql`（链上铸币记录表）。生产未配 `PINATA_JWT` 时 `upload_image` 直接 503、UI 退回让用户手填 CID（`ipfs.rs:53-57`）。按产品一句话「写一句，种一朵玫瑰，一周后看看自己长出了什么」，图片不在其中；再加内容审核 / 存储 / 配额又是往 Web3 上堆。结论：**不加**，但要防以后有人手滑把上传漏回普通版。
+
+**防复发（本轮唯一代码改动）**：新增 `apps/web/src/lib/__tests__/product-no-image-upload.test.ts`（4 例），与 `product-one-liner.test.ts` / `crates/recommend/src/contract.rs` 同手法读源码断言：① 扫描器自检（会员版面板必须含选图控件，防正则失灵造成假绿）；② 递归扫 `apps/web/src` 全部 UI `.tsx`，命中上传信号的文件**恰好**只有 `membership-panel.tsx`；③ 小程序零命中；④ `001` 建表与所有 `ALTER TABLE roses` 迁移不得含 image/photo/picture/cid 列，且 `ipfs_cid` 只允许留在链上铸币表。只扫 `.tsx`：`lib/api.ts` 是不含 UI 的服务端代理封装，不进范围；可见性另由 `MemberOnly` 保证（`components/__tests__/member-only.test.tsx`）。放 Web 侧而非 `crates/recommend`：后者命中 `should_deploy`，为一条静态边界重启生产后端不划算。
+
+**证明守卫会咬人**：临时塞 `apps/web/src/lib/__boundary_probe.tsx`（含 `type="file"`），第 ② 例如期报红并列出探针路径；随即删除探针，4 例恢复全绿。不是只「写了测试」。
+
+**边界 / 验证**：只加一条测试 + 文档留痕，零用户可见变化、不改界面 / 交互 / 生产配置 / `crates/`，`should_deploy=false`。验证：单测 4/4、`just ci-local` 前两关、CI 四 job、`Deploy Backend` 跳过、Vercel 生产部署。
+
+**本机门禁环境限制（非代码问题，跨会话有用）**：本轮 `just ci-local` 第 1 关（`cargo fmt` / 严格 clippy / `cargo deny` / 337 Rust 测试）、第 2 关（wasm-pack / tsc / eslint / `next build` / 46 套件 336 例、覆盖率 91.85·80.11·87.24·94.39）**均全绿**；第 3 关 `taro build --type weapp` 被本机 WorkBuddy 沙盒注入的 `node-brokered-fs-shim` 干扰，webpack `PackFileCacheStrategy` 写缓存报 `ENOENT`（清掉 `dist` / `.cache` 重跑稳定复现，webpack 已跑到 92%）。本轮未碰 `apps/miniprogram` / `apps/agent-api` / `crates/` / 构建配置，且 HEAD 基线 `be18d24` 在八续已完整跑过四关，故以 CI 四 job 复核为准。另外 `cargo deny` **每次都会重新 fetch** RustSec 公告库，必须走本机代理 7890（热缓存无效）；但全局代理会让 Taro 卡住甚至 20 分钟无输出，两者不能同时设 —— 本机只能分段跑，CI 无此限制。
+
+**顺带发现的欠账（本轮按范围未修）**：门禁重新生成 `apps/web/public/pkg` 时，暴露仓库内已提交的 WASM 产物落后 Rust 源码（缺 `build_goat_order_reference_wasm`，wasm 432410→441463 bytes）。`apps/web/package.json` 的 `prebuild` 只在产物不存在时造 stub，Vercel 直接用仓库里的产物，即线上跑的是旧 WASM。本轮按「只补一条测试」的范围 `git restore` 回退这 4 个生成物，保持零线上变化；是否同步需单独排期，并先确认 GOAT 路径是否受影响。
