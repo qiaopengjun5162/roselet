@@ -15,7 +15,14 @@
 **现在最该做的三件事（都要真人，不是代码）**
 1. **找 5 个真实用户试用，看会不会回来** ← 最高优先级，也是唯一能验证产品的事
 2. 用真的 Phantom 扩展手点一遍上链（现有 `verify:phantom*` 跑的是注入的假钱包 + 本地 validator）
-3. 决定是否合 PR #7 —— 这一步等于部署生产后端，不可逆，需人拍板
+3. 决定是否让 **PR #8** 上线，以及是否合 PR #7 —— 都是线上动作，需人拍板
+
+**2026-11-18 补 · 一个会误判的现场，已备好解药**
+
+- 线上正式版跑 main `7b53fb9`，**仍把 Aleo Vault 链接、`/private-vault` 整页钱包操作、详情页链上区块直接摆给所有访客**，正是被判定「有很大问题」的界面；门闩修复只在草稿 PR #7 里。§7 的 5 人试用用的就是这个线上版。
+- 已拆出 **PR #8**（`codex/member-gate-frontend-only`，基于干净 main、只改 `apps/web/`）：把门闩单独上线，OPEN / 非 Draft / MERGEABLE，本地 Web 四关全绿，等一句「合」。它与 #7 改同一批前端文件，建议先合 #8 再把 #7 rebase 到新 main。
+- **订正误判**：`deploy-backend.yml` 除 `head_branch == 'main'` 外还有 `Detect backend deployment changes` 路径过滤，只有 `Cargo.*` / `crates/backend` / `crates/recommend` / `deploy/lightsail` / `Dockerfile.backend` 等变化才 `should_deploy=true`。**纯前端改动合 main 不会重启生产后端**；「合到 main = 部署生产后端」只在 #7 这种含后端改动时成立（§6.8 结尾旧说法已订正）。
+- **订正覆盖率口径**：§1 里的 `91.85 / 80.11 / 87.24 / 94.39` 是**草稿分支**的值；**main 基线原本只有 `87.32 / 84.71`**，低于 `jest.config.ts` 写死的 90 / 85 门槛，任何基于 main 的新 PR 都会 CI 红。PR #8 已用 main 基线上真实行为测试补到 `90.06 / 76.09 / 85.79`（lines 亦达标），不是调低门槛。
 
 **这轮先别做**：继续堆 Web3 / 门禁 / 重构；`MembershipPanel` 拆分、付费会员权限、主网化、`chrono` 迁移都等第 1 项有结果再排期。理由与逐条对照见 §6.9。
 
@@ -27,13 +34,14 @@
 
 | 项目 | 状态 | 依据 |
 |---|---|---|
-| 当前分支 | `codex/solana-mainnet-assessment`，工作树干净、本地与远端一致（SHA 每次提交都会变，以 `git rev-parse HEAD` 为准，别照抄快照里的旧值） | `git status --short`、`git rev-parse HEAD`、远端 ref API |
-| PR #7 | OPEN / Draft / MERGEABLE，2026-11-17 有更新 | `gh pr view 7`；https://github.com/qiaopengjun5162/roselet/pull/7 |
-| 分支与 main 差距 | 核准时约 35 个 commit / 78 文件 / +9352 −455，全部未合主线（会随提交变化，用右侧命令现查） | `git rev-list --left-right --count origin/main...HEAD`、`git diff --shortstat origin/main...HEAD` |
-| CI | 最近一次四关全绿：`44114213700`（每次 push 都会出新 run，以 `gh run list --limit 1` 为准） | `gh run view <run> --json conclusion,jobs` |
-| 生产部署 | `Deploy Backend` 为 `skipped`（分支非 main，未误触发） | `gh run list`；`.github/workflows/deploy-backend.yml:25` |
-| Web 测试 | 全量 `jest --coverage` 44 套件 / 326 例全过 | 本地全量运行 + CI |
-| 覆盖率 | statements 91.85 / branches 80.11 / functions 87.24 / lines 94.39，四项全过（门槛 90/70/85/90） | `apps/web/jest.config.ts` |
+| 当前分支 | 主草稿 `codex/solana-mainnet-assessment`；2026-11-18 另拆 `codex/member-gate-frontend-only`（PR #8，基于 main）。两者工作树干净（SHA 以 `git rev-parse HEAD` 为准，别照抄旧值） | `git status --short`、`git rev-parse HEAD` |
+| PR #7 | OPEN / Draft / MERGEABLE，含 79 个文件的 Web3 + 后端改动 | `gh pr view 7`；https://github.com/qiaopengjun5162/roselet/pull/7 |
+| PR #8 | OPEN / 非 Draft / MERGEABLE，纯前端会员门闩，基于干净 main，等拍板合并 | `gh pr view 8`；https://github.com/qiaopengjun5162/roselet/pull/8 |
+| 分支与 main 差距 | 草稿核准时约 35 个 commit / 78 文件 / +9352 −455，全部未合主线（会随提交变化，用右侧命令现查） | `git rev-list --left-right --count origin/main...HEAD`、`git diff --shortstat origin/main...HEAD` |
+| CI | 草稿最近四关全绿 `44224512958`；PR #8 的 run 用 `gh run list --branch codex/member-gate-frontend-only --limit 1` 现查 | `gh run view <run> --json conclusion,jobs` |
+| 生产部署 | `Deploy Backend` 为 `skipped`（分支非 main）。**另**：合 main 是否真部署还要过 `should_deploy` 路径过滤，纯前端 PR 不会部署 | `.github/workflows/deploy-backend.yml` 的 `Detect backend deployment changes` |
+| Web 测试 | 草稿全量 44 套件 / 326 例全过；PR #8 在 main 基线上 35 套件 / 243 例全过 | 本地全量运行 + CI |
+| 覆盖率 | **草稿** 91.85 / 80.11 / 87.24 / 94.39 四项全过；**main 基线**原本 87.32 / 84.71 不达标，PR #8 补测后 90.06 / 76.09 / 85.79 达标（门槛 90/70/85/90） | `apps/web/jest.config.ts`、`coverage-final.json` |
 | Rust 契约 | `cargo test -p roselet-recommend contract` 6 例；严格 clippy / fmt / `cargo deny` 全 0 | 本地 + CI |
 | 用户验证 | **仍是 0**：5 人试用未开始 | `PRODUCT.md:74`、`README.md` 进度条 |
 
@@ -229,7 +237,9 @@
 
 提交 `3ec602c`，CI run `43723942421`（headSha `3ec602c…`）`conclusion: success`，四个 job 全部 success；`Deploy Backend` 仍 skipped。
 
-**结论：§6.2 / §6.3 / §6.5 / §6.6 / §6.7 的代码侧盘点项全部闭环，工作树干净、分支与远端一致。** 剩下的是需要真人 / 决策的事项，按建议顺序：① 找 5 个真实用户试用（`PRODUCT.md:74` 写「当前唯一要做的事」）；② 真 Phantom 扩展人工手测（现有 `verify:phantom*` 是注入 fake wallet + 本地 validator 的 E2E，真扩展签名尚未人验）；③ 合 PR #7 —— `.github/workflows/deploy-backend.yml:25` 只在 `head_branch == 'main'` 且 CI success 时部署生产后端，所以这一步是**不可逆的外部动作**，需明确拍板；④ 主网化单独立项。
+**结论：§6.2 / §6.3 / §6.5 / §6.6 / §6.7 的代码侧盘点项全部闭环，工作树干净、分支与远端一致。** 剩下的是需要真人 / 决策的事项，按建议顺序：① 找 5 个真实用户试用（`PRODUCT.md:74` 写「当前唯一要做的事」）；② 真 Phantom 扩展人工手测（现有 `verify:phantom*` 是注入 fake wallet + 本地 validator 的 E2E，真扩展签名尚未人验）；③ 合 PR #7 —— 它**含后端路径改动**（`crates/backend` / `Cargo.lock` 等），合到 main 会让 `deploy-backend.yml` 判定 `should_deploy=true`，确实会重启生产后端，属**不可逆的外部动作**，需明确拍板；④ 主网化单独立项。
+
+**2026-11-18 订正**：上面旧版只写了 `head_branch == 'main'`，容易读成「任何合 main 都等于部署后端」。实际 workflow 还有一层 `Detect backend deployment changes` 路径过滤，纯前端改动（如 PR #8）`should_deploy=false`、部署步骤全跳过。另外「普通界面零 Web3」的修复虽已写进 §6.8，但**只在草稿分支，线上正式版 main 尚未生效**；已拆 PR #8 单独上线，见 §0 与 §7.1。
 
 ### 6.8 会员版边界修复 + 剩余可优化项（2026-11-17）
 
@@ -280,6 +290,7 @@
 
 - **试用入口只有一个**：https://roselet-web.vercel.app （手机浏览器直接打开，不用装东西）。
 - **现在线上跑的是已发布的正式版**。最近改的「会员版 / 把 Web3 入口收起来」还在草稿 PR #7 里**没有上线**；不要拿草稿分支的截图或说明发给试用者，一切以他们实际打开的页面为准。
+- **界面前提（2026-11-18 补）**：在 PR #8 合并前，试用者仍会在首页看到「使用 Aleo 私密 Vault」入口，也能直接打开 `/private-vault`。这不是本轮要验证的东西，**不要向试用者解释、不要引导他们点**；如果一周后的三个问题里有人主动提到，把原话记下来即可。若希望试用者看到的是「普通版零 Web3」的目标界面，需先合 PR #8 让 Vercel 重新部署（纯前端，不动后端）。
 - 小程序的微信登录和真机联调还没做完（`PROGRESS.md:310-311`），这一轮**不走小程序**。
 - 试用者可能写下真实情绪：别截图外传、别公开讨论谁写了什么；公开还是私密由试用者自己选。信任是前提（`PRODUCT.md:79`）。
 

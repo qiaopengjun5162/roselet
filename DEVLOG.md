@@ -5125,3 +5125,27 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **顺带订正**：§3 派活表的 D1 仍写「仍待做：把兜底数据抽到 `@roselet/core`」，与 §6.5 / §6.7 已完成矛盾；已加一句指向完成记录，避免新会话把旧状态当待办。
 
 **边界**：本轮纯文档，不改产品代码、不改 CI 配置、不合 PR、不加每周巡检 workflow（属运维变更，仍待用户点头）。**验证**：`git diff --check` RC=0；push 后按惯例确认四个 CI job 全绿。
+
+---
+
+## 2026-11-18（续）把会员门闩从草稿单独摘出成 PR #8，并订正两个会误导决策的旧结论
+
+**为什么要做**：上一轮把「5 人试用」做成 §7 操作卡，核对前提时发现一个错配 —— 试用入口是线上正式版（main `7b53fb9`），但用户主诉「Web3 不该默认暴露」的修复只在草稿 PR #7 里；`git show origin/main:apps/web/src/app/page.tsx` 仍有「使用 Aleo 私密 Vault」链接，`/private-vault/page.tsx` 在 main 上完全没有门闩。也就是说试用者看到的正是被判定「有很大问题」的界面，而 §7.2 还要求至少 2 位完全不碰 Web3 的试用者。
+
+**先查清能不能拆**：main 上已有 `MembershipProvider` / `useOptionalMembership` / `MembershipPanel` / 右上角会员入口，只缺门闩；草稿里 `member-only.tsx` / `membership-banner.tsx` 只依赖 `useOptionalMembership`。但有几处混了草稿其它工作：`plant/page.tsx` 引了 main 上不存在的 `@roselet/core`，`rose/[id]/client.tsx` 引了草稿新增的 `RoseNftMint`，`membership-context.tsx` 混了钱包重构；`lib/wallet.ts` 在 main 上根本不存在。因此从 `origin/main` 新建 `codex/member-gate-frontend-only`，用 `git checkout 5bf2218 -- <纯净文件>` 摘 12 个文件，两处混合文件手工只搬门闩段，两个新增测试删掉 `@/lib/wallet` 桩（main 版 Provider 直接读 `window.solana`，不触发 `connectWallet` 就不需要桩）。
+
+**撞到并修掉的 main 历史欠账**：切到 main 基线后 `pnpm --filter web test:coverage` 报 statements 87.32 / functions 84.71，**低于 main 自己 `jest.config.ts` 写死的 90 / 85 门槛** —— 任何基于 main 的新 PR 都会 CI 红，与本轮改动无关。§1 快照里 91.85 是草稿分支自带补测后的值，不能代表 main。草稿的补测绑死 `@roselet/core` / `lib/rose-memo` / `lib/solana-rpc` / `lib/wallet`，搬不过来。改为在 main 基线上补真实行为测试：① `recommend.test.ts` 补 WASM 初始化失败 / 单个 WASM 调用抛错时所有 wrapper 的降级（断言按 main 语义：`buildPlantBody` 仍输出 `anxiety: null`，未知色回退 `🌸` / 原字符串）；② 新增 `membership-context.test.tsx` 覆盖钱包连接成功 / 无钱包 / 拒绝 / 断开与面板状态机；③ `private-vault` 补未装适配器 / 连接失败 / 无 publicKey / 交易失败的 4 个错误路径。**没有调低门槛**，覆盖率 87.32 → 90.06 statements、84.71 → 85.79 functions。
+
+**两个旧结论是错的，已订正进清单 §0 / §1 / §6.8 / §7.1**：
+
+1. `deploy-backend.yml` 除了 `head_branch == 'main'`，还有 `Detect backend deployment changes` 路径过滤；只有 `Cargo.*` / `crates/backend` / `crates/recommend` / `deploy/lightsail` / `Dockerfile.backend` / `scripts/lightsail-deploy.sh` 等变化才 `should_deploy=true`。**纯前端改动合 main 不会重启生产后端**；§6.8 结尾把条件简写成「合到 main = 部署生产后端」，让 PR #7 一直被当成整体不可逆而卡着。PR #7 本身含后端路径，合它仍会真部署。
+2. §1 把草稿分支的覆盖率当成全项目状态，隐含「main 也是绿的」。
+
+**两个环境坑（非代码错误）**：
+
+- 切分支后必须先 `pnpm install --frozen-lockfile`：草稿把 Solana 依赖换成了新包，main 的 `@solana/web3.js` 不在 node_modules 里，否则 `tsc` 报 TS2307 `Cannot find module '@solana/web3.js'`。
+- 本机 `~/.zshrc:174` 会 `source ~/.gvm/scripts/gvm`，而 `GVM_ROOT` 未设；`pnpm build` / `just next-build` 在需要沙盒升级的路径下会被这个初始化报错直接打死（stdout 空、只报 `ERROR: GVM_ROOT not set`）。用 `sh -c 'cd apps/web && NEXT_TELEMETRY_DISABLED=1 ./node_modules/.bin/next build'` 绕开 zsh 初始化即可。
+
+**产出与验证**：`codex/member-gate-frontend-only` 提交 `451cb60`，16 个文件全在 `apps/web/` 下，PR #8（OPEN / 非 Draft / MERGEABLE，**未合并**）。本地 Web 四关：`tsc --noEmit` RC=0、`eslint` 0 error（1 个既存 warning）、`jest --coverage` 35 套件 243 例全过且四项门槛全过、`next build` compiled successfully + 14 个静态页生成完成。
+
+**边界**：没有合并任何 PR（合 main 是线上动作，留给用户点头）；没有改生产配置 / CI 配置；没有动后端路径（这正是 `should_deploy=false` 的依据）；草稿分支本轮只改文档。PR #8 与 #7 改同一批前端文件，建议先合 #8 再把 #7 rebase 到新 main 解冲突。
