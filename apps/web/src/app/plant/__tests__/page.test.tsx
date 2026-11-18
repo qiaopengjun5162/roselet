@@ -120,7 +120,11 @@ describe("PlantPage", () => {
     fireEvent.click(screen.getByText("确定并种下"));
     await waitFor(() => {
       expect(createRose).toHaveBeenCalled();
-      expect(screen.getByText("已种入星空花圃")).toBeInTheDocument();
+      expect(screen.getByText("种好了")).toBeInTheDocument();
+      // 种完这一下是唯一能给出「为什么一周后回来」的位置，别改回抽象口号。
+      expect(
+        screen.getByText("这一朵已经留在花圃里。一周后回来，看看自己长出了什么。"),
+      ).toBeInTheDocument();
     });
   });
 

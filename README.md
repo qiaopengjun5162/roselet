@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![Live](https://img.shields.io/badge/Live-roselet--web.vercel.app-brightgreen)
 
-> Plant a rose, share your emotions, wait for the universe to respond.
+> Write one line, plant a rose, and come back in a week to see what you have grown.
 
 Roselet is a community icebreaker Web app inspired by the classic "Rose, Bud, Thorn" game. Users plant roses to share gratitude, anxiety, and hope — forming a living community garden that grows with every entry.
 

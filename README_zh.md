@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![Live](https://img.shields.io/badge/Live-roselet--web.vercel.app-brightgreen)
 
-> 种下一朵玫瑰，分享你的情绪，等待宇宙的回响。
+> 写一句，种一朵玫瑰，一周后看看自己长出了什么。
 
 Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的”玫瑰、花苞、尖刺”（Rose, Bud, Thorn）破冰游戏。用户通过种下玫瑰来分享感恩、焦虑和期待，形成一个随时间生长的温暖社区花圃。
 

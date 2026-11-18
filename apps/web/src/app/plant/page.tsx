@@ -255,9 +255,9 @@ export default function PlantPage() {
           {/* 文字渐显 */}
           <div className="space-y-3 animate-text-reveal">
             <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-300 to-purple-300">
-              已种入星空花圃
+              种好了
             </h2>
-            <p className="text-slate-400">你的情绪已经出现在花圃中，AI 正在聆听...</p>
+            <p className="text-slate-400">这一朵已经留在花圃里。一周后回来，看看自己长出了什么。</p>
           </div>
           {/* 玫瑰声音可视化 — 烟花落定后自动播放 */}
           <div className="flex justify-center animate-text-reveal" style={{ animationDelay: "1.2s" }}>

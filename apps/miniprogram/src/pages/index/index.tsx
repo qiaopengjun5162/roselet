@@ -19,8 +19,8 @@ export default function Index() {
         <View className={styles.glow} />
         <Text className={`${styles.emoji} fade-in-up`}>🌹</Text>
         <Text className={`${styles.title} fade-in-up-d1`} style={{ fontFamily: 'STXingkai, KaiTi, 楷体, serif' }}>Roselet</Text>
-        <Text className={`${styles.tagline} fade-in-up-d1`}>在星空下种下你的情绪</Text>
-        <Text className={`${styles.taglineSub} fade-in-up-d2`}>等待宇宙的回响</Text>
+        <Text className={`${styles.tagline} fade-in-up-d1`}>写一句，种一朵玫瑰</Text>
+        <Text className={`${styles.taglineSub} fade-in-up-d2`}>一周后看看自己长出了什么</Text>
 
         <View className={`${styles.cards} fade-in-up-d2`}>
           <View className={`${styles.card} ${styles.cardGratitude}`}>
