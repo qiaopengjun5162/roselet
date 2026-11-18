@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createRose, getToken, getMyRoses } from "@/lib/api";
+import { createRose, getToken, getMyRoses, register, setToken, setRefreshToken, setUser } from "@/lib/api";
+import { registerErrorMessage } from "@/lib/auth-errors";
 import { playClick, playPlant, playComplete } from "@/lib/sound";
 import { getRecommendation, validatePlantInput, type Recommendation } from "@/lib/recommend";
 import { Fireworks } from "@/components/fireworks";
@@ -64,6 +65,12 @@ export default function PlantPage() {
   const [recLoading, setRecLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [recipientNickname, setRecipientNickname] = useState("");
+  // 未登录不再被踢去登录页：先让人把话写完，点「种下」时才要一个名字。
+  const [needsNickname, setNeedsNickname] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState("");
+  const [passphraseDraft, setPassphraseDraft] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authSubmitting, setAuthSubmitting] = useState(false);
 
   const hasContent = gratitude.trim() || anxiety.trim() || hope.trim();
   const isGift = recipientNickname.trim().length > 0;
@@ -85,12 +92,9 @@ export default function PlantPage() {
     }
   }
 
-  // 未登录跳转登录页，登录后跳回种花页
-  useEffect(() => {
-    if (!getToken()) {
-      router.replace("/login?redirect=/plant");
-    }
-  }, [router]);
+  // 不再在进页面时就跳登录页。过去这一步把「写一句，种一朵玫瑰」变成了
+  // 「先注册」，没耐心的人还没写就走了。现在只在提交时补一个昵称。
+  // 推荐仍只对已登录用户加载（getMyRoses 需要 token）。
 
   // 加载 WASM 推荐
   useEffect(() => {
@@ -128,8 +132,7 @@ export default function PlantPage() {
     return getFieldValue(field).trim().length > 0;
   }
 
-  async function handleSubmit() {
-    if (!hasContent) return;
+  async function plantRose() {
     setSubmitting(true);
     setError("");
     playPlant();
@@ -163,6 +166,38 @@ export default function PlantPage() {
     } catch {
       setError("提交失败，请重试");
       setSubmitting(false);
+    }
+  }
+
+  async function handleSubmit() {
+    if (!hasContent) return;
+    if (!getToken()) {
+      // 内容已留在 state 里，取完名字会接着种，不会丢。
+      setAuthError("");
+      setNeedsNickname(true);
+      return;
+    }
+    await plantRose();
+  }
+
+  async function handleRegisterAndPlant(e: React.FormEvent) {
+    e.preventDefault();
+    const nickname = nicknameDraft.trim();
+    if (!nickname || authSubmitting) return;
+
+    setAuthSubmitting(true);
+    setAuthError("");
+    try {
+      const res = await register(nickname, passphraseDraft || undefined);
+      setToken(res.access_token);
+      setRefreshToken(res.refresh_token);
+      setUser(res.user);
+      window.dispatchEvent(new Event("auth-change"));
+      setNeedsNickname(false);
+      await plantRose();
+    } catch (err) {
+      setAuthError(registerErrorMessage(err));
+      setAuthSubmitting(false);
     }
   }
 
@@ -438,6 +473,62 @@ export default function PlantPage() {
           </Button>
         </div>
       </div>
+
+      {/* 提交时才要名字：内容已经写好了，这一步只是给玫瑰一个主人 */}
+      {needsNickname && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={() => { if (!authSubmitting) setNeedsNickname(false); }}
+        >
+          <form
+            onSubmit={handleRegisterAndPlant}
+            className="glass-card rounded-2xl p-6 max-w-md w-full space-y-4 border border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-slate-200">先给自己取个名字</h3>
+              <p className="text-sm text-slate-400">
+                玫瑰要有个主人。不用手机号，也不用邮箱，写完这朵就是你的。
+              </p>
+            </div>
+            <input
+              type="text"
+              value={nicknameDraft}
+              onChange={(e) => setNicknameDraft(e.target.value)}
+              placeholder="你想叫什么名字？"
+              maxLength={50}
+              autoFocus
+              className="w-full rounded-lg border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-500 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400"
+            />
+            <input
+              type="password"
+              value={passphraseDraft}
+              onChange={(e) => setPassphraseDraft(e.target.value)}
+              placeholder="密码（可选，设了更安全）"
+              maxLength={100}
+              className="w-full rounded-lg border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-500 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400"
+            />
+            {authError && <p className="text-sm text-red-500">{authError}</p>}
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setNeedsNickname(false)}
+                disabled={authSubmitting}
+                className="text-sm text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-50"
+              >
+                返回修改
+              </button>
+              <Button
+                type="submit"
+                disabled={!nicknameDraft.trim() || authSubmitting}
+                className="bg-rose-500 hover:bg-rose-600 rounded-full px-6"
+              >
+                {authSubmitting ? "准备中..." : "种下这朵玫瑰"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Dialog overlay */}
       {activeField && (

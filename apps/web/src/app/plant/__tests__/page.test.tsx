@@ -39,13 +39,18 @@ jest.mock("@/components/member-only", () => ({
 afterEach(() => { memberMode = false; });
 
 const mockPush = jest.fn();
+const mockReplace = jest.fn();
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush, replace: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));
 jest.mock("@/lib/api", () => ({
   createRose: jest.fn(),
   getMyRoses: jest.fn().mockResolvedValue({ data: [], total: 0 }),
   getToken: jest.fn().mockReturnValue("jwt-token"),
+  register: jest.fn(),
+  setToken: jest.fn(),
+  setRefreshToken: jest.fn(),
+  setUser: jest.fn(),
 }));
 
 jest.mock("@/lib/recommend", () => ({
@@ -66,11 +71,19 @@ jest.mock("@/components/rose-player", () => ({
 }));
 
 
-const { createRose } = require("@/lib/api") as { createRose: jest.Mock };
+const { createRose, getToken, register } = require("@/lib/api") as {
+  createRose: jest.Mock;
+  getToken: jest.Mock;
+  register: jest.Mock;
+};
 import PlantPage from "../page";
 
 describe("PlantPage", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // 默认已登录；「先写后取名」的用例会临时改成 null。
+    getToken.mockReturnValue("jwt-token");
+  });
 
   it("should render color selection step", () => {
     render(<PlantPage />);
@@ -219,5 +232,68 @@ describe("PlantPage", () => {
     await waitFor(() => {
       expect(screen.getByText("查看花圃")).toBeInTheDocument();
     });
+  });
+
+  it("未登录打开种花页不再跳登录（先让人写完）", () => {
+    getToken.mockReturnValue(null);
+    render(<PlantPage />);
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(screen.getByText("选择玫瑰的颜色")).toBeInTheDocument();
+  });
+
+  it("未登录提交时才要昵称，已写的内容不丢", async () => {
+    getToken.mockReturnValue(null);
+    register.mockResolvedValue({
+      access_token: "a",
+      refresh_token: "r",
+      user: { id: "u1", nickname: "alice", created_at: "" },
+    });
+    createRose.mockResolvedValue({ id: "r1", color: "red" });
+
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "今天很好" } });
+    fireEvent.click(screen.getByText("确定并种下"));
+
+    await waitFor(() => {
+      expect(screen.getByText("先给自己取个名字")).toBeInTheDocument();
+    });
+    // 还没取名，不能偷偷提交到公开花圃。
+    expect(createRose).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByPlaceholderText("你想叫什么名字？"), {
+      target: { value: "alice" },
+    });
+    fireEvent.click(screen.getByText("种下这朵玫瑰"));
+
+    await waitFor(() => {
+      expect(register).toHaveBeenCalledWith("alice", undefined);
+      // 刚才写的那句话原样带进最终提交。
+      expect(createRose).toHaveBeenCalledWith(expect.objectContaining({ gratitude: "今天很好" }));
+      expect(screen.getByText(PLANTED_TITLE)).toBeInTheDocument();
+    });
+  });
+
+  it("取名失败时留在弹窗里，内容不丢", async () => {
+    getToken.mockReturnValue(null);
+    register.mockRejectedValue(new Error("已设置密码"));
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "今天很好" } });
+    fireEvent.click(screen.getByText("确定并种下"));
+
+    await waitFor(() => expect(screen.getByText("先给自己取个名字")).toBeInTheDocument());
+    fireEvent.change(screen.getByPlaceholderText("你想叫什么名字？"), {
+      target: { value: "alice" },
+    });
+    fireEvent.click(screen.getByText("种下这朵玫瑰"));
+
+    await waitFor(() => {
+      expect(screen.getByText("该昵称已设置密码，请输入密码")).toBeInTheDocument();
+    });
+    expect(createRose).not.toHaveBeenCalled();
+    expect(screen.getByText("先给自己取个名字")).toBeInTheDocument();
   });
 });

@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { register, setToken, setRefreshToken, setUser } from "@/lib/api";
+import { registerErrorMessage } from "@/lib/auth-errors";
 import { TipTicker } from "@/components/tip-ticker";
 
 function LoginForm() {
@@ -29,18 +30,7 @@ function LoginForm() {
       window.dispatchEvent(new Event("auth-change"));
       router.push(redirect);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("fetch")) {
-        setError("网络连接失败，可能是新域名还未被后端允许，请稍后再试");
-      } else if (msg.includes("密码错误")) {
-        setError("密码错误");
-      } else if (msg.includes("正在冷却期内")) {
-        setError("这个昵称正在 30 天冷却期内，如要恢复账号请输入原密码");
-      } else if (msg.includes("已设置密码")) {
-        setError("该昵称已设置密码，请输入密码");
-      } else {
-        setError("登录失败，请重试");
-      }
+      setError(registerErrorMessage(err));
     } finally {
       setLoading(false);
     }
