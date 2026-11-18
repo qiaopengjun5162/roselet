@@ -1,6 +1,15 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+// 门闩本身由 member-only.test.tsx 验证；这里控制会员模式，确认详情页的
+// 链上纪念版 / Solana 存证区块都被包在门闩里。
+let memberMode = false;
+jest.mock("@/components/member-only", () => ({
+  MemberOnly: ({ children }: { children: React.ReactNode }) =>
+    memberMode ? <>{children}</> : null,
+}));
+afterEach(() => { memberMode = false; });
+
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
@@ -152,13 +161,23 @@ describe("RoseDetailPage", () => {
     expect(screen.queryByText("删除")).not.toBeInTheDocument();
   });
 
-  it("shows the chain memorial entry only to the public rose owner", async () => {
+  it("普通模式下不展示链上纪念版入口", async () => {
+    getRose.mockResolvedValue(mockRose);
+    getUser.mockReturnValue({ id: "u1", nickname: "alice" });
+    render(<RoseDetailClient id="rose-1" />);
+
+    await waitFor(() => expect(getRoseMemorial).toHaveBeenCalledWith("rose-1"));
+    expect(screen.queryByText("链上纪念版")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "创建纪念版" })).not.toBeInTheDocument();
+  });
+
+  it("会员版下玫瑰主人才看到链上纪念版", async () => {
+    memberMode = true;
     getRose.mockResolvedValue(mockRose);
     getUser.mockReturnValue({ id: "u1", nickname: "alice" });
     render(<RoseDetailClient id="rose-1" />);
 
     await waitFor(() => expect(screen.getByText("链上纪念版")).toBeInTheDocument());
-    expect(getRoseMemorial).toHaveBeenCalledWith("rose-1");
   });
 
   it("should not show rose settings for non-owner", async () => {

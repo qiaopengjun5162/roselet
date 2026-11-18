@@ -1,6 +1,14 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+// 默认按会员渲染，保留原有钱包流程用例；单独一个用例切到普通模式验证拦截。
+let memberMode = true;
+const mockOpenPanel = jest.fn();
+jest.mock("@/app/membership-context", () => ({
+  useOptionalMembership: () => ({ isMember: memberMode, openPanel: mockOpenPanel }),
+}));
+afterEach(() => { memberMode = true; });
+
 const mockSelect = jest.fn();
 const mockConnect = jest.fn();
 const mockRequestTransaction = jest.fn();
@@ -8,7 +16,15 @@ const mockCreatePrivateRoseTransaction = jest.fn();
 const mockBuildAleoVaultInputs = jest.fn();
 const mockGetRecommendation = jest.fn();
 
-let walletState = {
+let walletState: {
+  wallet: unknown;
+  publicKey: string;
+  connected: boolean;
+  connecting: boolean;
+  select: jest.Mock;
+  connect: jest.Mock;
+  requestTransaction: jest.Mock;
+} = {
   wallet: { adapter: {} },
   publicKey: "aleo1owner",
   connected: true,
@@ -69,6 +85,62 @@ describe("PrivateVaultPage", () => {
     });
     mockCreatePrivateRoseTransaction.mockReturnValue({ transaction: true });
     mockRequestTransaction.mockResolvedValue("wallet-request-1");
+  });
+
+  it("普通模式直接输网址也看不到任何钱包操作", () => {
+    memberMode = false;
+    render(<PrivateVaultPage />);
+
+    expect(screen.getByText("Aleo 私密 Vault 只在会员版开放")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("写下一段不想公开的感恩、焦虑或期待")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "种下私密玫瑰" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "切换到会员版" }));
+    expect(mockOpenPanel).toHaveBeenCalledTimes(1);
+  });
+
+  it("selects a Leo Wallet first when no adapter is installed", () => {
+    walletState = { ...walletState, wallet: null, connected: false };
+    render(<PrivateVaultPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "连接 Leo Wallet" }));
+
+    expect(mockSelect).toHaveBeenCalledWith("Leo Wallet");
+    expect(mockConnect).not.toHaveBeenCalled();
+  });
+
+  it("shows the wallet error instead of crashing when connect rejects", async () => {
+    walletState = { ...walletState, connected: false };
+    mockConnect.mockRejectedValueOnce(new Error("连接被取消"));
+    render(<PrivateVaultPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "确认连接" }));
+
+    await waitFor(() => expect(screen.getByText("连接被取消")).toBeInTheDocument());
+  });
+
+  it("refuses to submit when the wallet has no public key", () => {
+    walletState = { ...walletState, publicKey: "" };
+    render(<PrivateVaultPage />);
+    fireEvent.change(screen.getByPlaceholderText("写下一段不想公开的感恩、焦虑或期待"), {
+      target: { value: "只留给自己" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "种下私密玫瑰" }));
+
+    expect(screen.getByText("请先连接 Leo Wallet")).toBeInTheDocument();
+    expect(mockRequestTransaction).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a failed wallet transaction", async () => {
+    mockRequestTransaction.mockRejectedValueOnce(new Error("钱包请求被拒绝"));
+    render(<PrivateVaultPage />);
+    fireEvent.change(screen.getByPlaceholderText("写下一段不想公开的感恩、焦虑或期待"), {
+      target: { value: "只留给自己" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "种下私密玫瑰" }));
+
+    await waitFor(() => expect(screen.getByText("钱包请求被拒绝")).toBeInTheDocument());
   });
 
   it("requires private content before requesting the wallet", () => {
