@@ -68,7 +68,9 @@ function VaultForm() {
 
   return (
     <main className="relative z-10 mx-auto max-w-2xl px-4 py-12">
-      <div className="space-y-8">
+      {/* 花瓣背景层 z-0 会从半透明内容底下透上来，糊在正文/输入框上像脏东西。
+          给整块内容一层不透背景 + backdrop-blur，把飘落花瓣隔在后面。 */}
+      <div className="space-y-8 rounded-2xl border border-white/10 bg-[#0f081e]/90 p-5 backdrop-blur-xl shadow-2xl sm:p-6">
         <header>
           <p className="text-sm text-emerald-300">Aleo Private Vault</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-100">把真实留给自己</h1>
@@ -138,7 +140,7 @@ function MemberRequired() {
   const membership = useOptionalMembership();
   return (
     <main className="relative z-10 mx-auto max-w-2xl px-4 py-12">
-      <div className="space-y-5 rounded-2xl border border-violet-400/25 bg-violet-500/5 p-6">
+      <div className="space-y-5 rounded-2xl border border-violet-400/25 bg-[#0f081e]/90 p-6 backdrop-blur-xl shadow-2xl">
         <p className="text-sm text-violet-200">🌐 会员版功能</p>
         <h1 className="text-2xl font-semibold text-slate-100">Aleo 私密 Vault 只在会员版开放</h1>
         <p className="text-sm leading-6 text-slate-400">

@@ -5371,3 +5371,17 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **边界**：只动 Web 种花页与其测试；后端、小程序、`crates/`、会员门闩、文案单源常量均未动，`should_deploy=false`。
 
 **验证**：`pnpm build` ✓；typecheck / lint ✓；`test:coverage` ✓（46 套件 344 例，覆盖率四道门槛过）。
+
+---
+
+## 十五续：Aleo 私密 Vault 页花瓣糊在内容上（2026-11-18 22:50）
+
+**问题**：用户反馈「使用 Aleo 私密 Vault 显示不太好」。真实浏览器（390×844 + 1280×900，线上）复现：全站 `FallingPetals` 是 `fixed z-0`，Vault 页内容是 `relative z-10` 本该盖住它，但 Vault 页**两块内容都没有不透背景**（会员表单块裸在 `main` 上、输入框 `bg-black/20`；非会员提示块 `bg-violet-500/5` 仅 5% 透明），花瓣从底下透上来，糊在正文 / 输入框里像脏东西。其它页面内容都在磨砂卡片里所以没这毛病。网络确认为 Devnet（生产 bundle `0mq~emi6d6m5l.js` 含 `api.devnet.solana.com`），非真钱。
+
+**改法（只动 `apps/web/src/app/private-vault/page.tsx`）**：会员表单块与非会员提示块都加 `bg-[#0f081e]/90 backdrop-blur-xl shadow-2xl rounded-2xl border border-white/10`（提示块保留紫边 `border-violet-400/25`）。先在浏览器里用 evaluate 试加背景截图确认视觉变干净，再落到源码。客户态保持会员门闩、钱包逻辑、文案一字不动。
+
+**防复发**：`private-vault/__tests__/page.test.tsx` 新增读源码守卫 —— 剥注释后断言两态内容块都含 `bg-[#0f081e]/90` + `backdrop-blur-xl`（≥2 处），且不得回退成 `bg-violet-500/5`。把背景改回半透明实测报红（1 failed / 4 passed），恢复后 5/5 绿。
+
+**验收**：本地生产构建 390×844 + 桌面，会员态 / 非会员态截图目视花瓣不再透入内容、文字与输入框清晰、无新裁切；两档 `horizontalOverflow=0`、pageerror 0。网络仍 Devnet。Web 46 套件 345 例全过，typecheck / lint ✓。
+
+**边界**：纯 Web 样式 + 一条守卫测试；钱包逻辑、Aleo WASM、会员门闩、`crates/`、后端均未动，`should_deploy=false`。

@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 // 默认按会员渲染，保留原有钱包流程用例；单独一个用例切到普通模式验证拦截。
 let memberMode = true;
@@ -77,6 +79,18 @@ describe("PrivateVaultPage", () => {
     });
     mockCreatePrivateRoseTransaction.mockReturnValue({ transaction: true });
     mockRequestTransaction.mockResolvedValue("wallet-request-1");
+  });
+
+  it("两态内容块都有不透背景，飘落花瓣不会糊在正文/输入框上", () => {
+    const source = readFileSync(resolve(__dirname, "../page.tsx"), "utf8").replace(
+      /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
+      "",
+    );
+    // 会员表单块 + 非会员提示块都必须有近全不透背景与毛玻璃；
+    // bg-.../5 这类半透明会让 z-0 的花瓣透上来，正是本次要修的缺陷。
+    const opaqueBlocks = source.match(/bg-\[#0f081e\]\/90[^"']*backdrop-blur-xl/g) || [];
+    expect(opaqueBlocks.length).toBeGreaterThanOrEqual(2);
+    expect(source).not.toMatch(/bg-violet-500\/5/);
   });
 
   it("普通模式直接输网址也看不到任何钱包操作", () => {
