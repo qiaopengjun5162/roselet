@@ -1,6 +1,18 @@
 interface PetalConfig { emoji:string; left:number; size:number; duration:number; delay:number; sway:number; opacity:number }
 import Taro from "@tarojs/taro";
-import type { CreateRose } from '@roselet/core';
+import {
+  buildPlantBodyFallback,
+  colorEmojiFallback,
+  colorLabelFallback,
+  colorOptionsFallback,
+  type ColorMeta,
+  type CreateRose,
+} from '@roselet/core';
+
+// WASM-unavailable fallbacks come from the shared package so Web and this
+// mini-program cannot drift. crates/recommend/src/contract.rs asserts that
+// this file imports them instead of hard-coding colours again.
+export type { ColorMeta };
 
 export interface GardenLayout { card_width: number; columns: number; gap: number; padding_x: number; offset_top: number; offset_bottom: number }
 export interface ValidationResult { valid: boolean; error: string | null; cleaned: { color: string; gratitude: string | null; anxiety: string | null; hope: string | null } | null }
@@ -44,14 +56,7 @@ export function validatePlant(input: CreateRose): ValidationResult | null { if (
 export function validateFeedback(content: string): FeedbackValidation | null { if (!api) return null; try { return api.validate_feedback_input(JSON.stringify({ content })) as FeedbackValidation; } catch { return null; } }
 
 export async function buildPlantBody(input: CreateRose): Promise<string> {
-  const fallback = () => JSON.stringify({
-    color: input.color,
-    gratitude: input.gratitude ?? null,
-    anxiety: input.anxiety ?? null,
-    hope: input.hope ?? null,
-    ...(input.is_private ? { is_private: true } : {}),
-    ...(input.recipient_nickname ? { recipient_nickname: input.recipient_nickname } : {}),
-  });
+  const fallback = () => buildPlantBodyFallback(input);
   if (!api) await initWasm();
   if (!api) return fallback();
   try {
@@ -101,12 +106,9 @@ export function generatePetals(count: number, seed: number): PetalConfig[] | nul
   try { return api.generate_petals_wasm(count, seed) as PetalConfig[]; } catch { return null; }
 }
 
-export interface ColorMeta { id: string; label: string; emoji: string }
-const COLOR_FALLBACK: ColorMeta[] = [
-  { id: 'red', label: '红玫瑰', emoji: '🌹' },
-  { id: 'white', label: '白玫瑰', emoji: '🤍' },
-  { id: 'yellow', label: '黄玫瑰', emoji: '💛' },
-];
-export function colorEmoji(color: string): string { if (!api) return COLOR_FALLBACK.find(c => c.id === color)?.emoji ?? '🌸'; try { return api.color_emoji(color); } catch { return '🌸'; } }
-export function colorLabel(color: string): string { if (!api) return COLOR_FALLBACK.find(c => c.id === color)?.label ?? color; try { return api.color_label(color); } catch { return color; } }
-export function colorOptions(): ColorMeta[] { if (!api) return COLOR_FALLBACK; try { return api.color_options() as ColorMeta[]; } catch { return COLOR_FALLBACK; } }
+// Unknown colours fall back to the first registered colour, matching
+// crates/recommend/src/color.rs `find()`. The Rust contract test reads the
+// shared table in packages/core/src/fallbacks.ts, not a local copy.
+export function colorEmoji(color: string): string { if (!api) return colorEmojiFallback(color); try { return api.color_emoji(color); } catch { return colorEmojiFallback(color); } }
+export function colorLabel(color: string): string { if (!api) return colorLabelFallback(color); try { return api.color_label(color); } catch { return colorLabelFallback(color); } }
+export function colorOptions(): ColorMeta[] { if (!api) return colorOptionsFallback(); try { return api.color_options() as ColorMeta[]; } catch { return colorOptionsFallback(); } }

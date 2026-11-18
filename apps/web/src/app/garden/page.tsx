@@ -6,12 +6,13 @@ import { getGarden, type Rose } from "@/lib/api";
 import { loadGardenCache } from "@/lib/garden-cache";
 import { connectGardenWs } from "@/lib/ws";
 import { playNotify } from "@/lib/sound";
+import { colorOptionsFallback } from "@roselet/core";
 
+// 「全部」是 UI 专属筛选项；其余颜色来自 @roselet/core，与 Rust WASM
+// `color_options` 同源。crates/recommend/src/contract.rs 守卫本文件不复制文案。
 const FILTERS = [
   { value: "", label: "全部" },
-  { value: "red", label: "红玫瑰" },
-  { value: "white", label: "白玫瑰" },
-  { value: "yellow", label: "黄玫瑰" },
+  ...colorOptionsFallback().map((meta) => ({ value: meta.id, label: meta.label })),
 ];
 
 export default function GardenPage() {

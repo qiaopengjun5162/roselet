@@ -1,10 +1,23 @@
+import {
+  TIP_FALLBACKS,
+  audioPlaybackPolicyFallback,
+  buildGardenUrlFallback,
+  buildPlantBodyFallback,
+  colorEmojiFallback,
+  colorLabelFallback,
+} from "@roselet/core";
+import type { PlaybackPolicyInput, Tip, TipContext } from "@roselet/core";
+
+// WASM-unavailable fallbacks live in @roselet/core so Web and the mini-program
+// cannot drift. crates/recommend/src/contract.rs asserts this file imports them
+// instead of hard-coding colours / tips again.
+export type { ColorMeta, Tip, TipContext } from "@roselet/core";
+
 export interface RoseInput { color: string; gratitude?: string | null; anxiety?: string | null; hope?: string | null }
 export interface Recommendation { flower_language: { title: string; content: string; keywords: string[] }; theme: { title: string; content: string; category: string }; color_suggestion: { color: string; reason: string } }
 export interface GardenLayout { card_width: number; columns: number; gap: number; padding_x: number; offset_top: number; offset_bottom: number }
 export interface ValidationResult { valid: boolean; error: string | null; cleaned: { color: string; gratitude: string | null; anxiety: string | null; hope: string | null } | null }
 export interface FormattedDate { full_cn: string; short_cn: string; iso: string; weekday_cn: string; relative: string }
-export type TipContext = "home" | "login" | "plant" | "garden";
-export interface Tip { text: string }
 
 interface WasmMod {
   default?: (input?: unknown) => Promise<unknown>;
@@ -47,18 +60,13 @@ async function loadWasm(): Promise<WasmMod | null> {
 export async function getRecommendation(roses: RoseInput[]): Promise<Recommendation | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.recommend(JSON.stringify(roses)) as Recommendation; } catch { return null; } }
 export async function analyzeTextWasm(text: string): Promise<Record<string, unknown> | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.analyze_text(text) as Record<string, unknown>; } catch { return null; } }
 export async function getTips(context: TipContext): Promise<Tip[]> {
-  const fallback: Record<TipContext, Tip[]> = {
-    home: [{ text: "这里不是朋友圈，不用表现得很好。种下一点真实就可以。" }],
-    login: [{ text: "可以不设密码，像把钥匙藏在花盆底下；但设了密码，别人就不容易误进你的花圃。" }],
-    plant: [{ text: "不知道写哪一栏？只写一栏也可以，一朵花不需要一次说完全部心事。" }],
-    garden: [{ text: "花圃里看到的是公开玫瑰；私密玫瑰只留在自己的小角落。" }],
-  };
-  const mod = await loadWasm(); if (!mod) return fallback[context];
+  const fallback = TIP_FALLBACKS[context];
+  const mod = await loadWasm(); if (!mod) return fallback;
   try {
     const tips = mod.get_tips_wasm(context) as Tip[];
-    return Array.isArray(tips) && tips.length > 0 ? tips : fallback[context];
+    return Array.isArray(tips) && tips.length > 0 ? tips : fallback;
   } catch {
-    return fallback[context];
+    return fallback;
   }
 }
 export async function getLayout(screenWidth: number): Promise<GardenLayout | null> { const mod = await loadWasm(); if (!mod) return null; try { return mod.compute_layout(JSON.stringify({ width: screenWidth, height: 0, safe_area_top: 0, safe_area_bottom: 0, is_web: true })) as GardenLayout; } catch { return null; } }
@@ -93,13 +101,13 @@ export async function roseToSoundParamsWasm(roseJson: string): Promise<Record<st
   try { return mod.rose_to_sound_params_wasm(roseJson) as Record<string, unknown>; } catch { return null; }
 }
 
-export async function audioPlaybackPolicy(input: { starting: "background" | "foreground" | "effect"; background_playing: boolean }): Promise<{ stop_background: boolean }> {
+export async function audioPlaybackPolicy(input: PlaybackPolicyInput): Promise<{ stop_background: boolean }> {
   const mod = await loadWasm();
-  if (!mod) return { stop_background: input.starting === "foreground" && input.background_playing };
+  if (!mod) return audioPlaybackPolicyFallback(input);
   try {
     return mod.audio_playback_policy_wasm(JSON.stringify(input)) as { stop_background: boolean };
   } catch {
-    return { stop_background: input.starting === "foreground" && input.background_playing };
+    return audioPlaybackPolicyFallback(input);
   }
 }
 
@@ -120,13 +128,17 @@ export async function generateStarParticles(count: number, seed: bigint): Promis
 // Rust WASM URL/body builders — replaces TS template-literal construction
 export async function buildGardenUrl(baseUrl: string, page: number, perPage: number, color?: string): Promise<string> {
   const mod = await loadWasm();
-  if (!mod) return `${baseUrl}/api/garden?page=${page}&per_page=${perPage}${color ? `&color=${color}` : ""}`;
-  try { return mod.build_garden_url(baseUrl, page, perPage, color ?? ""); } catch { return `${baseUrl}/api/garden?page=${page}&per_page=${perPage}${color ? `&color=${color}` : ""}`; }
+  if (!mod) return buildGardenUrlFallback(baseUrl, page, perPage, color);
+  try { return mod.build_garden_url(baseUrl, page, perPage, color ?? ""); } catch { return buildGardenUrlFallback(baseUrl, page, perPage, color); }
 }
 
 export async function buildPlantBody(color: string, gratitude?: string | null, anxiety?: string | null, hope?: string | null, isPrivate = false, recipientNickname?: string): Promise<string> {
   const mod = await loadWasm();
-  const fallback = () => JSON.stringify({ color, gratitude, anxiety, hope, ...(isPrivate ? { is_private: true } : {}), ...(recipientNickname ? { recipient_nickname: recipientNickname } : {}) });
+  const fallback = () => buildPlantBodyFallback({
+    color, gratitude, anxiety, hope,
+    is_private: isPrivate,
+    recipient_nickname: recipientNickname,
+  });
   if (!mod) return fallback();
   try { return mod.build_plant_body(color, gratitude ?? "", anxiety ?? "", hope ?? "", isPrivate, recipientNickname ?? ""); } catch { return fallback(); }
 }
@@ -147,11 +159,9 @@ export async function buildAleoVaultInputs(roseId: string, content: string, aiRe
   return result;
 }
 
-// 颜色元数据 — 同步调用（WASM 已加载则走 Rust，否则 TS 兜底保证首屏不闪）
-const _CE: Record<string, string> = { red: "🌹", white: "🤍", yellow: "💛" };
-const _CL: Record<string, string> = { red: "红玫瑰", white: "白玫瑰", yellow: "黄玫瑰" };
-export function colorEmoji(color: string): string { try { return wasmModule?.color_emoji(color) ?? _CE[color] ?? "🌸"; } catch { return _CE[color] ?? "🌸"; } }
-export function colorLabel(color: string): string { try { return wasmModule?.color_label(color) ?? _CL[color] ?? color; } catch { return _CL[color] ?? color; } }
+// 颜色元数据 — 同步调用（WASM 已加载则走 Rust，否则用 @roselet/core 的共享兜底）
+export function colorEmoji(color: string): string { try { return wasmModule?.color_emoji(color) ?? colorEmojiFallback(color); } catch { return colorEmojiFallback(color); } }
+export function colorLabel(color: string): string { try { return wasmModule?.color_label(color) ?? colorLabelFallback(color); } catch { return colorLabelFallback(color); } }
 
 // Fireworks — 粒子算法全量 Rust WASM 驱动
 export async function burstFireworks(cx: number, cy: number, count: number, idOffset: number) {

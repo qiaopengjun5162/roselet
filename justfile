@@ -19,7 +19,7 @@ clean:
 
 # 运行所有测试
 test:
-    NO_PROXY=localhost,127.0.0.1 cargo nextest run --all-features -j1
+    NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features -j1
     cd apps/web && pnpm test
     cd apps/miniprogram && pnpm test
     cd apps/agent-api && pnpm test
@@ -79,7 +79,7 @@ check:
 
 # clippy lint
 clippy:
-    cargo clippy --all-features -- -D warnings
+    cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings
 
 # 格式化检查
 format:
@@ -145,22 +145,57 @@ db-reset:
     createdb roselet
     cd crates/backend && sqlx migrate run
 
+# 与 CI 四个 job 等价的完整本地门禁（push 前跑；慢，日常仍用 pre-commit）
+# 前置：wasm-pack / cargo-deny / cargo-nextest / sqlx-cli 已装；本地 Postgres 已起、
+#       DATABASE_URL 已设、跑过 `just db-init`（后端集成测试要用）。
+# 为什么要单独一条：`just check-all` / `just pre-commit` 不含 Web 覆盖率门槛和
+# 小程序 `taro build --type weapp`，历史上两次造成「本地全绿 / CI 红」
+# （clippy doc lint 漏报、@roselet/core 进 webpack 打包图后 TS parser 报错）。
+# 用法：push 前跑一次，与 CI 四个 job 等价（约 10 分钟，需本地 Postgres + wasm-pack）。
+ci-local:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "===== [1/4] Backend Tests ====="
+    cargo fmt --all -- --check
+    cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings
+    cargo deny check
+    NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features -j1
+    echo "===== [2/4] Frontend Tests ====="
+    (cd crates/recommend && wasm-pack build --target web --out-dir ../../apps/web/public/pkg)
+    pnpm --filter web typecheck
+    pnpm --filter web lint
+    pnpm build
+    pnpm --filter web test:coverage
+    echo "===== [3/4] Miniprogram Build ====="
+    bash scripts/init-miniprogram.sh
+    (cd crates/recommend && wasm-pack build --target web --out-dir ../../apps/miniprogram/pkg)
+    node scripts/patch-wasm.js
+    pnpm --filter @roselet/miniprogram typecheck
+    (cd apps/miniprogram && pnpm build:weapp)
+    pnpm --filter @roselet/miniprogram test:coverage
+    echo "===== [4/4] Solana x402 Agent API ====="
+    (cd crates/recommend && wasm-pack build --target nodejs --out-dir ../../apps/agent-api/pkg)
+    pnpm agent:typecheck
+    pnpm agent:test
+    pnpm agent:build
+    echo "===== ci-local OK：四关与 CI 一致 ====="
+
 # 完整检查（格式 + lint + 审计 + 测试）
 check-all:
     cargo fmt --all -- --check
-    cargo clippy --all-features -- -D warnings
+    cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings
     cargo deny check
     pnpm typecheck
     pnpm lint
     cd apps/web && pnpm build
     pnpm agent:build
     pnpm agent:test
-    cargo nextest run --all-features -j1
+    cargo nextest run --workspace --all-features -j1
 
 # 提交前检查
 pre-commit:
     cargo fmt --all -- --check
-    cargo clippy --all-features -- -D warnings
+    cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings
     cargo deny check
     pnpm typecheck
     pnpm lint

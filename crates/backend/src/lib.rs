@@ -61,12 +61,17 @@ pub fn create_app(state: AppState) -> Router {
             get(routes::solana_onchain::get_solana_mint)
                 .post(routes::solana_onchain::record_solana_mint),
         )
+        // Token-2022 NFT path: verified from chain state (mint account), not
+        // from a transaction signature.
+        .route(
+            "/api/rose/{id}/solana/nft",
+            get(routes::solana_nft::get_rose_nft).post(routes::solana_nft::record_rose_nft),
+        )
         // Membership image upload: allow up to 6 MiB of multipart body so a
         // 5 MiB image plus form overhead isn't rejected by axum's 2 MiB default.
         .route(
             "/api/ipfs/upload",
-            post(routes::ipfs::upload_image)
-                .layer(DefaultBodyLimit::max(6 * 1024 * 1024)),
+            post(routes::ipfs::upload_image).layer(DefaultBodyLimit::max(6 * 1024 * 1024)),
         )
         .route("/api/my/roses", get(routes::my::get_my_roses))
         .route("/api/user/profile", get(routes::auth::profile))

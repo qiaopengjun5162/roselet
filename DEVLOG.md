@@ -2,6 +2,49 @@
 
 > 每次会话结束时更新此文件，确保下次会话能无缝衔接。
 
+## 2026-11-09 会话：Phantom 端到端验证闭环（浏览器 → 签名 → 链上核验）
+
+### 目的
+闭合评估文档 §11.3 最后一个 ❌：此前只验证到「Wallet Standard 会话层 + 离线/真机探针」，没把「真实浏览器 UI → 钱包签名 → 广播 → 链上核验」整条串起来。用户指出 Phantom 已装、测试也可用其它方式，因此本轮做自动化 E2E，而不是只留一张人工清单。
+
+### 结论
+`pnpm verify:phantom:local` → ✅ **PHANTOM E2E PASSED**。真实 Chromium 点「🌐 会员」→「连接钱包」→ 浏览器内 WebCrypto Ed25519 签名 Memo 交易 → 广播到本地 `solana-test-validator` → `getTransaction(jsonParsed)` 核验 `app=roselet` / `roseId` 一致 / `meta.err=null` / fee payer = 已连接钱包。详见 `docs/SOLANA_MAINNET_ASSESSMENT.md` §13。
+
+### 关键决策（都是被实测推翻后改的）
+- **不用公网 faucet**：devnet / testnet 的 `requestAirdrop` 已返回 `410 Gone`，多个第三方 RPC 也不通 → 改跑本地 `solana-test-validator`，自带注资、无需外网、不花真 SOL。
+- **不用 MV3 假扩展**：`--load-extension` 在该 Playwright 启动方式下不加载（`__fakePhantomAddress=null`，headful / headless 皆然）→ 改 `page.addInitScript` 在 MAIN 世界注入同一个 Wallet Standard 钱包，签名仍是真实 WebCrypto Ed25519。
+- **不用 `next dev`**：Turbopack HMR websocket 在沙盒里 `ERR_INVALID_HTTP_RESPONSE`，27 个 chunk 全部 200 但 React 不 hydration，点「会员」无反应；mock 掉 HMR 后仍不 hydration → 改 `next build` + `next start`，生产构建 hydration 立即正常。
+- **本地验证器要补 Memo 程序**：默认 genesis 无 SPL Memo，交易落块但执行返回 `ProgramAccountNotFound` → 从 devnet `solana account` 导出 executable account，用 `--account` 在 genesis 加载（需全新 ledger）。
+- **E2E 不依赖后端**：广播发生在浏览器页面内（`sendRoseMemo` → `sendSignedTransaction`），后端 `localhost:3001` 只记账；因此以链上数据为真相来源，不 gate 在 UI 成功文案上。
+
+### 揪出并修复的真实 bug（不是测试环境问题）
+`@solana-program/memo` 的 `getAddMemoInstruction()` 默认用 `Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH`，而后端 `crates/backend/src/routes/solana_onchain.rs` 的核验白名单只认 `MemoSq4…` / `MemoSqLa…`。`src/lib/rose-memo.ts` 虽导出 `MEMO_PROGRAM_ADDRESS` 却没传给指令构造器 → 前端实际发出的交易会被后端链上核验拒绝。已改为 `getAddMemoInstruction(input, { programAddress: MEMO_PROGRAM_ADDRESS })`。
+
+### 假钱包踩的坑
+- **交易线格式**：签名数 compact-u16 从**第 0 字节**读；v0 的 `0x80` 版本前缀在 **message 内部**，不在交易首字节。解析错位会让账户表整体偏移 → `myIndex=-1` → 返回未签名交易 → kit 报 `#5663012 FEE_PAYER_SIGNATURE_MISSING`。
+- **固定密钥**：WebCrypto `importKey("raw")` 只支持 Ed25519 **公钥**，导入私钥会抛错并静默回退随机密钥 → 地址每次变、预注资永远对不上。改用 PKCS#8 私钥 + `exportKey("raw")` 取公钥，地址固定为 `2X3N2CD…`。
+- 签名写 `myIndex*64` 处（fee payer 通常是账户表第 0 项），必须覆盖完整 message（含版本前缀）。
+
+### 改动文件
+- 新增 `apps/web/scripts/phantom-e2e.mts`、`scripts/fake-phantom-extension/{manifest.json,content.js}`、`scripts/phantom-e2e-local.sh`；`package.json` 加 `verify:phantom` / `verify:phantom:local`。
+- `apps/web/src/lib/rose-memo.ts`：显式指定 Memo 程序地址（生产 bug 修复）。
+- `apps/web/next.config.ts`：加 `E2E_SKIP_TYPECHECK` 开关（默认关闭，仅 E2E 置 1，绕开受限沙盒里挂住的 build 内 tsc；独立 `pnpm typecheck` 仍是权威门禁）。
+- `docs/SOLANA_MAINNET_ASSESSMENT.md`：§11.3 拆成「自动化已通过 / 扩展 UI 待人工」两行，§12.3 更正「本机未装 Phantom」，新增 §13 全量记录。
+
+### 上线前必做
+- 真 Phantom 扩展仍需在 Devnet 人工按 §12.3 走一遍（解锁 / 批准弹窗无法可靠自动化），通过后把 §11.3 最后一行的 ❌ 改 ✅ 并注明 Phantom 版本与日期。
+- devnet 水龙头已停服，手测所需测试 SOL 需自备。
+- 主网仍需付费 RPC、真 SOL、x402 付费路径与会员模式打通。
+- 受限沙盒里 `pnpm typecheck` / `jest` 会超时、`next build` 被批量删除保护拦截，属执行环境限制；合主线前在正常开发机重跑全量门禁。
+
+### 补充（同日）：跨语言常量契约测试，防止第三次 Memo 漂移
+
+前后端分属两个 workspace、常量各写一份，编译器管不到：2026-11-07 已发生过一次同类漂移（组件里直接用 `MemoSqLa…`），本轮 §13.3 是第二次。在 `crates/backend/src/routes/solana_onchain.rs` 的 `mod tests` 新增 `frontend_memo_contract_matches_backend`：测试运行时通过 `env!("CARGO_MANIFEST_DIR")` 读 `apps/web/src/lib/rose-memo.ts`，断言 ① 前端 `MEMO_PROGRAM_ADDRESS` 在后端 `MEMO_PROGRAM_IDS` 白名单内且等于首选 ID；② `getAddMemoInstruction` 调用点显式传 `programAddress:` 且引用共享常量（专门防默认值回归）；③ `app` 标签与 `MEMO_APP_TAG` 一致、`roseId` 字段名与解析器读取的键一致；④ 按前端 interface 形状构造的 memo 能被 `parse_rose_memo()` 接受（行为级而非纯字符串匹配）。
+
+配套把 `app` / `roseId` 两个键名提为后端常量 `MEMO_APP_FIELD` / `MEMO_ROSE_ID_FIELD`，让测试引用的是后端唯一事实来源；生产逻辑零行为变化，不新增依赖、不改模块可见性。
+
+**故意破坏验证**：改程序 ID、删 override、改 app tag、改字段名，4 种漂移全部让测试失败，恢复原文件后通过，前端文件无残留。门禁：`cargo fmt --all -- --check` / `cargo clippy -p roselet-backend --all-targets -- -D warnings` / `cargo test --workspace --lib` 均绿（backend 94 passed + 1 ignored，recommend 153 passed）。随后清掉 `crates/recommend/src/goat.rs:125` 的既有 `useless_format`：那个 `format!` 没有占位符、只有 `{{` / `}}` 转义，改成普通 `&str` 字面量时**必须同步反转义花括号**，只换成 `.to_string()` 会产出非法 JSON；已用脚本比对新旧字符串逐字相等，`normalizes_equivalent_payment_fields_to_same_reference` 单独通过。至此 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`（CLAUDE.md 规定的严格口径）`RC=0`。CI / pre-commit 仍是 `cargo clippy --all-features -- -D warnings`（不含 `--all-targets`），是否收紧待单独决定。
+
 ## 2026-11-07 会话（四）：图片 → IPFS CID 闭环（会员上链最后一环）
 
 ### 目的
@@ -4628,3 +4671,511 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 - 确认本轮推荐路线为“单机蓝绿切换”。
 - 编写设计文档 `docs/superpowers/specs/2026-06-25-single-node-blue-green-deploy-design.md`。
 - 设计覆盖了双槽位 compose、活动槽位状态文件、Caddy 主槽位优先转发、部署脚本切流顺序、回滚路径和受控验证标准。
+
+## 2026-11-07 会话：Solana 主网化评估 + 核验加固
+
+### 会话目标
+评估 Solana 从 Devnet 切主网的成本与风险，并落地评估文档中「阶段 1」的后端核验加固。
+
+### 发现 / 结论
+- 当前上链是 SPL Memo 交易「存证」，无自定义合约。主网化若定位存证则成本极低、无需合约审计；若要真 NFT 才需审计（大工程）。
+- 主网 vs Devnet 关键差异：真 SOL gas、交易不可逆、公共 RPC 限流需接付费 RPC、集群靠两处 env 切换、Solana 偶发重组需等 `finalized`。
+
+### 处理
+- 新增设计文档 `docs/SOLANA_MAINNET_ASSESSMENT.md`（纯方案，不动代码）。
+- `crates/backend/src/routes/solana_onchain.rs` 加固：
+  - 核验 `commitment` 由 `confirmed` 改为 `finalized`，避免重组导致存下会消失的引用。
+  - 新增 `classify_rpc_response` 分类 + `verify_solana_mint` 重试（最多 4 次、退避 1s→2s→4s），覆盖「交易尚未最终确认 / RPC 限流」短暂窗口；语义校验失败（签名/钱包/非 Memo/重放）永久拒绝、绝不重试。
+  - 加 `tracing` 可观测日志（warn/debug）。
+  - 补 `classify_rpc_response` 单元测试。
+
+### 验证
+- `cargo test -p roselet-backend --lib routes::solana_onchain`：8 passed。
+- `cargo clippy -p roselet-backend --lib`：clean。
+
+### 当前状态
+- 分支 `codex/solana-mainnet-assessment`（已推远程）。A/B 产品决策（存证 vs 真 NFT、免费 vs 付费）仍待用户拍板；实际切主网需用户配付费 RPC 与真 SOL，本会话未做。
+
+## 2026-11-07 会话：阶段 1 前端（集群徽标 / 分步进度 / 重试不重复广播）
+
+### 会话目标
+把主网评估「阶段 1」的前端部分落地：让用户看清当前集群、上链分步进度，并修复「后端保存失败后重试会重复广播」的隐患。
+
+### 处理
+- 新增 `apps/web/src/lib/solana.ts`：集群判断 / 徽标 / 浏览器链接的纯函数模块，**不依赖 `@solana/web3.js`**（详情页测试的 jsdom 缺 TextEncoder，不能拉 SDK）。
+- `apps/web/src/components/membership-panel.tsx`：
+  - 顶部集群徽标（Devnet / 主网 / 自定义 RPC）+ 主网「消耗真 SOL、不可撤销」警示。
+  - 分步进度：① 准备交易 → ② 等签名 → ③ 广播 → ④ 等 finalized → ⑤ 后端核验。
+  - 广播成功后用 `pending` 固定签名与 meta；后端保存失败时按钮变「↻ 重试保存（不重复上链）」，重试只重发 POST，**不再广播第二笔**。
+  - 前端确认改为 `finalized`，与后端核验级别对齐。
+  - 确认/RPC 失败时附带「检查 Phantom 网络与集群是否一致」提示。
+- `apps/web/src/components/rose-solana-mint.tsx`：去掉写死的 devnet，改用共享 `explorerTxUrl` / `clusterLabel`。
+
+### 验证
+- `pnpm --filter web typecheck`：通过。
+- `pnpm --filter web lint`：0 error。
+- `pnpm --filter web test`：33 suites / 225 tests 全过（新增「重试不重复广播」行为测试 + `solana.ts` 单测）。
+
+### 当前状态
+- 前端阶段 1 完成并提交。实际切主网仍需用户配付费 RPC + 真 SOL；A/B 产品决策仍待拍板。
+
+## 2026-11-07 · Solana 主网就绪：修「确认超时→重复广播」+ 优先费（前端）
+
+### 背景
+对照 Solana 官方企业培训 Module 1（账户 / 租金 / 交易解剖）复核上链链路，发现三个与主网相关的实际问题。
+
+### 关键认识（来自 Module 1）
+- Solana 交易费 = 5000 lamports × 签名数 + 优先费（micro-lamports/CU × CU 上限）。
+- Rent 是**押金**不是手续费：`3480 × (128 + data_len) × 2`，关账户全额退回。
+- 我们是 Memo 存证交易，**不创建任何账户 → 零租金押金**，只有 5000 lamports 基础费 + 可选优先费。真 NFT 则要为 mint(82B) + ATA(165B) + metadata(~679B) 每朵押 ≈ 0.009 SOL（现金流占用差约 1800 倍，租金可退但 metadata 通常不可关）。
+
+### 修复 1（真 bug）：确认超时会导致重复广播
+- 原顺序：`sendRawTransaction` → `await confirmTransaction(finalized)` → `setPending`。
+  广播已成功、但等终局性超时抛错时 `pending` 仍未设，用户再点按钮会重新取 blockhash、构造新交易、**再广播一笔**，链上同一朵玫瑰出现两条 Memo（不可撤销、主网要真 SOL）。
+- 现在：RPC 接受后**立刻** `setPending({signature, wallet, meta})`，再单独 `try { confirmTransaction } catch {}` 软失败——确认超时只影响提示文案，不影响「重试=仅保存」的判定。后端本就以 finalized + 有界重试自行核验，是权威判定方。
+- 失败文案区分两种：未广播 → 「↻ 重试上链」；已广播 → 「↻ 重试保存（不重复上链）」+ 明示「重试只会重新保存到后端」。
+
+### 修复 2：优先费与广播参数
+- 新增可选 `NEXT_PUBLIC_SOLANA_PRIORITY_FEE_MICROLAMPORTS`（默认 0 = 完全不加 ComputeBudget 指令，Devnet 无需付费）。
+- 仅在配置 >0 时加 `ComputeBudgetProgram.setComputeUnitLimit(20_000)` + `setComputeUnitPrice(price)`；**先限 CU 再定价**，否则按默认 200k CU 计价会放大 10 倍。
+- `sendRawTransaction(..., { skipPreflight: true, maxRetries: 5 })`：preflight 重模拟可能拒掉集群实际会接受的交易，且借助 RPC 侧重播对抗拥堵丢块。
+- `lib/solana.ts` 增加纯函数 `parsePriorityFeeMicroLamports`（非法/负数归零 + 硬上限 1,000,000）、`priorityFeeLamports`、`estimatedFeeLamports`，面板显示「预估手续费 ≈ N lamports（基础 5000 + 优先费 X）· Memo 存证不创建账户，因此没有租金押金」。
+
+### 验证
+- `pnpm --filter web typecheck`：通过。
+- `pnpm --filter web lint`：0 error。
+- `pnpm --filter web test`：33 suites / **230 tests** 全过（新增「确认超时也不重复广播」行为测试 + 4 个费用计算单测）。
+
+### 当前状态
+- 分支 `codex/solana-mainnet-assessment`。优先级费默认关闭，主网启用前只需填一个 env，不改代码。
+
+## 2026-11-07 · Token-2022 NFT 上链校验（后端）
+
+### 决策：不移植 Anchor 程序
+`shenqi-box/programs/token_2022_nft` 需要链上程序，是因为它要让 **PDA 充当 mint 权限**、把铸造规则锁在链上。而「会员把自己的玫瑰铸成 NFT」这件事，让**用户钱包自己当 mint 权限**、前端直接调 Token-2022 就够了：零新程序、零部署成本、零审计面，密钥边界仍是「用户自签、平台不碰私钥」。只有当规则必须链上强制（玫瑰只能铸一次、平台控量）时才值得上程序。
+
+### 新增 `crates/backend/src/routes/solana_nft.rs`
+- `POST /api/rose/{id}/solana/nft`（body: `mint_address`, `wallet_address`）、`GET` 同路径。
+- 迁移 `014_create_solana_nft_mints.sql`（只追加，不动 013）：`rose_id` 主键（一朵玫瑰一个 NFT）、`mint_address` 唯一（一个 mint 不能被两朵玫瑰认领）。
+- 校验**从链上状态出发**，不是从交易签名：一次 `getAccountInfo {encoding: jsonParsed, commitment: finalized}`，然后纯函数 `verify_mint_value` 逐条判定：
+  1. owner 必须是 Token-2022（经典 SPL 无法承载内联元数据）
+  2. `parsed.type == "mint"`（防止指到一个 token account）
+  3. `decimals == 0` 且 `supply == "1"`（1-of-1 的定义）
+  4. `mintAuthority == null`（供应量已冻结，否则不是 NFT）
+  5. `metadataPointer.metadataAddress == mint`（元数据必须自托管，否则可被指向别处）
+  6. `updateAuthority == wallet`（证明声明钱包确实控制该资产）
+  7. `additionalMetadata[roseId] == 当前玫瑰 ID`（绑定行记录，防跨玫瑰重放）
+- 三条设计取舍：
+  - **未配置 `SOLANA_RPC_URL` 直接 503**（不像 memo 路由那样跳过校验）——这个接口存在的意义就是校验，跳过等于存伪造引用。
+  - **元数据设为不可变（updateAuthority=null）会被拒**：仅凭链上状态无法再证明钱包归属，宁可拒绝也不猜。
+  - **`null` 结果不重试**：账户在 finalized 下不存在就是不存在；只有传输/解析失败才重试 3 次。
+
+### 真实链上验证发现的问题（关键）
+首次对真实 Devnet NFT 跑校验时**全部被拒**，原因是 RPC 实际返回的 `additionalMetadata` 是**二元组**：
+
+```json
+"additionalMetadata": [["roseId", "3f2b8c1e-..."]]
+```
+
+而 JSON-RPC 文档写的是 `[{"key": "roseId", "value": "..."}]`。只按文档解析会把所有合法 NFT 判成「缺少 roseId」。现已两种形状都支持（`parse_metadata_field`），并各留一条单测。**这就是为什么必须拿真链数据跑一次，不能只用自己编的 fixture。**
+
+### 顺手修掉的既有问题
+- `crates/backend/tests/api_test.rs` 的 `Config` 字面量缺 `solana_rpc_url` / `pinata_jwt` / `pinata_upload_url`，整个集成测试**编译不过**（前几轮加字段时漏了）；已补齐。
+- 该 crate 存在 rustfmt 漂移（config / error / ipfs / lib / solana_onchain），统一跑了一次 `cargo fmt`，纯机械变更。
+
+### 验证
+- `cargo test -p roselet-backend --lib`：**90 passed, 1 ignored**
+- `cargo clippy -p roselet-backend --lib --all-targets`：clean
+- `cargo fmt --check`：clean
+- 真机验证（`#[ignore]` 用例 `live_mint_verifies`）：对 Devnet 上真实铸出的 NFT 校验通过
+  - mint `qbLajEv22JT4spuU4Rvkpk2yqjYggjnp3dghTDMNFyE`（Token-2022，supply 1，mint 权限已撤销）
+  - 元数据：`name="Roselet Rose #1"`、`symbol="ROSE"`、`uri=ipfs://bafkrei…`、`additionalMetadata=[["roseId","3f2b8c1e-…"]]`
+  - 账户 **453 字节 / 2,951,480 lamports**，与 `(453+128)×5080` 完全吻合，实测总成本 ≈ 0.0045 SOL
+  - 演示密钥存在 `~/.config/solana/roselet-nft-demo.json`（Devnet 一次性账户）
+  - 复跑命令见该测试的文档注释
+
+### 仍未做
+- `nft_mints`（EVM/Base）与 `solana_nft_mints` 的展示层合并
+
+### 前端铸造入口：用户钱包自己当 mint 权限（2026-11-07）
+
+目标是把「铸成 NFT」做成一键操作，且**不引入任何自定义链上程序**。
+
+**为什么不抄 `shenqi-box/programs/token_2022_nft`**
+那个程序存在的理由是「由 PDA 当 mint 权限、把铸造规则锁死在链上」。roselet 的需求是「会员把自己的玫瑰铸成 NFT」——让**用户钱包自己当 mint 权限**，直接调 Token-2022 就够了：零新程序、零部署、零审计面，「平台不碰私钥」的边界也没破。只有当规则必须由链强制（玫瑰只能铸一次、平台控量）时才值得上程序。
+
+**新增**
+- `apps/web/src/lib/rose-nft.ts`：`mintRoseNft()`，单笔交易内完成
+  `createAccount → MetadataPointer → InitializeMint2 → InitializeMetadata → UpdateField(roseId,message) → ATA → MintTo(1) → SetAuthority(revoke)`。
+  SDK（`@solana/spl-token`、`@solana/spl-token-metadata`）**在函数内动态 import**：jsdom 缺 `TextEncoder`，静态引入会让所有渲染该组件的测试挂掉。
+- `apps/web/src/lib/solana.ts`：`utf8ByteLength` / `truncateUtf8` / `buildRoseNftFields` / `explorerAccountUrl` / `lamportsToSol`（全部 SDK-free，可单测）。
+- `apps/web/src/components/rose-nft-mint.tsx`：详情页「🌹 铸成链上 NFT」，会员模式才渲染，私密玫瑰不渲染。
+- `POST/GET /api/rose/{id}/solana/nft` 的前端封装：`getRoseNft` / `recordRoseNft`。
+
+**两个必须记下来的链上约束（都靠真机跑出来的）**
+1. **账户空间必须恰好等于当前扩展大小**。`getMintLen([MetadataPointer])` = 234 字节；如果 `createAccount` 直接给 `234 + 元数据空间`，`InitializeMint2` 会报 `InvalidAccountData`（实测三种组合，只有「空间=234」通过）。元数据初始化会自己 `realloc`，所以正确做法是**空间只给 234，lamports 按最终大小给足**（否则交易末尾报 `InsufficientFundsForRent`）。
+2. **`Transaction.sign()` 会清空已有签名**（web3.js 源码里直接 `this.signatures = signers.map(...)`）。mint 账户的签名必须用 `partialSign` 追加，钱包侧也只能「追加」。若钱包丢了 mint 签名，`serialize()` 会在**广播前**报 `Missing signature`——不花钱，但原文难懂，已在代码里包一层中文提示。
+
+**元数据取值**
+`name` = 玫瑰寄语（按 **UTF-8 字节**截断到 32B，中文 10 字；按 `String.length` 截断会超长导致初始化失败），`symbol` = `ROSE`，`uri` = 有图片时 `ipfs://<cid>`、否则指向前端玫瑰页，`additionalMetadata` 带 `roseId`（后端据此绑定行，防跨玫瑰重放）+ `message`（完整寄语，截断到 200B）。
+
+**重试语义**
+广播成功后立即 `setPending`，后端保存失败时按钮变「↻ 重试保存（不重复铸造）」。由于 mint 密钥对在浏览器内生成、签完即丢，**根本没法重铸第二枚**——这个设计天然堵住了「重试多铸一个」的坑（每枚 ≈0.0048 SOL 且不可撤销）。`confirmTransaction` 超时按软失败处理（链上可能已成功，以后端 `finalized` 核验为准）。
+
+**真机验证**
+用一次性探针钱包跑**这段真实前端代码**（`tsx` + Node 侧 CONNECT 代理 shim，因为本机直连 Devnet 不通）：
+- mint `Dhs11iijzktgppnv8aUa9fn9eosSjxxhpzyYuChF5DRv`，账户 **525 字节 / 3,317,240 lamports**（= (525+128)×5080），ATA 170 字节 / 1,513,840，合计 **≈0.00483 SOL 租金** + 10,000 lamports 手续费
+- 链上读回：`supply=1`、`decimals=0`、`mintAuthority=null`、`updateAuthority=<钱包>`、`additionalMetadata=[["roseId",…],["message",…]]`
+- 后端 `live_mint_verifies` 用该 mint **核验通过**
+- 另有一个副作用值得记：有一次探针进程被 SIGTERM 杀掉、客户端没拿到结果，但交易其实已上链——正是「客户端丢失结果、链上已生效」的真实样本，也说明后端从链上状态核验（而不是信客户端）是对的
+
+**验证门禁**：`typecheck` 通过、`lint` 0 error、前端 **34 suites / 247 tests** 全过（新增 17 条，含「保存失败重试不重复铸造」行为测试）。
+
+### 仍未做
+- 钱包里出现两枚 NFT 时的展示/选择（当前一朵玫瑰只认一个 mint，`mint_address` 唯一约束）
+
+### 前端 SDK 迁移到 @solana/kit（2026-11-08）
+
+依据官方 `anza-xyz/kit` 与 `solana-foundation/solana-web3.js` README：`@solana/web3.js` v1 已停止活跃维护，现行栈是 `@solana/kit` 8.x + `@solana-program/*`（Codama 生成的程序客户端）+ Wallet Standard。这轮把前端完整迁过去，并把上一轮 Module 2「账号校验即安全边界」的后端加固一起收口。
+
+**改动清单**
+
+| 文件 | 变化 |
+|---|---|
+| `lib/wallet.ts`（新） | 钱包会话改走 Wallet Standard（`standard:connect` / `solana:signTransaction`）；chain id 由集群推导，自定义 RPC 一律按 `solana:mainnet` 报，避免真 SOL 签错网 |
+| `lib/solana-rpc.ts`（新） | RPC 薄封装，kit 动态 import 且每页只加载一次；确认改用 `getSignatureStatuses` 轮询 `finalized`（kit 内置 confirm 依赖 websocket，对代理/限流端点不友好） |
+| `lib/rose-memo.ts`（新） | 从 `MembershipPanel` 抽出上链逻辑；memo 载荷带 `app: "roselet"` 域标签，后端 `MEMO_APP_TAG` 校验，别的产品/无标签一律拒——memo 是无结构文本，没有 Anchor 账户那样的 discriminator |
+| `lib/rose-nft.ts` | 指令改由 `@solana-program/token-2022` 生成器构造，layout 绑定已发布 IDL；初始空间 `getMintSize([MetadataPointer])`、租金按最终尺寸算（沿用评估文档 §10.6 的实测结论） |
+| `solana_onchain.rs` / `solana_nft.rs` / `error.rs` | 后端核验补 `finalized` + 域标签 + memo 内容精确解析；`additionalMetadata` 兼容对象与二元组两种形状 |
+| `package.json` / `pnpm-lock.yaml` | 新增 kit 栈及其 peer（`@solana/sysvars`、`@solana/zk-sdk`）；移除 `web3.js` / `spl-token` / `spl-token-metadata` 三个**直接**依赖，`--frozen-lockfile` 校验通过。注意 `web3.js` 仍作为 `@solana/wallet-standard` 的间接 peer 留在 lockfile 里，不属于本项目依赖声明 |
+| `tsconfig.json` | `target` ES2017 → **ES2020**（kit 用到 BigInt）；属构建配置变更，需留意目标浏览器兼容性 |
+
+**为什么必须换钱包接口**：kit 交易是**字节流**，Phantom 旧的 `window.solana.signTransaction` 只认 web3.js `Transaction` 对象；继续用就得为「桥接」保留整套 v1。Wallet Standard 直接签 wire bytes，且规范保留已有签名——mint 账户先由 `partiallySignTransactionMessageWithSigners` 签好，钱包再追加自己的，Phantom / Solflare / Backpack 都实现。
+
+**广播环节去掉手写轮子**：改用 kit 官方 `getTransactionDecoder` / `getSignatureFromTransaction` / `getBase64EncodedWireTransaction`，替掉原先手截 `wire[1..65]`、手写 base58 与 `as never` 强转。签名和广播载荷由**同一个解码对象**产出，也消除了「签名数超过 1 字节 compact-u16」时的隐患。
+
+**验证**
+- 离线探针（Node + 真实 kit）：`generateKeyPairSigner → 构造 memo 交易 → partiallySignTransactionMessageWithSigners → encode(202B) → decode → 取签名 / base64`，roundtrip 一致，证明生产签名路径在运行时成立（不只是类型通过）。
+- 门禁：后端 `fmt` / `clippy` / **93 passed + 1 ignored**；前端 `tsc` / `lint` / `next build`（14 页）全绿，**36 suites / 252 tests**（新增 `wallet.test.ts`、`solana-rpc.test.ts`）。
+
+**仍未做（切主网前必须补）**
+1. **kit 版尚未在 Devnet 重新真机铸造**：评估文档 §10.6 的 525 字节 / 0.00483 SOL 是旧 web3.js 实现的实测值；链上约束不变，但 kit 的指令构造与钱包签名合并目前只做了离线探针 + 单测。
+2. **浏览器 + Phantom 端到端手测**：Wallet Standard「保留已有签名」这一行为本环境无法验证；若钱包丢了 mint 签名，代码会在广播前给出中文提示（不扣费）。
+3. 主网仍需付费 RPC 与真 SOL；x402 付费路径（`apps/agent-api/src/payment.ts`）尚未与会员模式打通。
+
+### kit 版 Devnet 真机验证（2026-11-08）
+
+把上一节的两个 ❌ 消掉一个：用 `apps/web/scripts/nft-live-probe.mts` 调用**真实的 `mintRoseNft`** 在 Devnet 铸了一枚，钱包签名环节用本地 Devnet 密钥对模拟（解码 wire → 对 `messageBytes` 追加 payer 签名 → 重新编码，语义等同 Wallet Standard）。指令构造、租金计算、广播、finality 轮询全走生产代码。
+
+- mint `EQLqnjK22yuzz83FkTUstB4Gt9qp9kPmxjZQ4qXYKNKj`，交易 `3kRkA17a…`，**809 字节**
+- 账户：mint **513 字节 / 3,256,280 lamports**，ATA 170 字节 / 1,513,840，手续费 10,000 → **总花费 4,780,120 lamports ≈ 0.00478 SOL**（余额差与三项之和完全对上）
+- 链上读回（`finalized`）：`supply=1`、`decimals=0`、`mintAuthority=null`、MetadataPointer 指向自身、`additionalMetadata` 含 roseId / message、`updateAuthority` = 付款钱包
+- 后端 `live_mint_verifies` 用该 mint **核验通过**
+- **关键假设验证**：钱包签名前 wire 上已有 1 个签名（mint 账户），追加 payer 签名后广播成功 → kit 下「部分签名 + 钱包追加」成立
+
+**修正一个认知**：旧实现实测的 525 字节 / 0.00483 SOL **不是常量**，这次是 513 字节 / 0.00478 SOL。差的 12 字节（60,960 lamports）来自元数据内容长度不同（寄语与 roseId 不一样），与 SDK 无关。成本按 `(128 + 实际 size) × 5080` 算。
+
+**沉淀**：探针整理成可复跑命令 `pnpm --filter web verify:solana-nft`（参数走 `SOLANA_KEYPAIR` / `NEXT_PUBLIC_SOLANA_RPC_URL` / `SOLANA_PROXY`），切主网前可重跑；脚本末尾会打印后端 live 测试所需的 `SOLANA_NFT_*` 变量。为它加了 `tsx` / `undici` 两个 devDependency（均已在 pnpm store 里，无新增下载）。
+
+**复跑验证**：连续跑了三次（后两枚 mint `8if2tejLzd7LUAawMywbr2uJHJnZTb9NgMzPj44scgJQ`、`GDc1AFbjcjzMKjGvCAwtxdXSKV3pxG5idocy9JLLNErh`），账户尺寸 / 交易大小 / 花费每次完全一致，后端 `live_mint_verifies` 均通过。第三次是脚本最终形态：`setGlobalDispatcher` 取代覆盖 `globalThis.fetch`（避免 undici 与 DOM `Response` 类型冲突），并把 `messageBytes` 复制成普通 `Uint8Array` 以满足 WebCrypto 的 `BufferSource` 约束。脚本带主网护栏：RPC 不含 `devnet` 且未设 `ALLOW_MAINNET=1` 时拒绝运行（实测拒绝且 0 次广播）。
+
+**仍剩**：浏览器 + Phantom 端到端手测（真实钱包的 Wallet Standard 实现未验证）；主网付费 RPC / 真 SOL / x402 打通。
+
+### 钱包会话层 + 广播前校验（2026-11-08）
+
+上节的第二个 ❌ 收窄到「只剩 Phantom 扩展本身」：会话层、真浏览器环境、钱包返回交易的完整性现在都有真实验证。
+
+**新发现的安全边界**：Wallet Standard 规范**允许钱包返回被修改过的交易**（`@solana/wallet-standard-features/src/signTransaction.ts` 原文注释，为 multisig / meta-transaction 钱包留的口子）。但本项目 mint 密钥对签完即丢弃，签名只绑定当时的 `messageBytes`，钱包一旦重建交易或丢签名，交易必然失败。原先只靠 RPC 报错后猜正则文案，太晚也太含糊。
+
+| 文件 | 变化 |
+|---|---|
+| `lib/transaction-guard.ts`（新） | 纯函数：广播前逐字节比对 `messageBytes`、要求所有已有签名原样保留（允许追加）、要求钱包签名出现；任一不满足抛中文错误并**零广播零扣费** |
+| `lib/rose-nft.ts` | 钱包返回 wire 后用 kit 解码两次，接入上述校验；原 RPC 正则兜底保留为二次防线 |
+| `lib/wallet.ts` | 新增 `getWalletRegistry()`，供集成工具注册钱包时用会话层自己的注册表实例 |
+| `scripts/nft-live-probe.mts` | 改为注册一个真实 Wallet Standard 钱包，再走生产 `connectSolanaWallet()` 拿 session 交给 `mintRoseNft`；不再手写签名回调 |
+| `lib/__tests__/transaction-guard.test.ts`（新） | 11 例：改消息 / 丢 mint 签名 / 改签名字节 / 丢其他签名 / 钱包没签 / 本地就没签 / multisig 追加 / 解码形状异常 等 |
+| `lib/__tests__/wallet-session.test.ts`（新） | 9 例：真实 `getWallets().register()`，覆盖发现、Phantom 优先、过滤非 Solana 钱包、connect、签名参数（含 chain）、disconnect、各缺失能力 |
+| `components/__tests__/wallet-session.pw.tsx` + `__fixtures__/wallet-session.tsx`（新） | 真 Chromium 里用扩展真实使用的 `wallet-standard:app-ready` 事件注入钱包，点击真实会员连接按钮 |
+
+**两个踩坑（都写进注释了）**
+1. tsx 下探针的 ESM `import "@wallet-standard/app"` 与 `lib/wallet.ts` 的 CJS 副本是**两份注册表**，注册进 A 则 B 看不到（首次实跑直接失败）。解法是暴露 `getWalletRegistry()`，不再各自 import。
+2. Playwright CT 的 `page` fixture 拿到时页面已导航，`addInitScript` 不会再执行（首次 CT 连不上钱包）。解法是挂载后 `page.evaluate` 装 `app-ready` 监听器 —— `getWallets()` 是点击连接才惰性调用的，赶得上。
+
+**真机结果（第四次复跑）**：mint `Dw9oP9YtKa1GBht8oXdAPewESAMCHcQccn42hNaY5nNa`，roseId `351e3bfa-b019-45ff-9090-09dab5d5b555`，513B / 170B / 809B / **4,780,120 lamports**，与前三次完全一致；`chain=solana:devnet` 正确传给钱包；后端 `live_mint_verifies` 通过。新校验**未误伤正常钱包**。
+
+**门禁**：前端 `tsc=0` / `lint=0` / **38 suites · 268 tests** / `next build`；Playwright CT **6 tests**；后端 `fmt` / `clippy` / 93 passed + 1 ignored；`--frozen-lockfile`、`git diff --check`。
+
+**仍剩**：评估文档 §12.3 的人工 Phantom 手测清单（本机没装扩展，解锁/批准无法自动化；重点盯 chain id 是否被接受、钱包是否保留 mint 签名）；主网付费 RPC / 真 SOL / x402 打通。
+
+### 收紧 clippy 门禁对齐项目标准（2026-11-10）
+- 背景：`CLAUDE.md:112` 与 `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md:158` 早已规定严格口径 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings`，但 CI(`build.yml`)、pre-commit、justfile 三处实际仍用宽松版 `cargo clippy --all-features -- -D warnings`（缺 `--workspace --all-targets`，不查 test/bench，靠人工才抓得到 `goat.rs` 的 `useless_format`）。
+- 改动：上述三处统一换成严格口径；nextest 补 `--workspace`（保留 `-j1` 串行保护测试库）。涉及 `.github/workflows/build.yml`（:41 clippy / :63 nextest）、`.pre-commit-config.yaml`（:13）、`justfile`（:22 / :82 / :151 / :158 / :163）。commit `33da98d`，已 push `codex/solana-mainnet-assessment`。
+- 前提核实：后端无任何 `sqlx::query!` 编译期宏（test 用运行时 `sqlx::query`），故收紧 `--all-targets` 编译 test 目标**不需要** `SQLX_OFFLINE` / `DATABASE_URL`，CI 不会因此挂。
+- 本地验证：严格 clippy `RC=0`；`cargo fmt --all -- --check` 通过；`cargo nextest run -p roselet-recommend --all-features` 153 passed。
+- CI：PR #7 四个 Actions job 中 Backend Tests / Frontend Tests 红——**但查 `ce6fa16`（改动前）同样两红**，属分支既有问题，非本次门禁改动导致；Miniprogram / Agent API 与 Cloudflare / Vercel 两外部 check 均绿。本次改动已用与 CI 相同命令本地验证通过，未引入新红。修复这两个既有失败不在本次 scope（PR #7 为 Draft，文档已标注前端沙盒门禁限制）。
+
+### CI 两个既有红的定位与后端修复（2026-11-10）
+用 `gh run view 42745597178 --log-failed`（`gh` 带 token 才能读 job 日志；`gh api .../actions/jobs/{id}/logs` 无鉴权会 403）逐 step 定位，**修正了上节「改动前后都红」的粗略结论——两个 commit 红的原因不同**：
+- `33da98d` 的 **Clippy step 在 CI 全新环境（ubuntu + stable）✓ 通过**，证实收紧 clippy 没有把 CI 搞红。`Backend Tests` 实际挂在下一步 `Audit dependencies`（`cargo deny check`），后续 migrations / nextest / tests 全被跳过。
+- `Frontend Tests` 挂在最后的 `Test`（`pnpm --filter web test:coverage`），前面 Typecheck / ESLint / Next build 全 ✓。
+
+**Backend 修复：一批 2026 年新 RUSTSEC 公告（不是单个漏洞）**。CI 日志里共 7 条：`RUSTSEC-2026-0258`(h2)、`0285`/`0346`/`0348`/`0349`(rustls)、`0382`(rustls-webpki)、`0386`(tokio)、`0381`(webpki-roots)。`deny.toml` 的 `[advisories] ignore = []`，项目没有用 ignore 绕过，所以走真实升级：
+| crate | 旧 | 新 |
+|---|---|---|
+| `h2` | 0.4.14 | 0.4.20 |
+| `rustls` | 0.23.40 | 0.23.46 |
+| `rustls-webpki` | 0.103.13 | 0.103.16 |
+| `tokio` | 1.52.3 | 1.54.1（1.52.3 正落在 0386 漏洞区间） |
+| `webpki-roots` | 1.0.8 | 1.0.10 |
+
+命令：`cargo update -p webpki-roots@1.0.8 --precise 1.0.10`，再 `cargo update -p h2 -p rustls -p rustls-webpki -p tokio`。**只改 `Cargo.lock`（11 行），不动 `Cargo.toml`**。
+验证：`cargo deny check` → `advisories ok, bans ok, licenses ok, sources ok`（剩余 duplicate / yanked 均为 warning，不 fail）；`cargo fmt --all -- --check` RC=0；严格 clippy RC=0（依赖升级后全量重编译）；`cargo test --workspace --lib` → backend 94 passed + 1 ignored、recommend 153 passed。
+
+**Frontend 红的根因（未改，待决策）**：jest **268 tests 全过**，但全局覆盖率 `statements 86.66% < 90%`、`functions 83.6% < 85%`（`apps/web/jest.config.ts` 门槛）。主要拖累是本分支新增的 `src/lib/rose-nft.ts`（289 行）只有 **8.16%** 覆盖率（88–283 行几乎没单测）、`solana-rpc.ts` 42.85%。属新增 Web3 代码未补单测的技术债，不是配置错误（`jest.config.ts` 未配 `collectCoverageFrom`，只统计被 import 的文件）。**不要通过降低 `coverageThreshold` 或加 `coveragePathIgnorePatterns` 来绕过**——那与「收紧门禁」方向相反，需用户拍板补测试还是留待合主线前专项处理。
+
+**经验**：`cargo deny check` 的 advisory DB 是外部滚动更新的，CI 会「无代码变更突然变红」；本地复现时可能比 CI 多/少报几条（DB 版本差异），要按 `RUSTSEC-*` 全量修，别只修日志 tail 看到的最后一条。
+
+### Frontend 覆盖率补测试转绿（2026-11-10）
+按「补测试、不降门槛」推进 `statements 86.66% < 90%` 的缺口（`functions 83.6%` 同批处理）：
+
+**第一步：`rose-nft.ts` 单测**（`src/lib/__tests__/rose-nft.test.ts`，9 tests）。组件测试把 `@/lib/rose-nft` 整个 mock 掉，`mintRoseNft`（最不可逆的链上动作）覆盖率只有 8.16%。桩掉懒加载 SDK 后测真实编排：按最终 mint 尺寸注资、9 指令单交易、广播前 wallet-preserved 交易守卫、preflight 开关、进度回调、**finality 超时不算失败（绝不给二次 mint 入口）**。文件覆盖率 8.16% → 100% stmts/funcs/lines，全局 `functions 83.6% → 85.48%` 过线，`statements 86.66% → 88.72%`。中途踩了 `input.onStep.mock.calls` 的 TS2339（`Partial<MintRoseNftInput>` 展开把 `onStep` 拓宽成联合类型，`.mock` 不保证存在）——改在测试内显式持有 `jest.fn()` 变量，`tsc --noEmit` RC=0。
+
+**第二步：精确缺口定位**。jest 文本报告的「Uncovered Line #s」对一行多语句文件有误导（recommend.ts 的包装函数全是单行多语句，行号显示一片「未覆盖」但断言明明命中）。用 `--coverageReporters=json` 读 `coverage-final.json` 的 `statementMap`/`s` 计数器才拿到真相：`recommend.ts` 173 条语句 33 条真没跑——全部是「WASM 不可用」早退分支 + 「WASM 调用抛错」catch 兜底；`solana-rpc.ts` 的 `fetchBlockhash`/`fetchRentExemptionLamports`/`confirmSignature` 整个函数没测。**诊断期间做过两个临时探针测试验证 `jest.resetModules()` 是否清零计数器——结论：不清零、跨实例累计（46→52）**，计数机制没问题，就是真缺测。探针用完即删。
+
+**第三步：补 9 个测试**：
+- `recommend.test.ts` +2：init 失败时全部 21 个 wrapper 的降级兜底（null/空数组/TS fallback/`WASM 加载失败` throw）；14 个 WASM 函数逐个抛错时 catch 兜底返回 null。
+- `solana-rpc.test.ts` +7：`fetchBlockhash`（finalized blockhash 解包）、`fetchRentExemptionLamports`、`confirmSignature` 全分支（finalized 返回 / 链上 err 抛错 / confirmed 轮询后 finalized / blockhash 过期抛错 / 超时抛错）。
+
+验证：19 tests passed；`tsc --noEmit` RC=0；`eslint` RC=0。沙盒里 jest `--coverage` 全量跑会被 OOM 杀（SIGTERM 137），全局覆盖率以 CI `test:coverage` 为准。
+
+**经验**：① 覆盖率「明明执行了却没计数」先出 json 报告查 `s` 计数器，别信文本报告的行号（一行多语句会误导）；② 沙盒跑 jest 单文件可用绝对路径 + `--config`（cwd 跨命令会丢，`pnpm exec` 触发 GVM_ROOT 报错）；③ `jest.doMock`+`resetModules` 与 hoisted `jest.mock` 两种 mock 模式计数都可靠。
+
+**CI 结果（run 42773483053，commit `60aae63`）：四个 job 全部 success，本分支首次全绿。** Frontend Test 全局覆盖率 `statements 91.29%`（≥90）、`branches 79.29%`（≥70）、`functions 86.41%`（≥85）、`lines 93.93%`（≥90）四项全过，286 tests 全过；`recommend.ts` 81.5%→**100% stmts**、`solana-rpc.ts` 42.85%→**100% 全项**。至此 Frontend 覆盖率与 Backend cargo-deny 两个既有红全部修复（后端见上节依赖升级 `a353cfc`）。
+
+### 团队检查清单与全仓盘点（2026-11-14）
+四路只读盘点（功能完成度 / 代码质量 / CI 与生产就绪 / Web3 主网专项）汇总成 `docs/TEAM_REVIEW_CHECKLIST.md`：按产品、前端钱包、运维发布、代码质量、决策层五组派活，每条带判定标准与 `文件:行号`，可直接转发打勾。
+
+生成当日核准的实时数据：分支 `codex/solana-mainnet-assessment` 领先 main 21 个 commit / 49 文件 / +7607 −355；PR #7 仍 `Draft + MERGEABLE`；最近两次 CI（`42774870396`、`42773483053`）4/4 job 全绿；两次 `Deploy Backend` 均 `skipped`（非 main 分支，未误触发生产部署）。代码侧复核：手写源码 `TODO/FIXME/HACK` 0 处；非测试代码 `.unwrap()/.expect()/panic!/unsafe` 共 37 处（22 处集中在 `crates/recommend/src/lib.rs`）；唯一 `#[ignore]` 测试在 `crates/backend/src/routes/solana_nft.rs:668`；超 400 行的生产文件 8 个，最长 `solana_onchain.rs` 905 行。
+
+结论：**内测可用，但「发布流程」和「主网上线」没闭环**。建议顺序：① 合 PR #7 主线 → ② 生产配置与发布流程收口 → ③ 找 5 个真实用户试用 → ④ 代码质量（先收敛 TS 双份兜底）→ ⑤ 主网化单独立项。另记一个错配：`PRODUCT.md:68,74` 说「DAU<10000 不考虑 Web3、当前唯一要做的是找 5 个人试用」，但最近 21 个 commit 几乎全在 Web3 与门禁上。
+
+**边界**：本次只新增清单文档，未改任何产品代码 / 配置 / 工作流，未合 PR #7（合主线会触发 `workflow_run` 生产部署，属不可逆外部动作），未做跨端重构。
+
+**环境问题与处理**：push 连续遇 `Error in the HTTP2 framing layer` 与 `CONNECT tunnel failed, response 502`（沙盒代理抖动），`git -c http.version=HTTP/1.1` 绕不过 502，默认 `git push` 第三次重试成功。**验证必须用 `gh api repos/<owner>/<repo>/git/ref/heads/<branch> --jq '.object.sha'` 对比本地 `git rev-parse HEAD`**——否则容易把「本地已 commit」误判成「已推送」。
+
+### 链上不可逆路径补真单测 + D1 重新评估（2026-11-14 晚）
+按 `docs/TEAM_REVIEW_CHECKLIST.md` 的 D2 落地：新增 `apps/web/src/lib/__tests__/rose-memo.test.ts`（10 例）与 `chain.test.ts`（12 例），共 22 例。此前这两个模块只被 `membership-panel.test.tsx` / `rose-memorial.test.tsx` 整体 mock，真实实现零单测。
+
+锁住的契约：
+- `sendRoseMemo`：必须显式传 `{ programAddress: MEMO_PROGRAM_ADDRESS }`（`@solana-program/memo` 默认 `Memo4c2pN8…` 不在后端白名单，是浏览器 E2E 抓到过的真实生产 bug）；compute-budget 先 limit 后 price、priority fee=0 时两条都不加、v0 message + feePayer + blockhash、编码 wire 交给钱包签名、`skipPreflight:true` / `maxRetries:5`、返回即结束不等 finality（超时不重播）、钱包拒绝与广播失败都要抛出且不吞错。
+- `mintRoseMemorial`：`roseId` 去横线后 pad 到 32 字节、颜色 `red/white/yellow → 0/1/2`、切 Base Sepolia、等 1 个确认；无钱包 / 无账户 / 合约地址无效 / 颜色非法 / 编号非法 / 回执失败全部抛错。
+
+本地验证：jest 22 passed；`tsc --noEmit` RC=0（前台两次被沙盒 SIGTERM 137 杀掉，改后台任务 6m29s 跑完 RC=0）；`eslint` RC=0。jest `--coverage` 在沙盒跑 10m+ 未完成，已主动停掉，全局覆盖率以 CI `test:coverage` 为准。
+
+**D1 重新评估（修正此前子代理结论）**：`apps/miniprogram/src/utils/wasm.ts:46-69,105-112` 与 `apps/web/src/lib/recommend.ts:50-61,96-100,121-124` 的「双份业务逻辑」其实是 **WASM 加载失败 / 抛错时的降级兜底**（`COLOR_FALLBACK`、`buildPlantBody` fallback 等）。WASM 不可用时，放在 WASM 里的兜底同样跑不了，因此「把兜底搬进 Rust WASM」逻辑上不成立。正确做法：① 兜底数据 / 纯函数抽到跨端共享包 `packages/core`；② 加契约测试锁住 fallback 与 Rust WASM 输出一致（复用 `frontend_memo_contract_matches_backend` 的「运行时读前端 TS 断言常量」模式）；③ WASM 仍是唯一权威实现，TS 只留最小降级。该项涉及 `just agent-wasm` 构建链与两端调用方，**本轮未动**，已写入清单 §6.2。
+
+边界：只新增测试文件并更新清单文档，未改产品代码 / 配置 / 工作流，未合 PR #7。
+
+**CI 结果（run `43603278426`，commit `b33fc1f`）：四个 job 全部 success。** Frontend Test 41 suites / 308 tests 全过，全局覆盖率 `statements 91.51%` / `branches 79.53%` / `functions 86.78%` / `lines 94.1%` 四项全过（补测前 91.29%）；`chain.ts`、`rose-memo.ts` 均 100% 全项。Miniprogram 66 tests / 99.33%，Solana x402 Agent API 97.25%。此前「沙盒跑不动全局覆盖率」的缺口由 CI 补齐，未降任何门槛。
+
+### D1 第一步：Rust↔TS 兜底契约测试（2026-11-14 深夜）
+
+按 §6.2 的第 ② 步落地：新增 `crates/recommend/src/contract.rs`（4 个 `#[test]`，`lib.rs` 挂 `#[cfg(test)] mod contract`），复用后端 `frontend_memo_contract_matches_backend` 模式，测试时按 `CARGO_MANIFEST_DIR` 读 `apps/web/src/lib/recommend.ts` 与 `apps/miniprogram/src/utils/wasm.ts`，与 Rust 权威函数比对：Web `_CE`/`_CL` ↔ `color_emoji`/`color_label`；小程序 `COLOR_FALLBACK` 三元组与顺序 ↔ `color.rs` 的 `COLORS`；两端未知颜色最终兜底 ↔ `find()` 回退值；Web tips 兜底文案必须是 `tips.rs` 权威池成员且 4 个 context 齐全。
+
+**抓到并修复真实漂移**：`color.rs:29-31` 的 `find()` 对未知颜色回退首个注册色（🌹 / 红玫瑰），但两端 TS 兜底是 `🌸` / 原始 color 值；更麻烦的是 `recommend.test.ts:244-245` 把旧错误值写死成了断言，等于把漂移固化。已把 4 处兜底 + 1 处断言统一到 Rust 语义，并在 TS 侧注释指明契约测试会读这些字面量。这是**行为修正**而非重构：只影响「传入非法颜色」这类异常输入。
+
+**有效性验证**：先在真实漂移下跑出 `1 failed`（`left: Some("🌸") / right: Some("🌹")`）；再做 3 组 mutation（Web 颜色 emoji、小程序颜色 label、tips 文案），3 条静态测试分别 `FAILED`、全部 `CAUGHT`；脚本自动恢复源码后重跑 `4 passed`。
+
+**D1 方向再精确一步**：`@roselet/core` 共享包**早已存在**（`packages/core/src/index.ts`），小程序已用 `workspace:*` + tsconfig paths + jest mapper 引用；但 Web 侧没有 workspace 依赖，只有 `next.config.ts:8` 的 `transpilePackages`。所以「共享包抽取」不是新建包，而是给 Web 补依赖 + 把兜底数据挪进已有包（会动 `pnpm-lock.yaml`，需验证两端打包）。**本轮未动**，留单独排期——先装网再重构才安全。
+
+本地门禁全绿：`cargo fmt --all -- --check` RC=0、严格 clippy RC=0、`cargo test --workspace --lib` → backend 94+1 ignored / recommend **157 passed**（153+4）；Web `recommend.test.ts` 10 passed、`eslint` RC=0、`tsc --noEmit` RC=0（后台 4m43s）；小程序 `wasm.test.ts` 1 passed、`tsc --noEmit` RC=0。
+
+边界：新增 1 个 Rust 测试文件、改 2 个 TS 兜底文件 + 1 个既有断言 + 清单/DEVLOG；未改配置 / 工作流 / 依赖，未合 PR #7。契约测试只锁「常量 / 文案型」兜底，**行为型**兜底（Web `recommend.ts:98,102,123-124,129-131` 的音频策略 / `buildGardenUrl` / `buildPlantBody`，小程序 `wasm.ts:47-54,112` 的同名函数与 `colorOptions`）仍未覆盖，需等共享包抽取后靠单一实现解决；UI 里另有硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`），是另一类双份维护。
+
+**CI 结果（run `43607696977`，commit `8a2fc6e`）：四个 job 全部 success。** Frontend 41 suites / 308 tests 全过，全局覆盖率 `statements 91.51%` / `branches 79.53%` / `functions 86.78%` / `lines 94.1%` 四项全过（与补测前持平），`recommend.ts` 100% stmts/funcs/lines；Miniprogram 66 tests / 99.33%，Agent API 97.25%。Rust 侧 4 个契约测试在 CI 全新环境同样通过（recommend 157 passed）。
+
+**环境问题与确定性解法（更新此前「重试碰运气」的做法）**：push 连续遇 `HTTP2 framing layer` 与 `CONNECT tunnel failed, response 502`；`git -c http.version=HTTP/1.1` 仍 502、`env -u HTTPS_PROXY -u HTTP_PROXY ... git push` 直连 75s 超时；**`git -c http.proxy=http://127.0.0.1:7890 push origin HEAD` 一次成功**（本机 Clash 代理）。以后遇 502 直接用这条，不必反复重试。推完照例用 `gh api repos/qiaopengjun5162/roselet/git/ref/heads/codex/solana-mainnet-assessment --jq '.object.sha'` 与本地 `git rev-parse HEAD` 对齐，确认本地/远端同为 `8a2fc6e`。
+
+### D1 收尾：共享兜底单一实现（2026-11-15）
+
+把 §6.2 计划的第 ① 步也落地了——把两端 WASM 不可用时的兜底数据 / 纯函数收敛到已有的 `@roselet/core`，不再双份硬编码。
+
+新增 `packages/core/src/fallbacks.ts`：`COLOR_META`（红/白/黄三元组，顺序即 Rust `COLORS`）、`TIPS`（4 个 context 文案，逐字取自 `tips.rs` 权威池）、`audioPlaybackPolicy` / `buildGardenUrl` / `buildPlantBody` 的兜底纯函数，**全部按 Rust WASM 权威语义实现**；`packages/core/src/index.ts` 统一导出。小程序 `config/index.ts:39` 早就预埋了 `chain.module.rule("ts").include.add(/packages\/core/)`，运行时引用这条路不用改构建链。
+
+改接：
+- `apps/web/src/lib/recommend.ts`：删掉本地 `_CE`/`_CL`/`COLOR_FALLBACK` 式硬编码 + `tips`/`audioPlaybackPolicy`/`buildGardenUrl`/`buildPlantBody` 的兜底分支，改为 `import { ... } from "@roselet/core"` 调共享实现；`apps/web/package.json` 加 `"@roselet/core": "workspace:*"`、`jest.config.ts` 加 `"^@roselet/core$": "<rootDir>/../../packages/core/src"` mapper、`tsconfig.json` 加 paths；`pnpm-lock.yaml` 补 importer 条目。
+- `apps/miniprogram/src/utils/wasm.ts`：删掉本地 `COLOR_FALLBACK` 与 `buildPlantBody` 兜底，改从 `@roselet/core` 取。
+
+**这次又抓到并修复 3 处真实语义漂移**（不是「重复代码」那么简单，是行为不一致）：
+1. `buildPlantBody`：TS 兜底把 `gratitude/anxiety/hope` 为 `null` 时也拼成 `null` 字段；Rust `skip_serializing_if` 会整个省略 → 已修 TS 跳过 null。
+2. `buildGardenUrl`：TS 兜底 `color=all` 时也拼 `&color=all`；Rust 明确跳过 `"all"` → 已修 TS 跳过。
+3. 未知颜色兜底：`recommend.test.ts:244-245` 把旧的错误值（`🌸`、原始 color）**写死成断言**，等于固化漂移 → 改为 Rust 权威 `🌹` / `红玫瑰`。
+
+`crates/recommend/src/contract.rs` 升级为「单源守卫」：`frontends_import_shared_fallbacks`（正则确认两端 TS 已 `import ... from "@roselet/core"` 且不再有本地 `COLOR_FALLBACK` 数组/旧兜底分支）、`shared_behaviour_fallbacks_keep_rust_semantics`（运行时读 `fallbacks.ts`，断言 `buildGardenUrl(undefined)` 不拼 `color`、含 `all` 时省略、`buildPlantBody` 跳过 null、`audioPlaybackPolicy` 前台切歌规则）；并把原先的常量型 4 例保留。新增 `apps/web/src/lib/__tests__/core-fallbacks.test.ts`（8 例）锁住 TS 侧共享兜底输出。
+
+本地门禁全绿：`cargo fmt` RC=0；严格 clippy RC=0（后台）；`cargo test -p roselet-recommend contract` 5 passed；Web `tsc --noEmit` RC=0（后台）、`eslint` RC=0、`jest` recommend+core-fallbacks 17 passed；小程序 `tsc --noEmit` RC=0、`jest` 66 passed。
+
+**边界**：动了 `apps/web/package.json` + `pnpm-lock.yaml`（新增 workspace 依赖，需验证两端打包），这是此前刻意留到「装网后」才做的一步；未合 PR #7、未动主网配置 / 工作流。UI 层硬编码颜色选项（`plant/page.tsx:15`、`garden/page.tsx:12`）仍属另一类双份维护，不在本次范围。
+
+提交 `3c5e683`，远端 SHA `3c5e6834ed41c97e3bbe8e46c0cf62e96f1a8c76`（用 `git -c http.proxy=http://127.0.0.1:7890 push origin HEAD` 推送）。
+
+### D1 收尾后连修两处 CI 红（2026-11-15）
+
+`3c5e683` 之后 CI 连红两次，都是本地绿灯没覆盖到的盲区，逐一记录：
+
+**第一次（run `43677042851`）：Backend clippy `doc-lazy-continuation`。** `crates/recommend/src/contract.rs:16` 的模块文档注释里，bullet 列表后紧跟一行未缩进文字，clippy 1.100（本地同版本，但本地命中缓存没报）把它当列表续行，`-D warnings` 下报错 `exit 101`。修法：列表与末段之间加一个空 `//!` 行，让其成为独立段落。提交 `6596d34`。
+
+**第二次（run `43677473995`）：Miniprogram Build `ModuleParseError`。** 报错 `Unexpected token (11:7) / export type TipContext ...`，来自 `packages/core/src/fallbacks.ts`。根因不在代码而在 Taro 构建链：
+
+- `@roselet/core` 是 workspace 包，`package.json` 的 `main` 直接指向未编译的 `src/index.ts`。之前两端只 `import type`，运行时被 TS 擦除，这个包**从未真正进入 webpack 打包图**；D1 改成值导入（真调共享兜底函数）后第一次被打包。
+- Taro v4 小程序端真正跑 babel-loader 的 rule 名是 **`script`**（`node_modules/@tarojs/webpack5-runner/dist/webpack/MiniWebpackModule.js:159`），默认 `include` 只有 `sourceDir` + 「node_modules 里带 taro 的包」。`config/index.ts` 里原先那句 `chain.module.rule("ts").include.add(/packages\/core/)` 挂的是**不存在的 `ts` rule**——等于凭空建了个没有 loader 的空 rule，从来没生效。之前盘点把它判成「已预埋、无需改构建链」是错的，本次订正。
+- pnpm 把 `@roselet/core` 软链进 `node_modules`，webpack 看到的路径既不在 `sourceDir`、包名也不含 `taro`，于是整包 `.ts` 文件没有 loader，`export type` 直接 parse 失败。
+
+修法（`apps/miniprogram/config/index.ts` 的 `mini.webpackChain`）：`chain.resolve.alias.set("@roselet/core", <packages/core/src 绝对路径>)` 给一个可预测路径，再 `chain.module.rule("script").include.add(coreSrc)` 把它纳入真正的 babel-loader rule。CI `build.yml:142` 只跑 `build:weapp`，改 `mini` 即覆盖，h5 未动。
+
+**验证**：本地 `bash -c 'NODE_OPTIONS=--max-old-space-size=6144 ./node_modules/.bin/taro build --type weapp'` → `✔ Webpack Compiled successfully in 2.98s`、RC=0，`ModuleParseError` 消失。（沙盒里 zsh 的 GVM profile 会往 stderr 掺噪声、默认内存会被 SIGTERM，均用 bash + 加大堆绕开；末尾 `@tarojs/taro-loader/lib/page` 是 webpack 缓存告警 `<w>`，不影响编译。）
+
+**经验**：① 本地 clippy / tsc / jest 全绿 ≠ CI 绿——缓存和「值导入 vs 类型导入」这类打包图差异只有干净 CI 能暴露，push 后必须确认新 run；② 往 webpackChain 挂 `.rule(name)` 前先确认 name 真存在，挂错名字是静默 no-op；③ 「共享包改值导入」必须同时验证两端**生产构建**，光过单测/类型检查不够。
+
+**最终 CI（run `43702959085`，commit `1e5ddfa`）：`conclusion: success`，四个 job 全部 success**（Backend Tests / Miniprogram Build / Frontend Tests / Solana x402 Agent API）。连修两处后本分支重新全绿，PR #7 保持 `Draft + MERGEABLE`。
+
+### D1 最后一公里：UI 颜色元数据收口（2026-11-15 晚）
+
+`dba3ef2` 之后代码侧只剩一处明确的双份维护：Web 的 `plant` / `garden` / `profile` 三个页面各存了一份颜色 id/label/emoji，`plant/page.tsx:197` 还用三元表达式把推荐色映射成硬编码中文标签。本轮全部改为组合 `@roselet/core` 的共享数据：
+
+- `plant/page.tsx`：`const COLORS = COLOR_FALLBACK`，删掉从未被使用的 `gradient` / `accent` 字段；推荐色文案改 `colorLabelFallback(rec.color_suggestion.color)`。
+- `garden/page.tsx`：筛选项保留 UI 专属「全部」，其余由 `colorOptionsFallback().map()` 生成。
+- `profile/page.tsx`：统计卡片改为 `colorOptionsFallback().map()`，只保留按颜色 id 索引的 Tailwind 配色与 `red_count` / `white_count` / `yellow_count` 查表。
+- `crates/recommend/src/contract.rs` 新增守卫 `web_ui_pages_use_shared_colour_metadata`：三个页面必须 `import ... from "@roselet/core"`，且不得再出现颜色中文标签、`🤍` / `💛`、本地颜色表标记（`id: "red"` 等、`const COLORS = [`）。`plant` 页面 `FIELD_CONFIG.gratitude.icon` 的 `🌹` 是字段图标而非颜色元数据，注释里明确豁免，不纳入 emoji 检查。
+
+**边界**：只动 Web 三个页面 + 一个 Rust 契约测试；未改 `packages/core`、小程序、生产配置。至此「颜色元数据」在 Rust WASM（权威）→ `@roselet/core`（共享兜底）→ 两端 UI 之间只剩一份可维护数据，代码侧盘点项全部闭环。
+
+本地门禁：`cargo fmt` + 严格 clippy RC=0、`cargo test -p roselet-recommend contract` 6 passed、Web `tsc --noEmit` RC=0、三个页面 `eslint` RC=0、5 个 jest 套件 42 例全过。
+
+提交 `3ec602c`，CI run `43723942421`（headSha `3ec602c8e7ae2efa27762ab9fae1bd5468175fcd`）`conclusion: success`，四个 job 全部 success。PR #7 仍 `Draft + MERGEABLE`；`Deploy Backend` 仍 skipped——`.github/workflows/deploy-backend.yml:25` 只在 `workflow_run.conclusion == 'success' && head_branch == 'main'` 时触发，所以「合到 main」就是那个会真正部署生产后端的动作。
+
+### 前端会员版边界修复：普通界面零 Web3 痕迹（2026-11-17）
+
+**问题**：用户指出前端把 Web3 功能直接展示给所有用户，而本意是「点会员功能切换过去，只有会员才看到连接钱包 / 上链」。核对后发现 `CLAUDE.md`「会员模式的默认关闭边界」**早就规定默认零 Web3 痕迹**，是实现只做了一半：`MembershipProvider`（默认 off）、`MembershipPanel`、右上角「🌐 会员」入口、`RoseSolanaMint` / `RoseNftMint` 的内部 gate 都在，但漏了四处：
+
+1. 首页 `page.tsx` 底部「使用 Aleo 私密 Vault」链接，所有人可见；
+2. 种花页 `plant/page.tsx` 同样的链接，又挂了一次；
+3. `/private-vault` **整页无 gate**，直接输网址就能进，内含「连接 Leo Wallet / 种下私密玫瑰」完整链上操作；
+4. 详情页 `RoseMemorial`（Base Sepolia 链上纪念版）无条件渲染。
+
+另外「点会员」只弹一个浮层、刷新即回普通版，用户感知不到「切换到会员版」。
+
+**修法**：
+
+- 新增 `components/member-only.tsx`（`MemberOnly`）：用 `useOptionalMembership()`，非会员 / 无 Provider 一律返回 null，作为**唯一**入口级门闩；同步在 `CLAUDE.md` 补成硬约束。
+- 新增 `components/membership-banner.tsx`：会员模式在 header 下显示状态条「🌐 会员版 · Web3 功能已解锁」，提供「打开上链面板」与「返回普通版」，让切换看得见；挂到 `layout.tsx`。
+- 首页 / 种花页的 Aleo 链接、详情页三个链上区块统一包 `<MemberOnly>`；`RoseSolanaMint` / `RoseNftMint` 原有内部 gate 保留作双保险。
+- `/private-vault` 重构：`PrivateVaultPage` 先判会员，非会员只渲染「会员版功能」提示卡 + 切换按钮；`new LeoWalletAdapter` / `WalletProvider` 移进 `MemberVault` 子组件，普通模式连适配器都不实例化。
+- `nav.tsx` 入口文案改「🌐 会员版」并加 `aria-pressed`。
+
+**边界**：`isMember` 仍是前端视图开关，未加付费 / 后端权限（项目仍在 `PRODUCT.md` 的「找 5 人试用」阶段）；未做会员状态持久化（刷新回普通版 = 默认零 Web3，更安全）；普通模式详情页仍会读一次 `getRoseMemorial`（只读后端记录、不展示），列为后续优化。
+
+**验证命令与结果**：Web `tsc --noEmit` RC=0、改动文件 `eslint` RC=0、`jest --config jest.config.ts --coverage --runInBand` → 44 套件 326 例全过、覆盖率 `91.85 / 80.11 / 87.24 / 94.39`（门槛 90/70/85/90）；Rust `cargo fmt --all -- --check` + 严格 clippy RC=0。新增 `member-only.test.tsx`（4 例）、`membership-banner.test.tsx`（3 例），并把首页 / 种花页 / 详情页 / private-vault 的断言改成「普通模式不显示、会员版才显示」。
+
+**排查坑**：jest 直接把 `src/app/rose/[id]/__tests__/page.test.tsx` 当参数时，`[id]` 会被当成正则字符类而匹配不到文件（显示 7 个套件而不是 8 个）。改用 `--runTestsByPath 'src/app/rose/[id]/__tests__/page.test.tsx'` 单独跑，20 例全过。以后带方括号的动态路由测试一律用 `--runTestsByPath`。
+
+### 同轮 CI 红：cargo deny 新增 chrono 无人维护公告（2026-11-17，已修）
+
+前端改动 CI run `44108875609` 里 Frontend Tests（含 `Next build`）/ Miniprogram Build / Solana x402 Agent API 三个 job 全绿，但 **Backend Tests 的 `Audit dependencies` 失败**：`error[unmaintained]: chrono is unmaintained`，ID `RUSTSEC-2026-0543`。
+
+**原因**：与本轮代码无关。11-15 同一分支的 CI（`43724740907`）还是全绿，这两天 RustSec 公告库新增了这条——`chrono` 被标记为无人维护，**所有版本受影响**，公告自己写 `Solution: No safe upgrade is available!`，所以 `cargo update` 解决不了。`chrono` 被 `roselet-backend` / `roselet-recommend` 直接用做日期格式化，还被 `sqlx-core` / `sqlx-postgres` 间接依赖，短期无法移除，只能单独排期迁移到 `jiff` / `time`。
+
+**处理**（保持审计严格，不整体关掉）：
+- `deny.toml` 的 `[advisories].ignore` 只加这一个 ID `RUSTSEC-2026-0543`，并写注释说明：这是「unmaintained」提示、不是已知可利用 CVE；无安全升级可用；迁移另立任务。
+- 顺带把 `warning[yanked]: spin 0.9.8` 消掉：`cargo update -p spin` → `0.9.9`（只锁 1 个包，其余 135 个不变），`Cargo.lock` 同步。
+
+**验证命令**：`cargo deny check` RC=0 且 `advisories ok, bans ok, licenses ok, sources ok`（yanked 警告也消失）；`cargo fmt --all -- --check` RC=0；严格 clippy RC=0；`cargo test -p roselet-recommend contract` 6 passed。
+
+**经验**：`cargo deny` 会随 RustSec 公告库变化，在**没改任何依赖**的情况下把 CI 变红；本地 `cargo deny check` 能直接复现（本地 0.19.0 与 CI 同结果），不用等 CI。遇到「无安全升级可用」的 unmaintained 公告，正确做法是显式 ignore 单个 ID + 写明迁移计划，而不是降级审计或假装没看见。
+
+---
+
+## 2026-11-17（晚）对照 LoopForge 文章：只借「把经验变成自动守着的规矩」
+
+**输入**：用户给了一篇公众号文章《登上 GitHub Trending｜腾讯开源 LoopForge》（腾讯开源 / 腾讯技术工程，2026-11-17），问本项目可借鉴 / 可落实之处。文章讲团队级 AI 研发平台的五步演进：云端 7×24 → 共享会话 + Main Bot → 工程级 SOP（五层标准 / 客观门禁 / 主副驾接管）→ 定时与 Issue 自动化 → 工程级 RSI 复盘自进化。核心句是「把人的工程经验转化为系统的运行秩序」。
+
+**判断（最重要）**：**不要照搬**。文章解决的是「团队用 AI 写代码时，人的注意力成为瓶颈」；本项目瓶颈正好相反——代码与门禁过剩、`PRODUCT.md:74` 写的「找 5 个人试用」仍是 0，最近 35 个提交几乎全在 Web3 / 门禁 / 契约测试。照 L1→L5 往上堆只会放大偏差。逐条对照写在 `docs/TEAM_REVIEW_CHECKLIST.md` §6.9。
+
+**只借三处，且都落在「不改产品代码」的范围**：
+1. **本地门禁 ≠ CI 门禁**（文章「客观门禁不通过绝不放行」）。`just check-all` / `just pre-commit` 缺 `pnpm --filter web test:coverage`（CI 硬门槛）与 `cd apps/miniprogram && pnpm build:weapp`（小程序生产构建），历史上正是这两处造成「本地全绿 / CI 红」。→ `justfile` 新增 `ci-local`，按 `build.yml` 四个 job 原样复刻（含三处 WASM 前置与 `scripts/init-miniprogram.sh`），注明前置条件（wasm-pack / cargo-deny / nextest / 本地 Postgres + `DATABASE_URL`）。
+2. **「复盘 → 改写流程」要真的闭环**（文章「工程级 RSI 外环」）。本项目 DEVLOG 5094 行复盘很全，但三次 CI 红（clippy doc-lazy-continuation、Taro `rule("ts")` 空规则、`chrono` 新公告）都只修了坏的那一行，没有落防复发检查；还出现过复盘结论写错要事后订正。→ `AGENTS.md` / `CLAUDE.md` 写死两条：push 前跑 `just ci-local`；**每次 CI 红的修复必须同时落一条防复发的可执行检查**，并把根因一并记进 DEVLOG。
+3. **同一个现场**（文章「共享会话」）。本项目是单人 + AI，没有多人割裂，但跨会话割裂真实存在：日志 5094 行、规则分散两份、用户反复说「继续」。→ **不新建文档**（多一份文档只会更割裂），把清单 §0 / §1 更新成一页纸现场快照（现在到哪、卡在哪、最该做 / 先别做），`AGENTS.md` 指定新会话先读这里。
+
+**明确没做**：文章阶段 4 的「定时巡检」可闭环第三次 CI 红（依赖公告只在 push 时才发现），但加每周 workflow 属运维策略变更、会持续产生运行记录，留给用户点头；阶段 1 云端 / Main Bot 三挡权限 / 多人 SOP 对单人项目不适用；项目已有的 Rust↔TS 契约测试就是文章「交付物契约」的雏形，保持即可。§6.8 表里 7 项代码优化同样不动，等 5 人试用结果。
+
+**验证**：`just --list` 能列出 `ci-local`、`just --dry-run ci-local` 能完整展开四段脚本（recipe 解析通过）；`git diff --check` RC=0；`just --list` 的说明行也改成可直读的用法。本次纯文档 / justfile 改动，不改产品代码、不改 CI 配置、不合 PR。**最终 CI run `44114213700`（headSha `6a659ee`）：`conclusion: success`，Backend Tests / Miniprogram Build / Frontend Tests / Solana x402 Agent API 四个 job 全 `success`，`Deploy Backend` 未触发。** 仅有两条非阻断弃用提醒（Node.js 20 action 被强制跑在 Node 24、ubuntu-latest 将迁 Ubuntu 26）。
+
+**自查补记**：§1 快照初版把 HEAD 写死成 `382149f`，一提交就过期——已改成「以 `git rev-parse HEAD` 为准」，CI 行同理改成「以 `gh run list --limit 1` 为准」。凡是会随提交变化的数字，快照里一律写复核命令而不是写死值。
+
+---
+
+## 2026-11-18 把「找 5 人试用」变成能直接转发的操作卡
+
+**为什么要做**：上一轮对照 LoopForge 的结论是「本项目瓶颈不是研发效率，是用户验证为 0」；`PRODUCT.md:74` 把「找 5 个人试用，看他们会不会回来」写成当前唯一要做的事，但一直停在清单里的一行待办，没有人知道具体该找谁、怎么发、什么算通过。这轮把它做成 `docs/TEAM_REVIEW_CHECKLIST.md` §7 的可转发操作卡，**不新建文档**（多一份文档只会加剧上下文割裂）。
+
+**核对到的关键前提**：线上 `https://roselet-web.vercel.app` 跑的是 `main`（`7b53fb9`），而会员版门闩 / Web3 入口收敛等 37 个提交仍在草稿 PR #7 未合；小程序微信登录 + 真机双令牌联调未完成（`PROGRESS.md:310-311`）。所以操作卡明确：只走 Web 正式版、不拿草稿分支的说明给试用者、这轮不走小程序。若忽略这点，试用者看到的界面与组织者手里的说明会对不上。
+
+**操作卡内容**：§7.1 前提与隐私边界 → §7.2 找 5 个不参与开发的真实用户、单独进行不拉群 → §7.3 给试用者的原样转发正文（5 分钟、种一朵、之后 7 天不提醒不打卡）→ §7.4 一周后只问三个具体问题、**不问「好不好用」**、只记原话 → §7.5 五人记录表 → §7.6 **先定死**通过标准（≥3 人无人提醒下自己回来再种一次且无人卡住），依据 `PRODUCT.md:20 / :74`，明确不用点赞数 / 访问量 / 注册数，无论结果都先整理一页结论而不是继续加功能 → §7.7 组织者必须是真人、结果回填 §1 的「用户验证」。
+
+**顺带订正**：§3 派活表的 D1 仍写「仍待做：把兜底数据抽到 `@roselet/core`」，与 §6.5 / §6.7 已完成矛盾；已加一句指向完成记录，避免新会话把旧状态当待办。
+
+**边界**：本轮纯文档，不改产品代码、不改 CI 配置、不合 PR、不加每周巡检 workflow（属运维变更，仍待用户点头）。**验证**：`git diff --check` RC=0；push 后按惯例确认四个 CI job 全绿。
+
+---
+
+## 2026-11-18（续）把会员门闩从草稿单独摘出成 PR #8，并订正两个会误导决策的旧结论
+
+**为什么要做**：上一轮把「5 人试用」做成 §7 操作卡，核对前提时发现一个错配 —— 试用入口是线上正式版（main `7b53fb9`），但用户主诉「Web3 不该默认暴露」的修复只在草稿 PR #7 里；`git show origin/main:apps/web/src/app/page.tsx` 仍有「使用 Aleo 私密 Vault」链接，`/private-vault/page.tsx` 在 main 上完全没有门闩。也就是说试用者看到的正是被判定「有很大问题」的界面，而 §7.2 还要求至少 2 位完全不碰 Web3 的试用者。
+
+**先查清能不能拆**：main 上已有 `MembershipProvider` / `useOptionalMembership` / `MembershipPanel` / 右上角会员入口，只缺门闩；草稿里 `member-only.tsx` / `membership-banner.tsx` 只依赖 `useOptionalMembership`。但有几处混了草稿其它工作：`plant/page.tsx` 引了 main 上不存在的 `@roselet/core`，`rose/[id]/client.tsx` 引了草稿新增的 `RoseNftMint`，`membership-context.tsx` 混了钱包重构；`lib/wallet.ts` 在 main 上根本不存在。因此从 `origin/main` 新建 `codex/member-gate-frontend-only`，用 `git checkout 5bf2218 -- <纯净文件>` 摘 12 个文件，两处混合文件手工只搬门闩段，两个新增测试删掉 `@/lib/wallet` 桩（main 版 Provider 直接读 `window.solana`，不触发 `connectWallet` 就不需要桩）。
+
+**撞到并修掉的 main 历史欠账**：切到 main 基线后 `pnpm --filter web test:coverage` 报 statements 87.32 / functions 84.71，**低于 main 自己 `jest.config.ts` 写死的 90 / 85 门槛** —— 任何基于 main 的新 PR 都会 CI 红，与本轮改动无关。§1 快照里 91.85 是草稿分支自带补测后的值，不能代表 main。草稿的补测绑死 `@roselet/core` / `lib/rose-memo` / `lib/solana-rpc` / `lib/wallet`，搬不过来。改为在 main 基线上补真实行为测试：① `recommend.test.ts` 补 WASM 初始化失败 / 单个 WASM 调用抛错时所有 wrapper 的降级（断言按 main 语义：`buildPlantBody` 仍输出 `anxiety: null`，未知色回退 `🌸` / 原字符串）；② 新增 `membership-context.test.tsx` 覆盖钱包连接成功 / 无钱包 / 拒绝 / 断开与面板状态机；③ `private-vault` 补未装适配器 / 连接失败 / 无 publicKey / 交易失败的 4 个错误路径。**没有调低门槛**，覆盖率 87.32 → 90.06 statements、84.71 → 85.79 functions。
+
+**两个旧结论是错的，已订正进清单 §0 / §1 / §6.8 / §7.1**：
+
+1. `deploy-backend.yml` 除了 `head_branch == 'main'`，还有 `Detect backend deployment changes` 路径过滤；只有 `Cargo.*` / `crates/backend` / `crates/recommend` / `deploy/lightsail` / `Dockerfile.backend` / `scripts/lightsail-deploy.sh` 等变化才 `should_deploy=true`。**纯前端改动合 main 不会重启生产后端**；§6.8 结尾把条件简写成「合到 main = 部署生产后端」，让 PR #7 一直被当成整体不可逆而卡着。PR #7 本身含后端路径，合它仍会真部署。
+2. §1 把草稿分支的覆盖率当成全项目状态，隐含「main 也是绿的」。
+
+**两个环境坑（非代码错误）**：
+
+- 切分支后必须先 `pnpm install --frozen-lockfile`：草稿把 Solana 依赖换成了新包，main 的 `@solana/web3.js` 不在 node_modules 里，否则 `tsc` 报 TS2307 `Cannot find module '@solana/web3.js'`。
+- 本机 `~/.zshrc:174` 会 `source ~/.gvm/scripts/gvm`，而 `GVM_ROOT` 未设；`pnpm build` / `just next-build` 在需要沙盒升级的路径下会被这个初始化报错直接打死（stdout 空、只报 `ERROR: GVM_ROOT not set`）。用 `sh -c 'cd apps/web && NEXT_TELEMETRY_DISABLED=1 ./node_modules/.bin/next build'` 绕开 zsh 初始化即可。
+
+**产出与验证**：`codex/member-gate-frontend-only` 提交 `451cb60`，16 个文件全在 `apps/web/` 下，PR #8（OPEN / 非 Draft / MERGEABLE，**未合并**）。本地 Web 四关：`tsc --noEmit` RC=0、`eslint` 0 error（1 个既存 warning）、`jest --coverage` 35 套件 243 例全过且四项门槛全过、`next build` compiled successfully + 14 个静态页生成完成。
+
+**边界**：没有合并任何 PR（合 main 是线上动作，留给用户点头）；没有改生产配置 / CI 配置；没有动后端路径（这正是 `should_deploy=false` 的依据）；草稿分支本轮只改文档。PR #8 与 #7 改同一批前端文件，建议先合 #8 再把 #7 rebase 到新 main 解冲突。
+
+---
+
+## 2026-11-18（再续）探路结论修正：PR #8 CI 红，已关闭；直接合 PR #7
+
+**上一节的结论被 CI 推翻了，这里订正。** run `44230925065` `conclusion: failure`：四个 job 里 Frontend Tests / Miniprogram Build / Solana x402 Agent API 全 `success`，只有 **Backend Tests 的 `Check formatting` 失败**（后续 Clippy / Audit / Tests 全被 skipped）。本地 `rustfmt 1.11.0-stable (2026-11-09)` 与 CI 完全一致：17 处、7 个文件全在 `crates/backend/src/`。
+
+**顺带查出的第三处 main 基线欠账**：本地 `cargo fmt --all` 修到 RC=0 后再跑 `cargo deny check`，`advisories FAILED` —— `RUSTSEC-2026-0543`（chrono unmaintained，全部版本受影响、公告自称无安全升级）与 `spin 0.9.8` yanked；main 的 `deny.toml` 是 `ignore = []`，草稿分支的单 ID 豁免和 `Cargo.lock` 的 spin 升级都没进 main。也就是说 Backend Tests 就算过了 fmt，下一步还会在 Audit 红。
+
+**fmt 差异是否改了逻辑**：`error.rs` 合并单行去掉尾逗号、`routes/mod.rs` 是 `pub mod` 字母重排、`solana_onchain.rs` 全是换行与尾逗号；逐文件去空白比哈希后不同的三处都属于上述情况，无语义变化。但仍**撤销了这批 fmt 改动**，单独留着没有意义。
+
+**为什么不继续修下去**：要补齐 fmt + deny，必须改 `crates/backend/**`、`Cargo.lock`、`deny.toml`，正好命中 `deploy-backend.yml` 的部署路径 —— 修完合 main 照样重建后端镜像，代价与合 PR #7 相同，还多出与 #7 的冲突。而 PR #8 的门闩代码本来就是 #7 的子集，关掉不损失任何实现；main 基线三处欠账（覆盖率 / rustfmt / cargo deny）的修复**全都已在 #7 里且 CI 全绿**。继续搬等于把 #7 重做一遍，正是 §0 说的「别把工程流程做得更漂亮当项目进展」。
+
+**动作**：`git checkout -- crates/backend/src` 撤销 fmt；`gh pr close 8` 并留说明评论；分支 `codex/member-gate-frontend-only` 与提交 `451cb60`（16 个前端文件 + 覆盖率补测）保留，日后若 #7 拆分可直接复用。清单 §0 / §1 / §6.8 / §7.1 已按这个结论订正。
+
+**最终结论（需要真人拍板）**：想让线上界面变成「普通版零 Web3、点会员版才切换」，**唯一干净路径是合 PR #7** —— 一次部署同时带上门闩上线与三处基线修复。不合就按 §7.1 在旧界面上跑 5 人试用，不向试用者解释 Web3 入口。合 PR #7 会触发 `Deploy Backend`，我没有执行。
+
+**防复发 / 经验**：① 基于 main 起新分支时，不能只跑 Web 四关就以为 CI 会绿 —— main 基线自带覆盖率 / fmt / deny 三处欠账；push 前至少跑 `cargo fmt --all -- --check`、`cargo deny check`、`pnpm --filter web test:coverage`（`just ci-local` 里有等价项，但那是草稿分支的 recipe，main 基线没有）。② 切分支后必须 `pnpm install --frozen-lockfile`，否则 TS2307。③ 本机 `~/.zshrc:174` 的 GVM 未设会让 `pnpm build` / `just next-build` 静默失败，用 `sh -c` 直接调 `next build`。④ 判断「合 main 会不会部署后端」要看 `should_deploy` 路径过滤，不是只看分支名。
+
+## 2026-11-18（三续）上线前体检：两条近路堵死，合 PR #7 是唯一路径
+
+**只读探测结论**：① Vercel 给草稿最新提交 `28d14ec` 建了 Preview 部署（deployment `7873534643`，success，URL `roselet-rae0irin3-...vercel.app`），但 `curl -I` 返回 302 → `vercel.com/sso-api` → 登录页，**开了登录保护，外人进不去**；② 生产后端 `ALLOWED_ORIGINS` 白名单（`crates/backend/src/lib.rs:27-33`），用陌生域名对 `https://roselet.47.131.238.0.sslip.io/api/rose` 发 OPTIONS，返回 200 但**无 `access-control-allow-origin`** → 另起域名接现有后端会被浏览器拦。两条「不部署就给试用者看新界面」的近路都不通。线上首页实测仍有 `Aleo` / `Vault` / `private-vault` 字样，与清单 §0 判断一致；`/health` 与 `/api/activity/recent` 均 200。
+
+**本地生产构建 + 真实浏览器实证**：草稿分支 `next build` 14 页全生成 → `next start` → Playwright Chromium 检查：普通首页 / 种花页 / 详情页可见 Web3 入口 0；直输 `/private-vault` 只有门闩提示，可点按钮仅 `🌐 会员版 / 🔇 / 切换到会员版`（钱包按钮 0）；点右上角会员版后状态条 + Aleo 入口 + `aria-pressed=true` + 上链面板均出现；「弹层内退出会员模式」与「✕ 收起面板 → 状态条返回普通版」两条路径都能让入口归零。**小瑕疵**：弹层遮罩 `z-[60]` 盖住状态条 `z-40`，弹层打开时状态条「返回普通版」点不到，但弹层自带退出按钮，不影响使用，记为待打磨。
+
+**合并影响面**：`git diff --shortstat origin/main...HEAD` 79 文件 / +9578 −456；唯一新迁移 `014_create_solana_nft_mints.sql` 只是 `CREATE TABLE` + `CREATE INDEX`，启动由 `crates/backend/src/main.rs:16` 的 `sqlx::migrate!` 自动执行，不动已有数据；`scripts/lightsail-deploy.sh:31` 写 `.previous_backend_image` 作为回滚抓手。PR #7 仍为 **Draft**，合并前需 `gh pr ready 7`。
+
+**边界**：本轮纯只读 + 本地验证 + 文档，未合并 PR、未改生产配置 / 后端代码 / CI、未加新门禁。清单新增 **§8 上线前体检**，并订正 §0 / §1 / §7.1（补「别发预览链接」）。合 PR #7 仍留真人拍板。
+
+**经验（跨会话有用）**：`gh api repos/<owner>/<repo>/deployments?sha=<sha>` + `/deployments/<id>/statuses` 能拿到 Vercel 预览 URL 与状态；判断「预览能不能给外人用」必须看 `curl -I` 的 Location，success 不等于可访问；判断「别的域名能不能接现有后端」用带 Origin 的 OPTIONS 预检看有没有 `access-control-allow-origin`。

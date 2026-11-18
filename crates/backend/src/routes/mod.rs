@@ -8,8 +8,9 @@ pub mod ipfs;
 pub mod like;
 pub mod my;
 pub mod on_chain;
-pub mod solana_onchain;
 pub mod rose;
+pub mod solana_nft;
+pub mod solana_onchain;
 pub mod stats;
 pub mod ws;
 

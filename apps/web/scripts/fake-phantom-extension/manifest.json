@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "FakePhantom (Roselet devnet test)",
+  "version": "1.0.0",
+  "description": "A local stand-in for Phantom used only by the Playwright end-to-end test. It registers a Wallet Standard wallet in the page's MAIN world and signs transactions with a freshly generated Ed25519 key via WebCrypto. Never load this in a real browser profile.",
+  "content_scripts": [
+    {
+      "matches": ["http://localhost/*", "http://127.0.0.1/*", "https://localhost/*"],
+      "js": ["content.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    }
+  ]
+}

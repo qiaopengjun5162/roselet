@@ -114,6 +114,7 @@ Quality gates:
 - **已发布迁移不可改写**：`crates/backend/migrations/*.sql` 一旦在线上执行过，后续只能新增 migration，不能改旧文件哪怕只是注释；`sqlx` 会在启动时校验 checksum，不一致就报 `VersionMismatch(n)`
 - **Solana 会员上链核验**：`POST /api/rose/{id}/solana` 只有在后端配置了 `SOLANA_RPC_URL` 时才会用 `getTransaction` 核验交易（签名 / 付款钱包 / Memo 程序 / 交易成功 / memo 内含该 rose id 防重放）；未配置则跳过核验，生产必须配，否则可存入伪造引用。前后端 RPC 必须指向同一集群（后端 `SOLANA_RPC_URL` ↔ 前端 `NEXT_PUBLIC_SOLANA_RPC_URL`），且前端 Memo 程序 ID 必须落在后端 `MEMO_PROGRAM_IDS` 白名单内——官方标准 ID 是 `MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`（`MemoSqLa…` 是 v3 变体，也接受）。后端只存链上引用，绝不接触钱包私钥。
 - **会员模式的默认关闭边界**：默认普通模式必须**零 Web3 痕迹**。`membership-context.tsx` 用 `isMember`（模式开关）+ `panelOpen`（面板可收起）两个状态；`components/rose-solana-mint.tsx` 用「外层判断会员 + 内层才有 hooks」两层结构，保证无 `MembershipProvider` 的页面/单测不会误调 Solana API。给页面组件读会员状态时一律用 **`useOptionalMembership()`**（无 Provider 返回 null），**只有确定在 Provider 内的组件（如 `MembershipPanel`）才用会抛错的 `useMembership()`**——否则 `nav.test.tsx` 这类不包 Provider 的测试会整片失败。上链成功通过 `SOLANA_MINT_EVENT` 自定义事件通知详情页刷新徽章，不要跨组件直接传状态。
+  - **Web3 UI 一律走统一门闩（2026-11-17 补）**：`components/member-only.tsx` 的 `MemberOnly` 是唯一入口级开关，所有 Web3 UI——首页 / 种花页的 Aleo Vault 链接、`/private-vault` 整页、详情页的 `RoseMemorial` / `RoseSolanaMint` / `RoseNftMint`、右上角会员面板——都必须包它，不要再在组件里各写一套 `isMember` 判断。历史教训：此前只有详情页两个组件各自 gate，结果首页、种花页、独立 Aleo 页面和 Base 纪念版四处把「连接钱包 / 上链」直接暴露给所有普通用户，违背本条「零 Web3 痕迹」规则。独立 Web3 页面要连**直接输网址**也拦住：非会员只显示「切换到会员版」提示卡，且不要实例化钱包适配器（把 `new LeoWalletAdapter` / `WalletProvider` 放进会员分支的子组件）。会员模式要有可见状态条（`membership-banner.tsx`）和随时退出入口，不能只弹一个浮层。⚠️ `isMember` 目前只是**前端视图开关，不是权限**：任何人点一下就能进会员版；若将来做付费会员，必须后端判定并在上链接口做服务端鉴权，前端开关本身防不住绕过。
 - **托管 Postgres TLS**：Neon / Render Postgres 需要 `sqlx` 启用 `runtime-tokio-rustls`，只开 `runtime-tokio` 会在编译期 SQLx 宏连接和运行期连库时报 “TLS upgrade required”
 - **Jest 生成物冲突**：`next build` / Playwright / WASM 会生成重复 package metadata；`apps/web/jest.config.ts` 必须忽略 `.next`、`playwright/.cache`、`public/wasm`
 - **小程序云测**：必须上传体验版或线上版，开发者/管理员身份进入；本地 Jest 仍是提交前门禁，云测用于真机兼容、黑白屏、性能和 JsError 验收
@@ -151,6 +152,8 @@ Quality gates:
 
 - **会员图片上传（IPFS）**：`POST /api/ipfs/upload` 是后端代理上传，`PINATA_JWT` 只留在服务端，**禁止**加 `NEXT_PUBLIC_` 前缀或下发到浏览器（AGENTS.md 密钥纪律）。未配置时返回 503 且消息可见（`AppError::ServiceUnavailable`），前端降级为手填 CID，不影响普通模式。该路由单独设了 6 MiB body limit（axum 默认 2 MiB 会挡住 5 MiB 图片）；后端校验 mime 白名单 / 大小 / 文件名清理，并兼容 Pinata v3 `data.cid`、`cid`、经典 `IpfsHash` 三种响应。前端 `uploadImageToIpfs()` 用 FormData，**不要手动设 Content-Type**，否则 multipart boundary 丢失。测试里 `@solana/web3.js` 在 jsdom 下会因缺 `TextEncoder` 加载失败，用最小 `jest.mock` 桩替掉即可（测试不触发上链）。
 
+- **本地全绿 ≠ CI 绿**：`just check-all` / `just pre-commit` 缺 Web 覆盖率门槛和小程序 `taro build --type weapp`，曾因此两次 CI 红（clippy doc-lint 缓存漏报、`@roselet/core` 值导入后首次进 webpack 打包图导致 TS parse error）。push 前跑 `just ci-local`；每次 CI 红的修复要顺带落一条防复发检查。
+
 ## 常用命令（justfile）
 ```bash
 just dev              # 启动完整开发环境（后端 3001 + 前端 3000）
@@ -158,6 +161,7 @@ just build            # 编译后端
 just test             # 运行所有测试
 just check-all        # 完整检查（格式 + lint + 审计 + 测试）
 just pre-commit       # 提交前检查（格式化 + lint + 测试）
+just ci-local         # push 前跑：与 CI 四个 job 等价（含覆盖率门槛 + 小程序生产构建）
 just db-init          # 数据库初始化（创建 + 迁移）
 just db-reset         # 数据库重置
 just migrate          # 运行数据库迁移

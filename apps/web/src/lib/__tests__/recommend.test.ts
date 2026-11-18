@@ -144,6 +144,87 @@ describe("recommend WASM wrappers", () => {
     ]);
   });
 
+  it("falls back for every wrapper when the WASM module cannot initialize", async () => {
+    mockWasm({
+      default: jest.fn(() => {
+        throw new Error("wasm init failed");
+      }),
+    });
+    const recommend = await import("../recommend");
+
+    // Every wrapper must degrade to its documented null/fallback instead of
+    // surfacing the init failure to callers.
+    await expect(recommend.getRecommendation([{ color: "red" }])).resolves.toBeNull();
+    await expect(recommend.analyzeTextWasm("hello")).resolves.toBeNull();
+    await expect(recommend.getTips("home")).resolves.toEqual([
+      { text: "这里不是朋友圈，不用表现得很好。种下一点真实就可以。" },
+    ]);
+    await expect(recommend.getLayout(375)).resolves.toBeNull();
+    await expect(recommend.filterRosesInWasm([{ color: "red" }], "red")).resolves.toBeNull();
+    await expect(recommend.validatePlantInput({ color: "red" })).resolves.toBeNull();
+    await expect(recommend.parseGardenResponse("{}")).resolves.toBeNull();
+    await expect(recommend.parseRoseResponse("{}")).resolves.toBeNull();
+    await expect(recommend.buildOptimisticRose("{}", "t1", "now")).resolves.toBeNull();
+    await expect(recommend.applyGardenCacheAction("{}", "{}")).resolves.toBeNull();
+    await expect(recommend.formatDate("2026-01-01")).resolves.toBeNull();
+    await expect(recommend.generatePetals(1, BigInt(1))).resolves.toBeNull();
+    await expect(recommend.roseToSoundParamsWasm("{}")).resolves.toBeNull();
+    await expect(recommend.audioPlaybackPolicy({ starting: "foreground", background_playing: true })).resolves.toEqual({
+      stop_background: true,
+    });
+    await expect(recommend.computeSkyParams(23)).resolves.toBeNull();
+    await expect(recommend.generateStarParticles(1, BigInt(2))).resolves.toBeNull();
+    await expect(recommend.buildGardenUrl("http://x", 1, 20, "red")).resolves.toBe(
+      "http://x/api/garden?page=1&per_page=20&color=red"
+    );
+    // Rust WASM skips blank text fields entirely (serde skip_serializing_if),
+    // so the shared fallback must not emit `anxiety: null, hope: null`.
+    await expect(recommend.buildPlantBody("red", "g", null, null, true)).resolves.toBe(
+      JSON.stringify({ color: "red", gratitude: "g", is_private: true })
+    );
+    await expect(recommend.burstFireworks(0, 0, 1, 0)).resolves.toEqual([]);
+    await expect(recommend.getFireworkLaunches()).resolves.toEqual([]);
+    await expect(recommend.buildAleoVaultInputs("rose-1", "c", "r", "n")).rejects.toThrow("WASM 加载失败");
+  });
+
+  it("falls back to null when each WASM call throws", async () => {
+    const thrower = jest.fn(() => {
+      throw new Error("boom");
+    });
+    mockWasm({
+      recommend: thrower,
+      analyze_text: thrower,
+      compute_layout: thrower,
+      filter_roses: thrower,
+      validate_plant_input: thrower,
+      parse_garden_response_wasm: thrower,
+      parse_rose_response_wasm: thrower,
+      build_optimistic_rose_wasm: thrower,
+      apply_garden_cache_action_wasm: thrower,
+      format_date_wasm: thrower,
+      generate_petals_wasm: thrower,
+      rose_to_sound_params_wasm: thrower,
+      compute_sky_params_wasm: thrower,
+      generate_star_particles_wasm: thrower,
+    });
+    const recommend = await import("../recommend");
+
+    await expect(recommend.getRecommendation([{ color: "red" }])).resolves.toBeNull();
+    await expect(recommend.analyzeTextWasm("hello")).resolves.toBeNull();
+    await expect(recommend.getLayout(375)).resolves.toBeNull();
+    await expect(recommend.filterRosesInWasm([{ color: "red" }], "red")).resolves.toBeNull();
+    await expect(recommend.validatePlantInput({ color: "red" })).resolves.toBeNull();
+    await expect(recommend.parseGardenResponse("{}")).resolves.toBeNull();
+    await expect(recommend.parseRoseResponse("{}")).resolves.toBeNull();
+    await expect(recommend.buildOptimisticRose("{}", "t1", "now")).resolves.toBeNull();
+    await expect(recommend.applyGardenCacheAction("{}", "{}")).resolves.toBeNull();
+    await expect(recommend.formatDate("2026-01-01")).resolves.toBeNull();
+    await expect(recommend.generatePetals(1, BigInt(1))).resolves.toBeNull();
+    await expect(recommend.roseToSoundParamsWasm("{}")).resolves.toBeNull();
+    await expect(recommend.computeSkyParams(23)).resolves.toBeNull();
+    await expect(recommend.generateStarParticles(1, BigInt(2))).resolves.toBeNull();
+  });
+
   it("uses TS fallbacks when selected WASM calls throw", async () => {
     mockWasm({
       build_garden_url: jest.fn(() => { throw new Error("boom"); }),
@@ -159,11 +240,15 @@ describe("recommend WASM wrappers", () => {
     await expect(recommend.buildGardenUrl("http://x", 2, 10, "red")).resolves.toBe(
       "http://x/api/garden?page=2&per_page=10&color=red"
     );
+    // Rust WASM skips blank text fields entirely (serde skip_serializing_if),
+    // so the shared fallback must not emit `anxiety: null, hope: null`.
     await expect(recommend.buildPlantBody("red", "g", null, null, true)).resolves.toBe(
-      JSON.stringify({ color: "red", gratitude: "g", anxiety: null, hope: null, is_private: true })
+      JSON.stringify({ color: "red", gratitude: "g", is_private: true })
     );
-    expect(recommend.colorEmoji("missing")).toBe("🌸");
-    expect(recommend.colorLabel("missing")).toBe("missing");
+    // Rust WASM is the authority: an unknown colour falls back to the first
+    // registered colour. crates/recommend/src/contract.rs pins these literals.
+    expect(recommend.colorEmoji("missing")).toBe("🌹");
+    expect(recommend.colorLabel("missing")).toBe("红玫瑰");
     await expect(recommend.burstFireworks(0, 0, 1, 0)).resolves.toEqual([]);
     await expect(recommend.getFireworkLaunches()).resolves.toEqual([]);
     await expect(recommend.audioPlaybackPolicy({ starting: "foreground", background_playing: true })).resolves.toEqual({ stop_background: true });

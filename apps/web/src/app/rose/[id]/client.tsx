@@ -11,6 +11,8 @@ import { RosePlayer } from "@/components/rose-player";
 import { colorEmoji, colorLabel } from "@/lib/recommend";
 import { RoseMemorial } from "@/components/rose-memorial";
 import { RoseSolanaMint } from "@/components/rose-solana-mint";
+import { RoseNftMint } from "@/components/rose-nft-mint";
+import { MemberOnly } from "@/components/member-only";
 
 function resolveRoseId(id: string): string {
   if (id !== "placeholder" || typeof window === "undefined") return id;
@@ -251,13 +253,18 @@ export function RoseDetailClient({ id }: { id: string }) {
                 <p className="text-base leading-relaxed bg-purple-900/20 border border-purple-500/20 p-4 rounded-lg text-slate-300 italic">{rose.ai_reply}</p>
               </div>
             )}
-            <RoseMemorial
-              rose={rose}
-              mint={memorial}
-              canMint={Boolean(isOwner)}
-              onVerified={setMemorial}
-            />
-            <RoseSolanaMint rose={rose} canMint={Boolean(isOwner)} />
+            {/* 所有链上操作（Base 纪念版 / Solana Memo / NFT）统一走会员门闩；
+                RoseSolanaMint、RoseNftMint 内部还有一层判断作为双保险。 */}
+            <MemberOnly>
+              <RoseMemorial
+                rose={rose}
+                mint={memorial}
+                canMint={Boolean(isOwner)}
+                onVerified={setMemorial}
+              />
+              <RoseSolanaMint rose={rose} canMint={Boolean(isOwner)} />
+              <RoseNftMint rose={rose} canMint={Boolean(isOwner)} />
+            </MemberOnly>
             <div className="pt-4 border-t border-white/10 flex items-center gap-4 flex-wrap">
               <Button
                 variant="outline"

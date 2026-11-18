@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getSolanaMint, type Rose, type SolanaMint } from "@/lib/api";
+import { CLUSTER, clusterLabel, explorerTxUrl } from "@/lib/solana";
 import { SOLANA_MINT_EVENT, useOptionalMembership } from "@/app/membership-context";
-
-const SOLANA_CLUSTER = "devnet";
 
 interface RoseSolanaMintProps {
   rose: Rose;
@@ -80,7 +79,7 @@ function SolanaMintSection({
         )}
         <a
           className="mt-3 inline-block text-xs text-violet-300 underline underline-offset-4 hover:text-violet-100"
-          href={`https://explorer.solana.com/tx/${mint.signature}?cluster=${SOLANA_CLUSTER}`}
+          href={explorerTxUrl(mint.signature, CLUSTER)}
           target="_blank"
           rel="noreferrer"
         >
@@ -96,7 +95,7 @@ function SolanaMintSection({
     <section className="border-t border-white/10 pt-5">
       <p className="text-sm font-medium text-slate-200">🌐 把这朵玫瑰写进 Solana</p>
       <p className="mt-1 text-xs text-slate-400">
-        会员专属：连接钱包后，把这朵玫瑰的寄语 / 图片引用写到链上（当前 Devnet 测试网）。
+        会员专属：连接钱包后，把这朵玫瑰的寄语 / 图片引用写到链上（{clusterLabel(CLUSTER)}）。
       </p>
       <Button
         size="sm"

@@ -6,6 +6,23 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { deactivateAccount, getToken, getUserProfile, type UserProfile } from "@/lib/api";
+import { colorOptionsFallback } from "@roselet/core";
+
+// 卡片配色是 UI 专属；颜色 id/label/emoji 由 @roselet/core 提供，避免这里
+// 再存第四份颜色表。crates/recommend/src/contract.rs 守卫本文件不复制文案。
+const PROFILE_COLOR_STYLES: Record<string, { card: string; count: string }> = {
+  red: { card: "border-red-900/30 bg-red-950/20", count: "text-red-400" },
+  white: { card: "border-slate-700/50 bg-slate-800/30", count: "text-slate-200" },
+  yellow: { card: "border-amber-700/30 bg-amber-950/20", count: "text-amber-400" },
+};
+
+function colorCounts(profile: UserProfile): Record<string, number> {
+  return {
+    red: profile.red_count,
+    white: profile.white_count,
+    yellow: profile.yellow_count,
+  };
+}
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -107,21 +124,16 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="rounded-lg border border-red-900/30 bg-red-950/20 p-4">
-                <p className="text-3xl">🌹</p>
-                <p className="text-2xl font-bold text-red-400">{profile.red_count}</p>
-                <p className="text-sm text-slate-400">红玫瑰</p>
-              </div>
-              <div className="rounded-lg border border-slate-700/50 bg-slate-800/30 p-4">
-                <p className="text-3xl">🤍</p>
-                <p className="text-2xl font-bold text-slate-200">{profile.white_count}</p>
-                <p className="text-sm text-slate-400">白玫瑰</p>
-              </div>
-              <div className="rounded-lg border border-amber-700/30 bg-amber-950/20 p-4">
-                <p className="text-3xl">💛</p>
-                <p className="text-2xl font-bold text-amber-400">{profile.yellow_count}</p>
-                <p className="text-sm text-slate-400">黄玫瑰</p>
-              </div>
+              {colorOptionsFallback().map((meta) => {
+                const style = PROFILE_COLOR_STYLES[meta.id] ?? PROFILE_COLOR_STYLES.red;
+                return (
+                  <div key={meta.id} className={`rounded-lg border p-4 ${style.card}`}>
+                    <p className="text-3xl">{meta.emoji}</p>
+                    <p className={`text-2xl font-bold ${style.count}`}>{colorCounts(profile)[meta.id]}</p>
+                    <p className="text-sm text-slate-400">{meta.label}</p>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex gap-2 justify-center">

@@ -119,16 +119,17 @@ export function Nav() {
 
       <button
         onClick={() => membership?.openPanel()}
+        aria-pressed={isMember}
         className={`shrink-0 whitespace-nowrap text-[13px] px-3 py-1.5 rounded-full transition-all duration-200 ${
           isMember
             ? "bg-violet-500/20 text-violet-200 border border-violet-400/40"
             : "text-violet-300/70 hover:text-violet-200 hover:bg-violet-500/10"
         }`}
         title={isMember
-          ? "重新打开会员界面（可在详情页直接给某朵玫瑰上链）"
-          : "会员模式：连接 Solana 钱包，把玫瑰/图片/信息上链"}
+          ? "当前是会员版：点击重新打开上链面板，或点顶部状态条「返回普通版」"
+          : "切换到会员版：连接 Solana 钱包，把玫瑰/图片/信息上链"}
       >
-        🌐 会员
+        🌐 会员版
       </button>
 
       <button

@@ -28,6 +28,15 @@ HTMLCanvasElement.prototype.getContext = jest.fn().mockReturnValue({
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+// 门闩本身由 member-only.test.tsx 验证；这里控制会员模式，确认种花页确实
+// 把 Aleo 入口放进了门闩。
+let memberMode = false;
+jest.mock("@/components/member-only", () => ({
+  MemberOnly: ({ children }: { children: React.ReactNode }) =>
+    memberMode ? <>{children}</> : null,
+}));
+afterEach(() => { memberMode = false; });
+
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn() }),
@@ -68,6 +77,12 @@ describe("PlantPage", () => {
     expect(screen.getByText("红玫瑰")).toBeInTheDocument();
     expect(screen.getByText("白玫瑰")).toBeInTheDocument();
     expect(screen.getByText("黄玫瑰")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "使用 Aleo 私密 Vault" })).not.toBeInTheDocument();
+  });
+
+  it("should expose the Aleo vault only in membership mode", () => {
+    memberMode = true;
+    render(<PlantPage />);
     expect(screen.getByRole("link", { name: "使用 Aleo 私密 Vault" })).toHaveAttribute("href", "/private-vault");
   });
 

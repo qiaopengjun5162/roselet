@@ -36,7 +36,17 @@ export default defineConfig({
   mini: {
     webpackChain(chain) {
       chain.output.publicPath("").globalObject("global");
-      chain.module.rule("ts").include.add(/packages\/core/);
+      // @roselet/core is a workspace package that ships raw TypeScript (the
+      // package.json `main` points at src/index.ts), and both front-ends now
+      // import real values from it (not just `import type`, which is erased).
+      // Taro v4's mini babel-loader rule is named "script" and only includes
+      // sourceDir + taro node_modules, so the shared .ts files otherwise reach
+      // webpack with no loader and fail on `export type`. Alias to the source
+      // dir for a predictable path, then add that dir to the "script" rule's
+      // include. (The old rule("ts") was a no-op: no such rule exists.)
+      const coreSrc = path.resolve(__dirname, "../../../packages/core/src");
+      chain.resolve.alias.set("@roselet/core", coreSrc);
+      chain.module.rule("script").include.add(coreSrc);
       // WASM dedup: webpack emits wasm to pkg/ (same as copy pattern destination)
       // eliminating the duplicate 301KB .wasm at dist root
       chain.module

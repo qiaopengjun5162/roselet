@@ -155,6 +155,9 @@ mod sky;
 mod store;
 mod tips;
 
+#[cfg(test)]
+mod contract;
+
 use garden::{GardenLayout, GardenState, RoseItem};
 
 /// WASM: 根据屏幕参数和安全区计算卡片布局

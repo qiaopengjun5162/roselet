@@ -24,8 +24,7 @@ use crate::state::AppState;
 /// Max accepted image size (5 MiB). Rejected before hitting the pinning service.
 pub const MAX_IMAGE_BYTES: usize = 5 * 1024 * 1024;
 
-const ALLOWED_IMAGE_TYPES: [&str; 4] =
-    ["image/png", "image/jpeg", "image/webp", "image/gif"];
+const ALLOWED_IMAGE_TYPES: [&str; 4] = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 const IPFS_GATEWAY: &str = "https://gateway.pinata.cloud/ipfs";
 
@@ -65,10 +64,8 @@ pub async fn upload_image(
         .map_err(|e| AppError::BadRequest(format!("上传数据解析失败: {e}")))?
     {
         if field.name() == Some("file") {
-            let content_type = field
-                .content_type()
-                .unwrap_or("application/octet-stream")
-                .to_string();
+            let content_type =
+                field.content_type().unwrap_or("application/octet-stream").to_string();
             let filename = field.file_name().unwrap_or("image").to_string();
             let bytes = field
                 .bytes()
@@ -110,14 +107,12 @@ pub async fn upload_image(
     if !status.is_success() {
         return Err(AppError::BadRequest(format!(
             "IPFS 服务返回 {status}: {}",
-            body.get("error")
-                .and_then(|v| v.as_str())
-                .unwrap_or("未知错误")
+            body.get("error").and_then(|v| v.as_str()).unwrap_or("未知错误")
         )));
     }
 
-    let cid = parse_cid(&body)
-        .ok_or_else(|| AppError::Internal("IPFS 返回中缺少有效 CID".into()))?;
+    let cid =
+        parse_cid(&body).ok_or_else(|| AppError::Internal("IPFS 返回中缺少有效 CID".into()))?;
 
     Ok(Json(IpfsUploadResponse {
         gateway_url: format!("{IPFS_GATEWAY}/{cid}"),
@@ -128,12 +123,7 @@ pub async fn upload_image(
 /// Validate the declared mime type and decoded size. Pure function: unit
 /// tested without any network or database.
 fn validate_upload(content_type: &str, size: usize) -> Result<(), AppError> {
-    let base = content_type
-        .split(';')
-        .next()
-        .unwrap_or("")
-        .trim()
-        .to_ascii_lowercase();
+    let base = content_type.split(';').next().unwrap_or("").trim().to_ascii_lowercase();
     if !ALLOWED_IMAGE_TYPES.contains(&base.as_str()) {
         return Err(AppError::BadRequest(format!(
             "仅支持 PNG / JPEG / WebP / GIF 图片，收到：{content_type}"

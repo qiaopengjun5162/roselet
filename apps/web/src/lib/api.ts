@@ -280,6 +280,49 @@ export async function getSolanaMint(id: string): Promise<SolanaMint | null> {
   return res.json();
 }
 
+/** A rose minted as a Token-2022 NFT, verified from chain state by the backend. */
+export interface SolanaNft {
+  mint_address: string;
+  /** Wallet that holds the metadata update authority on-chain. */
+  wallet_address: string;
+  name: string;
+  symbol: string;
+  uri: string;
+  additional_metadata: { key: string; value: string }[];
+  minted_at: string;
+}
+
+export async function getRoseNft(id: string): Promise<SolanaNft | null> {
+  const res = await authFetch(`${READ_API_BASE}/api/rose/${id}/solana/nft`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch rose NFT");
+  return res.json();
+}
+
+/**
+ * Ask the backend to verify and store a mint the user just created.
+ *
+ * The backend re-reads the mint account at `finalized` and rejects anything
+ * that is not a 1-of-1 Token-2022 NFT bound to this rose — so this call fails
+ * loudly rather than storing an unverified claim.
+ */
+export async function recordRoseNft(
+  id: string,
+  data: { mint_address: string; wallet_address: string },
+): Promise<SolanaNft> {
+  const res = await authFetch(`${API_BASE}/api/rose/${id}/solana/nft`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body: { error?: string } = await res.json().catch(() => ({}));
+    throw new Error(body.error || `NFT 保存失败（${res.status}）`);
+  }
+  return res.json();
+}
+
 export interface IpfsUploadResult {
   cid: string;
   gateway_url: string;

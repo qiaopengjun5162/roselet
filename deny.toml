@@ -7,7 +7,15 @@ no-default-features = false
 feature-depth = 1
 
 [advisories]
-ignore = []
+# RUSTSEC-2026-0543 marks `chrono` as unmaintained. Every version is affected
+# and the advisory itself states "No safe upgrade is available", so a lockfile
+# bump cannot fix it. chrono is used directly by roselet-backend /
+# roselet-recommend for date formatting and is pulled in transitively by
+# sqlx-core / sqlx-postgres, so removing it needs a real migration (to `jiff`
+# or `time`) rather than `cargo update`. This is an "unmaintained" notice, not
+# a known exploitable CVE. Ignore this one ID explicitly so the rest of the
+# audit stays strict; track the migration as a separate task.
+ignore = ["RUSTSEC-2026-0543"]
 
 [licenses]
 allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "CDLA-Permissive-2.0", "ISC", "Unicode-3.0", "Zlib"]
