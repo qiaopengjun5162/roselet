@@ -115,23 +115,42 @@ describe("PlantPage", () => {
     expect(screen.getByRole("button", { name: "🌱" })).toBeInTheDocument();
   });
 
-  it("should open dialog on gratitude hotspot click", () => {
+  // 曾经输入框藏在光点弹窗后面：不点光点，页面上根本看不到能写字的地方，
+  // 没耐心的人会以为这里不能写。选完颜色必须直接看见输入框。
+  it("选完颜色就能看到输入框，不需要先点光点", () => {
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
-    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    // Dialog should appear with textarea
-    const textarea = screen.getAllByRole("textbox")[1];
-    expect(textarea).toBeInTheDocument();
-    expect(screen.getByText("玫瑰")).toBeInTheDocument(); // dialog title
+    const editor = screen.getByRole("textbox", { name: "玫瑰" });
+    expect(editor).toBeInTheDocument();
+    expect(editor).toHaveAttribute(
+      "placeholder",
+      "这周让你感到幸福或感恩的事情是...",
+    );
   });
 
-  it("should fill and auto-submit on dialog confirm", async () => {
+  it("点光点只切换要写的栏目，三栏内容各自保留", () => {
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+
+    fireEvent.change(screen.getByRole("textbox", { name: "玫瑰" }), {
+      target: { value: "今天很开心" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "🌵" }));
+    const anxiety = screen.getByRole("textbox", { name: "尖刺" });
+    expect(anxiety).toHaveValue("");
+    fireEvent.change(anxiety, { target: { value: "有点累" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    expect(screen.getByRole("textbox", { name: "玫瑰" })).toHaveValue("今天很开心");
+  });
+
+  it("should fill and submit the sentence written on the page", async () => {
     createRose.mockResolvedValue({ id: "r1", color: "red" });
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
-    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "感恩测试" } });
-    fireEvent.click(screen.getByText("确定并种下"));
+    fireEvent.change(screen.getByRole("textbox", { name: "玫瑰" }), { target: { value: "感恩测试" } });
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
     await waitFor(() => {
       expect(createRose).toHaveBeenCalled();
       expect(screen.getByText(PLANTED_TITLE)).toBeInTheDocument();
@@ -145,9 +164,8 @@ describe("PlantPage", () => {
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
     fireEvent.click(screen.getByText("🌐 公开分享"));
-    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "私密感恩" } });
-    fireEvent.click(screen.getByText("确定并种下"));
+    fireEvent.change(screen.getByRole("textbox", { name: "玫瑰" }), { target: { value: "私密感恩" } });
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
 
     await waitFor(() => {
       expect(createRose).toHaveBeenCalledWith(expect.objectContaining({
@@ -171,7 +189,7 @@ describe("PlantPage", () => {
     const privateToggle = screen.getByText("🌐 公开分享");
     expect(privateToggle).not.toBeDisabled();
 
-    const recipientInput = screen.getAllByRole("textbox")[0];
+    const recipientInput = screen.getByPlaceholderText(/送给谁/);
     fireEvent.change(recipientInput, { target: { value: "小花" } });
 
     expect(privateToggle).toBeDisabled();
@@ -184,7 +202,7 @@ describe("PlantPage", () => {
     fireEvent.click(screen.getByText("🌐 公开分享"));
     expect(screen.getByText("🔒 仅自己可见")).toBeInTheDocument();
 
-    const recipientInput = screen.getAllByRole("textbox")[0];
+    const recipientInput = screen.getByPlaceholderText(/送给谁/);
     fireEvent.change(recipientInput, { target: { value: "小花" } });
     expect(screen.getByText("🌐 公开分享")).toBeInTheDocument();
   });
@@ -193,9 +211,8 @@ describe("PlantPage", () => {
     createRose.mockRejectedValue(new Error("fail"));
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
-    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "感恩" } });
-    fireEvent.click(screen.getByText("确定并种下"));
+    fireEvent.change(screen.getByRole("textbox", { name: "玫瑰" }), { target: { value: "感恩" } });
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
     await waitFor(() => {
       expect(screen.getByText("提交失败，请重试")).toBeInTheDocument();
     });
@@ -212,9 +229,8 @@ describe("PlantPage", () => {
     createRose.mockResolvedValue({ id: "r1", color: "red" });
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
-    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "感恩" } });
-    fireEvent.click(screen.getByText("确定并种下"));
+    fireEvent.change(screen.getByRole("textbox", { name: "玫瑰" }), { target: { value: "感恩" } });
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
     await waitFor(() => {
       expect(screen.getByText("再种一朵")).toBeInTheDocument();
     });
@@ -226,9 +242,8 @@ describe("PlantPage", () => {
     createRose.mockResolvedValue({ id: "r1", color: "red" });
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
-    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "感恩" } });
-    fireEvent.click(screen.getByText("确定并种下"));
+    fireEvent.change(screen.getByRole("textbox", { name: "玫瑰" }), { target: { value: "感恩" } });
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
     await waitFor(() => {
       expect(screen.getByText("查看花圃")).toBeInTheDocument();
     });
@@ -252,9 +267,8 @@ describe("PlantPage", () => {
 
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
-    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "今天很好" } });
-    fireEvent.click(screen.getByText("确定并种下"));
+    fireEvent.change(screen.getByRole("textbox", { name: "玫瑰" }), { target: { value: "今天很好" } });
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
 
     await waitFor(() => {
       expect(screen.getByText("先给自己取个名字")).toBeInTheDocument();
@@ -280,9 +294,8 @@ describe("PlantPage", () => {
     register.mockRejectedValue(new Error("已设置密码"));
     render(<PlantPage />);
     fireEvent.click(screen.getByText("红玫瑰"));
-    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
-    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "今天很好" } });
-    fireEvent.click(screen.getByText("确定并种下"));
+    fireEvent.change(screen.getByRole("textbox", { name: "玫瑰" }), { target: { value: "今天很好" } });
+    fireEvent.click(screen.getByText("种下玫瑰吧"));
 
     await waitFor(() => expect(screen.getByText("先给自己取个名字")).toBeInTheDocument());
     fireEvent.change(screen.getByPlaceholderText("你想叫什么名字？"), {

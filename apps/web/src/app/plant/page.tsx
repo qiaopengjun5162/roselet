@@ -55,7 +55,10 @@ export default function PlantPage() {
   const router = useRouter();
   const [step, setStep] = useState<"color" | "interactive" | "success">("color");
   const [color, setColor] = useState<string>("");
-  const [activeField, setActiveField] = useState<Field | null>(null);
+  // 默认就落在「玫瑰」这一栏：过去输入框藏在光点弹窗后面，不点光点就
+  // 永远看不到输入框，没耐心的人会以为这里没法写。现在一进页面就有输入框，
+  // 光点只负责「换一栏写」（三栏内容各自保留）。
+  const [activeField, setActiveField] = useState<Field>("gratitude");
   const [gratitude, setGratitude] = useState("");
   const [anxiety, setAnxiety] = useState("");
   const [hope, setHope] = useState("");
@@ -352,18 +355,18 @@ export default function PlantPage() {
   }
 
   return (
-    <main className="relative h-full flex items-center justify-center p-4 z-10 pt-16">
-      <div className="max-w-lg w-full space-y-8">
+    <main className="relative min-h-full flex flex-col items-center p-4 pt-8 z-10">
+      <div className="max-w-lg w-full space-y-6 my-auto">
         <div className="text-center space-y-2">
           <h2 className="text-xl font-bold text-rose-300">
             {colorMeta?.emoji} 种下你的玫瑰
           </h2>
-          <p className="text-slate-400">点击玫瑰上的光点，分享你的故事</p>
+          <p className="text-slate-400">写一句就够了，想起别的再点旁边两个光点</p>
         </div>
 
         {/* Interactive Rose */}
-        <div className="relative flex items-center justify-center py-8">
-          <div className="relative w-64 h-64">
+        <div className="relative flex items-center justify-center py-2">
+          <div className="relative w-56 h-56">
             {/* Center rose */}
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-8xl">{colorMeta?.emoji}</span>
@@ -372,6 +375,7 @@ export default function PlantPage() {
             {/* Gratitude hotspot - top */}
             <button
               onClick={() => { playClick(); setActiveField("gratitude"); }}
+              aria-pressed={activeField === "gratitude"}
               className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
                 isFieldFilled("gratitude")
                   ? "bg-rose-500/40 shadow-lg shadow-rose-500/30 border border-rose-400/50"
@@ -384,6 +388,7 @@ export default function PlantPage() {
             {/* Anxiety hotspot - bottom left */}
             <button
               onClick={() => { playClick(); setActiveField("anxiety"); }}
+              aria-pressed={activeField === "anxiety"}
               className={`absolute bottom-4 left-0 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
                 isFieldFilled("anxiety")
                   ? "bg-amber-500/40 shadow-lg shadow-amber-500/30 border border-amber-400/50"
@@ -396,6 +401,7 @@ export default function PlantPage() {
             {/* Hope hotspot - bottom right */}
             <button
               onClick={() => { playClick(); setActiveField("hope"); }}
+              aria-pressed={activeField === "hope"}
               className={`absolute bottom-4 right-0 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
                 isFieldFilled("hope")
                   ? "bg-green-500/40 shadow-lg shadow-green-500/30 border border-green-400/50"
@@ -407,13 +413,45 @@ export default function PlantPage() {
           </div>
         </div>
 
-        {/* Status indicators */}
-        <div className="flex justify-center gap-6 text-sm">
+        {/* 输入框直接摆在页面上：不需要先点光点才能看见 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <span className="text-lg" aria-hidden="true">{FIELD_CONFIG[activeField].icon}</span>
+            <span className="font-medium text-slate-200">{FIELD_CONFIG[activeField].label}</span>
+            <span className="text-slate-500">· {FIELD_CONFIG[activeField].hint}</span>
+          </div>
+          <textarea
+            aria-label={FIELD_CONFIG[activeField].label}
+            className="w-full rounded-xl border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-500 px-4 py-3 text-sm min-h-[96px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
+            placeholder={FIELD_CONFIG[activeField].placeholder}
+            value={getFieldValue(activeField)}
+            onChange={(e) => setFieldValue(activeField, e.target.value)}
+            maxLength={500}
+          />
+          <p className="text-right text-xs text-slate-500">
+            {getFieldValue(activeField).length}/500
+          </p>
+        </div>
+
+        {/* Status indicators：带文字的切换按钮，比三个光点更好认 */}
+        <div className="flex justify-center gap-2 text-xs">
           {(["gratitude", "anxiety", "hope"] as Field[]).map((field) => (
-            <div key={field} className={`flex items-center gap-1 ${isFieldFilled(field) ? FIELD_CONFIG[field].color : "text-slate-300"}`}>
+            <button
+              key={field}
+              type="button"
+              onClick={() => setActiveField(field)}
+              aria-pressed={activeField === field}
+              className={`flex items-center gap-1 rounded-full px-3 py-1 border transition-colors ${
+                activeField === field
+                  ? "border-white/25 bg-white/10 text-slate-200"
+                  : isFieldFilled(field)
+                    ? `${FIELD_CONFIG[field].color} border-white/10`
+                    : "text-slate-400 border-white/5"
+              }`}
+            >
               <span>{FIELD_CONFIG[field].icon}</span>
-              <span>{isFieldFilled(field) ? "已填写" : FIELD_CONFIG[field].hint}</span>
-            </div>
+              <span>{isFieldFilled(field) ? "已写" : FIELD_CONFIG[field].label}</span>
+            </button>
           ))}
         </div>
 
@@ -462,7 +500,7 @@ export default function PlantPage() {
             {submitting ? "种下中..." : isGift ? "送出这朵玫瑰吧" : "种下玫瑰吧"}
           </Button>
           {!hasContent && (
-            <p className="text-xs text-slate-500">先点击玫瑰上的 🌹 / 🌵 / 🌱 填写内容，按钮才会亮起</p>
+            <p className="text-xs text-slate-500">写一个字，按钮就会亮起来</p>
           )}
         </div>
 
@@ -527,46 +565,6 @@ export default function PlantPage() {
               </Button>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* Dialog overlay */}
-      {activeField && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-          onClick={() => setActiveField(null)}
-        >
-          <div
-            className="glass-card rounded-2xl p-6 max-w-md w-full space-y-4 border border-white/10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{FIELD_CONFIG[activeField].icon}</span>
-              <h3 className="text-xl font-bold text-slate-200">
-                {FIELD_CONFIG[activeField].label}
-              </h3>
-            </div>
-            <p className="text-sm text-slate-400">{FIELD_CONFIG[activeField].hint}</p>
-            <textarea
-              className="w-full rounded-lg border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-500 px-4 py-3 text-sm min-h-[120px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
-              placeholder={FIELD_CONFIG[activeField].placeholder}
-              value={getFieldValue(activeField)}
-              onChange={(e) => setFieldValue(activeField, e.target.value)}
-              maxLength={500}
-              autoFocus
-            />
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-500">
-                {getFieldValue(activeField).length}/500
-              </p>
-              <Button
-                className="bg-rose-500 hover:bg-rose-600 rounded-full px-6"
-                onClick={() => { setActiveField(null); if (hasContent) handleSubmit(); }}
-              >
-                确定并种下
-              </Button>
-            </div>
-          </div>
         </div>
       )}
     </main>
