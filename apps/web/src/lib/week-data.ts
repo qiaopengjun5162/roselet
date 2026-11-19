@@ -23,5 +23,8 @@ export async function loadWeekReview(nowMs: number = Date.now()): Promise<WeekRe
     roses = [...roses, ...last.data];
   }
 
-  return buildWeekReview(roses, nowMs);
+  const review = await buildWeekReview(roses, nowMs);
+  // 总数以服务端为准：超过两页时中间几页没取，`roses.length` 会偏小，
+  // 页面就会对种了 250 朵的人说「总共 200 朵」。
+  return { ...review, total: Math.max(first.total, review.total) };
 }

@@ -58,6 +58,28 @@ describe("loadWeekReview", () => {
     expect(mockGetMyRoses).toHaveBeenCalledTimes(1);
   });
 
+  // 只取首尾两页时中间是缺的；总数必须以服务端为准，否则页面对种了 250 朵
+  // 的人说「总共 200 朵」。
+  it("总数以服务端为准，不受只取两页影响", async () => {
+    mockGetMyRoses
+      .mockResolvedValueOnce(page(Array.from({ length: 100 }, (_, i) => row(`new-${i}`)), 250))
+      .mockResolvedValueOnce(page(Array.from({ length: 50 }, (_, i) => row(`old-${i}`)), 250));
+    mockBuildWeekReview.mockResolvedValue({ total: 150, ready: true });
+
+    const review = await loadWeekReview(NOW);
+
+    expect(review.total).toBe(250);
+  });
+
+  it("服务端总数缺失时不把已有的玫瑰数抹成 0", async () => {
+    mockGetMyRoses.mockResolvedValue(page([row("a"), row("b")], 0));
+    mockBuildWeekReview.mockResolvedValue({ total: 2, ready: false });
+
+    const review = await loadWeekReview(NOW);
+
+    expect(review.total).toBe(2);
+  });
+
   it("接口失败时抛出，由页面决定怎么显示", async () => {
     mockGetMyRoses.mockRejectedValue(new Error("boom"));
 

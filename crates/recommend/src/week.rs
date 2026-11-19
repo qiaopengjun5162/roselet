@@ -14,6 +14,9 @@ use serde::{Deserialize, Serialize};
 pub const WEEK_DAYS: i64 = 7;
 const DAY_MS: i64 = 24 * 60 * 60 * 1000;
 const WEEK_MS: i64 = WEEK_DAYS * DAY_MS;
+/// 「一周后」按人话算，不按 168 小时算：种下后第 7 天的同一时刻差几个小时，
+/// 用户心里已经是「一周后」了，不该让他看到「还有 1 天」再走一趟。
+const GRACE_MS: i64 = 12 * 60 * 60 * 1000;
 
 /// 计算只需要玫瑰的时间和三段正文，不依赖后端完整结构。
 #[derive(Debug, Deserialize)]
@@ -108,9 +111,14 @@ pub fn build_week_review(roses: &[WeekRose], now_ms: i64) -> WeekReview {
     };
 
     // 时钟漂移产生的未来时间按 0 天算，不显示成负数。
-    review.days_since_first = (now_ms - first_ms).max(0) / DAY_MS;
-    review.days_until_ready = (WEEK_DAYS - review.days_since_first).max(0);
-    review.ready = review.days_since_first >= WEEK_DAYS;
+    let elapsed_ms = (now_ms - first_ms).max(0);
+    review.days_since_first = elapsed_ms / DAY_MS;
+    review.ready = elapsed_ms >= WEEK_MS - GRACE_MS;
+    review.days_until_ready = if review.ready {
+        0
+    } else {
+        WEEK_DAYS - review.days_since_first
+    };
 
     // 第一次回来（第 7~13 天）摊开的是「从第一朵到现在」：用户第 8 天回来时，
     // 若只取最近 7 天，第 1 天种下那朵恰好掉出窗口 —— 承诺兑现的那一刻，
@@ -257,6 +265,24 @@ mod tests {
         let review = build_week_review(&roses, ms(NOW));
         assert_eq!(review.days_since_first, 0);
         assert_eq!(review.quotes[0].age_days, 0);
+    }
+
+    #[test]
+    fn almost_seven_days_counts_as_a_week() {
+        // 第 7 天差 4 小时：用户心里已经是「一周后」，不该只看到「还有 1 天」。
+        let roses = [rose("r", "2026-11-12T04:00:00Z", Some("一周前"), None)];
+        let review = build_week_review(&roses, ms(NOW));
+        assert_eq!(review.days_since_first, 6);
+        assert!(review.ready);
+        assert_eq!(review.days_until_ready, 0);
+    }
+
+    #[test]
+    fn half_a_day_short_is_still_counting_down() {
+        let roses = [rose("r", "2026-11-12T13:00:00Z", Some("还差半天"), None)];
+        let review = build_week_review(&roses, ms(NOW));
+        assert!(!review.ready);
+        assert_eq!(review.days_until_ready, 1);
     }
 
     #[test]

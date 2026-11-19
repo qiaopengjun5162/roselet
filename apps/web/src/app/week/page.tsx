@@ -48,7 +48,14 @@ export default function WeekPage() {
       setReview(result);
       setState("done");
     })().catch(() => {
-      if (!cancelled) setState("error");
+      if (cancelled) return;
+      // 会话过期（离开超过 30 天、或 refresh token 被撤销）时接口会 401 并
+      // 清掉本地 token：这时该去重新取名，而不是让人对着「没能读到这一周」点重试。
+      if (!getToken()) {
+        router.replace("/login");
+        return;
+      }
+      setState("error");
     });
     return () => {
       cancelled = true;

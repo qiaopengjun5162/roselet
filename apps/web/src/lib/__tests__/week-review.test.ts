@@ -113,6 +113,25 @@ describe("边界", () => {
     expect(review.days_since_first).toBe(49);
   });
 
+  it("第 7 天差几小时就按「一周后」算，不让人看到还有 1 天再跑一趟", () => {
+    const review = buildWeekReviewFallback(
+      [rose("r", "2026-11-12T04:00:00Z", "一周前")],
+      NOW,
+    );
+    expect(review.days_since_first).toBe(6);
+    expect(review.ready).toBe(true);
+    expect(review.days_until_ready).toBe(0);
+  });
+
+  it("差半天以上仍然倒计时，不提前剧透", () => {
+    const review = buildWeekReviewFallback(
+      [rose("r", "2026-11-12T13:00:00Z", "还差半天")],
+      NOW,
+    );
+    expect(review.ready).toBe(false);
+    expect(review.days_until_ready).toBe(1);
+  });
+
   it("第 8 天回来仍看得到第一周写下的原话", () => {
     // 第 0 天种下、第 8 天回来：按「最近 7 天」算正好把那朵挤出去，
     // 页面会在承诺兑现的那一刻变成空的。

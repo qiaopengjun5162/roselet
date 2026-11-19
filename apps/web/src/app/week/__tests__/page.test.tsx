@@ -11,8 +11,9 @@ import {
 import type { WeekReview } from "@roselet/core";
 
 const mockPush = jest.fn();
+const mockReplace = jest.fn();
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush, replace: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));
 
 const mockGetMyRoses = jest.fn();
@@ -141,5 +142,16 @@ describe("/week：一周后到底能看见什么", () => {
 
     expect(await screen.findByText("没能读到这一周。")).toBeInTheDocument();
     expect(screen.getByText("重试")).toBeInTheDocument();
+  });
+
+  // 离开超过 30 天（或 refresh token 被撤销）时，接口会 401 并清掉本地 token。
+  // 这时该去重新取名，而不是让人对着「没能读到这一周」点重试。
+  it("会话过期时直接去登录，不留一个点不动的错误页", async () => {
+    mockGetMyRoses.mockRejectedValue(new Error("401"));
+    mockGetToken.mockReturnValueOnce("stale-token").mockReturnValue(null);
+    render(<WeekPage />);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/login"));
+    expect(screen.queryByText("重试")).toBeNull();
   });
 });

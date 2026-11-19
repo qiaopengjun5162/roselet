@@ -44,6 +44,8 @@ export interface WeekReview {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = WEEK_DAYS * DAY_MS;
+/** 与 Rust `GRACE_MS` 对齐：差半天就按「一周后」算，别让人看到「还有 1 天」。 */
+const GRACE_MS = 12 * 60 * 60 * 1000;
 
 /** 与 Rust `parse_created_at` 对齐：带时区/不带时区、带毫秒都认。 */
 export function parseCreatedAtMs(raw: string): number | null {
@@ -78,9 +80,10 @@ export function buildWeekReviewFallback(
   const oldest = parsed[parsed.length - 1];
   if (!oldest) return review;
 
-  review.days_since_first = Math.floor(Math.max(0, nowMs - oldest.ms) / DAY_MS);
-  review.days_until_ready = Math.max(0, WEEK_DAYS - review.days_since_first);
-  review.ready = review.days_since_first >= WEEK_DAYS;
+  const elapsedMs = Math.max(0, nowMs - oldest.ms);
+  review.days_since_first = Math.floor(elapsedMs / DAY_MS);
+  review.ready = elapsedMs >= WEEK_MS - GRACE_MS;
+  review.days_until_ready = review.ready ? 0 : WEEK_DAYS - review.days_since_first;
 
   // 与 Rust 对齐：第一次回来（第 7~13 天）摊开的是「从第一朵到现在」，
   // 否则第 8 天回来时第 1 天那朵刚好掉出「最近 7 天」，页面会空。
