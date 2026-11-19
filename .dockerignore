@@ -3,3 +3,8 @@ node_modules/
 .git/
 *.md
 .env
+
+# 构建产物不进镜像上下文：镜像里必须是当次构建的结果，
+# 带上旧的 .next / dist 既让上下文变大，也会掩盖构建是否真的成功。
+**/.next/
+apps/web/dist/

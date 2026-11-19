@@ -37,6 +37,7 @@
 - Web/小程序/Agent API 覆盖率门禁使用 `just coverage` 或根目录 `pnpm test:coverage`。
 - 质量门禁使用 `just typecheck`、`just lint`、`just audit`、`just next-build`；`just check-all` / `just pre-commit` 已包含这些检查。
 - **push 前跑 `just ci-local`，不要只跑 `just pre-commit`**：后者不含 Web 覆盖率门槛和小程序 `taro build --type weapp`，历史上两次造成「本地全绿 / CI 红」。CI 的四个 job 以 `just ci-local` 为本地等价。
+- **试用入口是 `http://47.131.238.0`，不要改回 `*.vercel.app`**：`*.vercel.app` 在国内被 DNS 污染（三个公共 DNS 返回三个不同的境外 IP），Vercel 边缘 IP 直连也在 TLS 握手阶段失败；`sslip.io` 在国内解析不到。唯一能通的是服务器裸 IP，所以前端也跑在那台机器上（`Dockerfile.web` + compose `web` 服务 + Caddy `:80` 按 `/api` 分流）。这条由 `apps/web/src/lib/__tests__/deploy-entry.test.ts` 守住。
 - **线上走查必须留一组不带代理的对照**：本机访问境外站点都要走 `127.0.0.1:7890`，这会把「国内打不开」的故障一起代理掉。`globals.css` 曾因第一行 `@import` Google Fonts 在国内白屏（30 秒一次都没画），而此前每一次真浏览器验收都带代理，所以一次都没复现。首屏相关改动至少跑一组不带 `--proxy` 的走查，或显式拦掉 `fonts.googleapis.com` 等境外域验证降级路径。
 - **每次 CI 红，修复必须带一条防复发的可执行检查**（补进 `just ci-local`、加测试 / lint 规则 / 契约守卫三选一）。只改坏掉的那一行不算修完，否则同一个坑会反复踩；把根因和防复发措施一起写进 `DEVLOG.md`。
 - 纸面规则不算数：`CLAUDE.md` 写了「默认零 Web3 痕迹」却漏了四处入口，直到补上门闩测试和契约守卫才真正守住。新增架构约束时同时问一句「哪条自动检查会在它再被破坏时报错」。

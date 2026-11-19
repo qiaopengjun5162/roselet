@@ -5,10 +5,29 @@
     }
 }
 
+(roselet_web) {
+    reverse_proxy 127.0.0.1:3000 {
+        lb_try_duration 15s
+        lb_try_interval 250ms
+    }
+}
+
+# 域名版：这个域名在国内解析不到（sslip.io 的权威 DNS 在国内不可达），
+# 保留它是为了国外访问和旧的验收入口不失效。
 roselet.47.131.238.0.sslip.io {
     import roselet_backend
 }
 
+# 裸 IP 入口：目前唯一在国内实测可达的地址。
+# 页面与 API 同源，浏览器不需要 CORS，也不用等 HTTPS 证书。
 :80 {
-    import roselet_backend
+    handle /api/* {
+        import roselet_backend
+    }
+    handle /health {
+        import roselet_backend
+    }
+    handle {
+        import roselet_web
+    }
 }

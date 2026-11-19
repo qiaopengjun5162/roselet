@@ -5644,3 +5644,42 @@ Web 49 套件 368 例全过（原 48/361）；typecheck / lint / build ✓。真
 **边界**：纯 CSS + 测试，未动后端、WASM、门闩与文案；`crates/` 无改动，`should_deploy=false`。
 
 **教训（写进流程的那一条）**：凡是「国内用户能不能打开」这类判断，**真浏览器走查必须有一次不带代理**。带代理的验收只能证明「在有梯子的机器上能用」，而我们从来没有一台不带梯子的机器去试过。后续所有线上走查，至少留一组 `--proxy` 为空的对照组。
+
+---
+
+## 二十七续：试用链接本身在国内打不开（2026-11-19）
+
+**怎么发现的**：上一轮修完「Google Fonts 导致白屏」，我把那条教训写进了 `AGENTS.md`：「首屏相关改动至少留一组不带代理的对照」。这一轮就顺着它问了一句更靠前的话——**国内的人到底能不能打开这个站？** 不是「打开后白不白」，而是「请求能不能到」。结果比白屏更彻底：
+
+| 检查 | 结果 |
+|---|---|
+| `roselet-web.vercel.app` 用阿里 DNS（223.5.5.5）解析 | `104.244.46.57`（Twitter 段） |
+| 用腾讯 DNS（119.29.29.29）解析 | `128.242.245.125`（Verizon 段） |
+| 用 114 DNS 解析 | `199.16.156.71`（Twitter 段） |
+| 不带代理直接打开 | 6 秒超时，一个字节都没回来 |
+| 绕过 DNS，`--resolve` 到 Vercel 边缘 IP + 正确 SNI | **TLS 握手失败**（exit 35） |
+| 后端域名 `roselet.47.131.238.0.sslip.io` 用国内 DNS 解析 | 解析不到（`sslip.io` 权威 DNS 在国内不可达） |
+| **服务器裸 IP `http://47.131.238.0`** | **200，1.5 秒** |
+
+三个公共 DNS 返回三个**不同的境外 IP**，这是 DNS 污染的典型特征，不是解析故障。也就是说：**发给五个人的那条链接，他们打开是转圈，然后超时。** 这和上一轮的白屏是同一件事的两层——上一层是「页面画不出来」，这一层是「请求根本没到」。
+
+**为什么一直没人发现**：所有线上验收都在这台机器上跑，而它访问境外要走 `127.0.0.1:7890`。代理不仅盖住了字体请求，还盖住了「DNS 被污染」和「IP 被阻断」这两件最致命的事。**带梯子的机器做出来的「线上通过」，对国内用户是没有意义的。**
+
+**处理**：不再依赖任何境外托管。
+- 新增 `Dockerfile.web`：把 Next 的 `standalone` 产物打成镜像（含 `.next/static` 与 `public`，否则页面能开、资源 404）。`NEXT_PUBLIC_API_URL` 是编译期内联，作为 build-arg 传入 `http://<服务器 IP>`。
+- `deploy/lightsail/docker-compose.backend.yml` 增加 `web` 服务，只监听 `127.0.0.1:3000`。
+- `deploy/lightsail/Caddyfile` 的 `:80` 改为按路径分流：`/api/*` 与 `/health` 给 Rust（3001），其余给 Next（3000）。**页面与 API 同源**，于是不需要 CORS、不需要证书、不会 mixed content。原来的 `sslip.io` 域名块保留（国外仍可用，国内解析不到）。
+- `scripts/lightsail-deploy.sh`：支持只部署某一个镜像；新增前端健康检查（要求返回 `<!DOCTYPE html`，只回 200 不够）；把 Caddyfile 的同步也纳入部署——**先备份再替换，reload 失败自动回滚**（Caddy reload 遇语法错误会保留旧配置继续服务，所以回滚是安全的）。
+- `.github/workflows/deploy-backend.yml`：把「改了什么」拆成 backend / web / config 三类，各自决定要不要重建镜像；只改 Caddyfile 或部署脚本时**不重建任何镜像**，只做配置同步。
+- 守卫测试 `apps/web/src/lib/__tests__/deploy-entry.test.ts`：读源码验四件事——Caddy 的 `:80` 默认落点是前端、compose 里有 `web` 服务、流水线把 API 基址编进镜像、镜像里带了 static 与 public。这几种改动都不会让任何业务测试变红，所以必须显式守住。
+- 文档同步：`docs/TEAM_REVIEW_CHECKLIST.md` §0 增一条现场记录，§7.1 与 §7.3 的试用入口改为 `http://47.131.238.0`，转发卡加一句「内测地址没有小锁头，别用你平时用的密码」。
+
+**验收（本地）**：按 `Dockerfile.web` 的路径把 standalone 产物组装到 `/tmp/webimg` 并真实运行起来——
+- 12 条路由（`/` `/plant` `/garden` `/my` `/login` `/week` `/about` `/profile` `/oscilloscope` `/private-vault` `/rose/placeholder` `/stats`）全部 200；
+- 真实的 chunk 与 `pkg/roselet_recommend_bg.wasm` 均 200；`NEXT_PUBLIC_API_URL` 已内联进 chunk；
+- 真浏览器 390×844：首页标语与主按钮在、横向溢出 0；选「红玫瑰」后玫瑰 SVG 出现、3 个光点可点、淡字提示卡能弹；`pageerror` 0。
+- 依赖安装按 Dockerfile 的同一组文件在干净目录里跑通（`pnpm install --frozen-lockfile --filter web...`，7.6s）。
+
+**代价（必须写清楚）**：内测入口是 **http，没有 https，也没有域名**。域名单还在等真人决定（买一个域名指到这台机器，Caddy 自动签证书，只需再加一个 site 块），在那之前，试用者的昵称密码是明文过网的，所以转发卡里明确写了「别用你平时用的密码」。
+
+**边界**：新增前端镜像与 Caddy 路由，未改数据库、未改后端接口、未动门闩与钱包；`crates/` 无改动。

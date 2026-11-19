@@ -6,10 +6,12 @@ ENV_FILE="${ENV_FILE:-.env.production}"
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/lightsail/docker-compose.backend.yml}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-roselet}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3001/health}"
+WEB_HEALTH_URL="${WEB_HEALTH_URL:-http://127.0.0.1:3000/}"
+CADDY_TARGET="${CADDY_TARGET:-/etc/caddy/Caddyfile}"
 
-if [[ -z "${BACKEND_IMAGE:-}" ]]; then
-  echo "BACKEND_IMAGE is required" >&2
-  exit 1
+if [[ -z "${BACKEND_IMAGE:-}" && -z "${WEB_IMAGE:-}" ]]; then
+  # 只改了 Caddyfile / 部署脚本时会有这种调用：没有镜像要更，只做配置同步。
+  echo "No image to deploy; syncing configuration only."
 fi
 
 cd "$APP_DIR"
@@ -24,26 +26,83 @@ if [[ ! -f "$COMPOSE_FILE" ]]; then
   exit 1
 fi
 
-current_container="$(
-  sudo env BACKEND_IMAGE="$BACKEND_IMAGE" COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q backend 2>/dev/null || true
-)"
-if [[ -n "$current_container" ]]; then
-  sudo docker inspect --format '{{.Config.Image}}' "$current_container" > .previous_backend_image || true
+compose() {
+  sudo env BACKEND_IMAGE="${BACKEND_IMAGE:-}" WEB_IMAGE="${WEB_IMAGE:-}" \
+    COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
+
+# ---- 后端 ----
+if [[ -n "${BACKEND_IMAGE:-}" ]]; then
+  current_container="$(compose ps -q backend 2>/dev/null || true)"
+  if [[ -n "$current_container" ]]; then
+    sudo docker inspect --format '{{.Config.Image}}' "$current_container" > .previous_backend_image || true
+  fi
+
+  compose pull backend
+  compose up -d db backend
+
+  for _ in {1..30}; do
+    if curl -fsS "$HEALTH_URL" >/tmp/roselet-health.json; then
+      cat /tmp/roselet-health.json
+      echo
+      echo "$BACKEND_IMAGE" > .current_backend_image
+      break
+    fi
+    sleep 2
+  done
+
+  if [[ ! -s /tmp/roselet-health.json ]]; then
+    echo "Backend health check failed: $HEALTH_URL" >&2
+    compose logs --tail=120 backend >&2
+    exit 1
+  fi
 fi
 
-sudo env BACKEND_IMAGE="$BACKEND_IMAGE" COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull backend
-sudo env BACKEND_IMAGE="$BACKEND_IMAGE" COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d db backend
-
-for _ in {1..30}; do
-  if curl -fsS "$HEALTH_URL" >/tmp/roselet-health.json; then
-    cat /tmp/roselet-health.json
-    echo
-    echo "$BACKEND_IMAGE" > .current_backend_image
-    exit 0
+# ---- 前端 ----
+# 国内只有裸 IP 能到这台机器，所以页面必须自己发一份，不能继续只挂 Vercel。
+if [[ -n "${WEB_IMAGE:-}" ]]; then
+  current_web="$(compose ps -q web 2>/dev/null || true)"
+  if [[ -n "$current_web" ]]; then
+    sudo docker inspect --format '{{.Config.Image}}' "$current_web" > .previous_web_image || true
   fi
-  sleep 2
-done
 
-echo "Backend health check failed: $HEALTH_URL" >&2
-sudo env BACKEND_IMAGE="$BACKEND_IMAGE" COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=120 backend >&2
-exit 1
+  compose pull web
+  compose up -d web
+
+  web_ok=false
+  for _ in {1..30}; do
+    if curl -fsS "$WEB_HEALTH_URL" | grep -q "<!DOCTYPE html"; then
+      web_ok=true
+      break
+    fi
+    sleep 2
+  done
+
+  if [[ "$web_ok" != "true" ]]; then
+    echo "Web health check failed: $WEB_HEALTH_URL" >&2
+    compose logs --tail=120 web >&2
+    exit 1
+  fi
+
+  echo "$WEB_IMAGE" > .current_web_image
+  echo "web healthy: $WEB_HEALTH_URL"
+fi
+
+# ---- Caddy ----
+# 仓库是共享源，但服务器上这份是手动改的，所以只有内容不同时才动它。
+# 先校验再换，避免把 80 端口写坏。
+if [[ -f deploy/lightsail/Caddyfile ]] && ! sudo cmp -s deploy/lightsail/Caddyfile "$CADDY_TARGET"; then
+  echo "Caddyfile differs from repo; swapping with a backup"
+  backup="$CADDY_TARGET.bak-$(date +%Y%m%d%H%M%S)"
+  sudo cp -a "$CADDY_TARGET" "$backup"
+  sudo install -m 644 deploy/lightsail/Caddyfile "$CADDY_TARGET"
+  # reload 遇到语法错误会保留旧配置继续服务，所以这里失败可以安全回滚。
+  if ! sudo systemctl reload caddy; then
+    echo "caddy reload failed; restoring $backup" >&2
+    sudo cp -a "$backup" "$CADDY_TARGET"
+    sudo systemctl reload caddy || true
+    exit 1
+  fi
+  echo "caddy reloaded (backup: $backup)"
+fi

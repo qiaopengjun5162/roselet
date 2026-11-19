@@ -36,5 +36,19 @@ services:
       db:
         condition: service_healthy
 
+  web:
+    # 前端也在同一台机器上跑：国内只有这个裸 IP 是通的，
+    # 页面和 API 同源，省掉跨域与证书两件事。
+    image: ${WEB_IMAGE:-ghcr.io/qiaopengjun5162/roselet-web:latest}
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+
 volumes:
   pgdata:

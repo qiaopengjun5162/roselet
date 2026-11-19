@@ -1,0 +1,54 @@
+# syntax=docker/dockerfile:1
+
+# 前端也要在一台国内可达的机器上跑。
+# 背景：Vercel 的边缘 IP 在国内做 TLS 握手就会失败，`*.vercel.app` 更是被 DNS 污染，
+# 所以「买域名指到 Vercel」也救不了；而 Lightsail 的裸 IP 实测 1.5s 就能通。
+# 这里把 Next 的 standalone 产物打成镜像，和 Rust 后端放在同一台机器、同一个源上。
+
+FROM node:22-bookworm-slim AS builder
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+
+WORKDIR /repo
+
+# 只装 web 需要的依赖。workspace 里还有小程序（Taro）和两个 worker：
+# 锁文件里有它们的 importer，所以 package.json 必须在场，但不安装它们的依赖。
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/core/package.json packages/core/
+COPY apps/web/package.json apps/web/
+COPY apps/miniprogram/package.json apps/miniprogram/
+COPY apps/agent-api/package.json apps/agent-api/
+COPY apps/worker-api/package.json apps/worker-api/
+RUN pnpm install --frozen-lockfile --filter web...
+
+COPY packages/core packages/core
+COPY apps/web apps/web
+
+# NEXT_PUBLIC_* 是编译期内联，必须在 build 时传入，不能运行时再给。
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+RUN pnpm --filter web build
+
+FROM node:22-bookworm-slim AS runner
+
+LABEL org.opencontainers.image.source="https://github.com/qiaopengjun5162/roselet"
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+WORKDIR /app
+
+# standalone 里带了 node_modules 与 server.js，但 static 与 public 要单独拷。
+COPY --from=builder /repo/apps/web/.next/standalone ./
+COPY --from=builder /repo/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /repo/apps/web/public ./apps/web/public
+
+EXPOSE 3000
+
+CMD ["node", "apps/web/server.js"]
