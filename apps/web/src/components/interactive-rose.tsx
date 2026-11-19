@@ -115,7 +115,9 @@ interface InteractiveRoseProps {
 /**
  * 初心第二界面：一朵可以拖拽的水彩玫瑰，花瓣/花苞/尖刺上各有一个闪亮光点。
  *
- * - 拖拽用 pointer 事件（鼠标 + 触摸统一），touch-action: none 防止拖动时页面滚动；
+ * - 拖拽用 pointer 事件（鼠标 + 触摸统一）。touch-action: pan-y 让垂直滑动交还给
+ *   页面滚动（手机上这朵花占据近半屏，若用 touch-none 会把页面滚死，用户滑不到
+ *   下面的输入框和「种下玫瑰吧」）；触摸只跟水平方向拖，鼠标保持全方向；
  * - 光点是独立按钮，pointerdown 时阻止冒泡，避免点光点误触发拖拽；
  * - 无障碍名称沿用 emoji（🌹/🌵/🌱），与既有测试和读屏习惯保持一致。
  */
@@ -133,7 +135,10 @@ export default function InteractiveRose({ color, activeField, filled, onFieldSel
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!drag.current) return;
     const d = drag.current;
-    setOffset({ x: d.bx + e.clientX - d.sx, y: d.by + e.clientY - d.sy });
+    // 触摸只跟随水平方向：垂直手势归页面滚动（touch-action: pan-y），
+    // 否则手机上从花朵起手往上滑会被吞掉，滑不到下面。
+    const vertical = e.pointerType === "mouse" ? d.by + e.clientY - d.sy : d.by;
+    setOffset({ x: d.bx + e.clientX - d.sx, y: vertical });
   }
   function onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
     drag.current = null;
@@ -155,7 +160,7 @@ export default function InteractiveRose({ color, activeField, filled, onFieldSel
   return (
     <div className="relative flex flex-col items-center">
       <div
-        className="relative w-[240px] h-[320px] max-w-full cursor-grab active:cursor-grabbing select-none touch-none"
+        className="relative w-[240px] h-[320px] max-w-full cursor-grab active:cursor-grabbing select-none touch-pan-y"
         style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

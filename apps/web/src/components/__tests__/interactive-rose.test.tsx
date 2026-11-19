@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import InteractiveRose, { RoseBloom, ROSE_PALETTES } from "../interactive-rose";
 import type { RoseField } from "../interactive-rose";
@@ -49,6 +49,36 @@ describe("InteractiveRose（初心第二界面的可拖拽玫瑰）", () => {
       (n.getAttribute("fill") || "").startsWith("url(#"),
     );
     expect(gradientPetal).toBe(true);
+  });
+
+  // 手机上这朵花占近半屏：若用 touch-none，手指从花朵起手就滑不动页面、
+  // 够不到下方输入框和「种下玫瑰吧」。必须保留 touch-pan-y 把垂直滑动还给页面。
+  it("拖拽区放行垂直滚动（touch-pan-y，不能是 touch-none）", () => {
+    render(<InteractiveRose color="red" activeField="gratitude" filled={filled} onFieldSelect={noop} />);
+    const area = screen.getByTestId("rose-drag-area");
+    expect(area.className).toContain("touch-pan-y");
+    expect(area.className).not.toContain("touch-none");
+  });
+
+  it("触摸拖拽只跟水平方向，垂直手势留给页面滚动", () => {
+    render(<InteractiveRose color="red" activeField="gratitude" filled={filled} onFieldSelect={noop} />);
+    const area = screen.getByTestId("rose-drag-area");
+    // jsdom 的 PointerEvent 不填 clientX，用 MouseEvent 构造再补 pointerType。
+    const pointer = (type: string, x: number, y: number, pointerType: string) => {
+      const e = new MouseEvent(type, { bubbles: true, clientX: x, clientY: y });
+      Object.defineProperty(e, "pointerId", { value: 1 });
+      Object.defineProperty(e, "pointerType", { value: pointerType });
+      return e;
+    };
+    act(() => {
+      area.dispatchEvent(pointer("pointerdown", 100, 300, "touch"));
+    });
+    act(() => {
+      area.dispatchEvent(pointer("pointermove", 160, 220, "touch"));
+    });
+    const transform = area.style.transform;
+    expect(transform).toContain("60px"); // 水平跟手
+    expect(transform).toContain("0px"); // 触摸不跟垂直位移
   });
 
   it("同页多朵花的渐变 id 各不相同，花圃里不会串色", () => {
