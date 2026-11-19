@@ -5752,3 +5752,5 @@ Web 58 套件 **432 例**全绿。
 **验收（在真的挂死上测，不是模拟）**：起一个只接连接、永不回包的端口，把 dev 的 API 基址指过去 —— 动态流的骨架屏在 **8803ms** 消失（没有超时的话会挂到浏览器默认超时），`pageerror` 0。
 
 **顺带记一个坑**：用 `127.0.0.1` 访问 `next dev` 会被 Next 的 dev 资源跨源保护拦掉，**页面不 hydrate**，看起来像「骨架屏永远不消失」。必须用 `localhost` 访问才复现真实行为。上一轮本地验收也踩过这个，别再把它当产品 bug。
+
+**顺带（同轮）**：把「换 https」做成一条命令 —— `scripts/enable-tls-domain.sh <域名>`。它先查 `223.5.5.5` 与 `119.29.29.29` 两台国内 DNS 是否都解析到本机公网 IP，**解析没过来就直接拒绝**（否则 Caddy 会一直去 ACME 申请，失败重试可能撞上 Let's Encrypt 同一域名每小时 5 次的上限），再备份、写入 `encode zstd gzip` + 同源分流、`caddy validate`、reload 失败回滚，最后轮询 `https://<域名>/` 直到 200。当前 `roselet.ccwu.cc` 还解析不到，脚本的预检判断是正确的（不是故障）；生成的配置块已在服务器上用 `caddy validate` 验过 `Valid configuration`。
