@@ -5468,4 +5468,6 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 ### 验收
 Web 49 套件 368 例全过（原 48/361）；typecheck / lint / build ✓。真浏览器（390×844，`--fake-wallet` 同款注入）闭环：主动连接→记住 FakePhantom→刷新（普通模式不连）→再进会员静默连回→断开清记忆→刷新再进会员不连回，pageerror 0。
 
+**状态**：已提交 `c9854f4` 推送 main；CI `44455536912` 四 job 全 success；Vercel 部署完成，线上浏览器验证自动重连闭环通过（假钱包发现/普通模式不连/进会员连回全绿，pageerror 0）。
+
 **边界**：只动 Web 钱包会话层 + 测试；Aleo Vault、链配置（仍 Devnet）、合约、后端、`crates/`、初心三界面全部未动，`should_deploy=false`。
