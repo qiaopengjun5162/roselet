@@ -26,6 +26,12 @@ export function build_optimistic_rose_wasm(plant_body_json: string, temp_id: str
 
 export function build_plant_body(color: string, gratitude: string, anxiety: string, hope: string, is_private: boolean, recipient_nickname: string): string;
 
+/**
+ * WASM: 「一周后回来看看自己长出了什么」—— 传入我的玫瑰和当前毫秒时间戳，
+ * 返回这一周种了几朵、三类各几句、写下过哪些原话。
+ */
+export function build_week_review_wasm(roses_json: string, now_ms: number): any;
+
 export function burstFireworks(cx: number, cy: number, count: number, id_offset: number): any;
 
 export function color_emoji(color: string): string;

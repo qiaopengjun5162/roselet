@@ -154,6 +154,7 @@ mod plant;
 mod sky;
 mod store;
 mod tips;
+mod week;
 
 #[cfg(test)]
 mod contract;
@@ -239,6 +240,15 @@ pub fn apply_garden_cache_action_wasm(cache_json: &str, action_json: &str) -> St
 pub fn format_date_wasm(iso_str: &str) -> JsValue {
     use datefmt::format_date;
     serde_wasm_bindgen::to_value(&format_date(iso_str)).unwrap()
+}
+
+/// WASM: 「一周后回来看看自己长出了什么」—— 传入我的玫瑰和当前毫秒时间戳，
+/// 返回这一周种了几朵、三类各几句、写下过哪些原话。
+#[wasm_bindgen]
+pub fn build_week_review_wasm(roses_json: &str, now_ms: f64) -> JsValue {
+    let roses: Vec<week::WeekRose> = serde_json::from_str(roses_json).unwrap_or_default();
+    let review = week::build_week_review(&roses, now_ms as i64);
+    serde_wasm_bindgen::to_value(&review).unwrap_or(JsValue::NULL)
 }
 
 /// WASM: 生成花瓣配置列表（确定性随机，同 seed 同结果）

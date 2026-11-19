@@ -25,8 +25,9 @@ const read = (file: string) => readFileSync(resolve(ROOT, file), "utf8");
 
 const WEB_HOME = "apps/web/src/app/page.tsx";
 const WEB_PLANT = "apps/web/src/app/plant/page.tsx";
+const WEB_WEEK = "apps/web/src/app/week/page.tsx";
 const MINIPROGRAM_HOME = "apps/miniprogram/src/pages/index/index.tsx";
-const UI_SOURCES = [WEB_HOME, WEB_PLANT, MINIPROGRAM_HOME];
+const UI_SOURCES = [WEB_HOME, WEB_PLANT, WEB_WEEK, MINIPROGRAM_HOME];
 
 describe("产品一句话：所有载体只允许一个来源", () => {
   it("初心标语由单源导出，不手写进页面", () => {
@@ -74,6 +75,9 @@ describe("产品一句话：所有载体只允许一个来源", () => {
     expect(read(WEB_HOME)).toContain("PRODUCT_ONE_LINER_ZH");
     expect(read(WEB_PLANT)).toContain("PLANTED_CONFIRMATION");
     expect(read(MINIPROGRAM_HOME)).toContain("PRODUCT_ONE_LINER_ZH_LINE_1");
+    // 一周回顾是那句承诺的兑现处：文案同样只从 core 取。
+    expect(read(WEB_WEEK)).toContain("WEEK_EMPTY_BODY");
+    expect(read(WEB_WEEK)).toContain("WEEK_READY_FOOTER");
   });
 
   it("用户可见载体不得改回抽象口号", () => {

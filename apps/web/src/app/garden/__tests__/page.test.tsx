@@ -18,7 +18,11 @@ jest.mock("next/link", () =>
 );
 
 const mockGetGarden = jest.fn().mockResolvedValue({ data: [], total: 0, page: 1, per_page: 20 });
-jest.mock("@/lib/api", () => ({ getGarden: mockGetGarden }));
+const mockGetToken = jest.fn().mockReturnValue(null);
+jest.mock("@/lib/api", () => ({
+  getGarden: (...args: unknown[]) => mockGetGarden(...args),
+  getToken: () => mockGetToken(),
+}));
 
 const mockLoadGardenCache = jest.fn().mockResolvedValue(null);
 jest.mock("@/lib/garden-cache", () => ({ loadGardenCache: mockLoadGardenCache }));
@@ -32,6 +36,7 @@ import GardenPage from "../page";
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockGetToken.mockReturnValue(null);
   mockGetGarden.mockResolvedValue({ data: [], total: 0, page: 1, per_page: 20 });
   mockLoadGardenCache.mockResolvedValue(null);
   mockConnectGardenWs.mockReturnValue(() => {});
@@ -141,5 +146,17 @@ describe("GardenPage", () => {
 
     await waitFor(() => expect(screen.getByText("第二页")).toBeInTheDocument());
     expect(mockGetGarden).toHaveBeenCalledWith(2, 20, undefined);
+  });
+
+  it("登录后顶部给「这一周」入口，未登录不给", async () => {
+    mockGetToken.mockReturnValue("jwt-token");
+    const first = render(<GardenPage />);
+    expect(await screen.findByTestId("week-entry")).toBeInTheDocument();
+    first.unmount();
+
+    mockGetToken.mockReturnValue(null);
+    render(<GardenPage />);
+    await waitFor(() => expect(screen.getByText("花圃还是空的，去种一朵花吧")).toBeInTheDocument());
+    expect(screen.queryByTestId("week-entry")).toBeNull();
   });
 });

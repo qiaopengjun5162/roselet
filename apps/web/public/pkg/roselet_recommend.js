@@ -112,6 +112,29 @@ export function build_garden_url(base_url, page, per_page, color) {
 }
 
 /**
+ * @param {string} input_json
+ * @returns {string}
+ */
+export function build_goat_order_reference_wasm(input_json) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(input_json, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.build_goat_order_reference_wasm(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
  * @param {string} plant_body_json
  * @param {string} temp_id
  * @param {string} now_iso
@@ -165,6 +188,20 @@ export function build_plant_body(color, gratitude, anxiety, hope, is_private, re
         wasm.__wbindgen_add_to_stack_pointer(16);
         wasm.__wbindgen_export4(deferred6_0, deferred6_1, 1);
     }
+}
+
+/**
+ * WASM: 「一周后回来看看自己长出了什么」—— 传入我的玫瑰和当前毫秒时间戳，
+ * 返回这一周种了几朵、三类各几句、写下过哪些原话。
+ * @param {string} roses_json
+ * @param {number} now_ms
+ * @returns {any}
+ */
+export function build_week_review_wasm(roses_json, now_ms) {
+    const ptr0 = passStringToWasm0(roses_json, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.build_week_review_wasm(ptr0, len0, now_ms);
+    return takeObject(ret);
 }
 
 /**

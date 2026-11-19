@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { RoseCard } from "@/components/rose-card";
+import { WeekEntryCard } from "@/components/week-entry-card";
 import { getMyRoses, getToken, type Rose } from "@/lib/api";
 
 export default function MyGardenPage() {
@@ -72,6 +73,7 @@ export default function MyGardenPage() {
           </div>
         ) : (
           <>
+            <WeekEntryCard />
             <p className="text-sm text-slate-500">共 {total} 朵玫瑰</p>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {roses.map((rose) => (

@@ -5511,3 +5511,26 @@ Web 49 套件 368 例全过（原 48/361）；typecheck / lint / build ✓。真
 **验收**：真浏览器（375×667，`hasTouch + isMobile`）用 `Input.synthesizeScrollGesture` 从玫瑰区中心起手向上滚 → `scrollTop=258px`，与从标题区起手（261px）几乎一致（修复前该区域为 0）；滚到底提交按钮可见，pageerror 0。Web 49 套件 370 例全过（原 368，+2 守卫）；typecheck / lint / build ✓。
 
 **边界**：只动 Web 单个拖拽组件的触摸策略 + 其测试；交互文案、三界面、门闩、钱包、链配置均未动，`should_deploy=false`。
+
+---
+
+## 二十二续：把「一周后回来看看长出了什么」真的做出来（2026-11-19）
+
+**问题**：种完反馈写着「一周后回来，看看自己长出了什么」，首页也把这句话当产品的主句。但第 8 天回来的用户看到的花圃**和第一天完全一样**：没有回顾、没有变化、没有任何「长出来」的东西。承诺是产品里唯一写明「为什么回来」的钩子，却没有任何落点 —— 五人试用就算有人愿意回来，也只会觉得「就这」。
+
+**判断**：这不是加功能，是把已经对外承诺的东西补上。零后端改动、零迁移，用现有 `/api/my/roses`（`created_at` + 三段正文）就能算。
+
+**处理**：
+- **Rust WASM 为准**（`crates/recommend/src/week.rs`）：`build_week_review(roses, now_ms)` 产出 `total / in_week / days_since_first / days_until_ready / ready / counts / quotes`。口径：最近 7 天 = 写下的句子（一朵玫瑰写满三栏出三条）；「第 1 朵」取全部玫瑰里最早的一条；未来时间（时钟漂移）按 0 天；坏时间跳过但不影响总数。导出 `build_week_review_wasm`。
+- **降级实现放 `@roselet/core`**（`packages/core/src/week.ts`）：WASM 没加载出来时走等价实现（`buildWeekReviewFallback`），页面不会白屏 —— 这里不允许像 `formatDate` 那样直接返回 `null`。文案常量（标题/倒计时/收尾/入口）也在这个文件，单一来源。
+- **`apps/web/src/lib/recommend.ts`**：`buildWeekReview()` 优先 WASM，失败回落 core；`public/pkg` 已重建（仓库跟踪该产物）。
+- **新页 `/week`**：三态——未满 7 天只给「还有 N 天」+ 已经种了几朵（**不提前把话摊开**，否则回来就没理由了）；满 7 天摊开这一周的原话（按新→旧，点进 `/rose/:id`）、三类计数、收尾「这些就是这一周长出来的东西」；一朵都没有时指去种第一朵。
+- **入口两个**：`/my` 顶部卡片；`/garden` 顶部卡片（仅登录用户，`useEffect` 里读 token，避免 SSR/首屏不一致）。未登录时 `/week` 直接去 `/login`。
+- **分页坑**：列表按时间倒序，超过一页时第一页拿不到「第 1 朵」。`total > 100` 时补拉最后一页再合并，否则「第 1 朵是几天前」会算错。
+
+**验收**：
+- Rust：`cargo test -p roselet-recommend week` 9 例（空/3 天/满 7 天/跨周/三栏/空白/未来时间/多种时间格式/坏时间）；`clippy -D warnings` 0；`cargo fmt --check` ✓。
+- Web：51 套件 395 例全过（+25：周回顾逻辑 14 + 页面 8 + 花圃入口 1 + 文案守卫），覆盖率 91.78 / 80.72 / 86.82 / 94.55（门槛 90/70/85/90）；typecheck / lint / build ✓，`/week` 静态预渲染。
+- 真浏览器（本地生产构建，390×844 与 360×780，拦 API 造假数据）：满一周 / 不满一周 / 空花圃三态文案与元素均正确，`docScrollWidth - innerWidth = 0`，pageerror 0；`/garden`、`/my` 登录时有入口（href=/week），未登录无入口。
+
+**边界**：新增 Web 页面 + 一个 Rust 计算模块，未改数据库、未改后端接口、未动门闩与钱包。**注意 `should_deploy=true`**：`crates/recommend` 在 `deploy-backend.yml` 的部署路径过滤里，会重建后端镜像（无迁移、无接口/行为变更，纯新增 WASM 导出），所以这次合并等同一次后端发布。

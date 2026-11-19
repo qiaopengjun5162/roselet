@@ -199,6 +199,21 @@ function build_plant_body(color, gratitude, anxiety, hope, is_private, recipient
 exports.build_plant_body = build_plant_body;
 
 /**
+ * WASM: 「一周后回来看看自己长出了什么」—— 传入我的玫瑰和当前毫秒时间戳，
+ * 返回这一周种了几朵、三类各几句、写下过哪些原话。
+ * @param {string} roses_json
+ * @param {number} now_ms
+ * @returns {any}
+ */
+function build_week_review_wasm(roses_json, now_ms) {
+    const ptr0 = passStringToWasm0(roses_json, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.build_week_review_wasm(ptr0, len0, now_ms);
+    return takeObject(ret);
+}
+exports.build_week_review_wasm = build_week_review_wasm;
+
+/**
  * @param {number} cx
  * @param {number} cy
  * @param {number} count

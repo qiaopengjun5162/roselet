@@ -3,10 +3,12 @@ import {
   audioPlaybackPolicyFallback,
   buildGardenUrlFallback,
   buildPlantBodyFallback,
+  buildWeekReviewFallback,
   colorEmojiFallback,
   colorLabelFallback,
 } from "@roselet/core";
 import type { PlaybackPolicyInput, Tip, TipContext } from "@roselet/core";
+import type { WeekReview, WeekRoseInput } from "@roselet/core";
 
 // WASM-unavailable fallbacks live in @roselet/core so Web and the mini-program
 // cannot drift. crates/recommend/src/contract.rs asserts this file imports them
@@ -28,6 +30,7 @@ interface WasmMod {
   parse_garden_response_wasm: (json: string) => unknown; parse_rose_response_wasm: (json: string) => unknown;
   validate_feedback_input: (json: string) => unknown;
   format_date_wasm: (iso: string) => unknown;
+  build_week_review_wasm: (roses_json: string, now_ms: number) => unknown;
   generate_petals_wasm: (count: number, seed: bigint) => unknown;
   rose_to_sound_params_wasm: (rose_json: string) => unknown;
   audio_playback_policy_wasm: (input_json: string) => unknown;
@@ -89,6 +92,21 @@ export async function applyGardenCacheAction(cacheJson: string, actionJson: stri
 export async function formatDate(iso: string): Promise<{ full_cn: string; short_cn: string; iso: string; weekday_cn: string; relative: string } | null> {
   const mod = await loadWasm(); if (!mod) return null;
   try { return mod.format_date_wasm(iso) as FormattedDate; } catch { return null; }
+}
+
+/**
+ * 一周回顾：权威实现在 Rust WASM，WASM 没加载出来时退回 @roselet/core 的等价实现。
+ * 这里不允许直接返回 null —— 页面会变成空白，等于把「一周后回来」的承诺弄丢。
+ */
+export async function buildWeekReview(roses: WeekRoseInput[], nowMs: number): Promise<WeekReview> {
+  const mod = await loadWasm();
+  if (!mod) return buildWeekReviewFallback(roses, nowMs);
+  try {
+    const review = mod.build_week_review_wasm(JSON.stringify(roses), nowMs) as WeekReview;
+    return review && typeof review.total === "number" ? review : buildWeekReviewFallback(roses, nowMs);
+  } catch {
+    return buildWeekReviewFallback(roses, nowMs);
+  }
 }
 
 export async function generatePetals(count: number, seed: bigint) {

@@ -20,9 +20,17 @@ export function build_aleo_vault_inputs_wasm(rose_id: string, content: string, a
  */
 export function build_garden_url(base_url: string, page: number, per_page: number, color: string): string;
 
+export function build_goat_order_reference_wasm(input_json: string): string;
+
 export function build_optimistic_rose_wasm(plant_body_json: string, temp_id: string, now_iso: string, nickname: string): any;
 
 export function build_plant_body(color: string, gratitude: string, anxiety: string, hope: string, is_private: boolean, recipient_nickname: string): string;
+
+/**
+ * WASM: 「一周后回来看看自己长出了什么」—— 传入我的玫瑰和当前毫秒时间戳，
+ * 返回这一周种了几朵、三类各几句、写下过哪些原话。
+ */
+export function build_week_review_wasm(roses_json: string, now_ms: number): any;
 
 export function burstFireworks(cx: number, cy: number, count: number, id_offset: number): any;
 
@@ -122,8 +130,10 @@ export interface InitOutput {
     readonly audio_playback_policy_wasm: (a: number, b: number) => number;
     readonly build_aleo_vault_inputs_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
     readonly build_garden_url: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+    readonly build_goat_order_reference_wasm: (a: number, b: number, c: number) => void;
     readonly build_optimistic_rose_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
     readonly build_plant_body: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
+    readonly build_week_review_wasm: (a: number, b: number, c: number) => number;
     readonly burstFireworks: (a: number, b: number, c: number, d: number) => number;
     readonly color_emoji: (a: number, b: number, c: number) => void;
     readonly color_label: (a: number, b: number, c: number) => void;

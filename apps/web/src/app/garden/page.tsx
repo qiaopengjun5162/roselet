@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { RoseCard } from "@/components/rose-card";
-import { getGarden, type Rose } from "@/lib/api";
+import { WeekEntryCard } from "@/components/week-entry-card";
+import { getGarden, getToken, type Rose } from "@/lib/api";
 import { loadGardenCache } from "@/lib/garden-cache";
 import { connectGardenWs } from "@/lib/ws";
 import { playNotify } from "@/lib/sound";
@@ -22,6 +23,13 @@ export default function GardenPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("");
   const [page, setPage] = useState(1);
+  // 花圃是公开页，未登录也能看；「这一周」只对登录用户有意义。
+  // 放在 effect 里读 localStorage，避免服务端渲染和客户端首帧不一致。
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setLoggedIn(!!getToken());
+  }, []);
 
   useEffect(() => {
     loadGardenCache().then((cache) => {
@@ -75,6 +83,8 @@ function loadRoses(pageNum: number, color?: string) {
             </button>
           ))}
         </div>
+
+        {loggedIn && <WeekEntryCard />}
 
         {loading && roses.length === 0 ? (
           <p className="text-slate-500 text-center mt-20">加载中...</p>
