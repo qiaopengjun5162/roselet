@@ -21,25 +21,57 @@ const COMPOSE = "deploy/lightsail/docker-compose.backend.yml";
 const WORKFLOW = ".github/workflows/deploy-backend.yml";
 const DOCKERFILE = "Dockerfile.web";
 
+/** 从 `start` 的成对花括号处整块取出，snippet 里还会有嵌套块，不能用第一个 `}` 截断。 */
+const blockFrom = (source: string, start: number) => {
+  const open = source.indexOf("{", start);
+  if (open === -1) return "";
+  let depth = 0;
+  for (let i = open; i < source.length; i += 1) {
+    if (source[i] === "{") depth += 1;
+    else if (source[i] === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, i + 1);
+    }
+  }
+  return "";
+};
+
+const namedBlock = (source: string, name: string) => {
+  const at = source.indexOf(`(${name})`);
+  return at === -1 ? "" : blockFrom(source, at);
+};
+
+const siteBlock = (source: string, selector: string) => {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // 站点名必须独占一行开头，否则注释里顺口提一句 ":80" 就会把断言引到别处。
+  const at = new RegExp(`^${escaped}\\s*\\{`, "m").exec(source);
+  return at ? blockFrom(source, at.index) : "";
+};
+
 describe("国内可用的试用入口", () => {
   it("Caddy 的 80 端口把 /api 给后端、其余给前端", () => {
     const caddy = read(CADDY);
 
-    // 端口总是这样配的，真正指到哪由两个 snippet 决定，所以要一起看。
-    const snippet = (name: string) => {
-      const start = caddy.indexOf(`(${name})`);
-      expect(start).toBeGreaterThan(-1);
-      const end = caddy.indexOf("}", caddy.indexOf("reverse_proxy", start));
-      return caddy.slice(start, end + 1);
-    };
-    expect(snippet("roselet_backend")).toContain("127.0.0.1:3001");
-    expect(snippet("roselet_web")).toContain("127.0.0.1:3000");
+    // 端口总是这样配的，真正指到哪由 snippet 决定，所以要顺着 import 一起看。
+    expect(namedBlock(caddy, "roselet_backend")).toContain("127.0.0.1:3001");
+    expect(namedBlock(caddy, "roselet_web")).toContain("127.0.0.1:3000");
 
-    const port80 = caddy.slice(caddy.indexOf(":80"));
-    expect(port80).toContain("handle /api/*");
-    expect(port80).toMatch(/handle\s*\/api\/\*[\s\S]*roselet_backend/);
+    const port80 = siteBlock(caddy, ":80");
+    expect(port80).toContain("import roselet_routes");
+
     // 默认 handle 必须是前端，否则打开的还是一个只有 API 的地址。
-    expect(port80).toMatch(/handle\s*\{[\s\S]*roselet_web/);
+    const routes = namedBlock(caddy, "roselet_routes");
+    expect(routes).toMatch(/handle\s*\/api\/\*[\s\S]*roselet_backend/);
+    expect(routes).toMatch(/handle\s*\{[\s\S]*roselet_web/);
+  });
+
+  it("80 端口的响应是压缩过的，否则一条烂链路能把首屏拖到十几秒", () => {
+    // 2026-11-19：前端搬到新加坡机器后，Caddy 没开压缩，
+    // 105KB 的 CSS 在国内直连下要 7~23 秒才下完（同一条链路上 SYN 丢包 20%~30%，
+    // 字节越多，被丢包卡住的次数越多），页面看起来就是「打不开」。
+    // 压缩后同样的文件 16.5KB，首屏回到 1 秒级。
+    const port80 = siteBlock(read(CADDY), ":80");
+    expect(port80).toMatch(/encode\s+[^\n]*gzip/);
   });
 
   it("compose 里有前端服务，镜像来自 WEB_IMAGE", () => {

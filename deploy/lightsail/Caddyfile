@@ -1,33 +1,44 @@
 (roselet_backend) {
-    reverse_proxy 127.0.0.1:3001 {
-        lb_try_duration 15s
-        lb_try_interval 250ms
-    }
+	reverse_proxy 127.0.0.1:3001 {
+		lb_try_duration 15s
+		lb_try_interval 250ms
+	}
 }
 
 (roselet_web) {
-    reverse_proxy 127.0.0.1:3000 {
-        lb_try_duration 15s
-        lb_try_interval 250ms
-    }
+	reverse_proxy 127.0.0.1:3000 {
+		lb_try_duration 15s
+		lb_try_interval 250ms
+	}
+}
+
+# 所有站点共用同一套分流：/api 与 /health 走后端，其余走前端。
+# 前端和后端同源，浏览器因此不需要 CORS。
+(roselet_routes) {
+	handle /api/* {
+		import roselet_backend
+	}
+	handle /health {
+		import roselet_backend
+	}
+	handle {
+		import roselet_web
+	}
 }
 
 # 域名版：这个域名在国内解析不到（sslip.io 的权威 DNS 在国内不可达），
 # 保留它是为了国外访问和旧的验收入口不失效。
 roselet.47.131.238.0.sslip.io {
-    import roselet_backend
+	# 国内到新加坡这条链路实测有 20%~30% 的 SYN 丢包，
+	# 一个 100KB 的 CSS 能卡 10~20 秒；压缩后同样的文件只剩十几 KB，
+	# 过网的包少一个数量级，卡的次数也跟着少。
+	encode zstd gzip
+	import roselet_routes
 }
 
 # 裸 IP 入口：目前唯一在国内实测可达的地址。
 # 页面与 API 同源，浏览器不需要 CORS，也不用等 HTTPS 证书。
 :80 {
-    handle /api/* {
-        import roselet_backend
-    }
-    handle /health {
-        import roselet_backend
-    }
-    handle {
-        import roselet_web
-    }
+	encode zstd gzip
+	import roselet_routes
 }
