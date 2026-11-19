@@ -25,3 +25,7 @@ apps/web/pnpm-workspace.yaml
 
 # WorkBuddy local workspace data (session memory, not project source)
 .workbuddy/
+
+# 一次性真浏览器探针，别入库
+probe-*.tmp.mjs
+*.tmp.mjs
