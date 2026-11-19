@@ -26,8 +26,24 @@ if [[ ! -f "$COMPOSE_FILE" ]]; then
   exit 1
 fi
 
+# 没被要求更新的那个服务，必须继续用**上一次部署的那个镜像**。
+# 空字符串会让 compose 校验整个 project 失败（2026-11-19 踩过），
+# 而兜底成 `:latest` 会把生产悄悄换成 latest——同样是「修的东西和跑的东西不一致」。
+# 所以：优先用这次传进来的，其次用记录下来的，最后才交给 compose 文件里的默认值。
+resolve_image() {
+  local requested="$1" record="$2"
+  if [[ -n "$requested" ]]; then
+    printf '%s' "$requested"
+  elif [[ -s "$record" ]]; then
+    cat "$record"
+  fi
+}
+
+RESOLVED_BACKEND_IMAGE="$(resolve_image "${BACKEND_IMAGE:-}" .current_backend_image)"
+RESOLVED_WEB_IMAGE="$(resolve_image "${WEB_IMAGE:-}" .current_web_image)"
+
 compose() {
-  sudo env BACKEND_IMAGE="${BACKEND_IMAGE:-}" WEB_IMAGE="${WEB_IMAGE:-}" \
+  sudo env BACKEND_IMAGE="$RESOLVED_BACKEND_IMAGE" WEB_IMAGE="$RESOLVED_WEB_IMAGE" \
     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
     docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
 }

@@ -97,6 +97,17 @@ describe("国内可用的试用入口", () => {
     }
   });
 
+  it("只发一个服务时，另一个继续用上次部署的镜像", () => {
+    // 2026-11-19：给 backend 补了 compose 默认值之后，只发前端的那次把 backend
+    // 悄悄拉到 `:latest`（记录里是 3a2960a 的镜像，实际跑的是 latest）。
+    // 兜底值只能让 compose 校验通过，不能让生产换版本。
+    const script = read("scripts/lightsail-deploy.sh");
+    expect(script).toContain(".current_backend_image");
+    expect(script).toContain(".current_web_image");
+    expect(script).toMatch(/RESOLVED_BACKEND_IMAGE/);
+    expect(script).toMatch(/RESOLVED_WEB_IMAGE/);
+  });
+
   it("部署流水线会把 API 基址编进前端镜像", () => {
     const workflow = read(WORKFLOW);
     expect(workflow).toContain("Dockerfile.web");

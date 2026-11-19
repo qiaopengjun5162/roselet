@@ -5754,3 +5754,5 @@ Web 58 套件 **432 例**全绿。
 **顺带记一个坑**：用 `127.0.0.1` 访问 `next dev` 会被 Next 的 dev 资源跨源保护拦掉，**页面不 hydrate**，看起来像「骨架屏永远不消失」。必须用 `localhost` 访问才复现真实行为。上一轮本地验收也踩过这个，别再把它当产品 bug。
 
 **顺带（同轮）**：把「换 https」做成一条命令 —— `scripts/enable-tls-domain.sh <域名>`。它先查 `223.5.5.5` 与 `119.29.29.29` 两台国内 DNS 是否都解析到本机公网 IP，**解析没过来就直接拒绝**（否则 Caddy 会一直去 ACME 申请，失败重试可能撞上 Let's Encrypt 同一域名每小时 5 次的上限），再备份、写入 `encode zstd gzip` + 同源分流、`caddy validate`、reload 失败回滚，最后轮询 `https://<域名>/` 直到 200。当前 `roselet.ccwu.cc` 还解析不到，脚本的预检判断是正确的（不是故障）；生成的配置块已在服务器上用 `caddy validate` 验过 `Valid configuration`。
+
+**再补记（同轮）**：给 backend 补了 compose 默认值之后，**只发前端的那次把生产后端悄悄换成了 `:latest`**——记录文件 `.current_backend_image` 里是 `3a2960a`，实际在跑的是 `latest`。兜底值能让 compose 校验通过，但它同时成了「没被要求更新的服务」的新镜像来源。修法：部署脚本在调用 compose 前先把空值解析成**上一次部署记录下来的镜像**（`resolve_image` + `RESOLVED_*_IMAGE`），compose 文件里的 `:-latest` 只作为「机器上还没有任何记录」时的最后兜底。守卫加一条：脚本必须读 `.current_*_image`。线上已把 backend 恢复成 `3a2960a` 并验过 `/health` 正常。另外记一笔：`compose up -d web` 换容器的几秒里 Caddy 会返回 502（本次实测撞到一次），5 人试用期可接受，但要扩容就得改成双实例切流。
