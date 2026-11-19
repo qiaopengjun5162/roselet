@@ -221,8 +221,8 @@ export default function PlantPage() {
 
   if (step === "color") {
     return (
-      <main className="relative h-full flex items-center justify-center p-4 z-10 pt-16">
-        <div className="max-w-lg w-full space-y-8">
+      <main className="relative min-h-full flex items-center p-4 z-10 pt-16">
+        <div className="max-w-lg w-full space-y-8 my-auto">
           <div className="text-center space-y-2">
             <h2 className="text-xl font-bold text-rose-300">选择玫瑰的颜色</h2>
             <p className="text-slate-400">每种颜色代表不同的心情</p>
@@ -296,14 +296,14 @@ export default function PlantPage() {
   if (step === "success") {
     const glowColor = glowMap[color] ?? "rgba(244,63,94,0.8)";
     return (
-      <main className="relative h-full flex items-center justify-center p-4 z-10">
+      <main className="relative min-h-full flex items-center p-4 z-10">
         <Fireworks />
         {/* 中央光晕背景 */}
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-3xl pointer-events-none"
           style={{ background: `radial-gradient(circle, ${glowColor.replace("0.8","0.15")} 0%, transparent 70%)` }}
         />
-        <div className="relative max-w-md w-full text-center space-y-8">
+        <div className="relative max-w-md w-full text-center space-y-8 my-auto">
           {/* 浮动发光玫瑰 */}
           <div
             className="text-9xl animate-success-float animate-success-glow inline-block"

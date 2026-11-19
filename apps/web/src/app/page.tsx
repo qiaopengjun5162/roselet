@@ -8,13 +8,17 @@ import { PRODUCT_ONE_LINER_ZH, PRODUCT_TAGLINE_ZH } from "@roselet/core";
 
 export default function Home() {
   return (
-    <main className="relative h-full flex flex-col items-center justify-center p-6 z-10">
+    // 不要用 h-full + justify-center：首页比手机屏高时，flex 居中会把顶部
+    // 顶到可视区上方，而滚动容器的 scrollTop 不能为负，于是顶上那朵玫瑰
+    // 就永远看不到了（390×667 实测被裁掉 47px）。改成 min-h-full + m-auto：
+    // 装得下才居中，装不下就从顶部开始排、正常往下滚。
+    <main className="relative min-h-full flex flex-col items-center p-6 z-10">
       {/* 中央光晕 */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-rose-500/8 blur-3xl pointer-events-none" />
 
       {/* 手机端行距收紧到 24px（桌面仍 40px）：纸条改成可换行后会多占约 32px，
           这里恰好把它抵消，避免第三块说明卡被切掉更多。 */}
-      <div className="max-w-2xl w-full text-center space-y-6 md:space-y-10">
+      <div className="max-w-2xl w-full text-center space-y-6 md:space-y-10 m-auto">
         {/* 标题 */}
         <div className="space-y-3">
           <div className="text-7xl" style={{filter: "drop-shadow(0 0 24px rgba(244,63,94,0.7))"}}>🌹</div>
