@@ -155,9 +155,20 @@ export const ROSE_NFT_SYMBOL = "ROSE";
 /** Fallback name when a rose has no words of its own. */
 export const DEFAULT_ROSE_NAME = "Roselet Rose";
 
-/** Public URL used as the NFT `uri` when the rose has no image. */
-export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://roselet-web.vercel.app";
+/**
+ * 公开站点地址，用来拼一朵玫瑰的链接。
+ *
+ * **优先用运行时的 origin**：这个站现在由裸 IP 提供（`*.vercel.app` 在国内被
+ * DNS 污染、`sslip.io` 在国内解析不到）。写死一个兜底域名，迟早会指向一个
+ * 打开是空白的地址，而 NFT 的 `uri` 一旦上链就改不了了。
+ */
+export function siteUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+  return "http://47.131.238.0";
+}
 
 /** UTF-8 length of a string, computed without `TextEncoder` (absent in jsdom). */
 export function utf8ByteLength(value: string): number {
@@ -225,7 +236,7 @@ export function buildRoseNftFields(input: RoseNftFieldsInput): RoseNftFields {
   const uri = cid
     ? truncateUtf8(`ipfs://${cid}`, NFT_URI_MAX_BYTES)
     : truncateUtf8(
-        `${(input.siteUrl ?? SITE_URL).replace(/\/+$/, "")}/rose/${input.roseId}`,
+        `${(input.siteUrl ?? siteUrl()).replace(/\/+$/, "")}/rose/${input.roseId}`,
         NFT_URI_MAX_BYTES,
       );
 

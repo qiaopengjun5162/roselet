@@ -60,4 +60,14 @@ describe("国内可用的试用入口", () => {
     expect(dockerfile).toContain(".next/static");
     expect(dockerfile).toContain("apps/web/public");
   });
+
+  it("源码里不能把打不开的域名当兜底", () => {
+    // 上链后的 NFT uri 改不了，分享出去的链接也一样。
+    // 先去掉注释：注释里必须能写清「为什么不要这么做」，那不算兜底。
+    const code = read("apps/web/src/lib/solana.ts")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+    expect(code).not.toContain("vercel.app");
+    expect(code).not.toContain("sslip.io");
+  });
 });

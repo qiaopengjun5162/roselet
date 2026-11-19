@@ -156,13 +156,30 @@ describe("rose NFT metadata", () => {
   });
 
   it("always produces a non-empty uri (the backend rejects an empty one)", () => {
-    const withoutImage = buildRoseNftFields({ roseId: ROSE_ID, roseName: "hi" });
-    expect(withoutImage.uri).toBe(
-      `https://roselet-web.vercel.app/rose/${ROSE_ID}`,
-    );
+    const old = process.env.NEXT_PUBLIC_SITE_URL;
+    process.env.NEXT_PUBLIC_SITE_URL = "https://rose.example";
+    try {
+      const withoutImage = buildRoseNftFields({ roseId: ROSE_ID, roseName: "hi" });
+      expect(withoutImage.uri).toBe(`https://rose.example/rose/${ROSE_ID}`);
+    } finally {
+      if (old === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
+      else process.env.NEXT_PUBLIC_SITE_URL = old;
+    }
 
     const withImage = buildRoseNftFields({ roseId: ROSE_ID, imageCid: "bafyabc" });
     expect(withImage.uri).toBe("ipfs://bafyabc");
+  });
+
+  it("没配 SITE_URL 时用当前页面 origin，不能落到一个打不开的域名", () => {
+    const old = process.env.NEXT_PUBLIC_SITE_URL;
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+    try {
+      const fields = buildRoseNftFields({ roseId: ROSE_ID, roseName: "hi" });
+      expect(fields.uri).toBe(`${window.location.origin}/rose/${ROSE_ID}`);
+      expect(fields.uri).not.toContain("vercel.app");
+    } finally {
+      if (old !== undefined) process.env.NEXT_PUBLIC_SITE_URL = old;
+    }
   });
 
   it("falls back to the default name and omits an empty message", () => {
