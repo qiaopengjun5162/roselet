@@ -80,6 +80,23 @@ describe("国内可用的试用入口", () => {
     expect(compose).toContain("WEB_IMAGE");
   });
 
+  it("compose 里来自环境变量的镜像名都有兜底值", () => {
+    // 2026-11-19：只改前端时 BACKEND_IMAGE 是空的，而 `docker compose pull web`
+    // 会先校验整个 project，于是报 "service backend has neither an image nor a
+    // build context specified"，发布在碰前端之前就退出了——线上停在旧版本，
+    // 流水线红着，但页面本身还能开，所以很容易被当成「又改坏了」。
+    const compose = read(COMPOSE);
+    const fromEnv = compose
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("image:") && line.includes("${"));
+
+    expect(fromEnv.length).toBeGreaterThan(0);
+    for (const line of fromEnv) {
+      expect(line).toMatch(/\$\{[A-Z_]+:-[^}]+\}/);
+    }
+  });
+
   it("部署流水线会把 API 基址编进前端镜像", () => {
     const workflow = read(WORKFLOW);
     expect(workflow).toContain("Dockerfile.web");

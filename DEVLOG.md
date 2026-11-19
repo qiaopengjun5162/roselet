@@ -5733,3 +5733,5 @@ Web 58 套件 **432 例**全绿。
 - 新增守卫 `page-centering-guard.test.ts`：扫所有 `page.tsx` 的 `<main className>`，禁止 `h-full` + `flex` + `justify-center` 三件套同时出现；外加一条断言首页必须 `min-h-full` 且有 `m-auto`。这类改动不会让任何业务测试变红，但会让首屏最上面那块东西消失。
 
 **验收（本地 dev，真浏览器）**：390×667 玫瑰 `top=81`（导航栏底边 57，完整可见）、横向溢出 0；390×844 与 1440×900 居中行为不变；`/plant` 390×667 内容完整、无溢出。Web 59 套件 **434 例**全绿，`tsc --noEmit` 通过。
+
+**补记（同轮）**：上面那次修复推送后，流水线红了，但**不是代码的问题**——`docker-compose.backend.yml` 里 `web` 的镜像名有默认值、`backend` 没有。只发前端时 `BACKEND_IMAGE` 是空的，而 `docker compose pull web` 会先校验**整个 project**，于是报 `service backend has neither an image nor a build context specified`，发布在动前端之前就退出了。线上因此停在旧版本：**页面还能开，但修的东西没上去**——这种「红了但看着没事」最容易让人以为「越改越坏」。已给 backend 补同样的默认值，并加一条守卫：compose 里凡是 `${VAR}` 形式的镜像名必须有 `:-` 兜底。`docker compose config` 在 `BACKEND_IMAGE` 为空时已验证通过。

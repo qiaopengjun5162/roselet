@@ -15,7 +15,11 @@ services:
       retries: 10
 
   backend:
-    image: ${BACKEND_IMAGE}
+    # 默认值不能省：只更新前端时 BACKEND_IMAGE 是空的，而 compose 会先校验
+    # 整个 project——空镜像名会让 `docker compose ps/pull web` 直接报
+    # "service backend has neither an image nor a build context specified"，
+    # 于是一次「只改前端」的发布在动 web 之前就失败了。
+    image: ${BACKEND_IMAGE:-ghcr.io/qiaopengjun5162/roselet-backend:latest}
     pull_policy: always
     restart: unless-stopped
     environment:
