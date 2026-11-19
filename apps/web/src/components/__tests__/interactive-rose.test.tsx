@@ -35,4 +35,33 @@ describe("InteractiveRose（初心第二界面的可拖拽玫瑰）", () => {
     const { container } = render(<RoseBloom color="unknown" />);
     expect(container.querySelectorAll("ellipse").length).toBeGreaterThan(0);
   });
+
+  // 初心原图是一朵水彩玫瑰：守护「画出来的层叠渐变花瓣」不被改回平面色块/emoji。
+  it("花头用渐变 + 多层 path 画成水彩玫瑰，不是平面色块", () => {
+    const { container } = render(<RoseBloom color="red" />);
+    const svg = container.querySelector("svg")!;
+    // 渐变定义（外瓣/中瓣/花心）必须存在
+    expect(svg.querySelectorAll("linearGradient, radialGradient").length).toBeGreaterThanOrEqual(2);
+    // 至少 20 片 path 花瓣（四层 8+6+5+4=23），层叠螺旋
+    expect(svg.querySelectorAll("path").length).toBeGreaterThanOrEqual(20);
+    // 花瓣确实引用了渐变 id，而不是写死 fill 色块
+    const gradientPetal = Array.from(svg.querySelectorAll("path")).some((n) =>
+      (n.getAttribute("fill") || "").startsWith("url(#"),
+    );
+    expect(gradientPetal).toBe(true);
+  });
+
+  it("同页多朵花的渐变 id 各不相同，花圃里不会串色", () => {
+    const { container } = render(
+      <div>
+        <RoseBloom color="red" />
+        <RoseBloom color="white" />
+        <RoseBloom color="yellow" />
+      </div>,
+    );
+    const ids = Array.from(container.querySelectorAll("linearGradient, radialGradient")).map(
+      (n) => n.getAttribute("id"),
+    );
+    expect(new Set(ids).size).toBe(ids.length); // 全部唯一
+  });
 });
