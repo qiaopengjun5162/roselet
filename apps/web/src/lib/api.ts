@@ -1,3 +1,7 @@
+// 所有请求都走带超时的 fetch：链路烂的时候裸 fetch 会挂到浏览器默认超时，
+// 界面就一直停在骨架屏上（见 lib/net.ts）。
+import { fetchWithTimeout, NET_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from "@/lib/net";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const AUTH_API_BASE = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || API_BASE;
 const READ_API_BASE = process.env.NEXT_PUBLIC_READ_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || API_BASE;
@@ -61,13 +65,13 @@ export function logout() {
   clearAuthState();
   // 异步撤销服务端 refresh token，不阻塞登出
   if (refreshToken) {
-    fetch(`${AUTH_API_BASE}/api/auth/logout`, {
+    fetchWithTimeout(`${AUTH_API_BASE}/api/auth/logout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${refreshToken}`,
       },
-    }).catch(() => {});
+    }, 5_000).catch(() => {});
   }
 }
 
@@ -84,11 +88,11 @@ export async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
 
-  refreshing = fetch(`${AUTH_API_BASE}/api/auth/refresh`, {
+  refreshing = fetchWithTimeout(`${AUTH_API_BASE}/api/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
-  })
+  }, 8_000)
     .then(async (res) => {
       if (!res.ok) throw new Error("refresh failed");
       const data: { access_token: string } = await res.json();
@@ -109,11 +113,11 @@ export async function refreshAccessToken(): Promise<string | null> {
 export async function register(nickname: string, passphrase?: string): Promise<AuthResponse> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}/api/auth/register`, {
+    res = await fetchWithTimeout(`${API_BASE}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nickname, passphrase: passphrase || null }),
-    });
+    }, 15_000);
   } catch {
     throw new Error("Failed to fetch");
   }
@@ -196,12 +200,16 @@ function retryHeaders(headers: HeadersInit | undefined, token: string): Record<s
   };
 }
 
-async function authFetch(url: string, init?: RequestInit): Promise<Response> {
-  const res = await fetch(url, init);
+async function authFetch(
+  url: string,
+  init?: RequestInit,
+  timeoutMs: number = NET_TIMEOUT_MS,
+): Promise<Response> {
+  const res = await fetchWithTimeout(url, init, timeoutMs);
   if (res.status === 401 && getRefreshToken()) {
     const newToken = await refreshAccessToken();
     if (newToken) {
-      return fetch(url, { ...init, headers: retryHeaders(init?.headers, newToken) });
+      return fetchWithTimeout(url, { ...init, headers: retryHeaders(init?.headers, newToken) }, timeoutMs);
     }
   }
   if (res.status === 401) clearAuthState();
@@ -341,7 +349,7 @@ export async function uploadImageToIpfs(file: File): Promise<IpfsUploadResult> {
     // Deliberately no Content-Type: the browser must set the multipart boundary.
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
-  });
+  }, UPLOAD_TIMEOUT_MS);
   if (!res.ok) {
     const body: { error?: string } = await res.json().catch(() => ({}));
     throw new Error(body.error || `图片上传失败（${res.status}）`);
@@ -359,7 +367,7 @@ export interface PaginatedResponse<T> {
 export async function getGarden(page = 1, perPage = 20, color?: string): Promise<PaginatedResponse<Rose>> {
   const { buildGardenUrl } = await import("@/lib/recommend");
   const url = await buildGardenUrl(READ_API_BASE, page, perPage, color);
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url, {}, 15_000);
   if (!res.ok) throw new Error("Failed to fetch garden");
   const data: PaginatedResponse<Rose> = await res.json();
   if (page === 1 && !color) {
@@ -408,7 +416,7 @@ export interface ActivityItem {
 }
 
 export async function getRecentActivity(): Promise<ActivityItem[]> {
-  const res = await fetch(`${READ_API_BASE}/api/activity/recent`);
+  const res = await fetchWithTimeout(`${READ_API_BASE}/api/activity/recent`, {}, 8_000);
   if (!res.ok) return [];
   const data: { items?: ActivityItem[] } = await res.json();
   return data.items ?? [];
@@ -512,14 +520,14 @@ export interface HealthResponse {
 }
 
 export async function getHealth(): Promise<HealthResponse> {
-  const res = await fetch(`${API_BASE}/health`);
+  const res = await fetchWithTimeout(`${API_BASE}/health`, {}, 5_000);
   if (!res.ok) throw new Error("Failed to fetch health");
   return res.json();
 }
 
 export async function submitFeedback(content: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/api/feedback`, {
+    const res = await fetchWithTimeout(`${API_BASE}/api/feedback`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

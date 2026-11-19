@@ -266,7 +266,8 @@ describe("API Client", () => {
         await isolatedGetGarden();
 
         expect(global.fetch).toHaveBeenCalledWith(
-          "https://roselet.example.com/api/garden?page=1&per_page=20"
+          "https://roselet.example.com/api/garden?page=1&per_page=20",
+          expect.objectContaining({ signal: expect.anything() })
         );
       });
 
@@ -294,7 +295,8 @@ describe("API Client", () => {
       const result = await getGarden();
       expect(result).toEqual(mockResponse);
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:3001/api/garden?page=1&per_page=20"
+        "http://localhost:3001/api/garden?page=1&per_page=20",
+        expect.objectContaining({ signal: expect.anything() })
       );
       expect(mockCacheGardenPage).toHaveBeenCalledWith(mockResponse);
     });
@@ -307,7 +309,8 @@ describe("API Client", () => {
 
       await getGarden(2, 10);
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:3001/api/garden?page=2&per_page=10"
+        "http://localhost:3001/api/garden?page=2&per_page=10",
+        expect.objectContaining({ signal: expect.anything() })
       );
       expect(mockCacheGardenPage).not.toHaveBeenCalled();
     });
@@ -320,7 +323,8 @@ describe("API Client", () => {
 
       await getGarden(1, 20, "red");
       expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:3001/api/garden?page=1&per_page=20&color=red"
+        "http://localhost:3001/api/garden?page=1&per_page=20&color=red",
+        expect.objectContaining({ signal: expect.anything() })
       );
       expect(mockCacheGardenPage).not.toHaveBeenCalled();
     });
@@ -669,7 +673,11 @@ describe("API Client", () => {
       });
 
       await expect(getHealth()).resolves.toEqual(mockResponse);
-      expect(global.fetch).toHaveBeenCalledWith("http://localhost:3001/health");
+      // 第二个参数是超时用的 signal（见 lib/net.ts）。
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/health",
+        expect.objectContaining({ signal: expect.anything() })
+      );
     });
 
     it("should throw when health request fails", async () => {
@@ -866,7 +874,10 @@ describe("API Client", () => {
       });
 
       await expect(getRecentActivity()).resolves.toEqual(items);
-      expect(global.fetch).toHaveBeenCalledWith("http://localhost:3001/api/activity/recent");
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/activity/recent",
+        expect.objectContaining({ signal: expect.anything() })
+      );
     });
 
     it("should return empty array when response lacks items", async () => {

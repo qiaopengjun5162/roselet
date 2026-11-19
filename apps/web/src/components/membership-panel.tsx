@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SOLANA_MINT_EVENT, useMembership } from "@/app/membership-context";
 import { getToken, uploadImageToIpfs } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/net";
 import {
   type RoseMemoMeta,
   type SendRoseMemoResult,
@@ -120,7 +121,8 @@ export function MembershipPanel() {
   ) {
     setProgress("⑤ 后端核验中…");
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-    const res = await fetch(`${apiBase}/api/rose/${meta.roseId}/solana`, {
+    // 这一步要等后端去 RPC 核验签名，慢是正常的；但链路烂的时候不能无限等。
+    const res = await fetchWithTimeout(`${apiBase}/api/rose/${meta.roseId}/solana`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -133,7 +135,7 @@ export function MembershipPanel() {
         ipfs_cid: meta.imageCid,
         on_chain_metadata: meta,
       }),
-    });
+    }, 30_000);
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`后端保存失败（${res.status}）: ${text}`);

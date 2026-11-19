@@ -5735,3 +5735,20 @@ Web 58 套件 **432 例**全绿。
 **验收（本地 dev，真浏览器）**：390×667 玫瑰 `top=81`（导航栏底边 57，完整可见）、横向溢出 0；390×844 与 1440×900 居中行为不变；`/plant` 390×667 内容完整、无溢出。Web 59 套件 **434 例**全绿，`tsc --noEmit` 通过。
 
 **补记（同轮）**：上面那次修复推送后，流水线红了，但**不是代码的问题**——`docker-compose.backend.yml` 里 `web` 的镜像名有默认值、`backend` 没有。只发前端时 `BACKEND_IMAGE` 是空的，而 `docker compose pull web` 会先校验**整个 project**，于是报 `service backend has neither an image nor a build context specified`，发布在动前端之前就退出了。线上因此停在旧版本：**页面还能开，但修的东西没上去**——这种「红了但看着没事」最容易让人以为「越改越坏」。已给 backend 补同样的默认值，并加一条守卫：compose 里凡是 `${VAR}` 形式的镜像名必须有 `:-` 兜底。`docker compose config` 在 `BACKEND_IMAGE` 为空时已验证通过。
+
+## 三十、请求没有超时，等于「界面会永远转圈」
+
+**背景**：链路有 20%~30% SYN 丢包时，TCP 连接可能进入黑洞——不是被拒绝，而是**没有任何回应**。浏览器的 `fetch` 在这种情况下会一直等自己的默认超时（几十秒，实测有更久的），不会快速失败。
+
+**后果**：组件里都写好了降级分支（拿不到就什么都不显示），但它们永远轮不到执行。用户看到的是：动态流那块一直脉冲、按钮一直转。
+
+**处理**：
+- 新增 `apps/web/src/lib/net.ts`：`fetchWithTimeout`，默认 12s、上传 60s；调用方自己的 `AbortSignal` 仍然有效（桥接到内部 controller，不依赖 `AbortSignal.any`）。
+- `lib/api.ts` 的 9 处 `fetch` 全部换掉，按时长分级：健康检查 5s、动态流 8s、登出 5s、刷新 8s、注册 15s、花园列表 15s、普通 12s、IPFS 上传 60s。
+- `components/membership-panel.tsx` 的上链核验请求 30s（它本来就要等 RPC，但也不能无限等）。
+- 守卫：`request-timeout-guard.test.ts` —— `lib/api.ts` 里出现裸 `fetch(` 就红；另外断言上传超时 > 普通超时。
+- `api.test.ts` 里 6 条「fetch 只被叫了一次、参数只有 URL」的断言更新为带 `signal` 的形态（`expect.objectContaining`）。
+
+**验收（在真的挂死上测，不是模拟）**：起一个只接连接、永不回包的端口，把 dev 的 API 基址指过去 —— 动态流的骨架屏在 **8803ms** 消失（没有超时的话会挂到浏览器默认超时），`pageerror` 0。
+
+**顺带记一个坑**：用 `127.0.0.1` 访问 `next dev` 会被 Next 的 dev 资源跨源保护拦掉，**页面不 hydrate**，看起来像「骨架屏永远不消失」。必须用 `localhost` 访问才复现真实行为。上一轮本地验收也踩过这个，别再把它当产品 bug。
