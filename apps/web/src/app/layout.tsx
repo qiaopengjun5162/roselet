@@ -6,12 +6,13 @@ import { MembershipPanel } from "@/components/membership-panel";
 import { MembershipBanner } from "@/components/membership-banner";
 import { CyberBackground } from "@/components/cyber-background";
 import { DayNightBackground } from "@/components/day-night-bg";
+import { PRODUCT_TAGLINE_ZH } from "@roselet/core";
 import { FallingPetals } from "@/components/falling-petals";
 import { RoseClickBloom } from "@/components/rose-click-bloom";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Roselet - 一起来种一个玫瑰花圃吧",
+  title: `Roselet - ${PRODUCT_TAGLINE_ZH}`,
   description: "社区破冰互动：种下玫瑰（感恩）、花苞（期待）、尖刺（焦虑），形成社区花圃",
 };
 

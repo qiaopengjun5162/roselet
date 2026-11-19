@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { PRODUCT_ONE_LINER_ZH } from "@roselet/core";
+import { PRODUCT_ONE_LINER_ZH, PRODUCT_TAGLINE_ZH } from "@roselet/core";
 
 jest.mock("@/components/tip-ticker", () => ({
   TipTicker: () => <div data-testid="tip-ticker" />,
@@ -44,6 +44,13 @@ describe("Home", () => {
     expect(isAfter(screen.getByTestId("tip-ticker"))).toBe(true);
     expect(isAfter(screen.getByTestId("activity-feed"))).toBe(true);
     expect(isAfter(screen.getByText("玫瑰", { selector: "h3" }))).toBe(true);
+  });
+
+  // 不忘初心：最初那句「一起来种一个玫瑰花圃吧」必须和产品一句话同时出现在首屏。
+  it("首屏显示初心标语，和产品一句话并存", () => {
+    render(<Home />);
+    expect(screen.getByTestId("product-tagline")).toHaveTextContent(PRODUCT_TAGLINE_ZH);
+    expect(screen.getByText(PRODUCT_ONE_LINER_ZH)).toBeInTheDocument();
   });
 
   it("普通模式零 Web3 痕迹", () => {

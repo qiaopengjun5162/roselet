@@ -13,6 +13,7 @@ import {
   PLANTED_CONFIRMATION_PRIVATE,
   PLANTED_TITLE,
   PRODUCT_ONE_LINER_EN,
+  PRODUCT_TAGLINE_ZH,
   PRODUCT_ONE_LINER_ZH,
   PRODUCT_ONE_LINER_ZH_LINE_1,
   PRODUCT_ONE_LINER_ZH_LINE_2,
@@ -28,6 +29,12 @@ const MINIPROGRAM_HOME = "apps/miniprogram/src/pages/index/index.tsx";
 const UI_SOURCES = [WEB_HOME, WEB_PLANT, MINIPROGRAM_HOME];
 
 describe("产品一句话：所有载体只允许一个来源", () => {
+  it("初心标语由单源导出，不手写进页面", () => {
+    expect(PRODUCT_TAGLINE_ZH).toBe("一起来种一个玫瑰花圃吧");
+    expect(read(WEB_HOME)).toContain("PRODUCT_TAGLINE_ZH");
+    expect(read("apps/web/src/app/layout.tsx")).toContain("PRODUCT_TAGLINE_ZH");
+  });
+
   it("小程序两行由主句切分派生，拼回去逐字相同", () => {
     expect(`${PRODUCT_ONE_LINER_ZH_LINE_1}，${PRODUCT_ONE_LINER_ZH_LINE_2}`).toBe(
       PRODUCT_ONE_LINER_ZH,

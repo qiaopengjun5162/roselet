@@ -82,6 +82,22 @@ body {
   0%   { opacity: 0; transform: translateY(20px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+/* 「种进花圃」动画：玫瑰从土里长出来 */
+@keyframes sprout {
+  0%   { opacity: 0; transform: translateY(26px) scale(0.4); }
+  60%  { opacity: 1; transform: translateY(-4px) scale(1.08); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-sprout {
+  animation: sprout 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes plant-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(244,63,94,0.4)); }
+  50%      { filter: drop-shadow(0 0 18px rgba(244,63,94,0.75)); }
+}
+.animate-plant-glow {
+  animation: plant-glow 2s ease-in-out infinite;
+}
 .animate-success-float {
   animation: success-float 3s ease-in-out infinite;
 }

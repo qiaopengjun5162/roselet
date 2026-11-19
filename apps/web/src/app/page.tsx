@@ -3,7 +3,7 @@ import { LockKeyhole } from "lucide-react";
 import { TipTicker } from "@/components/tip-ticker";
 import { ActivityFeed } from "@/components/activity-feed";
 import { MemberOnly } from "@/components/member-only";
-import { PRODUCT_ONE_LINER_ZH } from "@roselet/core";
+import { PRODUCT_ONE_LINER_ZH, PRODUCT_TAGLINE_ZH } from "@roselet/core";
 
 export default function Home() {
   return (
@@ -20,6 +20,10 @@ export default function Home() {
           <h1 className="text-5xl font-bold font-brush text-transparent font-[KaiTi],楷体,serif bg-clip-text bg-gradient-to-r from-rose-300 via-pink-200 to-purple-300">
             Roselet
           </h1>
+          {/* 初心标语：项目最开始就想说的那句话 */}
+          <p className="text-2xl md:text-3xl font-brush tracking-[0.08em] text-rose-200/90" data-testid="product-tagline">
+            {PRODUCT_TAGLINE_ZH}
+          </p>
           <p className="text-lg md:text-xl tracking-[0.06em] font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-200 to-amber-100 drop-shadow-[0_0_30px_rgba(244,63,94,0.15)]">{PRODUCT_ONE_LINER_ZH}</p>
         </div>
 

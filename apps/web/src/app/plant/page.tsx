@@ -12,6 +12,8 @@ import { getRecommendation, validatePlantInput, type Recommendation } from "@/li
 import { Fireworks } from "@/components/fireworks";
 import { RosePlayer } from "@/components/rose-player";
 import { MemberOnly } from "@/components/member-only";
+import InteractiveRose from "@/components/interactive-rose";
+import { PlantingGarden } from "@/components/planting-garden";
 import {
   COLOR_FALLBACK,
   PLANTED_CONFIRMATION,
@@ -27,11 +29,12 @@ const COLORS = COLOR_FALLBACK;
 
 type Field = "gratitude" | "anxiety" | "hope";
 
-const FIELD_CONFIG: Record<Field, { label: string; placeholder: string; hint: string; color: string; icon: string }> = {
+const FIELD_CONFIG: Record<Field, { label: string; placeholder: string; hint: string; rule: string; color: string; icon: string }> = {
   gratitude: {
     label: "玫瑰",
     placeholder: "这周让你感到幸福或感恩的事情是...",
     hint: "一件让你感恩的事",
+    rule: "在社区的这一周，一件让你感到幸福或感恩的事情是什么？",
     color: "text-rose-600",
     icon: "🌹",
   },
@@ -39,6 +42,7 @@ const FIELD_CONFIG: Record<Field, { label: string; placeholder: string; hint: st
     label: "尖刺",
     placeholder: "现在有什么让你感到焦虑或需要帮助的...",
     hint: "有什么让你焦虑",
+    rule: "现在有什么让你感到焦虑或者需要帮助的事情吗？",
     color: "text-amber-600",
     icon: "🌵",
   },
@@ -46,6 +50,7 @@ const FIELD_CONFIG: Record<Field, { label: string; placeholder: string; hint: st
     label: "花苞",
     placeholder: "你现在期待的事情或新灵感...",
     hint: "你现在有什么期待",
+    rule: "你现在有什么期待的事情吗？这周有什么新灵感想要实现呢？",
     color: "text-green-600",
     icon: "🌱",
   },
@@ -59,6 +64,9 @@ export default function PlantPage() {
   // 永远看不到输入框，没耐心的人会以为这里没法写。现在一进页面就有输入框，
   // 光点只负责「换一栏写」（三栏内容各自保留）。
   const [activeField, setActiveField] = useState<Field>("gratitude");
+  // 初心第二界面：点光点弹出聚焦提示卡，淡字显示规则，开始打字淡字消失。
+  // 输入框本身仍常驻页面（照顾小白），提示卡只是叠加的一层仪式感。
+  const [hintField, setHintField] = useState<Field | null>(null);
   const [gratitude, setGratitude] = useState("");
   const [anxiety, setAnxiety] = useState("");
   const [hope, setHope] = useState("");
@@ -133,6 +141,13 @@ export default function PlantPage() {
 
   function isFieldFilled(field: Field): boolean {
     return getFieldValue(field).trim().length > 0;
+  }
+
+  // 点光点 = 切换要写的栏目 + 弹出对应的淡字提示卡（初心的仪式感）。
+  function selectField(field: Field) {
+    playClick();
+    setActiveField(field);
+    setHintField(field);
   }
 
   async function plantRose() {
@@ -305,6 +320,10 @@ export default function PlantPage() {
               {isPrivate ? PLANTED_CONFIRMATION_PRIVATE : PLANTED_CONFIRMATION}
             </p>
           </div>
+          {/* 初心第三界面：玫瑰被种进花圃，各色玫瑰都在 + 感谢文案 */}
+          <div className="flex justify-center pt-2">
+            <PlantingGarden color={color} />
+          </div>
           {/* 玫瑰声音可视化 — 烟花落定后自动播放 */}
           <div className="flex justify-center animate-text-reveal" style={{ animationDelay: "1.2s" }}>
             <RosePlayer
@@ -364,53 +383,18 @@ export default function PlantPage() {
           <p className="text-slate-400">写一句就够了，想起别的再点旁边两个光点</p>
         </div>
 
-        {/* Interactive Rose */}
+        {/* 初心第二界面：可拖拽的 2D 玫瑰，花瓣/花苞/尖刺上各一个闪光点 */}
         <div className="relative flex items-center justify-center py-2">
-          <div className="relative w-56 h-56">
-            {/* Center rose */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-8xl">{colorMeta?.emoji}</span>
-            </div>
-
-            {/* Gratitude hotspot - top */}
-            <button
-              onClick={() => { playClick(); setActiveField("gratitude"); }}
-              aria-pressed={activeField === "gratitude"}
-              className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isFieldFilled("gratitude")
-                  ? "bg-rose-500/40 shadow-lg shadow-rose-500/30 border border-rose-400/50"
-                  : "bg-rose-500/20 animate-pulse shadow-md shadow-rose-500/20 border border-rose-400/30"
-              } hover:scale-110 cursor-pointer`}
-            >
-              <span className="text-2xl">🌹</span>
-            </button>
-
-            {/* Anxiety hotspot - bottom left */}
-            <button
-              onClick={() => { playClick(); setActiveField("anxiety"); }}
-              aria-pressed={activeField === "anxiety"}
-              className={`absolute bottom-4 left-0 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isFieldFilled("anxiety")
-                  ? "bg-amber-500/40 shadow-lg shadow-amber-500/30 border border-amber-400/50"
-                  : "bg-amber-500/20 animate-pulse shadow-md shadow-amber-500/20 border border-amber-400/30"
-              } hover:scale-110 cursor-pointer`}
-            >
-              <span className="text-2xl">🌵</span>
-            </button>
-
-            {/* Hope hotspot - bottom right */}
-            <button
-              onClick={() => { playClick(); setActiveField("hope"); }}
-              aria-pressed={activeField === "hope"}
-              className={`absolute bottom-4 right-0 w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isFieldFilled("hope")
-                  ? "bg-green-500/40 shadow-lg shadow-green-500/30 border border-green-400/50"
-                  : "bg-green-500/20 animate-pulse shadow-md shadow-green-500/20 border border-green-400/30"
-              } hover:scale-110 cursor-pointer`}
-            >
-              <span className="text-2xl">🌱</span>
-            </button>
-          </div>
+          <InteractiveRose
+            color={color}
+            activeField={activeField}
+            filled={{
+              gratitude: isFieldFilled("gratitude"),
+              anxiety: isFieldFilled("anxiety"),
+              hope: isFieldFilled("hope"),
+            }}
+            onFieldSelect={selectField}
+          />
         </div>
 
         {/* 输入框直接摆在页面上：不需要先点光点才能看见 */}
@@ -511,6 +495,63 @@ export default function PlantPage() {
           </Button>
         </div>
       </div>
+
+      {/* 初心第二界面：点光点弹出的聚焦提示卡。
+          淡字显示这一栏的规则原文，一开始打字淡字就消失。
+          主输入框仍在页面上（融合方案），关闭这张卡照样能写。 */}
+      {hintField && (
+        <div
+          className="fixed inset-0 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4 z-40"
+          onClick={() => setHintField(null)}
+        >
+          <div
+            className="glass-card rounded-2xl p-6 max-w-md w-full space-y-4 border border-white/15 bg-[#0f081e]/95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl" aria-hidden="true">{FIELD_CONFIG[hintField].icon}</span>
+                <h3 className="font-semibold text-slate-100">{FIELD_CONFIG[hintField].label}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHintField(null)}
+                aria-label="关闭提示"
+                className="text-slate-400 hover:text-slate-200 text-xl leading-none px-2"
+              >
+                ×
+              </button>
+            </div>
+            <div className="relative">
+              {/* 淡字规则：这一栏还是空的时候显示，一开始打字就淡出消失 */}
+              <p
+                className={`pointer-events-none absolute left-0 top-0 right-0 text-base leading-relaxed text-slate-500 transition-opacity duration-300 ${
+                  getFieldValue(hintField).trim() ? "opacity-0" : "opacity-100"
+                }`}
+              >
+                {FIELD_CONFIG[hintField].rule}
+              </p>
+              <textarea
+                aria-label="在这句话里写下你的心事"
+                autoFocus
+                value={getFieldValue(hintField)}
+                onChange={(e) => setFieldValue(hintField, e.target.value)}
+                maxLength={500}
+                className="w-full rounded-xl border border-white/10 bg-white/5 text-slate-100 placeholder:text-transparent px-4 py-3 pt-7 text-base min-h-[120px] resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setHintField(null)}
+                className="px-5 py-2 rounded-full text-sm font-medium bg-rose-500 hover:bg-rose-600 text-white"
+              >
+                写好了
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 提交时才要名字：内容已经写好了，这一步只是给玫瑰一个主人 */}
       {needsNickname && (

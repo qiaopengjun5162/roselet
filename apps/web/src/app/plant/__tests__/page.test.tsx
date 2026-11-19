@@ -137,12 +137,31 @@ describe("PlantPage", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "🌵" }));
+    // 点光点会弹出聚焦卡；关掉它再操作常驻输入框（融合方案）。
+    fireEvent.click(screen.getByRole("button", { name: "关闭提示" }));
     const anxiety = screen.getByRole("textbox", { name: "尖刺" });
     expect(anxiety).toHaveValue("");
     fireEvent.change(anxiety, { target: { value: "有点累" } });
 
     fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+    fireEvent.click(screen.getByRole("button", { name: "关闭提示" }));
     expect(screen.getByRole("textbox", { name: "玫瑰" })).toHaveValue("今天很开心");
+  });
+
+  // 初心第二界面：点光点弹出淡字提示卡，淡字显示规则，打字即消失。
+  it("点光点弹出淡字提示，开始打字后淡字消失", () => {
+    render(<PlantPage />);
+    fireEvent.click(screen.getByText("红玫瑰"));
+    fireEvent.click(screen.getByRole("button", { name: "🌹" }));
+
+    const rule = "在社区的这一周，一件让你感到幸福或感恩的事情是什么？";
+    const hint = screen.getByText(rule);
+    expect(hint).toHaveClass("opacity-100");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "在这句话里写下你的心事" }), {
+      target: { value: "今天和家人一起包饺子" },
+    });
+    expect(hint).toHaveClass("opacity-0");
   });
 
   it("should fill and submit the sentence written on the page", async () => {

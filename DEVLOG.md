@@ -5404,3 +5404,26 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **验收**：本地生产构建 + 真浏览器，注入 3 个假 Wallet Standard 钱包：列出 3 个连接按钮，点 Solflare 后显示其地址（`Solfla…1111`，非 Phantom），无报错；不注入钱包时显示安装引导、无连接按钮。Web 46 套件 350 例全过，typecheck/lint ✓。
 
 **边界**：只动 Solana 连接 UI 与其测试链；Aleo Vault、链配置（仍 Devnet）、后端、`crates/`、签名逻辑均未动，`should_deploy=false`。
+
+---
+
+## 十七续：不忘初心，找回最初三界面的破冰仪式感（2026-11-19）
+
+**为什么**：用户贴出项目最初的想法（玫瑰/花苞/尖刺破冰游戏的三界面设想），提醒「不要忘，不忘初心」。逐条比对现状发现：功能齐全但把初心的仪式感简化没了——第二界面的 2D/3D 可拖拽玫瑰变成了单个 emoji、点光点弹淡字对话框变成了「光点只切换常驻输入框」；第三界面「玫瑰被种进花圃 + 各色玫瑰 + 谢谢你在社区种下的玫瑰」整段缺失；首页初心标语「一起来种一个玫瑰花圃吧」也不见了。
+
+**冲突与拍板**：初心要仪式感，和上次「假设用户毫无耐心/小白/白痴」的极简优化直接冲突。给用户三选一，均选推荐项：
+1. 玫瑰视觉 → **SVG 手绘 2D 玫瑰**（可换白红黄、可拖拽、光点精准落位，无新依赖，不选 AI 图）；
+2. 光点交互 → **融合两者**：常驻输入框保留（照顾小白），点光点额外弹聚焦卡、淡字显示规则、打字即淡出；
+3. 文案 → **两者都要**：首屏大标题用初心标语，产品一句话保留；成功页加回「谢谢你在社区种下的玫瑰」。
+
+**改法**：
+- 新增 `components/interactive-rose.tsx`：内联 SVG 画层叠花头（外 6/中 6/内 5 瓣）+ 茎 + 双叶 + 花苞 + 装饰刺，导出 `ROSE_PALETTES`（红白黄三套）+ `RoseBloom`（供花圃复用）+ 默认导出可拖拽组件。拖拽用 pointer 事件 + `setPointerCapture`（鼠标/触摸统一），`touch-none` 防拖动滚页；三个光点是独立按钮，`onPointerDown` 停冒泡避免误拖，**无障碍名称沿用 emoji**（保住既有测试定位）。
+- 新增 `components/planting-garden.tsx`：一排白红黄玫瑰（邻居）+ 刚种下那朵最后长出并高亮 + 土壤 + 手写体感谢文案；纯 CSS `animate-sprout`/`animate-plant-glow`（globals.css）。
+- `app/plant/page.tsx`：静态 emoji 玫瑰换成 `<InteractiveRose>`；`FIELD_CONFIG` 每栏加 `rule`（初心规则原文）；点光点走 `selectField()`（切栏 + 开聚焦卡）；新增淡字提示卡（磨砂深色、淡字规则、打字 opacity-100→0、`写好了`/× 关闭）；成功页文案后插入 `<PlantingGarden>`。你拍板的 PLANTED_TITLE / PLANTED_CONFIRMATION / 先写后取名 / 私密逻辑一字未动。
+- 初心标语 `PRODUCT_TAGLINE_ZH` 提到 `@roselet/core/product.ts` 单源，首页大标题与 layout metadata 都引用，避免手抄漂移。
+
+**防复发**：新增 `interactive-rose.test.tsx`（3 光点/回传栏目/高亮/配色回退 4 例）、`planting-garden.test.tsx`（感谢文案/4 朵花 2 例）；种花页测试加「点光点弹淡字卡、打字后淡字 opacity-0」；首页测试加「初心标语与产品一句话并存」；product-one-liner 守卫加「标语单源、两处引用常量」。
+
+**验收**：本地生产构建 ✓；typecheck / lint ✓；Web 48 套件 359 例全过（原 46/350）。真浏览器 390×844 走完整流程：首页标语✓、SVG 玫瑰清晰、拖拽位移 45/30px✓、淡字卡弹出+打字淡出✓、先写后取名弹窗✓、成功页花圃+感谢文案✓、横向溢出 0、pageerror 0；截图目视四屏视觉符合初心。
+
+**边界**：只动 Web 三界面视觉/交互 + core 新增一个标语常量；后端、小程序、`crates/`、会员门闩、钱包、链配置（仍 Devnet）均未动，`should_deploy=false`。
