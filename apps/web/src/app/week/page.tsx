@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { getMyRoses, getToken } from "@/lib/api";
-import { buildWeekReview } from "@/lib/recommend";
+import { getToken } from "@/lib/api";
+import { loadWeekReview } from "@/lib/week-data";
 import {
   WEEK_EMPTY_BODY,
   WEEK_NO_QUOTES,
@@ -21,9 +21,7 @@ import {
 } from "@roselet/core";
 import type { WeekKind, WeekReview } from "@roselet/core";
 
-// 一页最多 100 条（后端 clamp 上限）。超过一页时再补取最后一页，
-// 因为「第 1 朵是哪天种的」在时间倒序列表的末尾，不在第一页。
-const PER_PAGE = 100;
+// 分页与「第 1 朵在最后一页」的坑都在 lib/week-data，页面只管渲染。
 
 const KIND_EMOJI: Record<WeekKind, string> = {
   gratitude: "🌹",
@@ -45,14 +43,7 @@ export default function WeekPage() {
     }
     let cancelled = false;
     (async () => {
-      const first = await getMyRoses(1, PER_PAGE);
-      let roses = first.data;
-      if (first.total > roses.length) {
-        const lastPage = Math.ceil(first.total / PER_PAGE);
-        const last = await getMyRoses(lastPage, PER_PAGE);
-        roses = [...roses, ...last.data];
-      }
-      const result = await buildWeekReview(roses, Date.now());
+      const result = await loadWeekReview();
       if (cancelled) return;
       setReview(result);
       setState("done");

@@ -113,6 +113,32 @@ describe("边界", () => {
     expect(review.days_since_first).toBe(49);
   });
 
+  it("第 8 天回来仍看得到第一周写下的原话", () => {
+    // 第 0 天种下、第 8 天回来：按「最近 7 天」算正好把那朵挤出去，
+    // 页面会在承诺兑现的那一刻变成空的。
+    const review = buildWeekReviewFallback(
+      [rose("only", "2026-11-11T00:00:00Z", "谢谢楼下的猫")],
+      NOW,
+    );
+    expect(review.ready).toBe(true);
+    expect(review.days_since_first).toBe(8);
+    expect(review.in_week).toBe(1);
+    expect(review.quotes).toHaveLength(1);
+  });
+
+  it("三周后回来只算最近 7 天，不把旧账翻出来", () => {
+    const review = buildWeekReviewFallback(
+      [
+        rose("old", "2026-10-30T00:00:00Z", "很久以前"),
+        rose("new", "2026-11-18T00:00:00Z", "昨天"),
+      ],
+      NOW,
+    );
+    expect(review.total).toBe(2);
+    expect(review.in_week).toBe(1);
+    expect(review.quotes.map((q) => q.id)).toEqual(["new"]);
+  });
+
   it("一朵玫瑰写满三栏，就出三条，三栏各计一次", () => {
     const review = buildWeekReviewFallback(
       [{ id: "r", created_at: "2026-11-18T00:00:00Z", gratitude: "一", anxiety: "二", hope: "三" }],

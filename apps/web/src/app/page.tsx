@@ -3,6 +3,7 @@ import { LockKeyhole } from "lucide-react";
 import { TipTicker } from "@/components/tip-ticker";
 import { ActivityFeed } from "@/components/activity-feed";
 import { MemberOnly } from "@/components/member-only";
+import { WeekNudge } from "@/components/week-nudge";
 import { PRODUCT_ONE_LINER_ZH, PRODUCT_TAGLINE_ZH } from "@roselet/core";
 
 export default function Home() {
@@ -42,6 +43,9 @@ export default function Home() {
             </button>
           </Link>
         </div>
+
+        {/* 「一周后回来」的落点：只有真的满 7 天才出现，未满时是空的。 */}
+        <WeekNudge />
 
         <TipTicker context="home" />
         <ActivityFeed />

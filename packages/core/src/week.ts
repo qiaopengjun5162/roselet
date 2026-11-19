@@ -82,9 +82,13 @@ export function buildWeekReviewFallback(
   review.days_until_ready = Math.max(0, WEEK_DAYS - review.days_since_first);
   review.ready = review.days_since_first >= WEEK_DAYS;
 
-  const cutoff = nowMs - WEEK_MS;
+  // 与 Rust 对齐：第一次回来（第 7~13 天）摊开的是「从第一朵到现在」，
+  // 否则第 8 天回来时第 1 天那朵刚好掉出「最近 7 天」，页面会空。
+  const windowStart =
+    review.days_since_first < 2 * WEEK_DAYS ? oldest.ms : nowMs - WEEK_MS;
+
   for (const { rose, ms } of parsed) {
-    if (ms < cutoff) continue;
+    if (ms < windowStart) continue;
     review.in_week += 1;
     const ageDays = Math.floor(Math.max(0, nowMs - ms) / DAY_MS);
     const fields: [WeekKind, string | null | undefined][] = [
@@ -115,6 +119,8 @@ export const WEEK_NO_QUOTES = "这一周没有新的玫瑰。你写下的都还�
 export const WEEK_EMPTY_BODY = `种下第一朵玫瑰，七天后回来${RETURN_PROMISE}。`;
 /** 花圃 / 我的花圃 顶部的入口卡片。 */
 export const WEEK_ENTRY_LABEL = "这一周长出了什么";
+/** 首页的回来提示：只在满 7 天后出现，未满时一个字都不说。 */
+export const WEEK_NUDGE_LABEL = "你的一周长出来了";
 
 export function weekReadyHeadline(inWeek: number): string {
   return inWeek > 0 ? `这一周，你种下了 ${inWeek} 朵玫瑰` : "这一周没有新的玫瑰";

@@ -112,9 +112,17 @@ pub fn build_week_review(roses: &[WeekRose], now_ms: i64) -> WeekReview {
     review.days_until_ready = (WEEK_DAYS - review.days_since_first).max(0);
     review.ready = review.days_since_first >= WEEK_DAYS;
 
-    let cutoff = now_ms - WEEK_MS;
+    // 第一次回来（第 7~13 天）摊开的是「从第一朵到现在」：用户第 8 天回来时，
+    // 若只取最近 7 天，第 1 天种下那朵恰好掉出窗口 —— 承诺兑现的那一刻，
+    // 页面反而说「这一周没有新的玫瑰」。第二次以后才按最近 7 天算。
+    let window_start = if review.days_since_first < 2 * WEEK_DAYS {
+        first_ms
+    } else {
+        now_ms - WEEK_MS
+    };
+
     for (ms, rose) in &parsed {
-        if *ms < cutoff {
+        if *ms < window_start {
             continue;
         }
         review.in_week += 1;
@@ -249,6 +257,32 @@ mod tests {
         let review = build_week_review(&roses, ms(NOW));
         assert_eq!(review.days_since_first, 0);
         assert_eq!(review.quotes[0].age_days, 0);
+    }
+
+    #[test]
+    fn day_eight_still_shows_the_first_week() {
+        // 第 0 天种下、第 8 天回来：按「最近 7 天」算正好把那朵挤出去，
+        // 承诺兑现的那一刻页面会变成空的。
+        let roses = [rose("only", "2026-11-11T00:00:00Z", Some("谢谢楼下的猫"), None)];
+        let review = build_week_review(&roses, ms(NOW));
+        assert!(review.ready);
+        assert_eq!(review.days_since_first, 8);
+        assert_eq!(review.in_week, 1);
+        assert_eq!(review.quotes.len(), 1);
+    }
+
+    #[test]
+    fn long_after_the_first_week_only_recent_roses_count() {
+        // 第 20 天回来：不再把三周前的玫瑰算进「这一周」。
+        let roses = [
+            rose("old", "2026-10-30T00:00:00Z", Some("很久以前"), None),
+            rose("new", "2026-11-18T00:00:00Z", Some("昨天"), None),
+        ];
+        let review = build_week_review(&roses, ms(NOW));
+        assert_eq!(review.days_since_first, 20);
+        assert_eq!(review.total, 2);
+        assert_eq!(review.in_week, 1);
+        assert_eq!(review.quotes[0].id, "new");
     }
 
     #[test]
