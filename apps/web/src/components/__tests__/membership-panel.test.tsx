@@ -58,6 +58,13 @@ const cidInput = () =>
     /未配置上传服务时可手填已有 CID/,
   ) as HTMLInputElement;
 
+// The provider records the last connected wallet in localStorage for silent
+// reconnect. Clear it between cases so one case's connect doesn't silently
+// reconnect in the next case and inflate connect-call assertions.
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
 describe("MembershipPanel · image → IPFS CID", () => {
   beforeEach(() => {
     jest.clearAllMocks();

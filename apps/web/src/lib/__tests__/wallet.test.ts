@@ -79,4 +79,24 @@ describe("connectSolanaWallet selection", () => {
     expect(phantom.features["standard:connect"].connect).toHaveBeenCalledTimes(1);
     expect(solflare.features["standard:connect"].connect).not.toHaveBeenCalled();
   });
+
+  it("passes silent:true to the wallet for auto-reconnect", async () => {
+    const { connectSolanaWallet } = await import("../wallet");
+    const phantom = wallet("Phantom");
+    mockGetWallets.mockReturnValue({ get: () => [phantom] } as never);
+
+    await connectSolanaWallet("Phantom", { silent: true });
+
+    expect(phantom.features["standard:connect"].connect).toHaveBeenCalledWith({ silent: true });
+  });
+
+  it("keeps a normal connect parameter-free (no silent popup suppression)", async () => {
+    const { connectSolanaWallet } = await import("../wallet");
+    const phantom = wallet("Phantom");
+    mockGetWallets.mockReturnValue({ get: () => [phantom] } as never);
+
+    await connectSolanaWallet("Phantom");
+
+    expect(phantom.features["standard:connect"].connect).toHaveBeenCalledWith(undefined);
+  });
 });

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -55,6 +56,40 @@ interface MembershipContextValue {
 
 const MembershipContext = createContext<MembershipContextValue | null>(null);
 
+/**
+ * The wallet the user last connected by choice. Stored only so we can silently
+ * reconnect on a later visit; it is NOT a permission boundary and never causes
+ * a wallet popup on its own. A disconnect clears it.
+ */
+const LAST_WALLET_KEY = "roselet:solana-last-wallet";
+
+function readLastWallet(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(LAST_WALLET_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function rememberLastWallet(name: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LAST_WALLET_KEY, name);
+  } catch {
+    /* private mode / storage disabled — reconnect is simply skipped */
+  }
+}
+
+function forgetLastWallet() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(LAST_WALLET_KEY);
+  } catch {
+    /* nothing to do */
+  }
+}
+
 export function MembershipProvider({ children }: { children: ReactNode }) {
   const [isMember, setIsMember] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -63,6 +98,8 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<WalletSession | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [solanaWallets, setSolanaWallets] = useState<SolanaWalletOption[]>([]);
+  // One-shot guard so a rejected silent reconnect isn't retried on every render.
+  const autoReconnectDone = useRef(false);
 
   // Extensions may register after hydration; refresh on mount and on any
   // register/unregister event so the chooser never shows a stale empty list.
@@ -79,6 +116,9 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       const next = await connectSolanaWallet(walletName);
       setSession(next);
       setWalletAddress(next.address);
+      // Only a deliberate connect (not silent reconnect) records the choice.
+      if (walletName) rememberLastWallet(walletName);
+      autoReconnectDone.current = true;
     } catch (e) {
       setConnectError(e instanceof Error ? e.message : "连接钱包失败");
     }
@@ -86,9 +126,35 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
 
   const disconnectWallet = useCallback(() => {
     session?.disconnect();
+    forgetLastWallet();
+    autoReconnectDone.current = true;
     setSession(null);
     setWalletAddress(null);
   }, [session]);
+
+  // Silent reconnect while in membership mode. Guards, in order:
+  //  1. Only members — a normal user never triggers any wallet call.
+  //  2. Not already connected, and not already attempted this session.
+  //  3. A wallet was remembered last time AND is still installed.
+  // The effect re-runs as extensions register, so a late-injected wallet is
+  // still picked up. Failure is swallowed on purpose: a wallet that has never
+  // approved this site rejects silent connect; showing an error or popping a
+  // dialog would break the "normal app has zero Web3 surface" promise.
+  useEffect(() => {
+    if (!isMember || walletAddress || autoReconnectDone.current) return;
+    const last = readLastWallet();
+    if (!last || !solanaWallets.some((w) => w.name === last)) return;
+
+    autoReconnectDone.current = true;
+    connectSolanaWallet(last, { silent: true })
+      .then((next) => {
+        setSession(next);
+        setWalletAddress(next.address);
+      })
+      .catch(() => {
+        /* never-approved or rejected — stay quiet */
+      });
+  }, [isMember, walletAddress, solanaWallets]);
 
   const toggleMember = useCallback(() => {
     const next = !isMember;

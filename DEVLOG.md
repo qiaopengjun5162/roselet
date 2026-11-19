@@ -5448,3 +5448,24 @@ Web 端打开“个人资料”时显示“加载资料失败”。
 **验收**：本地生产构建 ✓；typecheck / lint ✓；Web 48 套件 361 例全过（原 359）。真浏览器 390×844 逐色截图：红/白/黄三朵水彩玫瑰层叠渐变自然、无深色弧、光点不遮挡；成功页花圃白红黄四朵小花无串色、感谢文案清晰；pageerror 0。
 
 **边界**：纯 Web 单组件重画（只改 `interactive-rose.tsx` + 其测试）；交互、文案、种花页/首页/门闩/钱包/链配置全部未动，`should_deploy=false`。
+
+## 2026-11-19 会话续：钱包自动重连 + 多链方案评估
+
+### 评估结论（用户先问 RainbowKit → Solana 官方 Next.js 指南）
+- **RainbowKit**：只支持 EVM，我们主力链是 Solana Devnet + Aleo，它碰不到；对本项目没用。
+- **真正"一套连多链"的方案**：Reown AppKit（EVM+Solana+BTC，无 Aleo）、Dynamic（EVM+Solana+Aleo 全覆盖，唯一支持 Aleo 但商业收费、迁移大）。结论：**维持现状**——我们的 Solana 手写 Wallet Standard 方案与官方新 Kit 路线一致，方向正确；引入全家桶既和"普通用户零 Web3"门闩冲突，收益又抵不过成本。
+- **唯一差距**：官方 Kit 插件有自动重连，我们没有 → 用户拍板"只补自动重连"。
+
+### 实现（轻量，不引入任何新依赖）
+- `lib/wallet.ts`：`connectSolanaWallet(name?, { silent? })` 把 `silent:true` 透传给 Wallet Standard 的 `standard:connect`（不传时行为完全不变，向后兼容）。silent = 已授权钱包静默连回、从不弹授权框；未授权的钱包会 reject。
+- `app/membership-context.tsx`：主动连接时把钱包名记到 localStorage（`roselet:solana-last-wallet`）；进入会员模式且上次钱包仍安装时用 `silent:true` 重连；`autoReconnectDone` ref 防重复；失败静默吞掉（不弹错、不打扰）；断开时清记忆。
+- **门闩守住**：非会员（`isMember=false`）绝不发起任何钱包调用 → 普通用户刷新后仍是零 Web3。
+
+### 坑
+- 新增 localStorage 记忆后，`membership-panel.test.tsx` 因用例间 localStorage 残留导致静默重连多调一次 connect → 加全局 `beforeEach(localStorage.clear)` 隔离。
+- 自动重连 effect 不能用"进入会员那一瞬"单次触发（扩展异步注入会错过），改为只靠 `autoReconnectDone` ref + 依赖 `solanaWallets` 变化，晚注入的钱包也能接住。
+
+### 验收
+Web 49 套件 368 例全过（原 48/361）；typecheck / lint / build ✓。真浏览器（390×844，`--fake-wallet` 同款注入）闭环：主动连接→记住 FakePhantom→刷新（普通模式不连）→再进会员静默连回→断开清记忆→刷新再进会员不连回，pageerror 0。
+
+**边界**：只动 Web 钱包会话层 + 测试；Aleo Vault、链配置（仍 Devnet）、合约、后端、`crates/`、初心三界面全部未动，`should_deploy=false`。

@@ -31,7 +31,9 @@ interface StandardWallet {
   readonly chains: readonly string[];
   readonly features: {
     "standard:connect"?: {
-      connect(): Promise<{ accounts: readonly StandardAccount[] }>;
+      /** `silent: true` reconnects an already-approved wallet without opening
+       *  an approval popup; a wallet that has never been approved rejects. */
+      connect(input?: { silent?: boolean }): Promise<{ accounts: readonly StandardAccount[] }>;
     };
     "solana:signTransaction"?: {
       signTransaction(input: {
@@ -124,8 +126,16 @@ export function onSolanaWalletsChanged(listener: () => void): () => void {
  * existing callers and the E2E harness keep working. The account picker is left
  * to the wallet itself: `standard:connect` returns the accounts the user
  * approved, and we take the first.
+ *
+ * `options.silent` is for auto-reconnect on page load: pass `true` to ask the
+ * wallet to reconnect an already-approved session WITHOUT popping an approval
+ * dialog. Wallets that have never been approved reject; callers must treat a
+ * rejection as "not connected yet" and stay quiet (no error toast).
  */
-export async function connectSolanaWallet(walletName?: string): Promise<WalletSession> {
+export async function connectSolanaWallet(
+  walletName?: string,
+  options?: { silent?: boolean },
+): Promise<WalletSession> {
   const wallets = listSolanaWallets();
   if (wallets.length === 0) {
     throw new Error("未检测到 Solana 钱包（请安装 Phantom 等浏览器插件）");
@@ -139,7 +149,9 @@ export async function connectSolanaWallet(walletName?: string): Promise<WalletSe
   if (!connect) {
     throw new Error(`钱包 ${wallet.name} 不支持标准连接，请更新钱包后重试`);
   }
-  const { accounts } = await connect.connect();
+  const { accounts } = await connect.connect(
+    options?.silent ? { silent: true } : undefined,
+  );
   const account = accounts[0];
   if (!account) {
     throw new Error("钱包没有返回可用账户");
