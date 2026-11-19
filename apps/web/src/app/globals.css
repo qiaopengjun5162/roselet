@@ -1,4 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap");
+/* 这里原来有一行：
+   @import url("https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap");
+   它是整站主样式表的第一行，而 @import 进 CSSOM 的外链是**会阻塞渲染**的。
+   Google Fonts 在国内不可达且是「挂着不响应」而不是快速失败，于是在国内打开
+   首页就会一直白到浏览器超时 —— 实测：可达时 FCP 3.4s，不可达时 45s 内一次
+   内容都没画出来。
+   毛笔字只是标题的装饰，字体栈里本来就排了华文行楷 / STXingkai / 楷体，
+   所以直接去掉外链，不要为了一个字重把首屏赌在境外 CDN 上。 */
 @import "tailwindcss";
 
 :root {
