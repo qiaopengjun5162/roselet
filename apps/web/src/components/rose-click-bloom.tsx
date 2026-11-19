@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { prefersReducedMotion } from "@/lib/motion";
 
 interface BloomRose {
   id: number;
@@ -19,6 +20,10 @@ export function RoseClickBloom() {
   const [blooms, setBlooms] = useState<BloomRose[]>([]);
 
   const handleClick = useCallback((e: MouseEvent) => {
+    // 开了减弱动态效果就不绽放：整站每次点击都飞出一朵，是最容易被这类用户
+    // 记恨的动效。功能一点不缺，只是不往屏幕上放。
+    if (prefersReducedMotion()) return;
+
     // 不在交互元素上触发（输入框、按钮、链接）
     const tag = (e.target as HTMLElement).tagName.toLowerCase();
     if (["input", "textarea", "button", "a", "select"].includes(tag)) return;

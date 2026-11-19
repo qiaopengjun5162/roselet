@@ -2,13 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { generateStarParticles, type StarParticle } from "@/lib/recommend";
+import { prefersReducedMotion } from "@/lib/motion";
 
 export function StarParticles() {
   const [particles, setParticles] = useState<StarParticle[]>([]);
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
-    setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    if (prefersReducedMotion()) {
+      setReduced(true);
+      return;
+    }
     generateStarParticles(5, BigInt(Date.now())).then((p) => {
       if (p) setParticles(p);
     });

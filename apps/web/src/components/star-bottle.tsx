@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { prefersReducedMotion } from "@/lib/motion";
 
 interface StarBottleProps {
   children: ReactNode;
@@ -14,7 +15,7 @@ export function StarBottle({ children, delay = 0, glowColor, className = "" }: S
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    setReduced(prefersReducedMotion());
     const timer = setTimeout(() => setVisible(true), delay);
     return () => clearTimeout(timer);
   }, [delay]);

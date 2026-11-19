@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { generatePetals } from "@/lib/recommend";
+import { prefersReducedMotion } from "@/lib/motion";
 
 interface PetalConfig { emoji: string; left: number; size: number; duration: number; delay: number; sway: number; opacity: number; }
 
@@ -18,7 +19,18 @@ async function loadPetals(): Promise<PetalConfig[]> {
 
 export function FallingPetals() {
   const [petals, setPetals] = useState<PetalConfig[]>(FALLBACK);
-  useEffect(() => { loadPetals().then(setPetals); }, []);
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    if (prefersReducedMotion()) {
+      setReduced(true);
+      return;
+    }
+    loadPetals().then(setPetals);
+  }, []);
+
+  // 开了减弱动态效果就整块不渲染：这不是把动画调慢，是不往屏幕上放会动的东西。
+  if (reduced) return null;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">

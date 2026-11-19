@@ -150,3 +150,19 @@ body {
   0%, 100% { box-shadow: 0 0 20px var(--bottle-glow, rgba(244,63,94,0.15)), 0 0 60px var(--bottle-glow, rgba(244,63,94,0.05)); }
   50%      { box-shadow: 0 0 30px var(--bottle-glow, rgba(244,63,94,0.25)), 0 0 80px var(--bottle-glow, rgba(244,63,94,0.08)); }
 }
+
+/* 系统开了「减弱动态效果」时的兜底闸门。
+   这条规则管所有 CSS 动画：成功页的呼吸光晕、玫瑰长出来的 sprout、
+   卡片入场、骨架屏脉冲、按钮悬停位移……一律直接到终态，不做位移与闪烁。
+   只靠组件里逐个判断会漏（落花、点击绽放、烟花各写一遍），漏掉的那几处
+   恰好又是最晃眼的。这条是地板，不是全部。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

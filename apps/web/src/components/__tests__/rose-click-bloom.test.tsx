@@ -14,7 +14,10 @@ function click(x = 100, y = 200, target = document.body) {
 }
 
 describe("RoseClickBloom", () => {
-  afterEach(() => jest.clearAllTimers());
+  afterEach(() => {
+    jest.clearAllTimers();
+    delete (window as unknown as { matchMedia?: unknown }).matchMedia;
+  });
 
   it("renders nothing initially", () => {
     const { container } = render(<RoseClickBloom />);
@@ -80,5 +83,26 @@ describe("RoseClickBloom", () => {
     const size = parseFloat(bloom.style.fontSize);
     expect(size).toBeGreaterThanOrEqual(20);
     expect(size).toBeLessThanOrEqual(36);
+  });
+
+  it("系统要求减弱动效时点击不绽放", () => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      configurable: true,
+      value: (query: string) => ({
+        matches: query.includes("prefers-reduced-motion"),
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }),
+    });
+    const { container } = render(<RoseClickBloom />);
+    click(100, 200);
+    click(200, 300);
+    expect(container.querySelectorAll(".animate-rose-bloom")).toHaveLength(0);
   });
 });
