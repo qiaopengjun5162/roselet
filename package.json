@@ -20,7 +20,8 @@
     "agent:build": "pnpm --filter @roselet/agent-api build",
     "agent:test": "pnpm --filter @roselet/agent-api test",
     "agent:typecheck": "pnpm --filter @roselet/agent-api typecheck",
-    "smoke:prod": "node scripts/smoke-prod.mjs"
+    "smoke:prod": "node scripts/smoke-prod.mjs",
+    "uptime": "node scripts/uptime-check.mjs"
   },
   "devDependencies": {
     "playwright": "^1.60.0"

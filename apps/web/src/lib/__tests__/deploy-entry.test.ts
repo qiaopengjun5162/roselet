@@ -165,6 +165,28 @@ describe("国内可用的试用入口", () => {
     expect(script).toContain("process.exit(1)");
   });
 
+  it("失败会有人知道：探活跑在站外，而且不在服务器上", () => {
+    // 2026-11-21：这台机器上只有一个备份定时器。站要是挂了，没有任何东西会喊人，
+    // 而且「挂在服务器上的定时器」本身就是错的——报警者和被监控者同命。
+    const workflow = read(".github/workflows/uptime.yml");
+    expect(workflow).toMatch(/runs-on:\s*ubuntu-latest/);
+    expect(workflow).toMatch(/cron:\s*"\*\/15 \* \* \* \*"/);
+    expect(workflow).toContain("scripts/uptime-check.mjs");
+    // 手动触发这一条很重要：改完探活规则要能立刻验，而不是等下一个整刻。
+    expect(workflow).toContain("workflow_dispatch");
+
+    const script = read("scripts/uptime-check.mjs");
+    // 三项都得看：只查 /health 时，2026-11-20 那次事故整条流水线全绿。
+    expect(script).toContain('parsed?.database === "healthy"');
+    expect(script).toContain("/api/garden");
+    expect(script).toContain("scanBundle");
+    // 换容器会有几秒 502，单次失败就报丧会让人很快学会忽略告警。
+    expect(script).toContain("ATTEMPTS");
+    // 默认必须是 https 入口：探活打在 http 上，永远看不到混合内容那一类问题。
+    expect(script).toMatch(/DEFAULT_BASE = "https:\/\//);
+    expect(script).toContain("process.exit(1)");
+  });
+
   it("源码里不能把打不开的域名当兜底", () => {
     // 上链后的 NFT uri 改不了，分享出去的链接也一样。
     // 先去掉注释：注释里必须能写清「为什么不要这么做」，那不算兜底。

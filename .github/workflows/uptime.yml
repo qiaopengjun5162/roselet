@@ -1,0 +1,62 @@
+name: Uptime
+
+# 每 15 分钟从**站外**看一次线上还能不能用。
+#
+# 为什么不用服务器上的 systemd timer：报警者和被监控者在同一台机器上，
+# 机器一挂，喊人的那个也跟着挂了，结果是「安静地死了」。线上现在只有备份
+# 定时器在跑，站挂了没人知道——这个工作流补的就是这个洞。
+#
+# 两个必须知道的前提：
+# - GitHub 的 cron 在高峰期会延迟几分钟到十几分钟，它保证的是「大致每 15 分钟」，
+#   不是精确调度。定位是「半天内一定有人发现」，不是秒级告警。
+# - 仓库连续 60 天没有提交，GitHub 会自动停掉 scheduled workflow。
+#   长期跑要么保持有提交，要么换外部监控服务（见 DEVLOG 三十五）。
+#
+# 失败时：Actions 里这条运行标红，GitHub 会把失败通知发给最后修改本文件的人。
+# 想推到微信/Telegram，在这里加一步 webhook 即可，不必改探活脚本本身。
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  # 手动点一下就能立刻验一次，改完探活规则不用等下一个整刻。
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 上一轮还没跑完就不要再叠一轮：跨境链路上一次探活本身就要十几秒到一分钟。
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: 线上探活
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # 默认地址写在脚本里（README 里那个唯一对外入口），不依赖 secret：
+      # secret 缺失时 URL 会拼成 roselet..sslip.io，报出来的失败是假失败。
+      - name: 探活
+        run: node scripts/uptime-check.mjs
+
+      - name: 失败时把结论写进本次运行的摘要
+        if: failure()
+        run: |
+          {
+            echo "### 线上不可用"
+            echo ""
+            echo "入口：$(grep -o 'https://[^"]*' scripts/uptime-check.mjs | head -1)"
+            echo ""
+            echo "排查顺序："
+            echo "1. \`ssh ubuntu@<host> docker ps\` 看容器是不是都活着"
+            echo "2. \`docker logs --tail 50 roselet-backend-1\`"
+            echo "3. \`systemctl status caddy\`（证书写在 2027-01 到期）"
+            echo "4. 刚发过版？看那次 Deploy 是不是也红了"
+          } >> "$GITHUB_STEP_SUMMARY"
