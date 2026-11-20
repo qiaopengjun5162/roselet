@@ -15,7 +15,11 @@ export default defineConfig({
   sourceRoot: "src",
   outputRoot: "dist/weapp",
   plugins: [],
-  defineConstants: {},
+  defineConstants: {
+    // 后端地址在构建期确定（真机上没有 process.env，运行期读不到环境变量）。
+    // 换正式域名：TARO_APP_API_BASE=https://roselet.ccwu.cc pnpm build:weapp
+    'process.env.TARO_APP_API_BASE': JSON.stringify(process.env.TARO_APP_API_BASE || ''),
+  },
   copy: {
     patterns: [
       {

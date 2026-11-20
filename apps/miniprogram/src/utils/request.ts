@@ -1,6 +1,28 @@
 import { getToken, setToken, getRefreshToken, logout } from '@/utils/storage';
 
-const BASE_URL = 'http://localhost:3001';
+/**
+ * 后端地址。小程序里没有「同源」这回事，`wx.request` 必须给绝对地址。
+ *
+ * 这里原来写死 `http://localhost:3001`——在开发者工具里能跑（工具和本地后端同机），
+ * **一到真机就必然失败**：手机上的 localhost 是手机自己。这就是「真机闭环」一直差一步的
+ * 直接原因之一，而且它在工具里看起来是好的，很难被发现。
+ *
+ * 三档：
+ *   1. 构建时 `TARO_APP_API_BASE=https://...` 覆盖（换正式域名时用这个）；
+ *   2. 生产构建 → 线上 https 入口；
+ *   3. 开发/测试 → 本机 3001。
+ *
+ * 注意：小程序对域名有硬要求，代码正确也绕不过去——必须是 https、且该域名在
+ * 微信后台「开发管理 → 服务器域名 → request 合法域名」里（真机不走 `urlCheck:false`，
+ * 那只是开发者工具的开关）。详见 DEPLOYMENT.md「小程序」一节。
+ */
+const PROD_API_BASE = 'https://roselet.47.131.238.0.sslip.io';
+
+const ENV_API_BASE = process.env.TARO_APP_API_BASE;
+
+export const API_BASE_URL =
+  (ENV_API_BASE && ENV_API_BASE.trim()) ||
+  (process.env.NODE_ENV === 'production' ? PROD_API_BASE : 'http://localhost:3001');
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -24,7 +46,7 @@ function doRequest<T>(path: string, opts: RequestOptions, token?: string | null)
 
   return new Promise((resolve, reject) => {
     wx.request({
-      url: `${BASE_URL}${path}`,
+      url: `${API_BASE_URL}${path}`,
       method,
       data: body,
       header,

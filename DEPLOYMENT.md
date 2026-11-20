@@ -349,6 +349,32 @@ docker-compose up -d --build
 curl http://localhost:3001/api/garden
 ```
 
+## 小程序（真机）
+
+构建产物在 `apps/miniprogram/dist/weapp`，用微信开发者工具打开 `apps/miniprogram`
+（`project.config.json` 的 `miniprogramRoot` 已指向那里）。
+
+后端地址在**构建期**确定（真机上没有 `process.env`）：
+
+```bash
+# 默认生产构建 → https://roselet.47.131.238.0.sslip.io
+pnpm --filter @roselet/miniprogram build:weapp
+# 换正式域名时只改这一个参数
+TARO_APP_API_BASE=https://roselet.ccwu.cc pnpm --filter @roselet/miniprogram build:weapp
+```
+
+CI 里 build 之后会跑 `node scripts/verify-miniprogram-build.mjs`：真去翻产物，禁止
+`localhost:3001` 漏进去，并要求包里有 https 后端地址。**只编译通过不代表包是对的**——
+地址是构建期替换的字面量，参数漏了源码看着也没问题。
+
+真机上还差三件只有账号主人能做的事（代码改不了）：
+
+1. **域名必须是已备案的 https 域名**。`sslip.io` 这类无法备案，真机大概率加不进白名单。
+2. 微信公众平台 → 开发管理 → 开发设置 → 服务器域名 → **request 合法域名**里加上它。
+3. 开发者工具上传 → 体验版 → 手机扫码验证。
+
+`project.config.json` 里的 `urlCheck: false` 只对开发者工具有效，**真机不走这个开关**。
+
 ## 安全检查清单
 
 - [ ] JWT_SECRET 已设置且 ≥32 字节

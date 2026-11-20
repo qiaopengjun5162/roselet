@@ -141,6 +141,11 @@ jobs:
       - name: Build miniprogram
         run: cd apps/miniprogram && pnpm build:weapp
 
+      # 源码正确 ≠ 产物正确：后端地址是构建期替换进包里的字面量。
+      # 这里真去翻 dist，禁止 localhost 漏进去，并要求包里有 https 后端地址。
+      - name: Check baked-in API base
+        run: node scripts/verify-miniprogram-build.mjs
+
       - name: Test miniprogram
         run: cd apps/miniprogram && pnpm test:coverage
 

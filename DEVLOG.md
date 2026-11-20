@@ -6034,3 +6034,48 @@ Roselet、`/health` 返回 `status:"ok"`，两个都对才算换域名成功。
 | 同一域名跑第二次 | 判定「已存在」，不重复追加 |
 
 现在这条命令的说明在 `DEPLOYMENT.md` 里是两步：先 `--dry-run`，DNS 生效后再执行。
+
+## 三十七、小程序「真机连不上」的直接原因：地址写死 localhost
+
+真机闭环一直差一步，先翻代码看到最硬的那块：
+
+```ts
+// apps/miniprogram/src/utils/request.ts
+const BASE_URL = 'http://localhost:3001';
+```
+
+**在开发者工具里这是对的**（工具和本地后端同机，`urlCheck: false` 又把域名校验关掉了），
+一到手机就必错——手机上的 `localhost` 是手机自己。这类 bug 最坏的地方在于它**在工具里看不出来**，
+所以人会以为是「权限、白名单、审核」的问题，去错的方向查很久。
+
+改成三档，构建期确定（真机没有 `process.env`，所以 `config/index.ts` 里用
+`defineConstants` 把它替换成字面量）：
+
+| 场景 | 地址 |
+| --- | --- |
+| `TARO_APP_API_BASE=https://…` | 用这个（换正式域名只改这一处） |
+| 生产构建（默认） | `https://roselet.47.131.238.0.sslip.io` |
+| 开发 / 测试 | `http://localhost:3001` |
+
+**只改源码不够。** 地址是构建期替换进包里的字面量，参数漏了、`defineConstants` 写错了，
+源码看着完全正确、包却是连不上的——和 web 那次「`/health` 200、页面点不动」是同一个形状。
+所以加了 `scripts/verify-miniprogram-build.mjs` 并接进 CI：真去翻 `dist/weapp`，禁止
+`localhost:3001` 漏进去，要求包里能找到一个 https 后端地址，缺 `app.json` / `app.wxss` /
+`project.config.json` 也算失败。本地用假产物验过三种情况（正常 exit 0、漏 localhost exit 1、
+目录不存在 exit 1）。
+
+**顺带修掉一个让人习惯性忽略红灯的问题**：本机 `pnpm test` 一直是红的，因为
+`build-smoke.test.ts` 用「`dist/weapp` 目录在不在」判断有没有产物。**构建中途失败会留下
+一个只有 `app.js` / `app.wxss` 的半成品目录**，于是测试照跑，报的是「runtime.js 读不到」
+「pages/ 不存在」——看起来像构建坏了。改成用 `app.json` 当判据（一个能进开发者工具的包
+必须有它）。现在本机 71 例全绿，不用先构建才能跑测试。
+
+**本地构建跑不起来，如实记一笔**：这台机器上 `taro build --type weapp` 会死在
+`EIO: mkdir dist/weapp/pages/index`——是本机沙盒的文件系统代理拦住了 webpack 的 mkdir
+（连已经存在的目录调用 mkdir 也报错，node 自己 `mkdirSync` 却是好的）。不是项目的问题，
+也不是代码的问题，所以**产物检查交给 CI**：Ubuntu runner 上会真跑一次构建，再由
+`verify-miniprogram-build.mjs` 翻产物。
+
+**真机还差的三件事，代码改不了**：域名必须**已备案**（`sslip.io` 无法备案，真机大概率
+加不进白名单）、微信后台加 request 合法域名、开发者工具上传体验版。写进 `DEPLOYMENT.md`
+「小程序（真机）」一节了。
