@@ -25,8 +25,18 @@
 - [docs/AWS_LIGHTSAIL_DEPLOYMENT.md](docs/AWS_LIGHTSAIL_DEPLOYMENT.md)
 - `DEVLOG.md` 会话 #71 ~ #73、第三十四节
 
-**换正式域名**：`scripts/enable-tls-domain.sh <域名>`。脚本会先核对国内两台 DNS 是否都解析到本机
-（解析没过来就拒绝，避免撞 Let's Encrypt 每小时 5 次失败上限），再改 Caddy 配置、reload、轮询 https 200。
+**换正式域名**（两步，第一步不改任何东西）：
+
+```bash
+# 1. 演练：拼出配置、放进临时副本、真的跑一次 caddy validate。DNS 没配好也能演练。
+bash scripts/enable-tls-domain.sh roselet.ccwu.cc --dry-run
+# 2. DNS 生效后再执行。会先核对国内两台 DNS 是否都解析到本机，再写配置 + reload + 轮询验收
+sudo bash scripts/enable-tls-domain.sh roselet.ccwu.cc
+```
+
+解析没过来时脚本直接拒绝——避免撞 Let's Encrypt 每小时 5 次失败上限。验收要求
+`/` 返回 200 且标题正确、`/health` 返回 `status:ok`，**只要一个 200 是不够的**：
+证书签下来但上游指错时页面照样 200，注册照样点不动。失败会提示查 `journalctl -u caddy -n 50`。
 
 **只有分域部署（Vercel / Cloudflare Pages）才需要配这些绝对地址**；同源的单机部署不要配，
 配了反而会把协议钉死：

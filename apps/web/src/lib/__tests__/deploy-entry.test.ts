@@ -187,6 +187,34 @@ describe("国内可用的试用入口", () => {
     expect(script).toContain("process.exit(1)");
   });
 
+  it("换域名脚本可以先演练，而且校验发生在写入之前", () => {
+    // 换域名只会做一次（DNS 生效那一刻），没有第二次试错的机会。
+    // 2026-11-21 在临时副本上把这条路真跑了一遍，抓到两个 bug：
+    //   - 诊断日志写死 /tmp/roselet-caddy-validate.log，换用户执行时重定向失败，
+    //     被误报成「配置校验失败」；
+    //   - 用 `grep -F "$DOMAIN {"` 判断是否已存在，子串匹配让
+    //     `47.131.238.0.sslip.io` 被 `roselet.47.131.238.0.sslip.io` 吃掉，
+    //     于是静默跳过写入，最后表现为「证书一直等不到」。
+    const script = read("scripts/enable-tls-domain.sh");
+
+    // 演练必须能跑通到 validate，否则等于没有演练。
+    expect(script).toContain("--dry-run");
+    expect(script).toMatch(/dry-run.*演练通过/s);
+    // 临时文件不能写死在 /tmp 下。
+    expect(script).toContain("mktemp -d");
+    expect(script).not.toContain("/tmp/roselet-caddy-validate.log");
+    // 判断「已存在」必须按行首锚定，不能子串。
+    expect(script).toContain('^[[:space:]]*${DOMAIN_RE}');
+    expect(script).not.toMatch(/grep -qF "\$DOMAIN \{"/);
+
+    // 顺序：先 validate 候选文件，再备份 + 写生产文件。
+    // 反过来的话，一次坏配置就能把 80 端口一起带走。
+    const validated = script.indexOf("caddy validate");
+    const backup = script.indexOf('cp -a "$CADDY_TARGET" "$BACKUP"');
+    expect(validated).toBeGreaterThan(-1);
+    expect(backup).toBeGreaterThan(validated);
+  });
+
   it("源码里不能把打不开的域名当兜底", () => {
     // 上链后的 NFT uri 改不了，分享出去的链接也一样。
     // 先去掉注释：注释里必须能写清「为什么不要这么做」，那不算兜底。
