@@ -173,5 +173,8 @@ describe("国内可用的试用入口", () => {
       .replace(/\/\/.*$/gm, "");
     expect(code).not.toContain("vercel.app");
     expect(code).not.toContain("sslip.io");
+    // 2026-11-20：兜底曾经是 `http://<ip>`。https 页面上它就是一个打不开的
+    // 链接，而且会把「协议 + 某个 IP」永久刻进链上元数据。
+    expect(code).not.toMatch(/http:\/\/\d{1,3}\./);
   });
 });

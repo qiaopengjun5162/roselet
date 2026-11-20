@@ -158,16 +158,21 @@ export const DEFAULT_ROSE_NAME = "Roselet Rose";
 /**
  * 公开站点地址，用来拼一朵玫瑰的链接。
  *
- * **优先用运行时的 origin**：这个站现在由裸 IP 提供（`*.vercel.app` 在国内被
- * DNS 污染、`sslip.io` 在国内解析不到）。写死一个兜底域名，迟早会指向一个
- * 打开是空白的地址，而 NFT 的 `uri` 一旦上链就改不了了。
+ * **优先用运行时的 origin**：站点可能同时被 http 和 https 两个入口访问，
+ * 而 NFT 的 `uri` 一旦上链就改不了——写死一个协议或一个 IP，等于把某个
+ * 时刻的部署方式永久刻进链上。
+ *
+ * 没有 origin 时返回空串，让调用方拼出相对路径；**不要**在这里编一个
+ * `http://<ip>` 兜底：那既会在 https 页面上变成一个打不开的链接，也会让
+ * 打包产物里留下「协议被钉死」的绝对地址（部署校验会直接拦下）。
  */
 export function siteUrl(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  const configured = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim();
+  if (configured) return configured.replace(/\/+$/, "");
   if (typeof window !== "undefined" && window.location?.origin) {
     return window.location.origin;
   }
-  return "http://47.131.238.0";
+  return "";
 }
 
 /** UTF-8 length of a string, computed without `TextEncoder` (absent in jsdom). */
