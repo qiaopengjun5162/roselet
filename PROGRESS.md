@@ -75,9 +75,9 @@
 
 ## 接下来 3 个小目标
 
-1. 邀请 5 个真实用户试用 `https://roselet-web.vercel.app` 和 `https://roselet.paxonqiao.com`，对比国内访问速度。
-2. 观察 `/stats` 后台数据，判断是否接近 100 用户目标线。
-3. 整理 Worker/免费方案遗留入口，明确 Rust Lightsail + Vercel/Cloudflare Pages 是当前生产主线。
+1. 邀请 5 个真实用户试用 `https://roselet.47.131.238.0.sslip.io`（当前唯一可用的对外入口）。
+2. 观察 `/stats` 后台数据，判断是否接近 100 用户目标线；**跑过冒烟的账号会被注销掉**，不会灌水。
+3. 定一个正式域名，把入口从 sslip.io 换掉（`scripts/enable-tls-domain.sh <域名>`，一条命令）。
 
 ## 下一步
 
@@ -127,17 +127,15 @@
 
 ### 当前真实上线状态
 
-- `Vercel` 前端主入口已成功创建并可访问
-  - 当前线上地址：`https://roselet-web.vercel.app`
-- `Cloudflare Pages` 国内镜像已成功创建并可访问
-  - 当前国内镜像地址：`https://roselet.paxonqiao.com`
-  - DNS：`roselet.paxonqiao.com` CNAME → `roselet.pages.dev`（Proxy 开启）
-  - 构建命令：`cd apps/web && pnpm build:cf`，输出目录：`apps/web/dist`
+- **唯一对外入口**：`https://roselet.47.131.238.0.sslip.io`（Caddy 同源分流，Let's Encrypt 证书有效至 2027-01-20）
+  - 页面与 API 同源；前端镜像用 `NEXT_PUBLIC_API_URL=same-origin` 构建，http / https 两个入口共用一份产物
+- 备用排查入口：`http://47.131.238.0`（无 TLS）
+- 已下线的历史入口（**不要再对外发**）：
+  - `https://roselet-web.vercel.app` —— 国内解析 SERVFAIL，连不上
+  - `https://roselet.paxonqiao.com` —— 域名已失效（`.com` 权威返回 NXDOMAIN）
 - `Render` 与 `Koyeb` 在真实部署中都被支付验证拦住
-- 后端当前已切换为：`AWS Lightsail 上运行 Rust Axum + Docker Postgres`
-- 后端公网地址：`http://47.131.238.0`，仅用于 IP/服务器冒烟
-- 后端 HTTPS 地址：`https://roselet.47.131.238.0.sslip.io`，用于 Vercel / Cloudflare Pages 生产前端
-- 当前未完成：监控告警、小程序真机闭环
+- 后端：`AWS Lightsail 上运行 Rust Axum + Docker Postgres`
+- 当前未完成：监控告警（站挂了没人知道，只有备份定时器）、小程序真机闭环
 - 备份：已上线（`scripts/lightsail-backup.sh` + 每日 04:00 定时器，每周一次真恢复演练，留 14 天），见 DEVLOG 三十二
 - Worker API 起点：`apps/worker-api`
 - Worker 当前已迁移：

@@ -4,17 +4,32 @@
 
 当前已执行的生产路线是：
 
-- Web（主入口）：Vercel，`https://roselet-web.vercel.app`
-- Web（国内镜像）：Cloudflare Pages，`https://roselet.paxonqiao.com`
-- API：AWS Lightsail + Caddy + Rust Axum，`https://roselet.47.131.238.0.sslip.io`
-- DB：Lightsail 内 Docker Postgres
+- 入口（唯一对外地址）：`https://roselet.47.131.238.0.sslip.io`
+- Web + API：**同一台 AWS Lightsail**，Caddy 按路径同源分流（`/api/*`、`/health` → 3001，其余 → 3000）
+- DB：Lightsail 内 Docker Postgres（每日 dump + 每周恢复演练）
+- 前端镜像构建参数：`NEXT_PUBLIC_API_URL=same-origin`（产物里只有相对路径）
 
-`roselet.paxonqiao.com` 作为 Cloudflare Pages 国内镜像，DNS 应 CNAME 到 `roselet.pages.dev`，并保持 Proxy 开启，用于解决部分地区访问 Vercel 困难的问题。完整操作记录、命令和踩坑处理见：
+已下线、**不要再对外发**：
+
+| 入口 | 状态 |
+| --- | --- |
+| `https://roselet-web.vercel.app` | 国内解析 SERVFAIL，连不上（Vercel 项目本身还在，但不再作为主线） |
+| `https://roselet.paxonqiao.com` | 域名已失效，`.com` 权威返回 NXDOMAIN |
+
+> 为什么改成同源：写死 `NEXT_PUBLIC_API_URL=http://47.131.238.0` 之后，页面一旦用 https
+> 打开，浏览器会把所有 `http://` 请求当混合内容**静默拦掉**（注册点了没反应，控制台只有一行
+> warning）。同源相对路径从根上没有这个可能，且不需要 CORS。详见 `apps/web/src/lib/api-base.ts`。
+
+完整操作记录、命令和踩坑处理见：
 
 - [docs/AWS_LIGHTSAIL_DEPLOYMENT.md](docs/AWS_LIGHTSAIL_DEPLOYMENT.md)
-- `DEVLOG.md` 会话 #71 ~ #73
+- `DEVLOG.md` 会话 #71 ~ #73、第三十四节
 
-当前生产环境变量（Vercel / Cloudflare Pages 均需配置）：
+**换正式域名**：`scripts/enable-tls-domain.sh <域名>`。脚本会先核对国内两台 DNS 是否都解析到本机
+（解析没过来就拒绝，避免撞 Let's Encrypt 每小时 5 次失败上限），再改 Caddy 配置、reload、轮询 https 200。
+
+**只有分域部署（Vercel / Cloudflare Pages）才需要配这些绝对地址**；同源的单机部署不要配，
+配了反而会把协议钉死：
 
 ```env
 NEXT_PUBLIC_API_URL=https://roselet.47.131.238.0.sslip.io

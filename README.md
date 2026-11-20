@@ -3,19 +3,25 @@
 ![Rust](https://img.shields.io/badge/Rust-1.88.0-orange?logo=rust)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![License](https://img.shields.io/badge/License-MIT-blue)
-![Live](https://img.shields.io/badge/Live-roselet--web.vercel.app-brightgreen)
+![Live](https://img.shields.io/badge/Live-online-brightgreen)
 
-> Write one line, plant a rose, and come back in a week to see what you have grown.
+> Write down one good thing, one hope, or one worry — plant it as a rose, and come back in a week to see what your garden has become.
 
-Roselet is a community icebreaker Web app inspired by the classic "Rose, Bud, Thorn" game. Users plant roses to share gratitude, anxiety, and hope — forming a living community garden that grows with every entry.
+Roselet is a community mood garden. It turns the classic "Rose, Bud, Thorn" icebreaker into a garden
+that grows over time: gratitude goes into the petals, hopes into the bud, anxieties into the thorns.
+Others can see them, send roses, leave likes — and a week later you can look back at the shape of
+your own month.
 
-[中文文档](README_zh.md) | **Live demo:** [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+[中文文档](README_zh.md) | **Live demo:** [https://roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io)
 
 ## Current Status
 
 - Stage: `Beta live`
-- Live URL: [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+- Live URL: [https://roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io) (HTTPS, web and API on the same origin)
+- Fallback: `http://47.131.238.0` (same host, no TLS, troubleshooting only)
 - Current focus: `Core Web product is publicly usable; collecting real user feedback`
+- ⚠️ Two older URLs must not be shared anymore: `roselet-web.vercel.app` does not resolve
+  from mainland China, and `roselet.paxonqiao.com` no longer exists (NXDOMAIN).
 
 ### Progress
 
@@ -30,10 +36,12 @@ User validation [#---------] 20%
 
 ### Production Architecture
 
-- **Web frontend**: Vercel — [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
-- **Rust backend**: AWS Lightsail (Docker + Axum)
-- **Database**: Docker PostgreSQL on Lightsail
-- **HTTPS**: Caddy + `roselet.47.131.238.0.sslip.io` temporary domain
+- **Web frontend + Rust backend**: one AWS Lightsail box; Caddy splits by path on the same origin
+  (`/api/*`, `/health` → 3001, everything else → 3000). Same origin buys two things:
+  no CORS, and no mixed-content blocking when the page is served over https.
+- **Database**: Docker PostgreSQL on Lightsail (daily 04:00 dump + weekly restore drill)
+- **Entry point**: [https://roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io)
+  (Caddy issues the Let's Encrypt cert); swap in a real domain with `scripts/enable-tls-domain.sh`
 - **Auto deploy**: GitHub Actions builds GHCR image → SSH deploy to Lightsail
 
 Deployment docs: [docs/AWS_LIGHTSAIL_DEPLOYMENT.md](docs/AWS_LIGHTSAIL_DEPLOYMENT.md)
@@ -92,7 +100,7 @@ Earlier we evaluated Cloudflare / Render / Neon free / card-less options. Those 
 
 ### Live Demo
 
-Try it now: [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+Try it now: [https://roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io)
 
 Screenshots: [docs/screenshots/](docs/screenshots/)
 

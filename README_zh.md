@@ -3,19 +3,25 @@
 ![Rust](https://img.shields.io/badge/Rust-1.88.0-orange?logo=rust)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![License](https://img.shields.io/badge/License-MIT-blue)
-![Live](https://img.shields.io/badge/Live-roselet--web.vercel.app-brightgreen)
+![Live](https://img.shields.io/badge/Live-online-brightgreen)
 
-> 写一句，种一朵玫瑰，一周后看看自己长出了什么。
+> 写下今天的一件好事、一个期待，或一点烦心事，种成一朵玫瑰——一周后回来看，它长成了你的花圃。
 
-Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的”玫瑰、花苞、尖刺”（Rose, Bud, Thorn）破冰游戏。用户通过种下玫瑰来分享感恩、焦虑和期待，形成一个随时间生长的温暖社区花圃。
+Roselet 是一个社区情绪花圃。它把「玫瑰、花苞、尖刺」（Rose, Bud, Thorn）这个经典破冰游戏
+变成了一个可以慢慢长起来的线上花园：感恩写进花瓣，期待写进花苞，焦虑写进尖刺，
+别人能看见、能送花、能点赞，一周后还能回看自己这段时间的情绪形状。
 
-[English](README.md) | **线上试用：** [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+[English](README.md) | **线上试用：** [https://roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io)
 
 ## 当前项目位置
 
 - 当前阶段：`Beta 已上线`
-- 线上地址：[https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+- 线上地址：[https://roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io)（HTTPS，页面与 API 同源）
+- 备用入口：`http://47.131.238.0`（同一台机器，无 TLS，仅用于排查）
 - 当前判断：`Web 端核心产品已可公开试用，正在收集真实用户反馈`
+- ⚠️ 历史上的两个入口都不要再对外发：`roselet-web.vercel.app` 在国内解析不通，
+  `roselet.paxonqiao.com` 域名已失效（NXDOMAIN）。换正式域名只需一条命令，
+  见 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
 ### 进度概览
 
@@ -30,10 +36,12 @@ Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的”玫瑰�
 
 ### 当前生产架构
 
-- **Web 前端**：Vercel — [https://roselet-web.vercel.app](https://roselet-web.vercel.app)
-- **Rust 后端**：AWS Lightsail（Docker + Axum）
-- **数据库**：Docker PostgreSQL on Lightsail
-- **HTTPS**：Caddy + `roselet.47.131.238.0.sslip.io` 临时域名
+- **Web 前端 + Rust 后端**：同一台 AWS Lightsail 机器，Caddy 按路径同源分流
+  （`/api/*`、`/health` → 3001，其余 → 3000）。同源换来两件事：不需要 CORS，
+  也不会出现 https 页面调 http 接口的混合内容拦截。
+- **数据库**：Docker PostgreSQL on Lightsail（每日 04:00 dump + 每周恢复演练）
+- **入口**：[https://roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io)
+  （Caddy 自动签发 Let's Encrypt 证书）；换正式域名用 `scripts/enable-tls-domain.sh`
 - **自动部署**：GitHub Actions 构建 GHCR 镜像 → SSH 部署到 Lightsail
 
 详细部署文档：[docs/AWS_LIGHTSAIL_DEPLOYMENT.md](docs/AWS_LIGHTSAIL_DEPLOYMENT.md)
@@ -84,13 +92,13 @@ Roselet 是一个社区破冰互动 Web 应用，灵感来自经典的”玫瑰�
 | AI | OpenAI 兼容 API（异步非阻塞） |
 | WASM | Rust → wasm-bindgen → wasm-pack（112KB） |
 | 音效 | Tone.js 合成器 |
-| 部署 | Vercel + AWS Lightsail + Docker + Caddy |
+| 部署 | AWS Lightsail 单机 + Docker + Caddy（同源分流） |
 
 ## 快速开始
 
 ### 线上试用
 
-直接访问：[https://roselet-web.vercel.app](https://roselet-web.vercel.app)
+直接访问：[https://roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io)
 
 界面截图见 [docs/screenshots/](docs/screenshots/)。
 

@@ -5840,3 +5840,63 @@ DONE
 - 跳转期的 chunk 失败，**Next 自己有恢复路径**，不需要我们兜底；
 - 真正会「页面能看、按钮全死」的是**已停留在某页、后续懒加载 chunk 失败**，这种手动刷新即好；要根治得从两头下手：发版别让站点短暂不可用（蓝绿/双实例切流），以及别把页面 chunk 做太大（丢包链路上更易失败）；
 - 任何「出错就自动刷新」的兜底都要用真实浏览器验证最终落点，光看单元测试会得出相反结论。
+
+## 三十四、https 入口能开页面，但注册点了没反应
+
+**起因**：想给「一句话介绍」配一个能真的打开的链接，于是把三个历史入口都敲了一遍：
+
+| 入口 | 结果 |
+| --- | --- |
+| `https://roselet.47.131.238.0.sslip.io` | 200，页面和 `/health` 都正常，证书有效至 2027-01-20 |
+| `http://47.131.238.0` | 200，同一个站，没有 TLS |
+| `https://roselet-web.vercel.app` | 国内 `223.5.5.5` 返回 SERVFAIL，直连超时 |
+| `https://roselet.paxonqiao.com` | `.com` 权威返回 **NXDOMAIN**，域名已经不存在了 |
+
+前两个能用，那 README 里写 Vercel 当主入口就是错的。**顺手在 https 入口上跑了一遍完整旅程冒烟，第 1 步就挂了**：
+
+```
+✗ 注册并进入花圃   66002ms   page.waitForURL: Timeout 60000ms exceeded.
+```
+
+同一个脚本对 `http://47.131.238.0` 是 10/10 通过的。差别只有一个：页面是 https 打开的。
+
+**定位**：注册接口本身没问题，curl 直接打是 201（4.2s）。问题在浏览器侧——把产物翻出来数：
+
+```
+$ docker exec roselet-web-1 grep -rhoE "http://47\.131\.238\.0" apps/web/.next/static | sort | uniq -c
+      4 http://47.131.238.0
+```
+
+`NEXT_PUBLIC_*` 是**编译期内联**的，而部署流水线写的是
+`NEXT_PUBLIC_API_URL=http://${{ secrets.LIGHTSAIL_HOST }}`。于是 https 页面里每一个请求都在打
+`http://…`，浏览器按**混合内容**处理：不发请求、不报错，控制台只有一行 warning。用户看到的就是
+「填了昵称，点继续，什么都没发生」。`ws.ts` 按同一个基址推出来的 `ws://` 也一样被拦，实时花圃跟着哑掉。
+
+讽刺的地方在于，那行 build-arg 上面原来的注释写的就是「页面与 API 同源」——**想做的事是对的，
+实现方式把协议钉死了**。同一个 IP 不等于同一个 origin。
+
+**处理**：
+
+- 新增 `apps/web/src/lib/api-base.ts`，只认三种取值：`same-origin` 哨兵 → 空串（相对路径）、
+  绝对地址、没配 → 开发用的 `localhost:3001`。`api.ts`、`membership-panel.tsx`、
+  `rose/[id]/page.tsx` 的构建期取数全部走它。
+- `ws.ts` 同源时跟着页面自己的协议走：https 页面 → `wss://<当前 host>`，http 页面 → `ws://`。
+  （只改 HTTP 基址是不够的，`ws://` 在 https 页面里同样是混合内容。）
+- `Dockerfile.web` 的 `ARG` 默认值与流水线的 build-arg 都改成 `same-origin`。现在一份镜像
+  同时适配 http 和 https 两个入口，也不需要 CORS。
+- **一条旧守卫其实在守 bug**：`deploy-entry.test.ts` 里断言「workflow 必须等于
+  `NEXT_PUBLIC_API_URL=http://<host>`」。测试是绿的，产品是坏的。已改成断言 `same-origin`，
+  并额外禁止 `NEXT_PUBLIC_API_URL=http://` 这种写法回来。
+- 新增 `api-base.test.ts`（6 例）+ ws 的同源用例（1 例）：同源归一成空串、绝对地址去尾斜杠、
+  没配退回开发端口、https 页面必须 wss。
+
+**验证**：Web 62 套件 **451 例**全绿，`tsc --noEmit` 通过；CI 重建镜像后线上产物里已无
+`http://47.131.238.0`，https 入口的完整旅程 10/10 通过（见下方补记的实测）。
+
+**顺带修掉的一处「自己给自己灌水」**：`/stats` 里的用户数口径是 `users WHERE deleted_at IS NULL`，
+而这正是「要不要继续投入」的那条 100 用户判断线。可冒烟每跑一次就留下一个「冒烟测试xxxx」账号，
+生产库里已经攒了 9 个（2026-11-20 当天）。现在冒烟最后一步会调产品自带的
+`POST /api/auth/deactivate` 把测试账号注销掉——软删除 + 30 天冷静期，是产品允许的动作，
+不需要为测试新增任何接口。当天遗留的测试账号也已清理。
+
+**补记（部署后实测）**：镜像重建完成后，https 入口跑完整旅程 —— 结果见下一节。
