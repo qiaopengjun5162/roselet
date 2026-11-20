@@ -1,17 +1,22 @@
 import type { Rose } from "@/lib/api";
+import { resolveApiBase, sameOriginWsBase } from "@/lib/api-base";
 
 function resolveWsBase(): string {
   if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
 
-  const apiBase = process.env.NEXT_PUBLIC_READ_API_URL
-    || process.env.NEXT_PUBLIC_API_URL;
+  const apiBase = resolveApiBase(
+    process.env.NEXT_PUBLIC_READ_API_URL
+      || process.env.NEXT_PUBLIC_WORKER_API_URL
+      || process.env.NEXT_PUBLIC_API_URL,
+  );
 
-  if (apiBase) {
-    if (apiBase.startsWith("https://")) return apiBase.replace("https://", "wss://");
-    if (apiBase.startsWith("http://")) return apiBase.replace("http://", "ws://");
-  }
+  // 同源（相对路径）时跟着页面走：https 页面必须用 wss，否则连不上。
+  if (!apiBase) return sameOriginWsBase();
 
-  return "ws://localhost:3001";
+  if (apiBase.startsWith("https://")) return apiBase.replace("https://", "wss://");
+  if (apiBase.startsWith("http://")) return apiBase.replace("http://", "ws://");
+
+  return apiBase;
 }
 
 export type RoseHandler = (rose: Rose) => void;

@@ -108,10 +108,26 @@ describe("国内可用的试用入口", () => {
     expect(script).toMatch(/RESOLVED_WEB_IMAGE/);
   });
 
-  it("部署流水线会把 API 基址编进前端镜像", () => {
+  it("前端镜像把 API 基址编成同源，而不是写死 http://<IP>", () => {
+    // 2026-11-20：这里原来是一条「必须等于 http://<LIGHTSAIL_HOST>」的断言，
+    // 它守住的其实是 bug——https 页面里所有 http:// 请求都会被当混合内容
+    // 静默拦掉，注册点了没反应。现在要求产物里只留相对路径。
     const workflow = read(WORKFLOW);
     expect(workflow).toContain("Dockerfile.web");
-    expect(workflow).toMatch(/NEXT_PUBLIC_API_URL=http:\/\/\$\{\{\s*secrets\.LIGHTSAIL_HOST\s*\}\}/);
+    expect(workflow).toMatch(/NEXT_PUBLIC_API_URL=same-origin/);
+    // 绝对 http 地址一旦被编进包，https 入口就废一半，这条不能回退。
+    expect(workflow).not.toMatch(/NEXT_PUBLIC_API_URL=http:\/\//);
+
+    const dockerfile = read(DOCKERFILE);
+    expect(dockerfile).toContain("ARG NEXT_PUBLIC_API_URL=same-origin");
+  });
+
+  it("同源模式下 WebSocket 跟着页面协议走，https 页面必须用 wss", () => {
+    // 只改 HTTP 基址是不够的：ws:// 在 https 页面里同样是混合内容。
+    const ws = read("apps/web/src/lib/ws.ts");
+    expect(ws).toContain("sameOriginWsBase");
+    const apiBase = read("apps/web/src/lib/api-base.ts");
+    expect(apiBase).toContain("wss:");
   });
 
   it("前端镜像带上了 static 与 public，否则页面能开、资源 404", () => {

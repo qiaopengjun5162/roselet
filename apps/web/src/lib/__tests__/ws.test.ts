@@ -60,6 +60,27 @@ describe("connectGardenWs", () => {
     process.env.NEXT_PUBLIC_API_URL = oldApiUrl;
   });
 
+  it("should follow the page origin when the build is same-origin", async () => {
+    const oldWsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    const oldApiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const oldReadUrl = process.env.NEXT_PUBLIC_READ_API_URL;
+    delete process.env.NEXT_PUBLIC_WS_URL;
+    delete process.env.NEXT_PUBLIC_READ_API_URL;
+    process.env.NEXT_PUBLIC_API_URL = "same-origin";
+
+    jest.resetModules();
+    const { connectGardenWs: isolatedConnectGardenWs } = await import("../ws");
+    isolatedConnectGardenWs(() => {});
+
+    // 同源时不能落到 localhost:3001（那是 dev 兜底），要跟着页面自己的 host 走。
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(MockWebSocket.instances[0].url).toBe(`ws://${window.location.host}/api/ws`);
+
+    process.env.NEXT_PUBLIC_WS_URL = oldWsUrl;
+    process.env.NEXT_PUBLIC_API_URL = oldApiUrl;
+    process.env.NEXT_PUBLIC_READ_API_URL = oldReadUrl;
+  });
+
   it("should call onRose when message received", () => {
     const handler = jest.fn();
     connectGardenWs(handler);

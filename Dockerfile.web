@@ -29,7 +29,9 @@ COPY packages/core packages/core
 COPY apps/web apps/web
 
 # NEXT_PUBLIC_* 是编译期内联，必须在 build 时传入，不能运行时再给。
-ARG NEXT_PUBLIC_API_URL
+# 默认 same-origin：打包成相对路径，页面用什么协议打开就用什么协议调后端。
+# 写死绝对地址（尤其 http://）的后果见 lib/api-base.ts 里的注释。
+ARG NEXT_PUBLIC_API_URL=same-origin
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm --filter web build
 

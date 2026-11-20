@@ -151,10 +151,12 @@ jobs:
           context: .
           file: Dockerfile.web
           push: true
-          # 页面与 API 同源：国内的入口是这台机器的裸 IP，
-          # Vercel 的边缘 IP 在国内连 TLS 握手都过不去。
+          # 页面与 API 同源，但**不能**写死成 http://<IP>：同一个页面既可能用
+          # http 打开，也会用 https 打开（Caddy 上那套 sslip.io 证书）。
+          # 写死 http 的话，https 页面里所有请求都会被当成混合内容静默拦掉。
+          # same-origin 让产物里只留相对路径，两种入口共用一份镜像。
           build-args: |
-            NEXT_PUBLIC_API_URL=http://${{ secrets.LIGHTSAIL_HOST }}
+            NEXT_PUBLIC_API_URL=same-origin
           tags: |
             ${{ steps.meta.outputs.web_image }}
             ${{ steps.meta.outputs.web_latest }}

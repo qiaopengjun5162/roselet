@@ -1,8 +1,10 @@
 // 所有请求都走带超时的 fetch：链路烂的时候裸 fetch 会挂到浏览器默认超时，
 // 界面就一直停在骨架屏上（见 lib/net.ts）。
 import { fetchWithTimeout, NET_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from "@/lib/net";
+import { resolveApiBase } from "@/lib/api-base";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+// same-origin 时这里是空串，请求走相对路径（见 lib/api-base.ts 里的来龙去脉）。
+const API_BASE = resolveApiBase(process.env.NEXT_PUBLIC_API_URL);
 const AUTH_API_BASE = process.env.NEXT_PUBLIC_AUTH_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || API_BASE;
 const READ_API_BASE = process.env.NEXT_PUBLIC_READ_API_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || API_BASE;
 
