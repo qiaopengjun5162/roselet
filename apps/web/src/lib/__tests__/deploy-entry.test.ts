@@ -121,6 +121,18 @@ describe("国内可用的试用入口", () => {
     expect(dockerfile).toContain("apps/web/public");
   });
 
+  it("部署前会清掉与远端一致的未跟踪文件，避免 pull 被挡住", () => {
+    // 2026-11-20：备份脚本先手工 scp 到服务器、之后才提交，`git pull` 因此
+    // 报 "untracked working tree files would be overwritten" 并放弃，
+    // 整个部署在动任何服务之前就退了。这里守住修复：只让「内容与 origin/main
+    // 完全一致」的未跟踪文件让位，不一致就报错停下，绝不覆盖。
+    const workflow = read(WORKFLOW);
+    expect(workflow).toContain("git ls-files --others --exclude-standard");
+    expect(workflow).toMatch(/git show "origin\/main:\$f" \| cmp -s - "\$f"/);
+    // 「不一致就失败」这半句才是安全边界，少了它就成了静默删文件。
+    expect(workflow).toContain("differs from origin/main");
+  });
+
   it("源码里不能把打不开的域名当兜底", () => {
     // 上链后的 NFT uri 改不了，分享出去的链接也一样。
     // 先去掉注释：注释里必须能写清「为什么不要这么做」，那不算兜底。

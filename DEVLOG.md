@@ -5811,3 +5811,9 @@ DONE
 `systemctl start roselet-backup.service` 由 systemd 触发的这一次也通过了，临时库确认已删（`pg_database` 里无残留）。定时器已启用，下一次 `Fri 2026-11-20 20:05 UTC`、周日 21:00 UTC 做演练。
 
 **遗留（要说清楚）**：备份只在本机，**机器丢了备份一起丢**。要真正做到「异地可恢复」，需要对象存储（S3/R2）凭证——目前没有，等定下域名/云账号再补这一跳。这层风险已写进本条目，不会被「已备份」三个字盖过去。
+
+**补记（同轮，一次自找的部署失败）**：备份脚本先在服务器上手 scp 了一份、之后才提交，结果 CI 建完镜像、部署走到 `git pull` 时被 `error: The following untracked working tree files would be overwritten by merge: scripts/lightsail-backup.sh` 挡住并中止。线上服务没受影响（停在旧版本，首页 200、`/health` 正常），但**这次运行是红的，而且下一次部署还会同样失败**。
+
+处理：① 服务器上比对 `scripts/lightsail-backup.sh` 与 `origin/main` 版本，`diff` 一致后删掉未跟踪的那份、`git pull --ff-only` 到 `74b2c9d`；② 流程侧加护栏——拉取前先扫 `git ls-files --others --exclude-standard`，**只有内容与 `origin/main` 逐字节一致**的未跟踪文件才让位（`cmp -s`），不一致的打印文件名后失败，绝不静默覆盖；③ 守卫测试补一条，断言这段逻辑在（尤其是「不一致就失败」这半句，少了它就变成静默删文件）。
+
+教训：**别往部署用的工作区里手工塞文件**。要临时传东西就放 `/tmp`，或者先提交再传。

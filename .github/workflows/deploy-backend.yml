@@ -202,6 +202,25 @@ jobs:
           set -euo pipefail
           cd ~/roselet
           git fetch origin main
+
+          # 手工 scp 到工作区的文件会挡住 git pull。2026-11-20 就踩过一次：
+          # 备份脚本先传到服务器、之后才提交，于是 `git pull` 报
+          # "untracked working tree files would be overwritten" 并放弃，部署整体失败。
+          # 处理原则：只有内容与 origin/main 完全一致的文件才让位；
+          # 不一致的列出来然后失败——绝不静默覆盖别人手上的东西。
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            if git cat-file -e "origin/main:$f" 2>/dev/null; then
+              if git show "origin/main:$f" | cmp -s - "$f"; then
+                echo "evicting untracked file identical to origin/main: $f"
+                rm -f "$f"
+              else
+                echo "::error::untracked file would block the pull and differs from origin/main: $f"
+                exit 1
+              fi
+            fi
+          done < <(git ls-files --others --exclude-standard)
+
           git checkout main
           git pull --ff-only origin main
           chmod +x scripts/lightsail-deploy.sh
