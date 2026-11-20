@@ -1,0 +1,12 @@
+[Unit]
+Description=Roselet backup restore drill (weekly, actually restores into a scratch db)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/roselet
+Environment=VERIFY_RESTORE=1
+ExecStart=/home/ubuntu/roselet/scripts/lightsail-backup.sh
+Nice=10

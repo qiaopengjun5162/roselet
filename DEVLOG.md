@@ -5782,3 +5782,32 @@ Web 58 套件 **432 例**全绿。
 **一条被撤回的改动**：本来想加 `DELETE /api/rose/{id}` 顺手解决「冒烟测试的花留在公共花圃」。写完迁移和 5 个集成测试后，被既有测试 `test_delete_rose_is_not_exposed` 拦住，追到 2026-06-25 的记录：**「玫瑰种下后不应再修改，也暂不提供删除入口」是当时的产品决定**。功能已完整撤回（含迁移），改为冒烟脚本最后一步把这朵花**设为私密**——产品允许的动作，公共花圃一样不留痕。另外把此前 4 次尝试留下的 3 朵测试花从生产库里清掉（`DELETE FROM likes/roses`，限定 `nickname LIKE '冒烟测试%'`，删前先查过明细）。
 
 **验收**：10/10 步通过、`pageerror` 0；跑完 `GET /api/garden?per_page=50` 里已无本次测试数据（仅剩 2026-06-24 一条旧的部署冒烟记录，不是本轮产生）。
+
+## 三十二、线上还没有备份：补上每日 dump + 每周真恢复
+
+**风险**：`PROGRESS.md` 里「备份策略」这一项一直挂着未完成。数据库里已经有 33 个用户、19 朵花，机器一旦挂掉就是全丢——而且此前**没有任何一份 dump**（`~/roselet/backups` 目录都不存在）。
+
+**做法**（`scripts/lightsail-backup.sh`，跑在服务器上）：
+
+| 环节 | 做什么 | 为什么 |
+| --- | --- | --- |
+| 导出 | `pg_dump -Fc` → 先写 `.part` 再改名 | 自定义格式自带压缩（8MB 库 → 31KB），且能校验；`.part` 避免读到半截文件 |
+| 校验 | `pg_restore --list` 读一遍目录 | 文件存在 ≠ 文件可用，压缩流坏了这一步就会红 |
+| 保留 | 按文件名筛 `roselet-*.dump`，删 14 天前 | 单机磁盘 38G，14 天 31KB/天可以忽略 |
+| 演练 | `VERIFY_RESTORE=1`：建临时库真灌一遍，数完花再删 | 「能读」不等于「能恢复」，这一步才回答出事能不能用 |
+
+定时器：`roselet-backup.timer` 每天 20:00 UTC（北京时间早 4 点，`Persistent=true` 错过会补跑）；`roselet-backup-verify.timer` 每周日 21:00 UTC 带 `VERIFY_RESTORE=1` 做恢复演练。两个都由 systemd 以 `ubuntu` 用户跑，`Nice=10` 避免和线上请求抢 I/O。单元文件在 `deploy/lightsail/systemd/`。
+
+**实测**：
+
+```
+OK dump=.../roselet-20261120-030038.dump size=31849
+OK verified dump readable
+OK retention=14d removed=0
+OK restore drill scratch=roselet_restore_check_... roses=19 users=33
+DONE
+```
+
+`systemctl start roselet-backup.service` 由 systemd 触发的这一次也通过了，临时库确认已删（`pg_database` 里无残留）。定时器已启用，下一次 `Fri 2026-11-20 20:05 UTC`、周日 21:00 UTC 做演练。
+
+**遗留（要说清楚）**：备份只在本机，**机器丢了备份一起丢**。要真正做到「异地可恢复」，需要对象存储（S3/R2）凭证——目前没有，等定下域名/云账号再补这一跳。这层风险已写进本条目，不会被「已备份」三个字盖过去。

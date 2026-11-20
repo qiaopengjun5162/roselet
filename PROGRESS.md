@@ -137,7 +137,8 @@
 - 后端当前已切换为：`AWS Lightsail 上运行 Rust Axum + Docker Postgres`
 - 后端公网地址：`http://47.131.238.0`，仅用于 IP/服务器冒烟
 - 后端 HTTPS 地址：`https://roselet.47.131.238.0.sslip.io`，用于 Vercel / Cloudflare Pages 生产前端
-- 当前未完成：备份策略、监控告警、小程序真机闭环
+- 当前未完成：监控告警、小程序真机闭环
+- 备份：已上线（`scripts/lightsail-backup.sh` + 每日 04:00 定时器，每周一次真恢复演练，留 14 天），见 DEVLOG 三十二
 - Worker API 起点：`apps/worker-api`
 - Worker 当前已迁移：
   - `GET /health`

@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly Roselet restore drill (Sunday 05:00 Beijing / 21:00 UTC)
+
+[Timer]
+# 校验 dump 能读，不等于能恢复。每周真恢复一次，才知道备份有没有用。
+OnCalendar=Sun *-*-* 21:00:00 UTC
+Persistent=true
+Unit=roselet-backup-verify.service
+
+[Install]
+WantedBy=timers.target

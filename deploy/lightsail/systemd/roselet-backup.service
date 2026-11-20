@@ -1,0 +1,15 @@
+[Unit]
+Description=Roselet Postgres backup
+Documentation=https://github.com/qiaopengjun5162/roselet
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/roselet
+ExecStart=/home/ubuntu/roselet/scripts/lightsail-backup.sh
+# 备份是 I/O 活，别和线上请求抢优先级
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

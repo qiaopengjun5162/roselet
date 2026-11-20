@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily Roselet Postgres backup (04:00 Beijing / 20:00 UTC)
+
+[Timer]
+# 服务器时区是 UTC。挑 20:00 UTC = 北京时间早上 4 点，这个点没人种花。
+OnCalendar=*-*-* 20:00:00 UTC
+# Persistent：机器重启错过了也补跑一次，不会因为关机跳过一天。
+Persistent=true
+RandomizedDelaySec=600
+Unit=roselet-backup.service
+
+[Install]
+WantedBy=timers.target
