@@ -179,6 +179,26 @@ async function main() {
     });
   }
 
+  // 7. 收尾：把测试账号也注销掉。
+  //
+  // 每跑一次冒烟就多一个「冒烟测试xxxx」账号，而 `/stats` 里的用户数
+  // （`users WHERE deleted_at IS NULL`）正是「要不要继续投入」的那条判断线。
+  // 不清掉的话，判断线会被自己的测试灌水。注销是产品本来就有的动作
+  // （软删除 + 30 天冷静期），不需要为测试新增任何接口。
+  await step("收尾：注销测试账号", async () => {
+    const result = await page.evaluate(async () => {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch("/api/auth/deactivate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason: "automated smoke test" }),
+      });
+      return { status: res.status, body: (await res.text()).slice(0, 120) };
+    });
+    if (result.status !== 200) throw new Error(`HTTP ${result.status} ${result.body}`);
+    return "已注销，不计入活跃用户";
+  });
+
   await browser.close();
 
   const failed = results.filter((r) => !r.ok);
