@@ -9,6 +9,7 @@ import { DayNightBackground } from "@/components/day-night-bg";
 import { PRODUCT_TAGLINE_ZH } from "@roselet/core";
 import { FallingPetals } from "@/components/falling-petals";
 import { RoseClickBloom } from "@/components/rose-click-bloom";
+import { ChunkRecovery } from "@/components/chunk-recovery";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,6 +30,7 @@ export default function RootLayout({
     >
       <body className="h-[100dvh] w-screen flex flex-col overflow-hidden overscroll-none" suppressHydrationWarning>
         <MembershipProvider>
+          <ChunkRecovery />
           <DayNightBackground />
           <CyberBackground />
           <FallingPetals />
