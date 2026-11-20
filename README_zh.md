@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![Live](https://img.shields.io/badge/Live-online-brightgreen)
 
-> 写下今天的一件好事、一个期待，或一点烦心事，种成一朵玫瑰——一周后回来看，它长成了你的花圃。
+> 写一句，种一朵玫瑰，一周后看看自己长出了什么。
 
 Roselet 是一个社区情绪花圃。它把「玫瑰、花苞、尖刺」（Rose, Bud, Thorn）这个经典破冰游戏
 变成了一个可以慢慢长起来的线上花园：感恩写进花瓣，期待写进花苞，焦虑写进尖刺，

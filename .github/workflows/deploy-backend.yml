@@ -257,7 +257,12 @@ jobs:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
         run: |-
           set -euo pipefail
-          curl -fsS "https://roselet.$LIGHTSAIL_HOST.sslip.io/health"
+          BASE="https://roselet.$LIGHTSAIL_HOST.sslip.io"
+          curl -fsS "$BASE/health"
+          # `/health` 200 只证明后端活着。2026-11-20 那次全绿上线，前端包里却写死了
+          # http://<ip>，https 页面一打开就被混合内容拦掉，注册点了没反应。
+          # 这一步真的去翻产物：页面引用的 JS chunk 里不许有钉死协议的地址。
+          node scripts/verify-deploy.mjs "$BASE"
           echo
           curl -fsS "http://$LIGHTSAIL_HOST/api/garden?per_page=1" > /dev/null
           curl -fsS "http://$LIGHTSAIL_HOST/" | grep -q "<!DOCTYPE html"

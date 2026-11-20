@@ -149,6 +149,22 @@ describe("国内可用的试用入口", () => {
     expect(workflow).toContain("differs from origin/main");
   });
 
+  it("部署后真的去翻产物，而不是只看 /health", () => {
+    // 2026-11-20：流水线全绿、/health 200、镜像构建成功，但前端包里写死了
+    // http://<ip>，https 入口一打开所有请求都被当混合内容拦掉。
+    // /health 只证明后端活着，证明不了「发出去的东西是对的」。
+    const workflow = read(WORKFLOW);
+    expect(workflow).toContain("scripts/verify-deploy.mjs");
+
+    const script = read("scripts/verify-deploy.mjs");
+    // 必须真扫 chunk，而不是只打几条 curl。
+    expect(script).toContain("/_next/static/");
+    expect(script).toMatch(/http:\\\/\\\/\\d/); // 钉死协议的 IPv4
+    expect(script).toContain("localhost:3001");
+    // 有问题的产物必须以非 0 退出，否则检查等于没做。
+    expect(script).toContain("process.exit(1)");
+  });
+
   it("源码里不能把打不开的域名当兜底", () => {
     // 上链后的 NFT uri 改不了，分享出去的链接也一样。
     // 先去掉注释：注释里必须能写清「为什么不要这么做」，那不算兜底。

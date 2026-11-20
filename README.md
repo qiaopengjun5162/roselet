@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![Live](https://img.shields.io/badge/Live-online-brightgreen)
 
-> Write down one good thing, one hope, or one worry — plant it as a rose, and come back in a week to see what your garden has become.
+> Write one line, plant a rose, and come back in a week to see what you have grown.
 
 Roselet is a community mood garden. It turns the classic "Rose, Bud, Thorn" icebreaker into a garden
 that grows over time: gratitude goes into the petals, hopes into the bud, anxieties into the thorns.
