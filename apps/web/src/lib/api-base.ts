@@ -16,8 +16,15 @@
  */
 export const SAME_ORIGIN = "same-origin";
 
-/** 开发时后端在另一个端口，构建产物里不会走到这个分支。 */
-const DEV_FALLBACK = "http://localhost:3001";
+/**
+ * 开发时后端在另一个端口。
+ *
+ * 生产构建里 `process.env.NODE_ENV` 会被替换成字面量 `"production"`，
+ * 这个分支随之变成死代码被摇掉——**产物里不会留下 `localhost:3001` 这个字符串**。
+ * 留着它是有代价的：部署校验会把它当成「开发地址漏进线上」拦下来，
+ * 而那正是我们想拦的东西，不能为了一个死分支放宽检查。
+ */
+const DEV_FALLBACK = process.env.NODE_ENV === "production" ? "" : "http://localhost:3001";
 
 /**
  * 把构建期的环境变量解析成可以直接拼在 `${base}/api/...` 前面的前缀。
@@ -39,7 +46,7 @@ export function resolveApiBase(raw: string | undefined | null): string {
 export function sameOriginWsBase(
   loc: { protocol: string; host: string } | null = typeof window === "undefined" ? null : window.location,
 ): string {
-  if (!loc?.host) return "ws://localhost:3001";
+  if (!loc?.host) return process.env.NODE_ENV === "production" ? "" : "ws://localhost:3001";
   const proto = loc.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${loc.host}`;
 }

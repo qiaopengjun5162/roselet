@@ -22,7 +22,12 @@ function resolveWsBase(): string {
 export type RoseHandler = (rose: Rose) => void;
 
 export function connectGardenWs(onRose: RoseHandler): () => void {
-  const ws = new WebSocket(`${resolveWsBase()}/api/ws`);
+  const base = resolveWsBase();
+  // 生产构建里拿不到 location（不可能发生在浏览器里，但别让它抛异常）：
+  // WebSocket 不接受相对地址，宁可不连，也不要冒着把页面搞崩的风险猜一个。
+  if (!base) return () => {};
+
+  const ws = new WebSocket(`${base}/api/ws`);
 
   ws.onmessage = (event) => {
     try {
