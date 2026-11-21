@@ -135,7 +135,8 @@
   - `https://roselet.paxonqiao.com` —— 域名已失效（`.com` 权威返回 NXDOMAIN）
 - `Render` 与 `Koyeb` 在真实部署中都被支付验证拦住
 - 后端：`AWS Lightsail 上运行 Rust Axum + Docker Postgres`
-- 当前未完成：监控告警（站挂了没人知道，只有备份定时器）、小程序真机闭环
+- 当前未完成：小程序真机闭环、异地备份（机器丢了备份一起丢，需对象存储凭证）
+- 监控告警：已上线。站挂了 → `Uptime` 工作流每 15 分钟从站外探活；备份停了 → `Backup Monitor` 每天从站外读状态文件。两者都跑在 GitHub runner，机器挂了告警不会跟着挂。见 DEVLOG 三十五、三十九
 - 备份：已上线（`scripts/lightsail-backup.sh` + 每日 04:00 定时器，每周一次真恢复演练，留 14 天），见 DEVLOG 三十二
 - Worker API 起点：`apps/worker-api`
 - Worker 当前已迁移：

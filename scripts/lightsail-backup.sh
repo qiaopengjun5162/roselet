@@ -10,6 +10,12 @@
 #
 # 只在本机留档。没有对象存储凭证，所以「机器挂了备份一起没」这层风险仍在，
 # 见 DEVLOG 三十一续的遗留说明。
+#
+# 但「备份停了」这件事必须能被站外发现——只在本机写日志的话，机器一出事，
+# 日志和人一起没。所以每次运行都额外写一个极小的状态文件，供站外的定时任务
+# SSH 进来读。**状态文件只放时间戳 / 状态 / 大小，绝不放行数或错误信息**：
+# 这个仓库是 public，检查脚本的输出会出现在 Actions 日志里。业务数据的口径
+# 留在 backup.log（只在本机、权限 600），不进状态文件。
 set -euo pipefail
 
 BACKUP_DIR="${BACKUP_DIR:-$HOME/roselet-backups}"
@@ -23,14 +29,28 @@ stamp="$(date -u +%Y%m%d-%H%M%S)"
 target="$BACKUP_DIR/roselet-$stamp.dump"
 tmp="$target.part"
 log="$BACKUP_DIR/backup.log"
+status_file="$BACKUP_DIR/backup-status.json"
 
 log_line() {
   # 备份日志本身也要留在备份目录里，出问题能回溯。
   printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$log"
 }
 
+# 原子写状态文件：先写 .tmp 再改名，站外检查永远不会读到写了一半的 JSON。
+# 只写三样东西：状态、时间、dump 大小。失败原因留在本机的 backup.log 里——
+# 站外只需要知道「最近一次成没成」，不需要（也不该）看到任何具体信息。
+write_status() {
+  local state="$1" now
+  now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '{"status":"%s","at":"%s","size":%s}\n' \
+    "$state" "$now" "${size:-0}" >"$status_file.tmp"
+  mv -f "$status_file.tmp" "$status_file"
+}
+
 fail() {
   log_line "FAILED: $*"
+  size=0
+  write_status failed
   # 失败时删掉半截文件：一个 0 字节的 .dump 比没有备份更危险，容易让人以为有。
   rm -f "$tmp"
   exit 1
@@ -71,4 +91,6 @@ if [ "$VERIFY_RESTORE" = "1" ]; then
   log_line "OK restore drill scratch=$scratch roses=$roses users=$users"
 fi
 
+# 走到这里才算这次备份真正成功（dump + 可读性校验 + 可选演练全过）。
+write_status ok
 log_line "DONE $target"

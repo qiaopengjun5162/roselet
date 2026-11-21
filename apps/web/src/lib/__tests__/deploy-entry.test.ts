@@ -215,6 +215,34 @@ describe("国内可用的试用入口", () => {
     expect(backup).toBeGreaterThan(validated);
   });
 
+  it("备份停了必须能被站外发现，且不把业务数据泄漏到 public 日志", () => {
+    // 备份脚本每次运行都写状态文件；站外的定时任务每天读一次。
+    // 机器挂了本机 backup.log 跟着没，只有站外检查能喊人。
+    const backupScript = read("scripts/lightsail-backup.sh");
+    expect(backupScript).toContain("backup-status.json");
+    expect(backupScript).toContain("write_status failed");
+    expect(backupScript).toContain("write_status ok");
+    // 状态文件先写 .tmp 再 mv：站外永远读不到写了一半的 JSON。
+    expect(backupScript).toMatch(/\$status_file\.tmp/);
+    expect(backupScript).toMatch(/mv -f "\$status_file\.tmp"/);
+    // 关键纪律：状态文件里不能出现行数 / 昵称这类业务数据。
+    // 检查脚本的输出会进 public 仓库的 Actions 日志。
+    expect(backupScript).not.toMatch(/reason/);
+
+    const workflow = read(".github/workflows/backup-monitor.yml");
+    expect(workflow).toContain("schedule:");
+    expect(workflow).toContain("cat ~/roselet-backups/backup-status.json");
+    expect(workflow).toContain("check-backup-freshness.mjs");
+    // SSH 失败不能被当成「检查通过」。
+    expect(workflow).toContain("pipefail");
+
+    const checker = read("scripts/check-backup-freshness.mjs");
+    expect(checker).toContain('status.status !== "ok"');
+    expect(checker).toContain("maxAgeHours");
+    // 只输出新鲜度元信息，不能把整个状态对象打进日志。
+    expect(checker).not.toMatch(/console\.(log|error)\([^)]*status\.(at|size|reason)/);
+  });
+
   it("源码里不能把打不开的域名当兜底", () => {
     // 上链后的 NFT uri 改不了，分享出去的链接也一样。
     // 先去掉注释：注释里必须能写清「为什么不要这么做」，那不算兜底。

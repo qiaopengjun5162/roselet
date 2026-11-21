@@ -1,0 +1,81 @@
+name: Backup Monitor
+
+# 每天从**站外**看一次「最近的备份还新不新」。
+#
+# 和 Uptime 同一个道理：备份脚本在本机写日志，机器一出问题，日志跟告警一起没。
+# 这个工作流复用部署流水线已有的 SSH 凭据，SSH 进去只读一个极小的状态文件，
+# 判断最近一次成功备份是否在有效期内。它不下载 dump、不打印任何业务数据
+# （仓库是 public，Actions 日志对外可见），只看一个新鲜度结论。
+#
+# 失败时：本次运行标红，GitHub 发通知。失败原因不要用 echo 打出来——
+# 状态文件里只有 status/at/size，检查脚本也只输出这些元信息。
+#
+# 前提同 Uptime：GitHub cron 会延迟，60 天无提交会停 scheduled workflow。
+
+on:
+  schedule:
+    - cron: "17 3 * * *"   # 每天 03:17 UTC（备份在 20:00 UTC，留足一天余量）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-monitor
+  cancel-in-progress: false
+
+jobs:
+  freshness:
+    name: 备份新鲜度
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 校验 SSH 凭据齐全
+        env:
+          LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
+          LIGHTSAIL_SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          LIGHTSAIL_KNOWN_HOSTS: ${{ secrets.LIGHTSAIL_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          for v in LIGHTSAIL_HOST LIGHTSAIL_USER LIGHTSAIL_SSH_KEY LIGHTSAIL_KNOWN_HOSTS; do
+            if [ -z "${!v:-}" ]; then echo "缺少 secret: $v"; exit 1; fi
+          done
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$LIGHTSAIL_SSH_KEY" > ~/.ssh/lightsail
+          chmod 600 ~/.ssh/lightsail
+          printf '%s\n' "$LIGHTSAIL_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      # 只读状态文件，经 stdout 直接管道给检查脚本。pipefail 保证 SSH 失败
+      # （机器挂了/连不上）不会被当成「检查通过」。文件内容不落盘、不 echo。
+      - name: 从站外读取状态文件并检查新鲜度
+        env:
+          LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/lightsail \
+            -o BatchMode=yes -o ConnectTimeout=20 \
+            "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" \
+            'cat ~/roselet-backups/backup-status.json' \
+            | node scripts/check-backup-freshness.mjs
+
+      - name: 失败时写排查指引（不含任何业务数据）
+        if: failure()
+        run: |
+          {
+            echo "### 备份新鲜度检查失败"
+            echo ""
+            echo "可能原因：最近一次备份失败 / 备份 timer 停了 / 机器连不上。"
+            echo ""
+            echo "排查顺序："
+            echo "1. \`ssh ubuntu@<host> systemctl status roselet-backup.timer\`"
+            echo "2. \`ssh ubuntu@<host> tail -20 ~/roselet-backups/backup.log\`（仅本机可见）"
+            echo "3. \`ssh ubuntu@<host> cat ~/roselet-backups/backup-status.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"
