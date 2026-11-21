@@ -375,6 +375,18 @@ CI 里 build 之后会跑 `node scripts/verify-miniprogram-build.mjs`：真去�
 
 `project.config.json` 里的 `urlCheck: false` 只对开发者工具有效，**真机不走这个开关**。
 
+微信官方[网络说明](https://developers.weixin.qq.com/miniprogram/dev/framework/ability/network.html)的硬性要求
+（2026-08 版）：域名必须 https 且**经过 ICP 备案**；不能用 IP / localhost；
+**不能配父域名，必须填子域名**（即填 `roselet.ccwu.cc`，不是 `ccwu.cc`）；证书链完整、TLS ≥ 1.2。
+
+网站本身跑在新加坡，**不需要 ICP 备案**——备案是小程序后台加域名时才要求。
+`.cc` 后缀在 2020-07 已通过工信部审批，可以备案；是否能备案要看主体和接入商。
+
+`ccwu.cc` 的实测情况（2026-11-21）：Porkbun 注册（2025-08-17，2029 到期），NS 在
+`dnshe.org`，当前 A 记录指向 `13.250.16.35`（另一台机器）；`roselet.ccwu.cc` 还没有记录，
+也没有 CAA / DNSSEC 限制，因此加上 A 记录后 Caddy 能正常签证书。**备案状态自动化查不到**
+（工信部查询有反爬），需在 beian.miit.gov.cn 手工确认。
+
 ## 安全检查清单
 
 - [ ] JWT_SECRET 已设置且 ≥32 字节
