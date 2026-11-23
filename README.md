@@ -210,14 +210,30 @@ roselet/
 
 ## Tests
 
-| Suite | Count | Command |
-|-------|-------|---------|
-| Backend integration + unit | 149 | `cargo nextest run -p roselet-backend -j1` |
-| Rust WASM / recommend | 148 | `cargo nextest run -p roselet-recommend -j1` |
-| Web frontend | 208 | `pnpm --filter web test` |
-| Miniprogram | 66 | `pnpm --filter @roselet/miniprogram test` |
-| Agent API | 16 | `pnpm --filter @roselet/agent-api test` |
-| **Total** | **587** | `just test` |
+Measured 2026-11-23 (all green):
+
+| Suite | Passing | Command |
+|-------|---------|---------|
+| Backend unit | 94 (+1 ignored) | `cargo test --workspace --lib` |
+| Backend integration | 84 | `cargo test -p roselet-backend --test api_test -- --test-threads=1` |
+| Rust recommend / WASM | 172 | `cargo test -p roselet-recommend` |
+| Web frontend | 455 | `pnpm --filter web test` |
+| Miniprogram | 71 | `pnpm --filter @roselet/miniprogram test` |
+| Agent API | 39 | `pnpm --filter @roselet/agent-api test` |
+| Worker API | 20 | `pnpm --filter @roselet/worker-api test` |
+| **Total** | **935** | — |
+
+**Before running backend integration tests**:
+
+1. **Run serially** — the tests `TRUNCATE` the same tables, so parallel runs
+   erase each other's data. Use `-- --test-threads=1` (or `cargo nextest ... -j1`
+   as CI does).
+2. **Start with a clean test database** — if a since-deleted migration left a
+   version behind, sqlx fails with `VersionMissing(15)`-style errors:
+
+   ```bash
+   dropdb --if-exists roselet_test && createdb roselet_test
+   ```
 
 ## Contributing
 

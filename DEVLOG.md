@@ -6137,3 +6137,21 @@ Web 62 套件 455 例全绿。
 **边界说清楚**：这解决的是「备份停了能发现」，不是「备份安全」。备份仍然只在
 **本机**——机器丢了备份一起丢。真正异地可恢复需要对象存储凭证（S3/R2），目前没有，
 不会擅自建云资源或猜密钥。这层风险仍在（见 DEVLOG 三十二、PROGRESS）。
+
+## 四十、一次全项目体检（完成度 / 覆盖率 / 质量 / 审计 / 重构）
+
+用户问「项目完成了吗、测试覆盖率、代码质量、审计、要重构的地方」。没凭印象答，逐项实测：
+
+**测试覆盖率（真实跑出来的）**：Web 91.96% 语句 / 81.15% 分支 / 94.68% 行（62 套件 455 例）；小程序 99.34%/96.29%/100%（7 套件 71 例）；agent-api 97.25%/94.07%/97.25%（9 文件 39 例）；worker-api 20 例。全仓库合计 **935 例**。覆盖率统计不含 Rust（本机没装 tarpaulin）。
+
+**代码质量**：`tsc --noEmit` 三个包全过、`eslint` 0 告警、`cargo clippy --workspace --all-targets` 0 代码告警（只有 2 个未使用依赖：`utoipa`、`regex`）。源码里 0 个 TODO/FIXME。这一项是真的干净。
+
+**发现的两个真问题**：
+
+1. **本机 `cargo test` 全红（84 failed），CI 却全绿**——不是代码 bug。本机 `roselet_test` 库残留了版本 15「soft delete roses」迁移（那次删除玫瑰功能撤回时只删了文件没清库），当前迁移只到 014，sqlx 报 `VersionMissing(15)`。清掉残留后还剩 30 failed，是并行测试互相 `TRUNCATE` 同一张表；用 `-- --test-threads=1`（CI 的 `-j1`）后 **84/84 全过**。根因是「测试基础设施没有一条重建干净库 + 串行的本地命令」，任何人拉下来直接 `cargo test` 都会撞。已把实测数字和这两条操作写进 README 中英两版（原来写的 461/587 全是过时的假数字）。
+
+2. **依赖审计：220 条漏洞（9 critical / 77 high）**。深挖后关键结论：线上 Next.js 是 **16.2.6**，而 4 个 critical RCE（Image Optimization / next/og / use cache / windows-host）的修复版本是 **16.3.3**——这是真实暴露面，不是构建工具链的虚惊。其余大量 high/moderate 来自 Taro 的 webpack-dev-server、MCP SDK、brace-expansion 等传递依赖，多数只在构建期。CI 跑 `cargo deny check`，但没有任何 `pnpm audit` 门禁。`cargo audit` 本机拉不到漏洞库（网络），未测成。密钥扫描：无硬编码私钥/token，`.env` 只跟踪了 `.example`。
+
+**重构候选（按价值排序，本次未动）**：① Next.js 升级 16.2.6 → 16.3.3（安全，最高优先）；② 两个最大的源文件 `solana_onchain.rs`（905 行）、`solana_nft.rs`（687 行）可按职责拆分；③ 给 `pnpm audit` 加 CI 门禁并配 overrides 消化可控项；④ 清掉 clippy 报的 2 个未使用依赖。
+
+**完成度**：Web 前端 + 后端 + 部署 + 备份 + 外部监控（Uptime/Backup Monitor）已闭环且线上探活全绿。剩余都是需要用户外部条件的事：正式域名（等 DNS）、小程序真机（等备案+白名单）、异地备份（等对象存储凭证）。不是代码没写完。

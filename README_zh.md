@@ -207,13 +207,29 @@ roselet/
 
 ## 测试
 
-| 套件 | 数量 | 命令 |
+实测于 2026-11-23（全绿）：
+
+| 套件 | 通过数 | 命令 |
 |------|------|------|
-| 后端集成 + 单元 | 110 | `cargo nextest run --workspace --all-features -j1` |
-| Rust WASM/推荐 | 139 | 含于上方 |
-| Web 前端 | 146 | `pnpm --filter @roselet/web test` |
-| 小程序 | 66 | `pnpm --filter @roselet/miniprogram test` |
-| **总计** | **461** | `just test` |
+| 后端单元测试 | 94（+1 ignored） | `cargo test --workspace --lib` |
+| 后端集成测试 | 84 | `cargo test -p roselet-backend --test api_test -- --test-threads=1` |
+| Rust 推荐/WASM | 172 | `cargo test -p roselet-recommend` |
+| Web 前端 | 455 | `pnpm --filter web test` |
+| 小程序 | 71 | `pnpm --filter @roselet/miniprogram test` |
+| Agent API | 39 | `pnpm --filter @roselet/agent-api test` |
+| Worker API | 20 | `pnpm --filter @roselet/worker-api test` |
+| **总计** | **935** | — |
+
+**跑后端集成测试前先看这两条**（否则会看到一堆假失败）：
+
+1. **必须串行**：测试会 `TRUNCATE` 同一张表，并行跑会互相清空。用
+   `-- --test-threads=1` 或 CI 里的 `cargo nextest run ... -j1`。
+2. **测试库要干净**：如果之前跑过已删除的迁移，本机库里会残留版本号，
+   sqlx 报 `VersionMissing(15)` 之类。重建最省心：
+
+   ```bash
+   dropdb --if-exists roselet_test && createdb roselet_test
+   ```
 
 ## 贡献
 
