@@ -6170,6 +6170,8 @@ Web 62 套件 455 例全绿。
 
 **CI 反手又抓到一个 Rust 漏洞**：PR 推上去后，Backend Tests job 的 `cargo deny check` 挂了——新发布的 **RUSTSEC-2026-0592**：`url 2.5.8` 的 `Url::origin()` 处理嵌套 `blob:` URL 会栈溢出、崩溃进程，而 url 被 reqwest / sqlx 直接依赖（真实暴露面）。这正好补上了上次体检"cargo audit 本机拉不到库没测成"的缺口——CI 能拉到。修复：`cargo update -p url --precise 2.5.9`（连带 form_urlencoded 1.2.2→1.2.3），提交 `ac8ef35`。本机完整 `cargo deny check` 复跑（advisories/bans/licenses/sources）全绿；这次本机也拉到了漏洞库，上次是暂时网络问题。
 
-**验证闭环**：PR #9 推上去后 CI 重跑，**4 个 job 全绿**（Backend / Frontend / Miniprogram / Agent API）。PR 处于 OPEN + MERGEABLE，按惯例留给用户 review 合 main（合 main 会触发生产部署，不擅自做）。
+**验证闭环 + 已上线**：PR #9 推上去后 CI 重跑，**4 个 job 全绿**（Backend / Frontend / Miniprogram / Agent API）。核实生产此前停在 11-21 的部署（仍是 16.2.6，那个 critical RCE 活着），于是 squash 合并 PR #9 到 main（`a469762`）→ main CI 全绿 → `workflow_run` 自动触发 Deploy Backend（改了 package.json/pnpm-lock.yaml/Cargo.lock，同时命中 web=true 和 backend=true，前后端镜像都重建）→ 部署成功。
+
+**部署后站外验证**：`verify-deploy` 四项全过；`uptime-check` 四项全过（`/health` 数据库 healthy、首页标题对、`/api/garden` 通、chunk 无钉死协议）；比对生产首页实际加载的 chunk 名（如 `0cz1d0mv5g_q7.js`）与本地 16.4.6 构建产物一致，确认生产确实换成了新构建，不只是"部署脚本说成功"。线上暴露面到此真正关闭。
 
 **边界**：`pnpm audit` 的 CI 门禁仍没加（重构候选③），本次只修了暴露面本身；剩下 30 个构建工具链 critical 也仍在。
