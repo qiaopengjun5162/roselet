@@ -19,6 +19,8 @@ const WEB_DEEP = "apps/web > shadcn@4.8.0 > ts-morph@26.0.0 > brace-expansion@5.
 const API = "apps/agent-api > undici@7.28.0";
 const WORKER = "apps/worker-api > hono@4.12.23";
 const MINI = "apps/miniprogram > @tarojs/taro@4.2.0 > webpack-dev-server@4.15.2 > shell-quote@1.8.4";
+const ZOD = "apps/agent-api > zod@3.25.76";
+const ZOD_ID = "GHSA-mrhx-c7xc-m3w5";
 
 test("web 包里的 critical 必须阻断（这是要守住的核心线）", () => {
   const r = evaluate({ advisories: { 1: advisory("critical", "next", "GHSA-X", [WEB]) } });
@@ -106,4 +108,40 @@ test("format 同时呈现计数、暴露面和观察项", () => {
   assert.match(out, /生产 Web 暴露面 1 条/);
   assert.match(out, /apps\/web > next/);
   assert.match(out, /小程序构建工具链/);
+});
+
+test("已评估豁免：zod DoS 命中清单，进 exempt 而非 observed，且带理由/复审条件", () => {
+  const r = evaluate({ advisories: { 1: advisory("high", "zod", ZOD_ID, [ZOD]) } });
+  assert.equal(r.blocking.length, 0);
+  assert.equal(r.exempt.length, 1);
+  assert.equal(r.exempt[0].module, "zod");
+  assert.match(r.exempt[0].reason, /stdio/);
+  assert.ok(r.exempt[0].recheckWhen.length > 0);
+  assert.equal(r.observed.length, 0);
+  const out = format(r);
+  assert.match(out, /已评估豁免 1 条/);
+  assert.match(out, /理由：/);
+  assert.match(out, /复审：/);
+});
+
+test("安全默认：同模块的新 advisory（不同 ID）不被豁免，仍进观察项", () => {
+  const r = evaluate({ advisories: { 1: advisory("high", "zod", "GHSA-NEW-ZOD", [ZOD]) } });
+  assert.equal(r.exempt.length, 0);
+  assert.equal(r.observed.length, 1);
+});
+
+test("豁免让位于阻断：命中豁免 ID 的 web critical 仍必须修", () => {
+  const r = evaluate({
+    advisories: { 1: advisory("critical", "zod", ZOD_ID, ["apps/web > zod@3.25.76"]) },
+  });
+  assert.equal(r.blocking.length, 1);
+  assert.equal(r.exempt.length, 0);
+});
+
+test("豁免需 advisory ID + 模块名同时匹配，防止误放行其它包", () => {
+  const r = evaluate({
+    advisories: { 1: advisory("high", "other-pkg", ZOD_ID, ["apps/agent-api > other-pkg@1.0.0"]) },
+  });
+  assert.equal(r.exempt.length, 0);
+  assert.equal(r.observed.length, 1);
 });

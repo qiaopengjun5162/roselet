@@ -6211,3 +6211,17 @@ Web 62 套件 455 例全绿。
 **结果**（`pnpm audit --prod`）：high 66 → **54**、moderate 99 → 65、low 19 → 14（累计消 31 条）。生产包的**直接依赖** high 只剩 zod 1 条（待大版本评估）。critical 仍是 3 条小程序工具链，门禁判定 `OK 生产 Web 包无 critical` 不变。
 
 **验证**：agent-api typecheck + 39 例、worker-api typecheck + 20 例全过；audit 门禁纯函数 9/9 仍过，无回归。
+
+## 四十四、把 zod 的评估结论固化成「带理由的豁免」（不硬升大版本）
+
+四十三节留下的唯一生产包直接依赖 high：`zod@3.25.76`，GHSA-mrhx-c7xc-m3w5（校验 oversized constrained collections 时耗尽内存），修复版 ≥4.6.6。
+
+**评估结论：当前用法不可利用，且无法安全升级——不硬改。**
+- 不可用：agent-api 里 zod 只出现在 `src/mcp.ts` 定义 MCP tool schema，用的是 `z.enum` + `z.string().max(500)`，没有该漏洞所需的无上限 array/record 集合；且 MCP 走 `StdioServerTransport` 本地传输，非公网入口。
+- 无法安全升：zod 被 MCP SDK / x402 全家桶 / viem / abitype / zod-to-json-schema 等一大串包传递依赖，全部锁在 3.25.76。`zod-to-json-schema@3.x` 只支持 zod 3，全局 override 到 4.x 会破坏这些包——为了一条不可利用的 DoS 引入大面积 API 破坏，正是「越修越有问题」的老路。
+
+**做法**：把这个结论从日志固化进门禁代码，做成 `EVALUATED_EXEMPTIONS`（按 advisory ID + 模块名精确匹配，带 `reason` + `recheckWhen`）。`evaluate()` 新增 `exempt` 分类，输出单独一段「已评估豁免」打印理由和复审触发条件。三条安全约束写进守卫测试：① 同模块出新 advisory（新 ID）不被豁免；② 命中豁免 ID 的 web critical 仍然阻断（豁免让位于安全）；③ 模块名不匹配不放行。
+
+**结果**：13/13 守卫测试过（原 9 + 新 4）；真实审计下 zod 从「待评估观察项」移入「已评估豁免」，观察项 40 → 27，blocking 仍 0、门禁 exit 0。critical 仍 3 条（全在小程序工具链）。
+
+**复审触发**：agent-api/web 出现 z.array/z.record 等集合校验并接受外部输入，或 stdio 改公网传输时，必须重新评估这条豁免。
