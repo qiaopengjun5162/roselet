@@ -88,6 +88,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Audit production dependencies
+        # 守的是「公网可达的 web 包不能带 critical」。先跑守卫测试，再判真实
+        # lockfile。判定细节、豁免边界和为什么不用 --audit-level，见脚本头部注释。
+        run: |
+          pnpm audit:test
+          pnpm audit:prod
+
       - name: Typecheck
         run: pnpm --filter web typecheck
 
