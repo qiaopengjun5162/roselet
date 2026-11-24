@@ -6194,3 +6194,20 @@ Web 62 套件 455 例全绿。
 **本地实测**：9/9 守卫测试过；真实 lockfile 下判定 `OK 生产 Web 包无 critical 漏洞`（exit 0），同时打印 29 条小程序工具链 + 40 条 high 观察项；注入一个假的 web critical → blocking=1、exit 1。
 
 **边界（诚实说清）**：这个门禁**不**覆盖 agent-api / worker-api 的 high（undici、MCP SDK、hono 等共 40 条观察项），也不覆盖深层传递依赖的构建期工具漏洞——那些需要单独评估、部分暂无修复版，混进来只会让门禁失效。它只守住「web 包不能有 critical」这一条已经确认为真实暴露面的线。
+
+## 四十三、消化生产包里可安全修复的 high（不碰大版本 / 构建工具链）
+
+四十二节的门禁把 40 条 high 列为"观察不阻断"。这轮评估其中真正在生产运行时、且能低风险修掉的部分。
+
+**判断依据**：这三个包的 specifier 都是 `^` 范围，但 lockfile 锁在旧版本——修复版其实早就在允许范围内，只是没重解析。所以只需把版本下限提到修复版（仍保持 `^`，不锁死、不跨大版本），`pnpm install` 就能消化，API 破坏风险极低。
+
+**改了三处**（分支 `fix/digest-prod-high-vulns`）：
+- agent-api `@modelcontextprotocol/sdk` ^1.12.1 → ^1.32.2（修复 4 条 high：SSRF / DoS 等）
+- agent-api `undici` ^7.16.0 → ^7.30.2（修复 6 条 high：Cache 信息泄露 / parse 崩溃等）
+- worker-api `hono` ^4.12.23 → ^4.12.32（CORS origin 反射，修复版 4.12.25 起；4.12.32 已在 lockfile 里，复用）
+
+**没碰的**：zod 3.x → 4.6.6 是跨大版本（API 有破坏），属于"需单独评估"；小程序 Taro 工具链的 high（brace-expansion / node-forge / shell-quote 等）跑在微信沙箱、不部署到服务器，深层升级风险大收益小。
+
+**结果**（`pnpm audit --prod`）：high 66 → **54**、moderate 99 → 65、low 19 → 14（累计消 31 条）。生产包的**直接依赖** high 只剩 zod 1 条（待大版本评估）。critical 仍是 3 条小程序工具链，门禁判定 `OK 生产 Web 包无 critical` 不变。
+
+**验证**：agent-api typecheck + 39 例、worker-api typecheck + 20 例全过；audit 门禁纯函数 9/9 仍过，无回归。
