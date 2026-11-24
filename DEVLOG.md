@@ -6175,3 +6175,22 @@ Web 62 套件 455 例全绿。
 **部署后站外验证**：`verify-deploy` 四项全过；`uptime-check` 四项全过（`/health` 数据库 healthy、首页标题对、`/api/garden` 通、chunk 无钉死协议）；比对生产首页实际加载的 chunk 名（如 `0cz1d0mv5g_q7.js`）与本地 16.4.6 构建产物一致，确认生产确实换成了新构建，不只是"部署脚本说成功"。线上暴露面到此真正关闭。
 
 **边界**：`pnpm audit` 的 CI 门禁仍没加（重构候选③），本次只修了暴露面本身；剩下 30 个构建工具链 critical 也仍在。
+
+## 四十二、给 pnpm audit 加 CI 门禁（只守真实暴露面，不做清零）
+
+四十一节留的重构候选③。核心设计原则：**门禁要精确守住已确认的暴露面，而不是追求零漏洞**——否则会像之前那样一次冒出几十条不可控项，最后变成长期飘红、人人忽略的摆设。
+
+**守的线**：公网可达、部署在生产服务器的 `apps/web` 包里不能有 critical（可远程利用）漏洞。这正是 2026-11-24 修掉的 Next.js 4 个 RCE 那条线，防止有人为兼容性把版本降回去、或下次 RCE 出来没跟上。
+
+**为什么不用现成的 `pnpm audit --audit-level critical`**：pnpm 9 的 `--prod` 在这个 monorepo 里仍把小程序 Taro 工具链算进来（Taro 把 webpack-dev-server/swiper/shell-quote 声明成 dependencies 而非 dev），它们跑在微信沙箱、不部署到我们的服务器。一刀切会让 CI 长期红。
+
+**三个脚本**：
+- `scripts/audit-production.mjs` — 纯函数 `evaluate(audit)` 判 blocking / observed；web 里的 critical 阻断，其余 critical + 所有 high 只打印观察，moderate/low 忽略。豁免和观察项全部显式打印（不静默放过）。
+- `scripts/audit-production.test.mjs` — 9 个 `node --test` 用例，覆盖 web critical 阻断、high 只观察、小程序豁免、混合路径、反向注入等。
+- `scripts/run-audit.mjs` — 包一层 pnpm audit（它发现任何漏洞都 exit 1），落临时文件吞掉其退出码，由判定脚本决定门禁结果。`package.json` 加 `audit:prod` / `audit:test`。
+
+**接入**：build.yml 的 frontend job 在装完依赖后跑 `pnpm audit:test && pnpm audit:prod`。
+
+**本地实测**：9/9 守卫测试过；真实 lockfile 下判定 `OK 生产 Web 包无 critical 漏洞`（exit 0），同时打印 29 条小程序工具链 + 40 条 high 观察项；注入一个假的 web critical → blocking=1、exit 1。
+
+**边界（诚实说清）**：这个门禁**不**覆盖 agent-api / worker-api 的 high（undici、MCP SDK、hono 等共 40 条观察项），也不覆盖深层传递依赖的构建期工具漏洞——那些需要单独评估、部分暂无修复版，混进来只会让门禁失效。它只守住「web 包不能有 critical」这一条已经确认为真实暴露面的线。
