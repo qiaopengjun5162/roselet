@@ -6152,6 +6152,24 @@ Web 62 套件 455 例全绿。
 
 2. **依赖审计：220 条漏洞（9 critical / 77 high）**。深挖后关键结论：线上 Next.js 是 **16.2.6**，而 4 个 critical RCE（Image Optimization / next/og / use cache / windows-host）的修复版本是 **16.3.3**——这是真实暴露面，不是构建工具链的虚惊。其余大量 high/moderate 来自 Taro 的 webpack-dev-server、MCP SDK、brace-expansion 等传递依赖，多数只在构建期。CI 跑 `cargo deny check`，但没有任何 `pnpm audit` 门禁。`cargo audit` 本机拉不到漏洞库（网络），未测成。密钥扫描：无硬编码私钥/token，`.env` 只跟踪了 `.example`。
 
-**重构候选（按价值排序，本次未动）**：① Next.js 升级 16.2.6 → 16.3.3（安全，最高优先）；② 两个最大的源文件 `solana_onchain.rs`（905 行）、`solana_nft.rs`（687 行）可按职责拆分；③ 给 `pnpm audit` 加 CI 门禁并配 overrides 消化可控项；④ 清掉 clippy 报的 2 个未使用依赖。
+**重构候选（按价值排序）**：① Next.js 升级（安全，最高优先）——**已于下一节完成，升到 16.4.6**；② 两个最大的源文件 `solana_onchain.rs`（905 行）、`solana_nft.rs`（687 行）可按职责拆分；③ 给 `pnpm audit` 加 CI 门禁并配 overrides 消化可控项；④ 清掉 clippy 报的 2 个未使用依赖。
 
 **完成度**：Web 前端 + 后端 + 部署 + 备份 + 外部监控（Uptime/Backup Monitor）已闭环且线上探活全绿。剩余都是需要用户外部条件的事：正式域名（等 DNS）、小程序真机（等备案+白名单）、异地备份（等对象存储凭证）。不是代码没写完。
+
+## 四十一、把体检里唯一的真实暴露面补掉（Next.js 安全升级）
+
+上一节体检把 Next.js RCE 列为最高优先重构项。这次动手。分支 `fix/bump-nextjs-security`，提交 `15c35a8`。
+
+**一个关键校正**：体检时说修复版是 16.3.3，那是当时的漏洞库快照。复跑 `pnpm audit` 发现漏洞库已更新——要清掉**全部 25 条** Next.js 公告（含 4 个 critical RCE：Image Optimization 的 SVG/AVIF、next/og ImageResponse、use cache typed arrays、windows-hosted）需要 **16.4.6**，不是 16.3.3。所以直接一步升到位。
+
+**改了什么**：`apps/web` 的 `next` 和 `eslint-config-next` 一起 16.2.6 → 16.4.6（两个必须同版本）；根 `package.json` 的 pnpm overrides 加一条 `proxy-addr >=2.0.8`，顺手清掉 agent-api 传递依赖里那条 critical IP 欺骗（MCP SDK → express → proxy-addr）。lockfile 跟着重解析。
+
+**验证（全绿）**：`tsc --noEmit` 三包、`eslint` 0 告警；Web 62 套件 455 例 / 小程序 7 套件 71 例 / agent-api 9 文件 39 例；`next build` 16.4.6 Turbopack 编译通过、15 个静态页正常产出。构建中途撞了一次沙盒 safe-delete 守卫（本轮累计删除达 50 触发，拦的是 Next 清 `.next/trace-build`，与代码无关）——把旧 `.next` 移走后重跑即过。
+
+**审计结果**：`pnpm audit` 的 next 公告数 25 → **0**，proxy-addr → **0**；critical 36 → 30、high 114 → 106。剩下的 30 个 critical 全部在**构建/测试工具链**（Taro 的 vm2/decompress/swiper、vitest 的 tinypool、ts-jest 的 handlebars、webpack-dev-server 的 shell-quote/websocket-driver），不进生产运行时，本次不动。
+
+**CI 反手又抓到一个 Rust 漏洞**：PR 推上去后，Backend Tests job 的 `cargo deny check` 挂了——新发布的 **RUSTSEC-2026-0592**：`url 2.5.8` 的 `Url::origin()` 处理嵌套 `blob:` URL 会栈溢出、崩溃进程，而 url 被 reqwest / sqlx 直接依赖（真实暴露面）。这正好补上了上次体检"cargo audit 本机拉不到库没测成"的缺口——CI 能拉到。修复：`cargo update -p url --precise 2.5.9`（连带 form_urlencoded 1.2.2→1.2.3），提交 `ac8ef35`。本机完整 `cargo deny check` 复跑（advisories/bans/licenses/sources）全绿；这次本机也拉到了漏洞库，上次是暂时网络问题。
+
+**验证闭环**：PR #9 推上去后 CI 重跑，**4 个 job 全绿**（Backend / Frontend / Miniprogram / Agent API）。PR 处于 OPEN + MERGEABLE，按惯例留给用户 review 合 main（合 main 会触发生产部署，不擅自做）。
+
+**边界**：`pnpm audit` 的 CI 门禁仍没加（重构候选③），本次只修了暴露面本身；剩下 30 个构建工具链 critical 也仍在。
