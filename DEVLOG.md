@@ -6168,4 +6168,8 @@ Web 62 套件 455 例全绿。
 
 **审计结果**：`pnpm audit` 的 next 公告数 25 → **0**，proxy-addr → **0**；critical 36 → 30、high 114 → 106。剩下的 30 个 critical 全部在**构建/测试工具链**（Taro 的 vm2/decompress/swiper、vitest 的 tinypool、ts-jest 的 handlebars、webpack-dev-server 的 shell-quote/websocket-driver），不进生产运行时，本次不动。
 
-**边界**：`cargo audit` 仍未测成（本机拉不到漏洞库）；`pnpm audit` CI 门禁仍没加（重构候选③），本次只修了暴露面本身。
+**CI 反手又抓到一个 Rust 漏洞**：PR 推上去后，Backend Tests job 的 `cargo deny check` 挂了——新发布的 **RUSTSEC-2026-0592**：`url 2.5.8` 的 `Url::origin()` 处理嵌套 `blob:` URL 会栈溢出、崩溃进程，而 url 被 reqwest / sqlx 直接依赖（真实暴露面）。这正好补上了上次体检"cargo audit 本机拉不到库没测成"的缺口——CI 能拉到。修复：`cargo update -p url --precise 2.5.9`（连带 form_urlencoded 1.2.2→1.2.3），提交 `ac8ef35`。本机完整 `cargo deny check` 复跑（advisories/bans/licenses/sources）全绿；这次本机也拉到了漏洞库，上次是暂时网络问题。
+
+**验证闭环**：PR #9 推上去后 CI 重跑，**4 个 job 全绿**（Backend / Frontend / Miniprogram / Agent API）。PR 处于 OPEN + MERGEABLE，按惯例留给用户 review 合 main（合 main 会触发生产部署，不擅自做）。
+
+**边界**：`pnpm audit` 的 CI 门禁仍没加（重构候选③），本次只修了暴露面本身；剩下 30 个构建工具链 critical 也仍在。
