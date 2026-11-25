@@ -221,7 +221,7 @@ export default function PlantPage() {
 
   if (step === "color") {
     return (
-      <main className="relative min-h-full flex items-center p-4 z-10 pt-16">
+      <main className="relative min-h-full flex items-center justify-center p-4 z-10 pt-16">
         <div className="max-w-lg w-full space-y-8 my-auto">
           <div className="text-center space-y-2">
             <h2 className="text-xl font-bold text-rose-300">选择玫瑰的颜色</h2>
@@ -296,7 +296,7 @@ export default function PlantPage() {
   if (step === "success") {
     const glowColor = glowMap[color] ?? "rgba(244,63,94,0.8)";
     return (
-      <main className="relative min-h-full flex items-center p-4 z-10">
+      <main className="relative min-h-full flex items-center justify-center p-4 z-10">
         <Fireworks />
         {/* 中央光晕背景 */}
         <div

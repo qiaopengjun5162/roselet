@@ -6235,3 +6235,22 @@ Web 62 套件 455 例全绿。
 **验证**：`cargo fmt --check` + CI 同款 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings` + `cargo check --workspace --all-targets` 全绿，exit 0。
 
 至此体检四个重构候选全部处理完：① Next.js 升级、② （大文件拆分，收益不明确、风险高，保留为可选）、③ 审计门禁、④ 未使用依赖。② 属于「不为改而改」主动不做——拆分 900 行核心文件在当前无功能诉求时只会引入回归风险。
+
+## 四十六、修种植页内容贴左（`justify-center` 被顺手删掉的回归）
+
+**现象**（用户报告）：种玫瑰页面不是居中了，整体贴在最左侧，和以前不一样。
+
+**根因**：`b75e8e0`（2026-11-19「stop clipping the top of the page on short screens」）为修复「短屏内容被顶上顶出可视区」，把三处 `<main>` 从 `h-full flex ... justify-center` 改成 `min-h-full flex ...`。它的思路是对的（`min-h-full` + 内容块 `my-auto`：装得下居中、装不下从头排），但**在 plant 的两处 row 方向 main 上顺手把 `justify-center` 一起删了**。row 方向下 `items-center` 只管交叉轴（垂直），主轴默认 `flex-start` → 水平退回靠左。首页是 `flex-col`，`items-center` 正好是水平居中，所以首页没事，只有种植页坏了。
+
+**实测证据**（Playwright 直连生产，`--no-proxy-server`）：
+- 桌面 1280×800：内容块 left=16 / right=528 / width=512，中心偏移 **-368px**（贴左）。
+- 移动 390×844：`w-full` 占满，中心偏移 0，所以只在宽屏明显。
+- 在页面上动态补回 `justify-center` 后：centerOffset **0**（left=384, right=896），截图确认居中。
+
+**修复**：plant 的 color / success 两处 main 补回 `justify-center`，保留 `min-h-full`（不重新引入短屏顶部被裁的问题——`justify-center` 只作用主轴，不影响垂直）。
+
+**顺带修了守卫测试自身的一个 bug**：`page-centering-guard.test.ts` 原来用 `cls.includes("h-full")` 判 `h-full`，但 `min-h-full` 含子串 `h-full`，会把正确写法误报。改成按 class token 精确匹配（`cls.split(/\s+/).includes("h-full")`）。这也解释了它为何没拦住同类问题。
+
+**新增两条守卫**：① row 方向 flex `<main>` 有 `items-center` 就必须有 `justify-center` 或 `mx-auto`，否则报红；② plant 两个 row 步骤必须都含 `justify-center`。
+
+**验证**：web typecheck + lint 全绿，457 例测试全过（原 455 + 新 2 条守卫）。
