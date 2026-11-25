@@ -12,6 +12,7 @@ pub mod rose;
 pub mod solana_nft;
 pub mod solana_onchain;
 pub mod stats;
+pub mod wallet_auth;
 pub mod ws;
 
 use std::collections::HashMap;

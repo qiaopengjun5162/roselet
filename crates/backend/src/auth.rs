@@ -141,6 +141,27 @@ pub async fn require_active_user_id(
         .ok_or_else(|| AppError::Auth("missing or invalid token".into()))
 }
 
+/// Require that the signed-in account has bound a Solana wallet, and return
+/// that address. Membership is server state (`users.wallet_address`), set only
+/// after a verified Sign-In With Solana — a browser cannot grant it by
+/// flipping a UI toggle.
+///
+/// Every member-only endpoint (on-chain records, NFT mint, IPFS upload) uses
+/// this instead of re-implementing "is this user a member?".
+pub async fn require_member_wallet(
+    pool: &PgPool,
+    headers: &HeaderMap,
+    secret: &[u8],
+) -> Result<(Uuid, String), AppError> {
+    let user_id = require_active_user_id(pool, headers, secret).await?;
+    let wallet: Option<String> =
+        sqlx::query_scalar("SELECT wallet_address FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(pool)
+            .await?;
+    wallet.map(|address| (user_id, address)).ok_or(AppError::MembershipRequired)
+}
+
 pub fn deletion_restore_deadline(deleted_at: DateTime<Utc>) -> DateTime<Utc> {
     deleted_at + Duration::days(ACCOUNT_DELETION_COOLDOWN_DAYS)
 }
@@ -153,7 +174,9 @@ pub async fn finalize_deleted_user(pool: &PgPool, user_id: Uuid) -> Result<(), A
     sqlx::query(
         "UPDATE users
          SET nickname = CONCAT('匿名用户-', LEFT(id::text, 8)),
-             passphrase_hash = NULL
+             passphrase_hash = NULL,
+             wallet_address = NULL,
+             member_since = NULL
          WHERE id = $1 AND deleted_at IS NOT NULL",
     )
     .bind(user_id)

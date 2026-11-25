@@ -9,6 +9,11 @@ pub struct User {
     pub created_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
     pub deletion_reason: Option<String>,
+    /// Solana address bound through Sign-In With Solana. `Some` means this
+    /// account is a member; the server, not the browser, decides that.
+    pub wallet_address: Option<String>,
+    /// When the wallet was first bound. Kept across re-logins.
+    pub member_since: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize)]
