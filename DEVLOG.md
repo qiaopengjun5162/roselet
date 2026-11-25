@@ -6225,3 +6225,13 @@ Web 62 套件 455 例全绿。
 **结果**：13/13 守卫测试过（原 9 + 新 4）；真实审计下 zod 从「待评估观察项」移入「已评估豁免」，观察项 40 → 27，blocking 仍 0、门禁 exit 0。critical 仍 3 条（全在小程序工具链）。
 
 **复审触发**：agent-api/web 出现 z.array/z.record 等集合校验并接受外部输入，或 stdio 改公网传输时，必须重新评估这条豁免。
+
+## 四十五、清掉体检遗留的 2 个未使用 Rust 依赖（重构候选④）
+
+体检记录（6147/6155 行）指出 clippy 报 2 个未使用依赖：`utoipa`（backend）、`regex`（recommend）。全仓核实：两者只出现在各自 Cargo.toml 声明处，源码/宏/测试/build 脚本零引用——backend 的 OpenAPI 实际靠手写静态 `routes/openapi.json` + `include_str!` 提供，从未用 utoipa 生成；recommend 的 regex 无任何引用。
+
+**改动**：删掉两处声明，`cargo` 重解析 lockfile（移除 regex 1.12.3 / utoipa 5.5.0 / utoipa-gen 5.5.0 及其专属依赖，共 39 行）。注意 regex 本体仍被 tracing-subscriber 等传递依赖需要，故 lock 里 regex 仍在——只删了 recommend 的直接声明，未过度删除。
+
+**验证**：`cargo fmt --check` + CI 同款 `cargo clippy --workspace --all-targets --all-features --tests --benches -- -D warnings` + `cargo check --workspace --all-targets` 全绿，exit 0。
+
+至此体检四个重构候选全部处理完：① Next.js 升级、② （大文件拆分，收益不明确、风险高，保留为可选）、③ 审计门禁、④ 未使用依赖。② 属于「不为改而改」主动不做——拆分 900 行核心文件在当前无功能诉求时只会引入回归风险。
