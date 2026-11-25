@@ -14,8 +14,16 @@
  * is stored, the member centre flips to "bound", and a reload keeps it.
  *
  * The account it creates is soft-deleted at the end. Pass `--keep` to leave it
- * in place when debugging. Needs playwright at the repo root and, on a machine
- * behind a proxy, `--no-proxy-server` applies to the browser itself.
+ * in place when debugging.
+ *
+ * Run it with the proxy environment cleared:
+ *
+ *   env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy \
+ *     node scripts/wallet-login-e2e.mjs
+ *
+ * Chromium inherits those variables, and a local proxy answers this host with
+ * intermittent 502s — which looks exactly like a broken deployment (blank
+ * page, no React, no wallet). `curl --noproxy '*'` does not, which is the tell.
  */
 import crypto from "node:crypto";
 import { chromium } from "playwright";
@@ -47,7 +55,6 @@ function check(name, ok, detail = "") {
 
 const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
 const rawPublicKey = publicKey.export({ format: "der", type: "spki" }).subarray(-32);
-const pkcs8 = privateKey.export({ format: "der", type: "pkcs8" });
 const address = base58(rawPublicKey);
 console.log(`wallet: ${address}\nbase:   ${BASE}\n`);
 
@@ -55,8 +62,11 @@ const browser = await chromium.launch({ args: ["--no-proxy-server"] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
 
 await ctx.addInitScript(
-  ({ pkcs8B64, address, publicKeyB64 }) => {
+  ({ address, publicKeyB64 }) => {
     const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+    // Lets the test wait for hydration: the app-ready event only fires once
+    // React has mounted the membership provider.
+    window.__walletRegistered = false;
     const account = {
       address,
       publicKey: fromB64(publicKeyB64),
@@ -80,40 +90,33 @@ await ctx.addInitScript(
             { signedTransaction: transaction },
           ],
         },
+        // Signing is delegated to Node: `crypto.subtle` is unavailable on a
+        // plain-HTTP origin, and real wallets sign inside their own extension
+        // rather than in the page, so this keeps the harness honest.
         "solana:signMessage": {
           version: "1.0.0",
           signMessage: async ({ message }) => {
-            const key = await crypto.subtle.importKey(
-              "pkcs8",
-              fromB64(pkcs8B64),
-              { name: "Ed25519" },
-              false,
-              ["sign"],
-            );
-            const signature = await crypto.subtle.sign(
-              { name: "Ed25519" },
-              key,
-              message,
-            );
-            return [
-              { signature: new Uint8Array(signature), signedMessage: message },
-            ];
+            const b64 = btoa(String.fromCharCode(...message));
+            const signature = await window.__e2eSign(b64);
+            return [{ signature: fromB64(signature), signedMessage: message }];
           },
         },
       },
     };
     window.addEventListener("wallet-standard:app-ready", (event) => {
+      window.__walletRegistered = true;
       event.detail.register(wallet);
     });
   },
-  {
-    pkcs8B64: Buffer.from(pkcs8).toString("base64"),
-    address,
-    publicKeyB64: Buffer.from(rawPublicKey).toString("base64"),
-  },
+  { address, publicKeyB64: Buffer.from(rawPublicKey).toString("base64") },
 );
 
 const page = await ctx.newPage();
+await page.exposeFunction("__e2eSign", (messageB64) =>
+  crypto
+    .sign(null, Buffer.from(messageB64, "base64"), privateKey)
+    .toString("base64"),
+);
 const pageErrors = [];
 page.on("pageerror", (error) => pageErrors.push(String(error)));
 page.on("console", (message) => {
@@ -121,13 +124,29 @@ page.on("console", (message) => {
 });
 
 try {
-  await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
+  // The box occasionally answers a chunk with 502 for a few seconds after a
+  // deploy; that yields an error page with no React at all, so check the
+  // status instead of waiting 45s for a flag that will never flip.
+  let response = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    response = await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
+    if (response?.ok()) break;
+    console.log(`  … /login returned ${response?.status()}, retrying (${attempt}/3)`);
+    await page.waitForTimeout(3000);
+  }
+  check("/login responds 200", Boolean(response?.ok()), `status ${response?.status()}`);
 
   // The form must be in the served HTML, not only after hydration.
   const html = await (await fetch(`${BASE}/login`)).text();
   check("login form is server-rendered", html.includes("给自己取个名字"));
 
-  const walletTab = page.getByRole("button", { name: "钱包登录 · 会员" });
+  // The two modes are a tab list, not plain buttons.
+  // Static HTML paints long before hydration; clicking earlier is a no-op.
+  await page.waitForFunction(() => window.__walletRegistered === true, null, {
+    timeout: 45000,
+  });
+
+  const walletTab = page.getByRole("tab", { name: "钱包登录 · 会员" });
   await walletTab.waitFor({ timeout: 20000 });
   await walletTab.click();
 
@@ -135,7 +154,21 @@ try {
   await walletButton.waitFor({ timeout: 10000 });
   await walletButton.click();
 
-  await page.waitForURL(/\/membership/, { timeout: 30000 });
+  const apiCalls = [];
+  page.on("response", (r) => {
+    if (r.url().includes("/api/auth/wallet/")) apiCalls.push(`${r.status()} ${r.url().split("/api")[1]}`);
+  });
+
+  try {
+    await page.waitForURL(/\/membership/, { timeout: 30000 });
+  } catch (error) {
+    // Surface what the user would see, instead of a bare navigation timeout.
+    const text = ((await page.textContent("body")) || "").replace(/\s+/g, " ");
+    console.error(`  … stayed on ${new URL(page.url()).pathname}`);
+    console.error(`  … wallet API: ${apiCalls.join(", ") || "no calls"}`);
+    console.error(`  … page said: ${text.slice(-240)}`);
+    throw error;
+  }
   await page.waitForTimeout(800);
 
   const stored = await page.evaluate(() => ({

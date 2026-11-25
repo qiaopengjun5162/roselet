@@ -6327,3 +6327,9 @@ PR #14 合并（`bb27283`），CI 七项全绿（含 `pnpm audit` 门禁），De
 **守卫**：`login/__tests__/page.test.tsx` 新增两条 —— ① `?mode=wallet` 能打开钱包标签；② 读源码（剥掉注释后）断言不出现 `useSearchParams` / `<Suspense`，防止有人为了读参数又把它加回来。
 
 **顺带**：把这次用的验收脚本固化为 `scripts/wallet-login-e2e.mjs` —— 真浏览器 + 真实服务端挑战 + 真 ed25519 签名（WebCrypto），注入一个 Wallet Standard 假钱包，走完标签 → 连接 → 签名 → 落库 → 刷新仍在 → 会员能进 Vault，最后注销测试账号。这样没有浏览器插件也能验前端接线。
+
+### 五十续：验收脚本踩到的三个坑（都不是产品问题）
+
+1. **假 502**：真实浏览器里 `/login` 约一半请求 502、页面无 React；同一时刻 `curl --noproxy '*'` 30/30 全 200。原因是 Chromium 继承了 shell 的 `HTTP_PROXY=http://127.0.0.1:57430`（沙盒代理），该代理对这个裸 IP 间歇 502；`--no-proxy-server` 不足以覆盖。用 `env -u HTTP_PROXY -u HTTPS_PROXY ...` 启动脚本后 6/6 正常。**排查口诀**：浏览器失败而 curl 成功时，先怀疑代理，别怀疑部署。
+2. **`role="tab"` 不是 button**：登录页两个模式是 tablist，按 `getByRole("button")` 找不到。
+3. **HTTP 页面没有 `crypto.subtle`**：假钱包原本用 WebCrypto 签 ed25519，但生产是裸 IP 的 HTTP，非安全上下文里 `crypto.subtle` 为 `undefined`。真实钱包在扩展内部签名不受影响，但这也说明上线 HTTPS 不只是面子问题。脚本改为把签名通过 `exposeFunction` 交给 Node 完成。
