@@ -6315,3 +6315,15 @@ PR #14 合并（`bb27283`），CI 七项全绿（含 `pnpm audit` 门禁），De
 测试账号（两次）均已 `/api/auth/deactivate` 注销，未留生产数据。
 
 **已知且有意保留**：生产未配 `PINATA_JWT`，`/api/ipfs/upload` 返回 503 并提示手填 CID —— 这是 2026-11-07 定下的降级策略（见 DEVLOG 九续），不是本次回归。要真正启用上传需外部 Pinata 账号。
+
+## 五十、/login 服务端输出是空壳（Suspense 吞掉了整页）
+
+**怎么发现的**：上线后在真实浏览器里跑钱包登录验收，390px 下点不到「钱包登录」标签。抓 HTML 才看清：`curl /login` 里 `给自己取个名字` 出现 **0 次**，`<main>` 内文为空；同一时间 `/garden` 至少有「加载中…」。
+
+**根因**：登录页用了 `useSearchParams()` 读 `?mode=wallet` / `?redirect=`，这个 hook 会把整页排除出预渲染，因此 `export default` 必须包在 `<Suspense>` 里；而那个 `Suspense` **没有 fallback**，服务端就只发一个空壳。副作用是首屏完全依赖 JS，实测冷启动表单出现时间 3.5s 起，网络差时十几秒只有背景花瓣。
+
+**修法**：不再用 `useSearchParams()`，改为在 `useEffect` 里读 `window.location.search`。页面重新可静态预渲染（`next build` 里 `/login` 回到 `○ Static`），`login.html` 里已含完整表单；`?mode=wallet` 与 `redirect` 行为不变，只是从「首帧生效」变成「hydration 后生效」。
+
+**守卫**：`login/__tests__/page.test.tsx` 新增两条 —— ① `?mode=wallet` 能打开钱包标签；② 读源码（剥掉注释后）断言不出现 `useSearchParams` / `<Suspense`，防止有人为了读参数又把它加回来。
+
+**顺带**：把这次用的验收脚本固化为 `scripts/wallet-login-e2e.mjs` —— 真浏览器 + 真实服务端挑战 + 真 ed25519 签名（WebCrypto），注入一个 Wallet Standard 假钱包，走完标签 → 连接 → 签名 → 落库 → 刷新仍在 → 会员能进 Vault，最后注销测试账号。这样没有浏览器插件也能验前端接线。
