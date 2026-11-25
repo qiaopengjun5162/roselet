@@ -48,12 +48,12 @@ Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请
 ## 测试状态
 > 以下数值随提交变化，可能滞后；**以 CI 最新执行为准**，跨文件（PROGRESS.md）若与此冲突以此处为权威。
 ```
-Rust backend:   149 passed
+Rust backend:   187 passed (94 unit + 93 integration)
 Rust WASM:      153 passed
-Web frontend:   208 passed
+Web frontend:   493 passed (68 suites)
 Miniprogram:     66 passed
 Agent API:       39 passed
-Total:          615 passed
+Total:          938 passed
 
 llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   100%: flowers, petal, sky, keywords, pagination, user, docs, state
@@ -63,7 +63,7 @@ llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   90%+: plant (93.06%), emotion (91.43%), store (90.21%), rose routes (94.87%)
 
 Jest coverage:
-  Web: 90.22% statements / 95.04% lines
+  Web: 90.67% statements / 93.30% lines / 79.41% branches / 85.34% functions
   Miniprogram: 99.33% statements / 100% lines / 96.05% branches
 Vitest coverage:
   Agent API: 98.51% statements / 98.51% lines / 94.44% branches
@@ -113,8 +113,9 @@ Quality gates:
 - **后端 nextest 本地 DB**：沙箱内可能因本地数据库连接 `Operation not permitted` 失败；用 `NO_PROXY=localhost,127.0.0.1 cargo nextest run --workspace --all-features --no-fail-fast`
 - **已发布迁移不可改写**：`crates/backend/migrations/*.sql` 一旦在线上执行过，后续只能新增 migration，不能改旧文件哪怕只是注释；`sqlx` 会在启动时校验 checksum，不一致就报 `VersionMismatch(n)`
 - **Solana 会员上链核验**：`POST /api/rose/{id}/solana` 只有在后端配置了 `SOLANA_RPC_URL` 时才会用 `getTransaction` 核验交易（签名 / 付款钱包 / Memo 程序 / 交易成功 / memo 内含该 rose id 防重放）；未配置则跳过核验，生产必须配，否则可存入伪造引用。前后端 RPC 必须指向同一集群（后端 `SOLANA_RPC_URL` ↔ 前端 `NEXT_PUBLIC_SOLANA_RPC_URL`），且前端 Memo 程序 ID 必须落在后端 `MEMO_PROGRAM_IDS` 白名单内——官方标准 ID 是 `MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`（`MemoSqLa…` 是 v3 变体，也接受）。后端只存链上引用，绝不接触钱包私钥。
-- **会员模式的默认关闭边界**：默认普通模式必须**零 Web3 痕迹**。`membership-context.tsx` 用 `isMember`（模式开关）+ `panelOpen`（面板可收起）两个状态；`components/rose-solana-mint.tsx` 用「外层判断会员 + 内层才有 hooks」两层结构，保证无 `MembershipProvider` 的页面/单测不会误调 Solana API。给页面组件读会员状态时一律用 **`useOptionalMembership()`**（无 Provider 返回 null），**只有确定在 Provider 内的组件（如 `MembershipPanel`）才用会抛错的 `useMembership()`**——否则 `nav.test.tsx` 这类不包 Provider 的测试会整片失败。上链成功通过 `SOLANA_MINT_EVENT` 自定义事件通知详情页刷新徽章，不要跨组件直接传状态。
-  - **Web3 UI 一律走统一门闩（2026-11-17 补）**：`components/member-only.tsx` 的 `MemberOnly` 是唯一入口级开关，所有 Web3 UI——首页 / 种花页的 Aleo Vault 链接、`/private-vault` 整页、详情页的 `RoseMemorial` / `RoseSolanaMint` / `RoseNftMint`、右上角会员面板——都必须包它，不要再在组件里各写一套 `isMember` 判断。历史教训：此前只有详情页两个组件各自 gate，结果首页、种花页、独立 Aleo 页面和 Base 纪念版四处把「连接钱包 / 上链」直接暴露给所有普通用户，违背本条「零 Web3 痕迹」规则。独立 Web3 页面要连**直接输网址**也拦住：非会员只显示「切换到会员版」提示卡，且不要实例化钱包适配器（把 `new LeoWalletAdapter` / `WalletProvider` 放进会员分支的子组件）。会员模式要有可见状态条（`membership-banner.tsx`）和随时退出入口，不能只弹一个浮层。⚠️ `isMember` 目前只是**前端视图开关，不是权限**：任何人点一下就能进会员版；若将来做付费会员，必须后端判定并在上链接口做服务端鉴权，前端开关本身防不住绕过。
+- **会员身份的判定边界（2026-11-25 重做）**：默认普通模式仍然必须**零 Web3 痕迹**，但会员不再是前端开关。`membership-context.tsx` 里 `isMember` 只是「会员视图」开关，`hasMembership` 才是身份，来源于账号的 `users.wallet_address`。该字段只能由 `POST /api/auth/wallet/verify` 在验签通过后写入（Sign-In With Solana：`challenge` 发一次性 nonce + 待签消息，5 分钟过期、单次使用，后端用 ed25519 对**存储的原文**验签）。`verify` 带 Bearer token 时是「绑定钱包到当前账号」，不带时是「钱包登录/注册」；带 token 但 token 无效必须 401，**绝不回落成注册**，否则过期 token 会把一个人拆成两个账号。会员功能（`/api/rose/{id}/solana`、`/api/rose/{id}/solana/nft`、`/api/ipfs/upload`）统一用 `auth::require_member_wallet` 做服务端鉴权，并要求请求里的钱包地址等于绑定地址；前端 gate 只是体验层，绕过它也必须被后端拒绝。`/private-vault` 直接输网址时同样按 `hasMembership` 拦截。新增任何会员能力时，先加后端校验，再加前端入口。
+  - **Web3 UI 一律走统一门闩（2026-11-17 补）**：`components/member-only.tsx` 的 `MemberOnly` 是唯一入口级开关，所有 Web3 UI——首页 / 种花页的 Aleo Vault 链接、`/private-vault` 整页、详情页的 `RoseMemorial` / `RoseSolanaMint` / `RoseNftMint`、右上角会员面板——都必须包它，不要再在组件里各写一套 `isMember` 判断。历史教训：此前只有详情页两个组件各自 gate，结果首页、种花页、独立 Aleo 页面和 Base 纪念版四处把「连接钱包 / 上链」直接暴露给所有普通用户，违背本条「零 Web3 痕迹」规则。独立 Web3 页面要连**直接输网址**也拦住：非会员只显示「切换到会员版」提示卡，且不要实例化钱包适配器（把 `new LeoWalletAdapter` / `WalletProvider` 放进会员分支的子组件）。会员模式要有可见状态条（`membership-banner.tsx`）和随时退出入口，不能只弹一个浮层。读会员状态一律用 `useOptionalMembership()`（无 Provider 返回 null），只有确定在 Provider 内（如 `MembershipPanel`）才用会抛错的 `useMembership()`；`RoseSolanaMint` 等组件保持「外层判断会员 + 内层才有 hooks」两层结构。`isMember` 现在是「已开通会员 + 主动进入会员视图」，未绑定钱包的账号无论怎么点都不会变 true。
+  - **钱包连接只能有一个入口（2026-11-25 补）**：链和钱包的清单统一登记在 `lib/wallet-chains.ts`，UI 统一走 `components/wallet-picker.tsx`，导航里唯一入口是 `components/connect-wallet-button.tsx`。禁止再在页面里手写「检测到 N 个钱包 → 每个钱包一个按钮」的列表——登录页、会员中心、上链面板曾各自维护一份，改一处文案就要同步三处，且安装链接会漂移。加新链只改注册表：`mode: "inline"`（Wallet Standard，可在原地连）或 `mode: "external"`（provider 必须只挂在该链页面，如 Aleo 的 `WalletProvider`——不要为了「统一」把它提升到根布局，否则普通模式会整包打进 Leo SDK，违反零 Web3 痕迹）。不引入 Reown AppKit / Web3Modal：它们覆盖 EVM/Solana/Bitcoin/TON/TRON 但**不支持 Aleo**，接进来只会变成「Reown 一个入口 + Aleo 一个入口」，还多一个 projectId 依赖和 700KB 包体。导航里不要再并排放「会员」和「连接钱包」两个图标（375px 已经挤满）：连接钱包按钮本身就是会员入口，无 Provider 时才回退成静态 `/membership` 链接。
 - **托管 Postgres TLS**：Neon / Render Postgres 需要 `sqlx` 启用 `runtime-tokio-rustls`，只开 `runtime-tokio` 会在编译期 SQLx 宏连接和运行期连库时报 “TLS upgrade required”
 - **Jest 生成物冲突**：`next build` / Playwright / WASM 会生成重复 package metadata；`apps/web/jest.config.ts` 必须忽略 `.next`、`playwright/.cache`、`public/wasm`
 - **小程序云测**：必须上传体验版或线上版，开发者/管理员身份进入；本地 Jest 仍是提交前门禁，云测用于真机兼容、黑白屏、性能和 JsError 验收
