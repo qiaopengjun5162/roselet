@@ -47,8 +47,9 @@ pub async fn upload_image(
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<Json<IpfsUploadResponse>, AppError> {
-    // Pinning quota is paid for by Roselet, so require a logged-in, active user.
-    auth::require_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
+    // Pinning quota is paid for by Roselet and the feature belongs to the
+    // membership surface, so require a bound wallet (not just any account).
+    auth::require_member_wallet(&state.pool, &headers, &state.jwt_secret).await?;
 
     let jwt = state.config.pinata_jwt.as_deref().ok_or_else(|| {
         AppError::ServiceUnavailable(

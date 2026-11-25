@@ -12,7 +12,10 @@ jest.mock("react", () => ({
 }));
 
 jest.mock("@/lib/api", () => ({
+  getUser: jest.fn().mockReturnValue(null),
   register: jest.fn(),
+  requestWalletChallenge: jest.fn(),
+  verifyWalletLogin: jest.fn(),
   setToken: jest.fn(),
   setRefreshToken: jest.fn(),
   setUser: jest.fn(),

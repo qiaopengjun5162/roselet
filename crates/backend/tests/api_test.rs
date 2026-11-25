@@ -1,5 +1,6 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use ed25519_dalek::{Signer, SigningKey};
 use futures_util::StreamExt;
 use http_body_util::BodyExt;
 use roselet_backend::auth::create_access_token;
@@ -27,7 +28,9 @@ async fn create_test_app() -> (axum::Router, PgPool) {
         .await
         .expect("Failed to run migrations");
 
-    sqlx::query("TRUNCATE feedbacks, refresh_tokens, likes, roses, users RESTART IDENTITY CASCADE")
+    sqlx::query(
+        "TRUNCATE feedbacks, refresh_tokens, likes, roses, users, wallet_challenges RESTART IDENTITY CASCADE",
+    )
         .execute(&pool)
         .await
         .expect("Failed to clean test data");
@@ -55,7 +58,11 @@ async fn create_test_app() -> (axum::Router, PgPool) {
 }
 
 async fn spawn_test_server() -> String {
-    let (app, _) = create_test_app().await;
+    spawn_test_server_with_pool().await.0
+}
+
+async fn spawn_test_server_with_pool() -> (String, PgPool) {
+    let (app, pool) = create_test_app().await;
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind to port");
     let addr = listener.local_addr().unwrap();
     tokio::spawn(async move {
@@ -65,7 +72,7 @@ async fn spawn_test_server() -> String {
     // Give the server a moment to start
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-    format!("http://{}", addr)
+    (format!("http://{}", addr), pool)
 }
 
 async fn register_user(base: &str, nickname: &str) -> Value {
@@ -2365,4 +2372,272 @@ async fn test_openapi_json_paths() {
     assert!(body["paths"]["/rose"].is_object());
     assert!(body["paths"]["/garden"].is_object());
     assert!(body["paths"]["/feedback"].is_object());
+}
+
+// ==================== Wallet login (SIWS) ====================
+
+fn wallet_key() -> (String, SigningKey) {
+    let key = SigningKey::generate(&mut rand::rngs::OsRng);
+    let address = bs58::encode(key.verifying_key().to_bytes()).into_string();
+    (address, key)
+}
+
+async fn request_challenge(base: &str, address: &str) -> Value {
+    let res = reqwest::Client::new()
+        .post(format!("{}/api/auth/wallet/challenge", base))
+        .json(&json!({ "wallet_address": address }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    res.json().await.unwrap()
+}
+
+/// Full challenge → sign → verify round trip. Returns (status, body).
+async fn wallet_login(
+    base: &str,
+    address: &str,
+    key: &SigningKey,
+    bearer: Option<&str>,
+) -> (StatusCode, Value) {
+    let challenge = request_challenge(base, address).await;
+    let message = challenge["message"].as_str().unwrap();
+    let signature = bs58::encode(key.sign(message.as_bytes()).to_bytes()).into_string();
+
+    let mut req =
+        reqwest::Client::new()
+            .post(format!("{}/api/auth/wallet/verify", base))
+            .json(&json!({
+                "wallet_address": address,
+                "nonce": challenge["nonce"],
+                "signature": signature,
+            }));
+    if let Some(token) = bearer {
+        req = req.header("Authorization", format!("Bearer {}", token));
+    }
+    let res = req.send().await.unwrap();
+    let status = res.status();
+    (status, res.json().await.unwrap())
+}
+
+#[tokio::test]
+async fn test_wallet_login_creates_member_and_is_idempotent() {
+    let base = spawn_test_server().await;
+    let (address, key) = wallet_key();
+
+    let (status, body) = wallet_login(&base, &address, &key, None).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["user"]["wallet_address"], address);
+    assert!(body["user"]["member_since"].as_str().is_some());
+    assert!(body["user"]["nickname"].as_str().unwrap().starts_with("Solana-"));
+    assert!(body["access_token"].as_str().is_some());
+    let first_id = body["user"]["id"].as_str().unwrap().to_string();
+
+    // Same wallet, second login: same account, no duplicate user.
+    let (status, body) = wallet_login(&base, &address, &key, None).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["user"]["id"].as_str().unwrap(), first_id);
+}
+
+#[tokio::test]
+async fn test_wallet_login_rejects_replayed_nonce() {
+    let base = spawn_test_server().await;
+    let (address, key) = wallet_key();
+    let challenge = request_challenge(&base, &address).await;
+    let message = challenge["message"].as_str().unwrap();
+    let signature = bs58::encode(key.sign(message.as_bytes()).to_bytes()).into_string();
+    let payload = json!({
+        "wallet_address": address,
+        "nonce": challenge["nonce"],
+        "signature": signature,
+    });
+
+    let client = reqwest::Client::new();
+    let first = client
+        .post(format!("{}/api/auth/wallet/verify", base))
+        .json(&payload)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(first.status(), StatusCode::OK);
+
+    let second = client
+        .post(format!("{}/api/auth/wallet/verify", base))
+        .json(&payload)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(second.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn test_wallet_login_rejects_wrong_signature() {
+    let base = spawn_test_server().await;
+    let (address, key) = wallet_key();
+    let challenge = request_challenge(&base, &address).await;
+    // Sign a different message than the challenge contains.
+    let signature = bs58::encode(key.sign(b"not the challenge").to_bytes()).into_string();
+
+    let res = reqwest::Client::new()
+        .post(format!("{}/api/auth/wallet/verify", base))
+        .json(&json!({
+            "wallet_address": address,
+            "nonce": challenge["nonce"],
+            "signature": signature,
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_wallet_binds_to_signed_in_account() {
+    let base = spawn_test_server().await;
+    let account = register_user(&base, "wallet-binder").await;
+    let token = account["access_token"].as_str().unwrap().to_string();
+    let account_id = account["user"]["id"].as_str().unwrap().to_string();
+    let (address, key) = wallet_key();
+
+    let (status, body) = wallet_login(&base, &address, &key, Some(&token)).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["user"]["id"].as_str().unwrap(), account_id);
+    assert_eq!(body["user"]["wallet_address"], address);
+    assert_eq!(body["user"]["nickname"], "wallet-binder");
+
+    // The wallet now logs into that same account without a bearer token.
+    let (status, body) = wallet_login(&base, &address, &key, None).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["user"]["id"].as_str().unwrap(), account_id);
+}
+
+#[tokio::test]
+async fn test_wallet_cannot_bind_two_accounts() {
+    let base = spawn_test_server().await;
+    let owner = register_user(&base, "wallet-owner").await;
+    let owner_token = owner["access_token"].as_str().unwrap().to_string();
+    let intruder = register_user(&base, "wallet-intruder").await;
+    let intruder_token = intruder["access_token"].as_str().unwrap().to_string();
+    let (address, key) = wallet_key();
+
+    let (status, body) = wallet_login(&base, &address, &key, Some(&owner_token)).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+
+    let (status, body) = wallet_login(&base, &address, &key, Some(&intruder_token)).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "body: {body}");
+}
+
+const TEST_WALLET: &str = "5FHwkrdxntdK24hgQU8qgBjn35Y1zwhz1GZwCkP2UJnM";
+
+async fn create_rose_for(base: &str, token: &str) -> String {
+    let res = reqwest::Client::new()
+        .post(format!("{}/api/rose", base))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json!({ "color": "red", "gratitude": "会员测试" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CREATED);
+    let body: Value = res.json().await.unwrap();
+    body["id"].as_str().unwrap().to_string()
+}
+
+fn mint_payload(wallet: &str) -> Value {
+    json!({
+        "signature": "1".repeat(88),
+        "account": wallet,
+        "wallet_address": wallet,
+        "on_chain_metadata": { "app": "roselet", "roseId": "unused" },
+    })
+}
+
+#[tokio::test]
+async fn test_non_member_cannot_record_solana_mint() {
+    let base = spawn_test_server().await;
+    let account = register_user(&base, "not-a-member").await;
+    let token = account["access_token"].as_str().unwrap();
+    let rose_id = create_rose_for(&base, token).await;
+
+    let res = reqwest::Client::new()
+        .post(format!("{}/api/rose/{}/solana", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&mint_payload(TEST_WALLET))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(
+        res.status(),
+        StatusCode::FORBIDDEN,
+        "a signed-in account without a bound wallet must not use member endpoints"
+    );
+}
+
+#[tokio::test]
+async fn test_member_can_record_solana_mint_with_bound_wallet() {
+    let base = spawn_test_server().await;
+    let account = register_user(&base, "bound-member").await;
+    let token = account["access_token"].as_str().unwrap().to_string();
+    let (address, key) = wallet_key();
+    let (status, body) = wallet_login(&base, &address, &key, Some(&token)).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    let rose_id = create_rose_for(&base, &token).await;
+
+    let res = reqwest::Client::new()
+        .post(format!("{}/api/rose/{}/solana", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&mint_payload(&address))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_member_cannot_record_mint_for_another_wallet() {
+    let base = spawn_test_server().await;
+    let account = register_user(&base, "wallet-mismatch").await;
+    let token = account["access_token"].as_str().unwrap().to_string();
+    let (address, key) = wallet_key();
+    let (status, body) = wallet_login(&base, &address, &key, Some(&token)).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    let rose_id = create_rose_for(&base, &token).await;
+
+    let res = reqwest::Client::new()
+        .post(format!("{}/api/rose/{}/solana", base, rose_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&mint_payload(TEST_WALLET))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_wallet_verify_with_invalid_token_does_not_create_account() {
+    let (base, pool) = spawn_test_server_with_pool().await;
+    let (address, key) = wallet_key();
+    let challenge = request_challenge(&base, &address).await;
+    let message = challenge["message"].as_str().unwrap();
+    let signature = bs58::encode(key.sign(message.as_bytes()).to_bytes()).into_string();
+
+    let res = reqwest::Client::new()
+        .post(format!("{}/api/auth/wallet/verify", base))
+        .header("Authorization", "Bearer expired-or-invalid")
+        .json(&json!({
+            "wallet_address": address,
+            "nonce": challenge["nonce"],
+            "signature": signature,
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+    // The failed bind must not leave a wallet-only account behind.
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE wallet_address = $1")
+        .bind(&address)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
 }

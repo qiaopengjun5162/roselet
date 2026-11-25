@@ -6254,3 +6254,43 @@ Web 62 套件 455 例全绿。
 **新增两条守卫**：① row 方向 flex `<main>` 有 `items-center` 就必须有 `justify-center` 或 `mx-auto`，否则报红；② plant 两个 row 步骤必须都含 `justify-center`。
 
 **验证**：web typecheck + lint 全绿，457 例测试全过（原 455 + 新 2 条守卫）。
+
+## 四十七、把「连接钱包」改成真正的钱包登录（会员身份落库 + 服务端鉴权）
+
+**问题**（用户指出）：钱包连接看起来像面板里的一个工具按钮，不像登录/注册；会员身份也不该是点一下就有的开关。
+
+**现状证据**：`membership-context.tsx` 的 `isMember` 只是 `useState(false)`；`users` 表没有钱包字段；地址只存在浏览器内存 + 「上次用的钱包名」，刷新/换设备就丢；`CLAUDE.md` 自己记着「`isMember` 只是前端视图开关，不是权限」。`/private-vault` 的「仅会员」同样只判前端状态。
+
+**改造**：采用 Sign-In With Solana（SIWS）。
+- `POST /api/auth/wallet/challenge`：校验 base58 公钥，生成一次性 nonce 与待签消息（5 分钟过期），原文入库。
+- `POST /api/auth/wallet/verify`：按**存储的原文**用 ed25519 验签、nonce 单次消费；不带 token = 钱包登录/注册（首次自动建 `Solana-xxxxxx` 账号），带 token = 绑定钱包到当前账号。带 token 但无效 → 401，**不回落注册**（否则过期 token 会把一个人拆成两个账号）。
+- migration `015_wallet_auth.sql`：`users.wallet_address`（唯一索引）+ `users.member_since` + `wallet_challenges`（nonce / message / expires / consumed）。
+- 服务端鉴权：`auth::require_member_wallet` 用于 `/api/rose/{id}/solana`、`/solana/nft`、`/api/ipfs/upload`；上链接口还要求请求钱包 == 绑定钱包。软删除满 30 天 `finalize_deleted_user` 会清空钱包绑定，避免钱包被永久占住。
+- 前端：`lib/base58.ts`（保留前导零的编码器，签名字节转 base58）、`wallet.ts` 增加 `solana:signMessage`、`api.ts` 增加 challenge/verify、`membership-context` 改为 `hasMembership`（账号绑定钱包）+ `isMember`（会员视图）；未绑定钱包时 `toggleMember/openPanel` 一律 no-op。新增 `/membership` 会员中心（地址、加入时间、签名会话状态、权益、退出登录），`/login` 增加「钱包登录 · 会员」页签，导航入口从「会员版开关」改为「会员中心」。
+- 上链面板显示「会员钱包 / 签名会话」两行；连错钱包时提前警告（后端也会 403）。
+
+**测试**：后端 93 例集成测试全过（新增 9 例：钱包建号幂等、重放拒绝、错签名、绑定已有账号、一号不能绑两钱包、非会员 403、会员可上链、钱包不匹配 403、无效 token 不建号）；Web 471 例全过；typecheck / lint / 覆盖率门槛 / cargo fmt / clippy 全绿。
+
+**兼容性说明**：改造前用昵称账号上过链的用户，账号没有绑定钱包，需要去 `/membership` 绑定一次才能继续使用会员功能；历史链上记录不受影响。
+
+## 四十八、把四个钱包入口收敛成一个统一组件（评估过 Reown，未采用）
+
+**触发**：用户指出「钱包连接应该有组件功能，不是每条链一个入口；应该像 Rainbow / Reown AppKit 那样，一个入口连多个钱包」。
+
+**先核实现状**：共有 4 个入口——`/login` 的 `WalletLoginOptions`、`/membership` 的 `WalletChooser`、上链面板里的第三份列表、`/private-vault` 的「连接 Leo Wallet」裸按钮。前三份是几乎逐行复制，连 Phantom/Solflare/Backpack 的安装链接都抄了三遍。
+
+**为什么不用 Reown AppKit**：它原生支持 EVM / Solana / Bitcoin / TON / TRON，**不支持 Aleo**；接进来只会得到「Reown 管 Solana + 自建管 Aleo」两个入口，等于把 3 个 Solana 入口换成 1 个，同时新增 projectId 依赖（免费 500 MAU，之后 $89/月起）和约 700KB / 17 个依赖的包体，与刚建立的 audit 门禁冲突。结论：入口收敛是自己 UI 层的问题，不是缺 SDK。
+
+**改动**：
+- `lib/wallet-chains.ts`：链注册表。每条链声明 `mode`——`inline`（Wallet Standard，可在原地连接）或 `external`（provider 只挂在该链页面，如 Aleo）。附 `WalletOption`、`toWalletOptions`、`ALEO_WALLET_OPTIONS`、`INSTALL_LINKS`、`shortWalletAddress`。加链变成改数据。
+- `components/wallet-picker.tsx`：唯一选择器。按链分组、空态给安装链接、busy 统一禁用、external 链交回调用方决定去哪。
+- `components/connect-wallet-button.tsx`：导航里唯一入口。一个弹层同时列出 Solana 与 Aleo；已绑定时显示短地址、签名会话状态和会员中心入口。
+- 登录页 / 会员中心 / 上链面板改为复用 `WalletPicker`，删除三份重复列表与安装链接副本。
+- 导航移除独立的「会员」🌐 链接，由连接钱包按钮取代——375px 顶栏已经排满，两个相邻图标会被读成两个门。无 `MembershipProvider`（单测、隔离渲染）时回退为静态 `/membership` 链接。
+- `/private-vault` 增加一句说明：Leo 钱包连接只作用于 Aleo 链，会员身份统一在右上角管理。
+
+**测试**：新增 21 例（链注册表、选择器分组/空态/busy/外部链、入口按钮的登录与路由、导航单入口），Web 493 例全过；typecheck / lint / 覆盖率门槛通过；生产构建通过，全部路由正常生成。用 Playwright 在 390px 与 1280px 实测弹层无溢出（移动端 304×302，左 46 / 右 390 内）。
+
+**环境坑（本机，非代码问题）**：`~/.zshrc` source 了 gvm，gvm 覆盖了 `cd` 函数；`next build` 触发的子 shell 在 `GVM_ROOT` 为空时直接报错退出，表现为 build 无任何输出即失败。用 `env -i` 传最小环境可绕过；CI 不触发。
+
+**明确没做**：没有引入 Reown/WalletConnect；没有把 Aleo adapter 提升到根布局（会让普通模式整包打进 Leo SDK，违反零 Web3 痕迹）。

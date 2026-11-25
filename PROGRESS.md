@@ -178,6 +178,8 @@
 - [x] thiserror 错误处理（404/400/403/500 区分）
 - [x] CORS 配置
 - [x] JWT 认证（jsonwebtoken v9）
+- [x] 钱包登录 / 会员身份（SIWS：challenge + ed25519 验签 + wallet_address 落库）
+- [x] 会员接口服务端鉴权（上链 / NFT / IPFS 要求绑定钱包且签名钱包一致）
 - [x] tracing 结构化日志（tracing-subscriber）
 - [x] Swagger API 文档（/swagger）
 
@@ -187,6 +189,9 @@
 - [x] 花圃页：分页加载 + 卡片展示 + WebSocket 实时更新 + 颜色筛选
 - [x] 玫瑰详情页：/rose/[id] + 编辑/删除（owner）+ 点赞 + AI 回复展示
 - [x] 登录页：昵称注册 + JWT 存储
+- [x] 登录页：钱包登录页签（连接钱包 + 签名，首次自动建号）
+- [x] 会员中心：/membership（绑定钱包、加入时间、权益、签名会话状态）
+- [x] 统一钱包入口：链注册表 + `WalletPicker` 分组选择（Solana 就地连接 / Aleo 页内），导航只留一个入口
 - [x] 登录页：支持冷却期账号恢复提示
 - [x] 导航栏：登录状态 + 昵称显示 + 登出 + 我的花圃 + 资料链接
 - [x] 个人花圃页：/my + 只显示自己的玫瑰

@@ -37,6 +37,36 @@
         }
       }
     },
+    "/auth/wallet/challenge": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "获取钱包登录挑战（SIWS）",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["wallet_address"], "properties": { "wallet_address": { "type": "string", "description": "base58 编码的 Solana 公钥" } } } } }
+        },
+        "responses": {
+          "200": { "description": "挑战与待签名消息", "content": { "application/json": { "schema": { "type": "object", "properties": { "nonce": { "type": "string" }, "message": { "type": "string" }, "expires_at": { "type": "string", "format": "date-time" } } } } } },
+          "400": { "description": "地址非法或请求过于频繁" }
+        }
+      }
+    },
+    "/auth/wallet/verify": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "校验钱包签名并登录 / 绑定钱包",
+        "description": "未携带 Bearer token 时按钱包登录/注册；携带有效 token 时把钱包绑定到当前账号（开通会员）。token 无效返回 401，不会回落成注册。",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["wallet_address", "nonce", "signature"], "properties": { "wallet_address": { "type": "string" }, "nonce": { "type": "string" }, "signature": { "type": "string", "description": "base58 编码的 ed25519 签名" } } } } }
+        },
+        "responses": {
+          "200": { "description": "登录成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
+          "400": { "description": "挑战过期、已使用或钱包已绑定其他账号" },
+          "401": { "description": "签名校验失败或登录已过期" }
+        }
+      }
+    },
     "/user/profile": {
       "get": {
         "tags": ["User"],
@@ -235,7 +265,9 @@
           "nickname": { "type": "string" },
           "created_at": { "type": "string", "format": "date-time" },
           "deleted_at": { "type": "string", "format": "date-time", "nullable": true },
-          "deletion_reason": { "type": "string", "nullable": true }
+          "deletion_reason": { "type": "string", "nullable": true },
+          "wallet_address": { "type": "string", "nullable": true, "description": "已绑定的 Solana 钱包地址；存在即表示该账号是会员" },
+          "member_since": { "type": "string", "format": "date-time", "nullable": true }
         }
       },
       "UserProfile": {

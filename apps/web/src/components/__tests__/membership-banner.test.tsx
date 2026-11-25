@@ -24,6 +24,23 @@ function renderBanner() {
   );
 }
 
+function seedMember() {
+  window.localStorage.setItem(
+    "user",
+    JSON.stringify({
+      id: "u1",
+      nickname: "member",
+      created_at: new Date().toISOString(),
+      wallet_address: "5FHwkrdxntdK24hgQU8qgBjn35Y1zwhz1GZwCkP2UJnM",
+      member_since: new Date().toISOString(),
+    }),
+  );
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
 describe("MembershipBanner", () => {
   it("普通模式不显示会员版状态条", () => {
     renderBanner();
@@ -32,6 +49,7 @@ describe("MembershipBanner", () => {
   });
 
   it("进入会员版后显示状态条与两个出口", () => {
+    seedMember();
     renderBanner();
     fireEvent.click(screen.getByText("enter-member"));
     expect(screen.getByTestId("membership-banner")).toBeInTheDocument();
@@ -41,6 +59,7 @@ describe("MembershipBanner", () => {
   });
 
   it("点「返回普通版」立刻退出会员模式", () => {
+    seedMember();
     renderBanner();
     fireEvent.click(screen.getByText("enter-member"));
     fireEvent.click(screen.getByRole("button", { name: "返回普通版" }));

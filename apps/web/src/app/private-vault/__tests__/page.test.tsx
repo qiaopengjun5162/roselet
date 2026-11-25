@@ -5,11 +5,18 @@ import { resolve } from "node:path";
 
 // 默认按会员渲染，保留原有钱包流程用例；单独一个用例切到普通模式验证拦截。
 let memberMode = true;
+let hasMembership = true;
 const mockOpenPanel = jest.fn();
+const mockEnterMemberView = jest.fn();
 jest.mock("@/app/membership-context", () => ({
-  useOptionalMembership: () => ({ isMember: memberMode, openPanel: mockOpenPanel }),
+  useOptionalMembership: () => ({
+    isMember: memberMode,
+    hasMembership,
+    openPanel: mockOpenPanel,
+    enterMemberView: mockEnterMemberView,
+  }),
 }));
-afterEach(() => { memberMode = true; });
+afterEach(() => { memberMode = true; hasMembership = true; });
 
 const mockSelect = jest.fn();
 const mockConnect = jest.fn();
@@ -95,13 +102,26 @@ describe("PrivateVaultPage", () => {
 
   it("普通模式直接输网址也看不到任何钱包操作", () => {
     memberMode = false;
+    hasMembership = false;
     render(<PrivateVaultPage />);
 
-    expect(screen.getByText("Aleo 私密 Vault 只在会员版开放")).toBeInTheDocument();
+    expect(screen.getByText("Aleo 私密 Vault 只对会员开放")).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("写下一段不想公开的感恩、焦虑或期待")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "种下私密玫瑰" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "切换到会员版" }));
-    expect(mockOpenPanel).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("link", { name: "去开通会员" })).toHaveAttribute(
+      "href",
+      "/membership",
+    );
+  });
+
+  it("会员但未进入会员版时，提示进入会员版并打开面板", () => {
+    memberMode = false;
+    hasMembership = true;
+    render(<PrivateVaultPage />);
+
+    expect(screen.getByText("进入会员版后使用 Aleo Vault")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "进入会员版" }));
+    expect(mockEnterMemberView).toHaveBeenCalledTimes(1);
   });
 
   it("requires private content before requesting the wallet", () => {

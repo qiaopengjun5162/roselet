@@ -100,3 +100,56 @@ describe("connectSolanaWallet selection", () => {
     expect(phantom.features["standard:connect"].connect).toHaveBeenCalledWith(undefined);
   });
 });
+
+describe("Solana message signing (SIWS)", () => {
+  function wallet(name: string, signature: Uint8Array | null) {
+    const signMessage = jest.fn().mockResolvedValue(
+      signature ? [{ signature }] : [],
+    );
+    return {
+      wallet: {
+        name,
+        chains: ["solana:devnet"],
+        features: {
+          "standard:connect": {
+            connect: jest.fn().mockResolvedValue({
+              accounts: [{ address: `${name}-addr`, chains: ["solana:devnet"] }],
+            }),
+          },
+          "solana:signTransaction": { signTransaction: jest.fn() },
+          ...(signature === null
+            ? {}
+            : { "solana:signMessage": { signMessage } }),
+        },
+      },
+      signMessage,
+    };
+  }
+
+  it("returns the wallet's raw signature over the exact message", async () => {
+    const { connectSolanaWallet } = await import("../wallet");
+    const signature = new Uint8Array([7, 8, 9]);
+    const { wallet: phantom, signMessage } = wallet("Phantom", signature);
+    mockGetWallets.mockReturnValue({ get: () => [phantom] } as never);
+
+    const session = await connectSolanaWallet("Phantom");
+    const message = new Uint8Array([1, 2, 3]);
+
+    await expect(session.signMessage(message)).resolves.toBe(signature);
+    expect(signMessage).toHaveBeenCalledWith({
+      account: { address: "Phantom-addr", chains: ["solana:devnet"] },
+      message,
+    });
+  });
+
+  it("throws a readable error when the wallet cannot sign messages", async () => {
+    const { connectSolanaWallet } = await import("../wallet");
+    const { wallet: phantom } = wallet("Phantom", null);
+    mockGetWallets.mockReturnValue({ get: () => [phantom] } as never);
+
+    const session = await connectSolanaWallet("Phantom");
+    await expect(session.signMessage(new Uint8Array([1]))).rejects.toThrow(
+      /不支持消息签名/,
+    );
+  });
+});

@@ -149,7 +149,11 @@ pub async fn record_solana_mint(
     Json(input): Json<RecordSolanaMint>,
 ) -> Result<Json<SolanaMint>, AppError> {
     input.validate().map_err(AppError::BadRequest)?;
-    let user_id = auth::require_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
+    // Members only: the wallet that signs must be the one bound to this
+    // account, otherwise "membership" would be a label on the UI instead of an
+    // identity the backend can enforce.
+    let (user_id, member_wallet) =
+        auth::require_member_wallet(&state.pool, &headers, &state.jwt_secret).await?;
     let rose = sqlx::query_as::<_, Rose>("SELECT * FROM roses WHERE id = $1")
         .bind(id)
         .fetch_optional(&state.pool)
@@ -178,6 +182,9 @@ pub async fn record_solana_mint(
     let account = normalize_base58(&input.account, 32, 44).expect("validated account");
     let wallet_address =
         normalize_base58(&input.wallet_address, 32, 44).expect("validated wallet address");
+    if wallet_address != member_wallet {
+        return Err(AppError::Forbidden);
+    }
     let ipfs_cid = input.ipfs_cid.as_ref().map(|c| c.trim().to_string());
 
     let duplicate: Option<Uuid> =

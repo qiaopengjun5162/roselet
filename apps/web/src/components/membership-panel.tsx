@@ -11,6 +11,8 @@ import {
   sendRoseMemo,
 } from "@/lib/rose-memo";
 import { confirmSignature } from "@/lib/solana-rpc";
+import { WalletPicker } from "@/components/wallet-picker";
+import { toWalletOptions } from "@/lib/wallet-chains";
 import {
   CLUSTER,
   PRIORITY_FEE_MICRO_LAMPORTS,
@@ -50,6 +52,7 @@ export function MembershipPanel() {
     mintTargetRoseId,
     clearMintTarget,
     toggleMember,
+    memberAddress,
     walletAddress,
     signTransaction,
     connectError,
@@ -251,6 +254,11 @@ export function MembershipPanel() {
   const shortAddr = walletAddress
     ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`
     : null;
+  // A member can connect a different wallet by accident; the backend rejects
+  // the mint in that case, so say it here before the user signs anything.
+  const walletMismatch = Boolean(
+    walletAddress && memberAddress && walletAddress !== memberAddress,
+  );
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -284,49 +292,46 @@ export function MembershipPanel() {
           会员模式：连接 Solana 钱包，把玫瑰 / 图片 / 信息写进链上（{clusterLabel(CLUSTER)}）。点右上角 ✕ 可收起面板去浏览玫瑰，在详情页点「把这朵玫瑰上链」会自动带入 ID。
         </p>
 
+        <div className="mb-3 space-y-1 rounded-lg bg-white/5 px-3 py-2 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-slate-400">会员钱包</span>
+            <span className="font-mono text-slate-200">
+              {memberAddress ? `${memberAddress.slice(0, 6)}…${memberAddress.slice(-4)}` : "未绑定"}
+            </span>
+          </div>
+          {walletAddress && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400">签名会话</span>
+              <span className={walletMismatch ? "text-red-400" : "text-emerald-300"}>
+                {shortAddr}
+              </span>
+            </div>
+          )}
+        </div>
+
         {walletAddress ? (
           <div className="mb-4 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
-            <span className="text-xs text-slate-300">钱包：{shortAddr}</span>
+            <span className={`text-xs ${walletMismatch ? "text-red-400" : "text-slate-300"}`}>
+              {walletMismatch
+                ? "连接的钱包与会员钱包不一致，上链会被拒绝"
+                : "签名会话已连接"}
+            </span>
             <button
               onClick={disconnectWallet}
               className="text-xs text-rose-300 hover:text-rose-200"
+              title="只断开签名连接，会员身份仍保留在账号上"
             >
               断开
             </button>
           </div>
         ) : (
-          <div className="mb-4 space-y-2">
-            {solanaWallets.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-white/15 px-3 py-3 text-xs text-slate-400">
-                <p>未检测到 Solana 钱包，请先安装一个再连接：</p>
-                <div className="mt-2 flex gap-3">
-                  <a href="https://phantom.app/download" target="_blank" rel="noreferrer" className="text-violet-300 hover:underline">Phantom ↗</a>
-                  <a href="https://solflare.com/download" target="_blank" rel="noreferrer" className="text-violet-300 hover:underline">Solflare ↗</a>
-                  <a href="https://backpack.app/download" target="_blank" rel="noreferrer" className="text-violet-300 hover:underline">Backpack ↗</a>
-                </div>
-              </div>
-            ) : (
-              <>
-                {solanaWallets.length > 1 && (
-                  <p className="text-xs text-slate-400">检测到 {solanaWallets.length} 个钱包，选一个连接：</p>
-                )}
-                {solanaWallets.map((wallet) => (
-                  <button
-                    key={wallet.name}
-                    onClick={() => connectWallet(wallet.name)}
-                    className="flex w-full items-center gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-                  >
-                    {wallet.icon ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={wallet.icon} alt="" className="size-5 rounded-sm" />
-                    ) : (
-                      <span aria-hidden="true">🔌</span>
-                    )}
-                    <span>连接 {wallet.name}</span>
-                  </button>
-                ))}
-              </>
-            )}
+          <div className="mb-4">
+            <WalletPicker
+              wallets={toWalletOptions(solanaWallets)}
+              compact
+              actionLabel={(wallet) => `连接 ${wallet.name}`}
+              onPick={(wallet) => connectWallet(wallet.name)}
+            />
           </div>
         )}
         {connectError && <p className="mb-3 text-xs text-red-400">{connectError}</p>}
@@ -422,7 +427,7 @@ export function MembershipPanel() {
 
         <button
           onClick={handleMint}
-          disabled={busy || !walletAddress}
+          disabled={busy || !walletAddress || walletMismatch}
           className="w-full rounded-lg bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-400 disabled:opacity-40"
         >
           {busy

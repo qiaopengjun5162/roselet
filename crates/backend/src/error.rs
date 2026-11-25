@@ -16,6 +16,11 @@ pub enum AppError {
     #[error("{0}")]
     BadRequest(String),
 
+    /// A signed-in account that has not bound a wallet yet. 403 (not 401) so
+    /// the client does not treat it as an expired session.
+    #[error("请先用钱包登录并绑定账号，再使用会员功能")]
+    MembershipRequired,
+
     #[error("数据库错误: {0}")]
     Database(#[from] sqlx::Error),
 
@@ -37,6 +42,7 @@ impl IntoResponse for AppError {
             AppError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
             AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, self.to_string()),
             AppError::Forbidden => (StatusCode::FORBIDDEN, self.to_string()),
+            AppError::MembershipRequired => (StatusCode::FORBIDDEN, self.to_string()),
             AppError::Database(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "服务器内部错误".to_string(),

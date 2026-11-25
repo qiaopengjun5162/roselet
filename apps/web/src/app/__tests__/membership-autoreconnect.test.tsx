@@ -29,6 +29,20 @@ function Harness() {
 
 const okSession = { address: "ABC123", signTransaction: jest.fn(), disconnect: jest.fn() };
 
+/** Membership comes from the stored account; seed one with a bound wallet. */
+function seedMember() {
+  window.localStorage.setItem(
+    "user",
+    JSON.stringify({
+      id: "u1",
+      nickname: "member",
+      created_at: new Date().toISOString(),
+      wallet_address: "5FHwkrdxntdK24hgQU8qgBjn35Y1zwhz1GZwCkP2UJnM",
+      member_since: new Date().toISOString(),
+    }),
+  );
+}
+
 beforeEach(() => {
   mockConnect.mockReset();
   mockWallets = [];
@@ -46,6 +60,7 @@ describe("会员钱包自动重连", () => {
   });
 
   it("进入会员后用上次记住的钱包静默重连（silent:true）", async () => {
+    seedMember();
     window.localStorage.setItem(LAST_WALLET_KEY, "Phantom");
     mockWallets = [{ name: "Phantom" }];
     mockConnect.mockResolvedValue(okSession);
@@ -58,6 +73,7 @@ describe("会员钱包自动重连", () => {
   });
 
   it("上次记住的钱包已不在列表时不重连", async () => {
+    seedMember();
     window.localStorage.setItem(LAST_WALLET_KEY, "Phantom");
     mockWallets = [{ name: "Solflare" }];
     render(<MembershipProvider><Harness /></MembershipProvider>);
@@ -69,6 +85,7 @@ describe("会员钱包自动重连", () => {
   });
 
   it("静默重连被拒绝时保持安静，不抛错也不显示错误", async () => {
+    seedMember();
     window.localStorage.setItem(LAST_WALLET_KEY, "Phantom");
     mockWallets = [{ name: "Phantom" }];
     mockConnect.mockRejectedValue(new Error("User rejected"));
@@ -83,6 +100,7 @@ describe("会员钱包自动重连", () => {
   });
 
   it("主动连接记住钱包，断开后清除记忆（刷新不再自动连回）", async () => {
+    seedMember();
     mockWallets = [{ name: "Phantom" }];
     mockConnect.mockResolvedValue(okSession);
     render(<MembershipProvider><Harness /></MembershipProvider>);

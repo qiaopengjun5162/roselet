@@ -42,6 +42,13 @@ pub fn create_app(state: AppState) -> Router {
             "/api/auth/deactivate",
             post(routes::auth::deactivate_account),
         )
+        // Wallet login (Sign-In With Solana). `verify` doubles as "bind this
+        // wallet to the signed-in account" when a valid bearer token is sent.
+        .route(
+            "/api/auth/wallet/challenge",
+            post(routes::wallet_auth::create_challenge),
+        )
+        .route("/api/auth/wallet/verify", post(routes::wallet_auth::verify))
         .route("/api/garden", get(routes::garden::get_garden))
         .route(
             "/api/activity/recent",

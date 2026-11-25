@@ -14,6 +14,10 @@ export interface User {
   created_at: string;
   deleted_at?: string | null;
   deletion_reason?: string | null;
+  /** Bound Solana address. Present ⇒ this account is a member. */
+  wallet_address?: string | null;
+  /** When the wallet was first bound. */
+  member_since?: string | null;
 }
 
 export interface AuthResponse {
@@ -65,6 +69,11 @@ function clearAuthState() {
 export function logout() {
   const refreshToken = getRefreshToken();
   clearAuthState();
+  // Nav and the membership context both listen for this; without it a logout
+  // leaves the context believing the account is still a member until reload.
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("auth-change"));
+  }
   // 异步撤销服务端 refresh token，不阻塞登出
   if (refreshToken) {
     fetchWithTimeout(`${AUTH_API_BASE}/api/auth/logout`, {
@@ -127,6 +136,67 @@ export async function register(nickname: string, passphrase?: string): Promise<A
     let body: { error?: string } = {};
     try { body = await res.json(); } catch { /* ignore parse errors */ }
     throw new Error(body.error || "Failed to register");
+  }
+  return res.json();
+}
+
+// ── Wallet login (Sign-In With Solana) ──
+
+export interface WalletChallenge {
+  nonce: string;
+  /** The exact human-readable message the wallet must sign. */
+  message: string;
+  expires_at: string;
+}
+
+export async function requestWalletChallenge(
+  walletAddress: string,
+): Promise<WalletChallenge> {
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(`${API_BASE}/api/auth/wallet/challenge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet_address: walletAddress }),
+    }, 15_000);
+  } catch {
+    throw new Error("网络连接失败，请稍后重试");
+  }
+  if (!res.ok) {
+    let body: { error?: string } = {};
+    try { body = await res.json(); } catch { /* ignore parse errors */ }
+    throw new Error(body.error || "获取登录挑战失败");
+  }
+  return res.json();
+}
+
+/**
+ * Verify a signed challenge. With a stored access token this binds the wallet
+ * to the current account; without one it logs in / registers by wallet.
+ */
+export async function verifyWalletLogin(input: {
+  walletAddress: string;
+  nonce: string;
+  signature: string;
+}): Promise<AuthResponse> {
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(`${API_BASE}/api/auth/wallet/verify`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        wallet_address: input.walletAddress,
+        nonce: input.nonce,
+        signature: input.signature,
+      }),
+    }, 20_000);
+  } catch {
+    throw new Error("网络连接失败，请稍后重试");
+  }
+  if (!res.ok) {
+    let body: { error?: string } = {};
+    try { body = await res.json(); } catch { /* ignore parse errors */ }
+    throw new Error(body.error || "钱包签名校验失败");
   }
   return res.json();
 }

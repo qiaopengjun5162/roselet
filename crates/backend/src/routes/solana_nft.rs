@@ -126,7 +126,8 @@ pub async fn record_rose_nft(
 ) -> Result<Json<SolanaNft>, AppError> {
     input.validate().map_err(AppError::BadRequest)?;
 
-    let user_id = auth::require_active_user_id(&state.pool, &headers, &state.jwt_secret).await?;
+    let (user_id, member_wallet) =
+        auth::require_member_wallet(&state.pool, &headers, &state.jwt_secret).await?;
     let rose = load_rose(&state.pool, id).await?;
     if rose.user_id != Some(user_id) {
         return Err(AppError::Forbidden);
@@ -145,6 +146,9 @@ pub async fn record_rose_nft(
 
     let mint = normalize_base58(&input.mint_address, 32, 44).expect("validated mint");
     let wallet = normalize_base58(&input.wallet_address, 32, 44).expect("validated wallet");
+    if wallet != member_wallet {
+        return Err(AppError::Forbidden);
+    }
 
     let existing: Option<Uuid> =
         sqlx::query_scalar("SELECT rose_id FROM solana_nft_mints WHERE rose_id = $1")
