@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   getUser,
   register,
@@ -45,14 +45,19 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "";
+  // Deliberately not `useSearchParams()`: that hook opts the whole page out of
+  // prerendering, so the server sends an empty shell and the form only appears
+  // after hydration (a blank page below the nav on a slow connection).
+  // Reading `location.search` in an effect keeps the page prerendered.
+  const [redirect, setRedirect] = useState("");
   const membership = useOptionalMembership();
 
   useEffect(() => {
     setCurrentUser(getUser());
-    if (searchParams.get("mode") === "wallet") setMode("wallet");
-  }, [searchParams]);
+    const params = new URLSearchParams(window.location.search);
+    setRedirect(params.get("redirect") || "");
+    if (params.get("mode") === "wallet") setMode("wallet");
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -215,9 +220,8 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
-  );
+  // No Suspense boundary: the page has no `useSearchParams()` dependency, so
+  // Next can prerender the form into the HTML instead of shipping a blank
+  // shell that only fills in after hydration.
+  return <LoginForm />;
 }

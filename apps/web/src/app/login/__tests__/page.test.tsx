@@ -3,7 +3,6 @@ import "@testing-library/jest-dom";
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
-  useSearchParams: () => ({ get: () => null }),
 }));
 
 jest.mock("react", () => ({
@@ -68,5 +67,29 @@ describe("LoginPage", () => {
     await waitFor(() => {
       expect(register).toHaveBeenCalledWith("alice", undefined);
     });
+  });
+
+  it("opens the wallet tab when the URL asks for it", async () => {
+    window.history.pushState({}, "", "/login?mode=wallet");
+    render(<LoginPage />);
+    expect(
+      await screen.findByRole("heading", { name: "钱包登录 · 会员" }),
+    ).toBeInTheDocument();
+    window.history.pushState({}, "", "/login");
+  });
+
+  it("does not use useSearchParams (it would blank the prerendered page)", () => {
+    // `useSearchParams()` forces the page under a Suspense boundary, so the
+    // server ships an empty <main> and the form only appears after hydration.
+    // Reading location.search in an effect keeps the HTML prerendered.
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs
+      .readFileSync(path.join(__dirname, "..", "page.tsx"), "utf8")
+      // Comments mention the hook by name; only real code counts.
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+    expect(source).not.toMatch(/useSearchParams/);
+    expect(source).not.toMatch(/<Suspense/);
   });
 });
