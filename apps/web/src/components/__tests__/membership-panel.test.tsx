@@ -9,6 +9,8 @@ const mockSendRoseMemo = jest.fn();
 const mockConfirmSignature = jest.fn();
 const mockConnectWallet = jest.fn();
 let mockSolanaWallets: Array<{ name: string; icon?: string }> = [];
+/** Membership is server state now: seed an account with a bound wallet. */
+let mockUser: unknown = null;
 
 jest.mock("@/lib/rose-memo", () => ({
   sendRoseMemo: (...args: unknown[]) => mockSendRoseMemo(...args),
@@ -26,6 +28,7 @@ jest.mock("@/lib/wallet", () => ({
 
 jest.mock("@/lib/api", () => ({
   getToken: () => null,
+  getUser: () => mockUser,
   uploadImageToIpfs: (...args: unknown[]) => mockUpload(...args),
 }));
 
@@ -63,6 +66,13 @@ const cidInput = () =>
 // reconnect in the next case and inflate connect-call assertions.
 beforeEach(() => {
   window.localStorage.clear();
+  mockUser = {
+    id: "u1",
+    nickname: "member",
+    created_at: new Date().toISOString(),
+    wallet_address: "5FHwkrdxntdK24hgQU8qgBjn35Y1zwhz1GZwCkP2UJnM",
+    member_since: new Date().toISOString(),
+  };
 });
 
 describe("MembershipPanel · image → IPFS CID", () => {
@@ -159,7 +169,7 @@ describe("MembershipPanel · Solana mint retry safety", () => {
     renderPanel();
     fireEvent.click(screen.getByRole("button", { name: "enter-member" }));
     fireEvent.click(screen.getByRole("button", { name: /连接 Phantom/ }));
-    await screen.findByText(/钱包：/);
+    await screen.findByText(/签名会话已连接/);
 
     fireEvent.change(screen.getByPlaceholderText(/例如 550e8400/), {
       target: { value: "550e8400-e29b-41d4-a716-446655440000" },
@@ -195,7 +205,7 @@ describe("MembershipPanel · Solana mint retry safety", () => {
     renderPanel();
     fireEvent.click(screen.getByRole("button", { name: "enter-member" }));
     fireEvent.click(screen.getByRole("button", { name: /连接 Phantom/ }));
-    await screen.findByText(/钱包：/);
+    await screen.findByText(/签名会话已连接/);
 
     fireEvent.change(screen.getByPlaceholderText(/例如 550e8400/), {
       target: { value: "550e8400-e29b-41d4-a716-446655440000" },

@@ -42,6 +42,12 @@ interface StandardWallet {
         chain: string;
       }): Promise<readonly { signedTransaction: Uint8Array }[]>;
     };
+    "solana:signMessage"?: {
+      signMessage(input: {
+        account: StandardAccount;
+        message: Uint8Array;
+      }): Promise<readonly { signature: Uint8Array }[]>;
+    };
     "standard:disconnect"?: { disconnect(): Promise<void> };
   };
 }
@@ -52,6 +58,13 @@ export interface WalletSession {
   address: string;
   /** Sign a serialized transaction, returning it with the wallet's signature added. */
   signTransaction: (wireTransaction: Uint8Array) => Promise<Uint8Array>;
+  /**
+   * Sign an arbitrary message. Used only for Sign-In With Solana; this is a
+   * plain ed25519 signature (no transaction, no fee). Wallets that do not
+   * implement `solana:signMessage` throw a readable error here rather than
+   * failing the connection, so transaction-only flows keep working.
+   */
+  signMessage: (message: Uint8Array) => Promise<Uint8Array>;
   /** Ask the wallet to disconnect (best effort). */
   disconnect: () => void;
 }
@@ -179,6 +192,20 @@ export async function connectSolanaWallet(
     },
     disconnect: () => {
       wallet.features["standard:disconnect"]?.disconnect().catch(() => {});
+    },
+    signMessage: async (message) => {
+      const signMessageFeature = wallet.features["solana:signMessage"];
+      if (!signMessageFeature) {
+        throw new Error(
+          `钱包 ${wallet.name} 不支持消息签名，无法用于会员登录；请换一个钱包（如 Phantom）`,
+        );
+      }
+      const outputs = await signMessageFeature.signMessage({ account, message });
+      const signature = outputs[0]?.signature;
+      if (!signature) {
+        throw new Error("钱包没有返回签名");
+      }
+      return signature;
     },
   };
 }

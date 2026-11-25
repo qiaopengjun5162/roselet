@@ -3,8 +3,11 @@ import "@testing-library/jest-dom";
 import type { Rose } from "@/lib/api";
 
 const mockGetSolanaMint = jest.fn();
+/** Membership is server state: the provider reads the stored account. */
+let mockUser: unknown = null;
 
 jest.mock("@/lib/api", () => ({
+  getUser: () => mockUser,
   getSolanaMint: (...args: unknown[]) => mockGetSolanaMint(...args),
 }));
 
@@ -38,6 +41,13 @@ describe("RoseSolanaMint", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetSolanaMint.mockResolvedValue(null);
+    mockUser = {
+      id: "u1",
+      nickname: "member",
+      created_at: new Date().toISOString(),
+      wallet_address: "5FHwkrdxntdK24hgQU8qgBjn35Y1zwhz1GZwCkP2UJnM",
+      member_since: new Date().toISOString(),
+    };
   });
 
   it("renders no Web3 surface in default (plain) mode", () => {

@@ -33,19 +33,45 @@ function renderGate() {
   );
 }
 
+/** Membership now comes from the stored account (server-verified). */
+function seedMember() {
+  window.localStorage.setItem(
+    "user",
+    JSON.stringify({
+      id: "u1",
+      nickname: "member",
+      created_at: new Date().toISOString(),
+      wallet_address: "5FHwkrdxntdK24hgQU8qgBjn35Y1zwhz1GZwCkP2UJnM",
+      member_since: new Date().toISOString(),
+    }),
+  );
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
 describe("MemberOnly", () => {
   it("默认普通模式零 Web3 痕迹", () => {
     renderGate();
     expect(screen.queryByTestId("web3")).not.toBeInTheDocument();
   });
 
-  it("切换到会员版后才渲染 Web3 内容", () => {
+  it("非会员点开关不会解锁 Web3（前端开关不再是权限）", () => {
+    renderGate();
+    fireEvent.click(screen.getByText("toggle-member"));
+    expect(screen.queryByTestId("web3")).not.toBeInTheDocument();
+  });
+
+  it("已绑定钱包的会员进入会员版后渲染 Web3 内容", () => {
+    seedMember();
     renderGate();
     fireEvent.click(screen.getByText("enter-member"));
     expect(screen.getByTestId("web3")).toBeInTheDocument();
   });
 
   it("退出会员版后重新隐藏", () => {
+    seedMember();
     renderGate();
     fireEvent.click(screen.getByText("enter-member"));
     expect(screen.getByTestId("web3")).toBeInTheDocument();

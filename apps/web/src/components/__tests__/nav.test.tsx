@@ -20,6 +20,14 @@ jest.mock("@/lib/sound", () => ({
   stopBgMusic: jest.fn(),
 }));
 
+// Nav renders in both worlds: isolated (no provider) and inside the app shell.
+// Keep the default null so the existing assertions below describe the isolated
+// case, and opt in per-test where the unified wallet entry matters.
+let mockMembership: Record<string, unknown> | null = null;
+jest.mock("@/app/membership-context", () => ({
+  useOptionalMembership: () => mockMembership,
+}));
+
 const { getUser, logout } = require("@/lib/api") as {
   getUser: jest.Mock;
   logout: jest.Mock;
@@ -36,6 +44,7 @@ import { Nav } from "../nav";
 describe("Nav", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockMembership = null;
     getUser.mockReturnValue(null);
     isBgPlaying.mockReturnValue(false);
     toggleMute.mockReturnValue(true);
@@ -54,12 +63,34 @@ describe("Nav", () => {
   });
 
   it("keeps the member entry reachable when its label collapses on mobile", () => {
-    // 390px 下顶栏只剩 250px 可用宽度，会员版只留 🌐 图标；文字隐藏后
-    // 必须靠 aria-label 保住可访问名，否则按钮变成无名图标。
+    // 390px 下顶栏只剩 250px 可用宽度，会员入口只留 🌐 图标；文字隐藏后
+    // 必须靠 aria-label 保住可访问名，否则链接变成无名图标。
+    // No provider here: the isolated fallback link is what keeps /membership
+    // reachable in that case.
     render(<Nav />);
-    const member = screen.getByRole("button", { name: "会员版" });
+    const member = screen.getByRole("link", { name: "会员中心" });
     expect(member).toBeInTheDocument();
-    expect(member.textContent).toContain("会员版");
+    expect(member).toHaveAttribute("href", "/membership");
+    expect(member.textContent).toContain("会员");
+  });
+
+  it("collapses wallet and membership into one entry inside the app shell", () => {
+    // Two adjacent icons for "membership" and "connect wallet" would read as
+    // two doors, and the 375px bar has no room for another one.
+    mockMembership = {
+      memberAddress: null,
+      walletAddress: null,
+      solanaWallets: [],
+      loggingIn: false,
+      connectError: null,
+      loginWithWallet: jest.fn(),
+      disconnectWallet: jest.fn(),
+    };
+
+    render(<Nav />);
+
+    expect(screen.getByRole("button", { name: "连接钱包" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "会员中心" })).not.toBeInTheDocument();
   });
 
   it("active link has highlight", () => {

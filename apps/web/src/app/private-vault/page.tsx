@@ -77,6 +77,10 @@ function VaultForm() {
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">
             原文和本地 AI 回应不会发送到 Roselet 后端。Aleo 只接收不可逆承诺，并把私密记录交给你的钱包。
           </p>
+          <p className="mt-2 max-w-xl text-xs leading-5 text-slate-500">
+            这里的「连接 Leo Wallet」只在 Aleo 这条链上生效，用来签署 Vault 交易；
+            会员身份统一在右上角「连接钱包」里管理（Solana）。
+          </p>
         </header>
 
         <section className="space-y-4 border-y border-white/10 py-6">
@@ -135,25 +139,38 @@ function MemberVault() {
   );
 }
 
-/** 非会员直接输网址进来：只给切换入口，不展示任何 Web3 操作。 */
+/** 非会员直接输网址进来：只给开通/进入入口，不展示任何 Web3 操作。 */
 function MemberRequired() {
   const membership = useOptionalMembership();
+  const hasMembership = membership?.hasMembership ?? false;
   return (
     <main className="relative z-10 mx-auto max-w-2xl px-4 py-12">
       <div className="space-y-5 rounded-2xl border border-violet-400/25 bg-[#0f081e]/90 p-6 backdrop-blur-xl shadow-2xl">
-        <p className="text-sm text-violet-200">🌐 会员版功能</p>
-        <h1 className="text-2xl font-semibold text-slate-100">Aleo 私密 Vault 只在会员版开放</h1>
+        <p className="text-sm text-violet-200">🌐 会员功能</p>
+        <h1 className="text-2xl font-semibold text-slate-100">
+          {hasMembership ? "进入会员版后使用 Aleo Vault" : "Aleo 私密 Vault 只对会员开放"}
+        </h1>
         <p className="text-sm leading-6 text-slate-400">
-          连接钱包、创建私密链上记录属于 Web3 功能，普通界面不展示这些操作。
-          请先在右上角切换到「会员版」。
+          {hasMembership
+            ? "你已经是会员。进入会员版后即可使用；Vault 本身还需要另外连接 Leo 钱包。"
+            : "先登录并绑定 Solana 钱包开通会员，再进入会员版。会员身份由服务端校验，不是页面开关。"}
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            onClick={() => membership?.openPanel()}
-            className="bg-violet-500/20 text-violet-100 hover:bg-violet-500/30"
-          >
-            切换到会员版
-          </Button>
+          {hasMembership ? (
+            <Button
+              onClick={() => membership?.enterMemberView()}
+              className="bg-violet-500/20 text-violet-100 hover:bg-violet-500/30"
+            >
+              进入会员版
+            </Button>
+          ) : (
+            <Link
+              href="/membership"
+              className="rounded-md bg-violet-500/20 px-3 py-2 text-sm text-violet-100 hover:bg-violet-500/30"
+            >
+              去开通会员
+            </Link>
+          )}
           <Link href="/" className="text-sm text-slate-400 hover:text-rose-300">
             返回普通界面
           </Link>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logout, getUser } from "@/lib/api";
 import { useOptionalMembership } from "@/app/membership-context";
+import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { isBgPlaying, isMuted, startBgMusic, stopBgMusic, toggleMute } from "@/lib/sound";
 
 const MAIN_LINKS = [
@@ -49,7 +50,6 @@ export function Nav() {
   // Optional: Nav also renders in unit tests without a MembershipProvider.
   // With no provider it behaves as the plain, Web3-free app.
   const membership = useOptionalMembership();
-  const isMember = membership?.isMember ?? false;
 
   return (
     <nav className="flex items-center gap-0 sm:gap-0.5 min-w-0">
@@ -117,21 +117,23 @@ export function Nav() {
         </Link>
       )}
 
-      <button
-        onClick={() => membership?.openPanel()}
-        aria-pressed={isMember}
-        aria-label="会员版"
-        className={`shrink-0 whitespace-nowrap text-[13px] px-1.5 sm:px-3 py-1.5 rounded-full transition-all duration-200 ${
-          isMember
-            ? "bg-violet-500/20 text-violet-200 border border-violet-400/40"
-            : "text-violet-300/70 hover:text-violet-200 hover:bg-violet-500/10"
-        }`}
-        title={isMember
-          ? "当前是会员版：点击重新打开上链面板，或点顶部状态条「返回普通版」"
-          : "切换到会员版：连接 Solana 钱包，把玫瑰/图片/信息上链"}
-      >
-        🌐<span className="hidden sm:inline"> 会员版</span>
-      </button>
+      {/* One wallet entry for every chain, and the membership entry is the same
+          button — two adjacent icons would read as two separate doors in a bar
+          that is already full at 375px. Without a MembershipProvider (unit
+          tests, isolated renders) fall back to a plain link so /membership
+          stays reachable. */}
+      {membership ? (
+        <ConnectWalletButton />
+      ) : (
+        <Link
+          href="/membership"
+          aria-label="会员中心"
+          className="shrink-0 whitespace-nowrap text-[13px] px-1.5 sm:px-3 py-1.5 rounded-full transition-all duration-200 text-violet-300/70 hover:text-violet-200 hover:bg-violet-500/10"
+          title="会员中心"
+        >
+          🌐<span className="hidden sm:inline"> 会员</span>
+        </Link>
+      )}
 
       <button
         onClick={async () => {
