@@ -6294,3 +6294,24 @@ Web 62 套件 455 例全绿。
 **环境坑（本机，非代码问题）**：`~/.zshrc` source 了 gvm，gvm 覆盖了 `cd` 函数；`next build` 触发的子 shell 在 `GVM_ROOT` 为空时直接报错退出，表现为 build 无任何输出即失败。用 `env -i` 传最小环境可绕过；CI 不触发。
 
 **明确没做**：没有引入 Reown/WalletConnect；没有把 Aleo adapter 提升到根布局（会让普通模式整包打进 Leo SDK，违反零 Web3 痕迹）。
+
+## 四十九、钱包登录与统一入口上线生产（实测记录）
+
+PR #14 合并（`bb27283`），CI 七项全绿（含 `pnpm audit` 门禁），Deploy Backend `45553687507` 成功，公网 smoke test 通过。
+
+**生产实测**（`http://47.131.238.0`，非本地模拟）：
+
+| 检查 | 结果 |
+|---|---|
+| `POST /api/auth/wallet/challenge`（合法公钥） | 200，返回 nonce + 待签消息，**证明 `015_wallet_auth.sql` 已随启动执行** |
+| 同上（非法地址） | 400「钱包地址不是合法的 base58 编码」 |
+| 用临时 ed25519 密钥对完整走 challenge → 签名 → verify | 200，`wallet_address` / `member_since` 落库；`/api/user/profile` 回读一致 |
+| 同一 nonce 二次提交 | 400（重放被拒） |
+| `/api/ipfs/upload` 无 token | 401；带会员 token → 越过鉴权（503 是 Pinata 未配置，见下） |
+| `/api/rose/{id}/solana` 无 token | 401（此前先被入参校验挡下的 400 也已用合法入参确认） |
+| 390px 顶栏 | 唯一「连接钱包」按钮，无独立会员入口；弹层 304px 宽、左 46 / 右 350，无溢出 |
+| `/membership`、`/login` | 200，会员中心与钱包登录页签正常渲染；无 page error |
+
+测试账号（两次）均已 `/api/auth/deactivate` 注销，未留生产数据。
+
+**已知且有意保留**：生产未配 `PINATA_JWT`，`/api/ipfs/upload` 返回 503 并提示手填 CID —— 这是 2026-11-07 定下的降级策略（见 DEVLOG 九续），不是本次回归。要真正启用上传需外部 Pinata 账号。
