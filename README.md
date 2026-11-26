@@ -102,6 +102,7 @@ Earlier we evaluated Cloudflare / Render / Neon free / card-less options. Those 
 
 Try it now: [https://roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io)
 
+For a demo, open `docs/screenshots/index.html` in a browser; the script is [docs/PRESENTATION.md](docs/PRESENTATION.md).
 Screenshots: [docs/screenshots/](docs/screenshots/)
 
 ### Requirements

@@ -129,10 +129,8 @@ Quality gates:
 - **Worker 最小测试**：`apps/worker-api` 当前把 Worker 编译和 Node 测试分开；先跑 `pnpm worker:typecheck`，再跑 `pnpm worker:test`
 - **Worker NodeNext 导入**：`apps/worker-api` 内部相对导入在可复用模块里显式写 `.js` 扩展名，避免 NodeNext 编译失败
 - **当前生产后端**：AWS Lightsail `https://roselet.47.131.238.0.sslip.io`，Caddy 监听 `443/80` 反代到 Rust Axum `3001`，`http://47.131.238.0` 只用于 IP 冒烟，操作记录见 `docs/AWS_LIGHTSAIL_DEPLOYMENT.md`
-- **生产前端入口**：
-  - 主入口：`https://roselet-web.vercel.app`（Vercel）
-  - 国内镜像：`https://roselet.paxonqiao.com`（Cloudflare Pages，`roselet.pages.dev` CNAME，Proxy 开启）
-- **生产前端 API 基址**：Vercel / Cloudflare Pages 均需配置 HTTPS：`NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_AUTH_API_URL` / `NEXT_PUBLIC_READ_API_URL=https://roselet.47.131.238.0.sslip.io`，`NEXT_PUBLIC_WS_URL=wss://roselet.47.131.238.0.sslip.io`
+- **生产前端入口**：`https://roselet.47.131.238.0.sslip.io`（页面与 API 同源，Caddy 按路径分流）。历史入口 `roselet-web.vercel.app`（国内 DNS 不通）与 `roselet.paxonqiao.com`（域名失效）已下线，不要再对外发。
+- **生产前端 API 基址**：同源部署用 `NEXT_PUBLIC_API_URL=same-origin`，不要回退到旧 Vercel / Cloudflare Pages 的分域配置。
 - **Cloudflare Pages 构建**：`cd apps/web && pnpm build:cf`，输出目录 `apps/web/dist`，与 Vercel `standalone` 构建共存
 - **Cloudflare Pages 请求额度**：只要 Pages 项目存在 Function/`public/_worker.js`，默认所有请求都会计入 Functions 调用；必须用 `apps/web/public/_routes.json` 把调用范围限制到 `/rose/*`，否则国内镜像的静态流量也会烧掉每日 100k 配额
 - **Stats 后台**：Rust `/api/stats` 需要 JWT + `ADMIN_USER_IDS` 白名单；生产服务器 `.env.production` 必须配置管理员 user id

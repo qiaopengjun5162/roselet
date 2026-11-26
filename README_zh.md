@@ -70,6 +70,7 @@ Roselet 是一个社区情绪花圃。它把「玫瑰、花苞、尖刺」（Ros
 - 🌹 **种花** — 选择颜色（红/白/黄），填写玫瑰/尖刺/花苞中的任意组合
 - 🏡 **花圃** — 浏览所有玫瑰，支持颜色筛选和 WebSocket 实时更新
 - 🔐 **认证** — 昵称注册 + JWT 鉴权；种花和点赞需要登录
+- 💎 **会员钱包** — 钱包签名登录/绑定、会员中心、右上角一个入口连接 Solana / Aleo；上链权限由服务端校验
 - ❤️ **点赞** — 对有共鸣的玫瑰表达支持
 - ✏️ **管理** — 编辑或删除自己种下的玫瑰
 - 🤖 **AI 回复** — 种花后后台异步生成个性化 AI 回复（兼容 OpenAI API）
@@ -100,7 +101,8 @@ Roselet 是一个社区情绪花圃。它把「玫瑰、花苞、尖刺」（Ros
 
 直接访问：[https://roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io)
 
-界面截图见 [docs/screenshots/](docs/screenshots/)。
+**做演示时打开**：`docs/screenshots/index.html`（双击用浏览器打开，串起截图和线上入口）；
+讲稿在 [docs/PRESENTATION.md](docs/PRESENTATION.md)。界面截图见 [docs/screenshots/](docs/screenshots/)。
 
 ### 环境要求
 

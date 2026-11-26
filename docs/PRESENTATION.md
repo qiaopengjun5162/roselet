@@ -9,12 +9,23 @@
 | 材料 | 文件 |
 |------|------|
 | 🎙️ 讲稿（本文档） | `docs/PRESENTATION.md` |
-| 📸 界面截图 (6张) | `docs/screenshots/` |
-| 🌐 可视化概览 | `docs/screenshots/index.html` (浏览器打开) |
+| 🌐 可视化概览（**演示时打开这个**） | `docs/screenshots/index.html`（双击用浏览器打开） |
+| 📸 界面截图 (8张) | `docs/screenshots/` |
 | 🎨 设计系统文档 | `DESIGN.md` |
 | 📋 产品愿景文档 | `PRODUCT.md` |
 | 📖 README | `README_zh.md` |
 | 🔗 GitHub | [github.com/qiaopengjun5162/roselet](https://github.com/qiaopengjun5162/roselet) |
+
+**线上演示地址**：<https://roselet.47.131.238.0.sslip.io>
+（不要用历史上的 Vercel / `paxonqiao.com` 链接；页面和 API 现在同源。）
+
+### 5 分钟演示顺序
+
+1. 打开线上地址 → 首页，讲「玫瑰 / 花苞 / 尖刺」三种情绪。
+2. 点右上角 **连接钱包** → 一个弹层列出 Solana 与 Aleo，讲「一个入口、多链钱包」。
+3. 打开 `/login?mode=wallet` → 钱包登录页签，讲「签名登录，不发起交易、不花手续费」。
+4. 回到普通模式：种一朵玫瑰 → 花圃 → 点开详情，讲 AI 异步回复。
+5. 如有钱包，演示签名登录 → `/membership` 查看地址、加入时间与上链权益；没有钱包时用截图 `07/08` 说明。
 
 ---
 
@@ -22,7 +33,7 @@
 
 Roselet 是一个社区破冰互动应用，灵感来自经典的 Rose-Bud-Thorn 破冰游戏。你种下「玫瑰」表达感恩、「花苞」寄托期待、「尖刺」释放焦虑，所有人的情绪汇成一片在月光下发光的数字花圃——AI 会异步给你一句个性化的回响。
 
-技术上最独特的地方：一套 **90/10 Rust-TypeScript 架构**。情绪分析、推荐引擎、表单校验、状态机等全部业务逻辑用 Rust 编译成 WASM，Web 端和微信小程序共用同一份代码，一共 461 个测试、90%+ 覆盖率。
+技术上最独特的地方：一套 **90/10 Rust-TypeScript 架构**。情绪分析、推荐引擎、表单校验、状态机等全部业务逻辑用 Rust 编译成 WASM，Web 端和微信小程序共用同一份代码，一共 938 个测试、90%+ 覆盖率。会员身份则由服务端钱包签名核验，前端开关拿不到上链权限。
 
 ---
 
@@ -68,6 +79,22 @@ Roselet 是一个社区破冰互动应用：你种下「玫瑰」表达感恩、
 
 ---
 
+## 会员与钱包：一个入口，多链钱包
+
+普通模式完全看不到 Web3 入口；成为会员后，钱包既是登录方式，也是上链凭证。
+
+![钱包登录页](screenshots/07-wallet-login.png)
+
+- **登录就是签名**：`/login?mode=wallet` 走 Sign-In With Solana：后端发一次性随机数，钱包签名，后端用 ed25519 验签后写入 `wallet_address` 并签发 JWT。签名不发起交易，不花手续费。
+- **一个入口连接多链**：右上角「连接钱包」是唯一连接入口，弹层统一列出 Solana（就地连接、登录）与 Aleo（跳转私密 Vault）。链清单放在 `lib/wallet-chains.ts`，加新链只改注册表，不再出现每条链一个按钮。
+
+![统一钱包入口](screenshots/08-wallet-picker.png)
+
+- **前端开关不是身份**：`isMember` 只是会员视图开关，`hasMembership` 才是服务端账号绑定了钱包的真实身份。没有绑定钱包，即使打开会员视图也拿不到上链能力。
+- **后端兜底**：`/api/rose/{id}/solana`、`/api/rose/{id}/solana/nft`、`/api/ipfs/upload` 统一由 `require_member_wallet` 鉴权，且请求里的钱包地址必须等于绑定地址。绕过前端也过不了后端。
+
+---
+
 ## 技术：90/10 Rust-TypeScript 架构
 
 **这是 Roselet 最独特的技术决策。**
@@ -91,7 +118,7 @@ Roselet 是一个社区破冰互动应用：你种下「玫瑰」表达感恩、
 **为什么这样做？**
 
 - **跨端复用**：同一份 Rust 代码编译成 WASM，Web 端和小程序端共用。未来如果做 App（Tauri 或 React Native），逻辑层零改动。
-- **可测试性**：业务逻辑全部在 Rust 里，可以写纯函数单元测试。目前 461 个测试，90%+ 代码覆盖率。
+- **可测试性**：业务逻辑全部在 Rust 里，可以写纯函数单元测试。目前 938 个测试，90%+ 代码覆盖率。
 - **类型安全**：Rust 的类型系统在编译期消除了一整类运行时错误。
 
 ### WASM 模块清单（共 11 个模块，~112KB）
@@ -126,11 +153,12 @@ Roselet 是一个社区破冰互动应用：你种下「玫瑰」表达感恩、
 ### 质量数据
 
 ```
-Rust backend:   110 passed
-Rust WASM:      139 passed
-Web frontend:   146 passed
+Rust backend:   187 passed (94 unit + 93 integration)
+Rust WASM:      153 passed
+Web frontend:   493 passed (68 suites)
 Miniprogram:     66 passed
-Total:          461 passed
+Agent API:       39 passed
+Total:          938 passed
 
 llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   100%: flowers, petal, sky, keywords, pagination, user, docs, state
@@ -192,16 +220,19 @@ roselet/
 ## 当前状态 & 下一步
 
 - ✅ Web 端完整可用（注册/种花/花圃/AI 回复/音效/烟花/日夜背景）
+- ✅ 会员体系：钱包签名登录 / 注册、会员中心、统一多链连接入口、服务端上链鉴权
 - ✅ 微信小程序可运行（共用同一套 Rust WASM 逻辑）
-- ✅ 461 个测试通过，90%+ 覆盖率
+- ✅ 938 个测试通过，90%+ 覆盖率；线上站点与 API 同源可用
 - ⏳ 找 5 个真实用户试用，收集反馈
-- ⏳ 小程序上架审核
-- 🔮 长期：Tauri 桌面端（复用同一套 Rust 逻辑）
+- ⏳ 小程序真机闭环与上架审核
+- 🔮 长期：Tauri 桌面端（复用同一套 Rust 逻辑）；正式域名替换临时 HTTPS 入口
 
 ---
 
 ## 链接
 
+- 线上演示: [roselet.47.131.238.0.sslip.io](https://roselet.47.131.238.0.sslip.io)
+- 可视化概览: [screenshots/index.html](screenshots/index.html)（本地浏览器打开）
 - GitHub: [github.com/qiaopengjun5162/roselet](https://github.com/qiaopengjun5162/roselet)
 - 设计系统: [DESIGN.md](../DESIGN.md)
 - 产品愿景: [PRODUCT.md](../PRODUCT.md)

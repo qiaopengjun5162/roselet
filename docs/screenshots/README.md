@@ -1,6 +1,7 @@
 # Screenshots Index
 
-> Captured at 1440×900 @ 2x, dark mode. Dev environment on 2026-06-18.
+> 01–06 摄于 2026-06-18 本地开发环境；07–08 摄于 2026-11-26 生产站点，1440×900 @ 2x，dark mode。
+> 演示时直接打开 `index.html`，它会把所有截图和线上入口串起来。
 
 ---
 
@@ -21,3 +22,9 @@
 
 ## 06-my-garden.png — 我的花圃
 个人种花统计和花圃，用户资料 + 种的玫瑰列表。
+
+## 07-wallet-login.png — 钱包登录 · 会员
+`/login?mode=wallet`：签名登录页签，说明不发起交易、不花手续费；未安装钱包时展示安装链接。
+
+## 08-wallet-picker.png — 统一钱包入口
+首页右上角「连接钱包」弹层：Solana 就地连接/登录，Aleo 去私密 Vault；一个入口覆盖多链。

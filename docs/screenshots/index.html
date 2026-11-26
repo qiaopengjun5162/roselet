@@ -40,6 +40,29 @@
     border: 1px solid rgba(255,255,255,0.1);
     margin-bottom: 1.5rem;
   }
+  .demo-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 3rem;
+  }
+  .demo-links a {
+    display: inline-block;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    background: rgba(251, 191, 36, 0.08);
+    color: #fbbf24;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+  .demo-links a:hover { background: rgba(251, 191, 36, 0.16); }
+  .note {
+    border-left: 2px solid rgba(251, 191, 36, 0.5);
+    padding-left: 0.85rem;
+    color: #cbd5e1;
+  }
   .footer {
     text-align: center;
     color: #64748b;
@@ -55,6 +78,13 @@
 
 <h1>Roselet</h1>
 <p class="tagline">为社区种一朵玫瑰吧 —— 情绪仪式的数字花圃</p>
+
+<div class="demo-links">
+  <a href="https://roselet.47.131.238.0.sslip.io" target="_blank" rel="noopener">线上演示站点 ↗</a>
+  <a href="https://roselet.47.131.238.0.sslip.io/login?mode=wallet" target="_blank" rel="noopener">钱包登录页 ↗</a>
+  <a href="../PRESENTATION.md">讲稿 PRESENTATION.md</a>
+</div>
+<p class="note">演示请用上面的 sslip.io 地址；历史上的 Vercel 与 paxonqiao.com 链接已失效。</p>
 
 <div class="section">
   <h2>灵感：Rose, Bud, Thorn 破冰游戏</h2>
@@ -86,11 +116,19 @@
 </div>
 
 <div class="section">
+  <h2>会员与钱包：一个入口，多链钱包</h2>
+  <p>钱包登录是会员功能：后端发一次性随机数，钱包签名后验签绑定账号，签名不花手续费。右上角「连接钱包」是唯一入口，一个弹层同时列出 Solana 与 Aleo；会员权限由服务端校验，前端开关绕过不了。</p>
+  <img src="07-wallet-login.png" alt="钱包登录页">
+  <img src="08-wallet-picker.png" alt="统一钱包入口弹层">
+</div>
+
+<div class="section">
   <h2>90/10 Rust-TypeScript 架构</h2>
-  <p>全部业务逻辑（情绪分析、推荐引擎、表单校验、状态机、粒子动画）在 Rust WASM 里，TypeScript 只是平台调用层 + 渲染壳。同一份 WASM 跨 Web 和小程序复用。461 个测试，90%+ 覆盖率。</p>
+  <p>全部业务逻辑（情绪分析、推荐引擎、表单校验、状态机、粒子动画）在 Rust WASM 里，TypeScript 只是平台调用层 + 渲染壳。同一份 WASM 跨 Web 和小程序复用。938 个测试，90%+ 覆盖率。</p>
 </div>
 
 <div class="footer">
+  <p>线上演示: <a href="https://roselet.47.131.238.0.sslip.io">roselet.47.131.238.0.sslip.io</a></p>
   <p>GitHub: <a href="https://github.com/qiaopengjun5162/roselet">github.com/qiaopengjun5162/roselet</a></p>
   <p>设计系统: <a href="../DESIGN.md">DESIGN.md</a> · 产品愿景: <a href="../PRODUCT.md">PRODUCT.md</a></p>
 </div>
