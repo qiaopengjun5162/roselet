@@ -29,3 +29,7 @@ apps/web/pnpm-workspace.yaml
 # 一次性真浏览器探针，别入库
 probe-*.tmp.mjs
 *.tmp.mjs
+
+# PPT 生成缓存与日志
+docs/demo/roselet-story/.cache/
+docs/demo/roselet-story/.slidep/
