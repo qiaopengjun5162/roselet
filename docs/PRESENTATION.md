@@ -10,6 +10,7 @@
 |------|------|
 | 🎙️ 讲稿（本文档） | `docs/PRESENTATION.md` |
 | 🌐 可视化概览（**演示时打开这个**） | `docs/screenshots/index.html`（双击用浏览器打开） |
+| 🎮 三步交互演示网页 | `docs/demo/roselet-story.html`（浏览器直接打开，可点击/拖拽/填写） |
 | 📸 界面截图 (8张) | `docs/screenshots/` |
 | 🎨 设计系统文档 | `DESIGN.md` |
 | 📋 产品愿景文档 | `PRODUCT.md` |

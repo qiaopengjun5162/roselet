@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roselet · 一起来种一个玫瑰花圃吧</title>
+<style>
+  :root {
+    --bg: #070c0a;
+    --bg-soft: #0d1512;
+    --panel: rgba(18, 28, 24, 0.72);
+    --line: rgba(232, 223, 199, 0.14);
+    --ink: #e8dfc7;
+    --muted: #9aa69d;
+    --moon: #f2e8c9;
+    --rose: #e88aa0;
+    --bud: #e6c15c;
+    --thorn: #7fae9f;
+    --petal: #e88aa0;
+    --petal-dark: #b85e73;
+    --bud-fill: #e6c15c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { min-height: 100%; }
+
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 78% 12%, rgba(242, 232, 201, 0.12), transparent 26%),
+      radial-gradient(circle at 18% 82%, rgba(127, 174, 159, 0.08), transparent 30%),
+      linear-gradient(160deg, #070c0a 0%, #0b1310 55%, #070c0a 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.5), transparent),
+      radial-gradient(1px 1px at 84% 32%, rgba(255,255,255,.35), transparent),
+      radial-gradient(1px 1px at 32% 72%, rgba(255,255,255,.3), transparent),
+      radial-gradient(1px 1px at 67% 84%, rgba(255,255,255,.28), transparent);
+    opacity: .6;
+  }
+
+  .shell { position: relative; max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 34px;
+  }
+
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand b {
+    font-family: "STKaiti", "KaiTi", serif;
+    font-weight: 500;
+    font-size: 26px;
+    letter-spacing: .12em;
+    color: var(--moon);
+  }
+  .brand span { font-size: 12px; color: var(--muted); letter-spacing: .08em; }
+
+  .progress { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+  .progress i { width: 26px; height: 1px; background: var(--line); position: relative; overflow: hidden; }
+  .progress i::after { content: ""; position: absolute; inset: 0; background: var(--moon); transform: scaleX(var(--p, .33)); transform-origin: left; transition: transform .5s ease; }
+  .progress b { color: var(--moon); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  .step { display: none; animation: rise .35s ease both; }
+  .step.active { display: block; }
+  #step1.active { animation: none; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; letter-spacing: .22em; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  .eyebrow::before { content: ""; width: 20px; height: 1px; background: var(--rose); }
+
+  h1 {
+    font-family: "STKaiti", "KaiTi", serif;
+    font-weight: 500;
+    font-size: clamp(34px, 5.2vw, 62px);
+    line-height: 1.25;
+    letter-spacing: .06em;
+    color: var(--moon);
+    text-shadow: 0 0 32px rgba(242, 232, 201, .18);
+  }
+
+  .lead { margin-top: 16px; max-width: 720px; color: var(--muted); font-size: 16px; line-height: 1.9; }
+  .lead em { font-style: normal; color: var(--ink); }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 38px 0 30px; }
+  .card {
+    position: relative;
+    padding: 24px 22px 22px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: linear-gradient(160deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    min-height: 208px;
+    transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  }
+  .card:hover { transform: translateY(-4px); border-color: rgba(242,232,201,.32); box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+  .card::after { content: ""; position: absolute; left: 22px; top: 0; width: 38px; height: 2px; border-radius: 2px; background: var(--c); box-shadow: 0 0 16px var(--c); }
+  .card .icon { font-size: 30px; line-height: 1; margin-bottom: 16px; filter: drop-shadow(0 0 12px var(--c)); }
+  .card h3 { font-family: "STKaiti", "KaiTi", serif; font-size: 24px; font-weight: 500; color: var(--moon); margin-bottom: 10px; letter-spacing: .08em; }
+  .card p { color: var(--muted); font-size: 14px; line-height: 1.8; }
+  .card.rose { --c: var(--rose); }
+  .card.thorn { --c: var(--thorn); }
+  .card.bud { --c: var(--bud); }
+
+  .reference { display: flex; align-items: center; gap: 14px; margin-bottom: 26px; flex-wrap: wrap; }
+  .reference span { font-size: 12px; color: var(--muted); letter-spacing: .1em; }
+  .reference img { width: 76px; height: 76px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); background: #fff; cursor: zoom-in; transition: transform .2s ease; }
+  .reference img:hover { transform: scale(1.06); }
+
+  .btn {
+    appearance: none; border: 0; cursor: pointer;
+    font-family: inherit; font-size: 15px; letter-spacing: .08em;
+    padding: 14px 26px; border-radius: 999px;
+    color: #2a1717; background: linear-gradient(135deg, #f6d9a8, #e88aa0);
+    box-shadow: 0 10px 34px rgba(232,138,160,.24);
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 42px rgba(232,138,160,.36); }
+  .btn:active { transform: translateY(0); }
+  .btn.ghost { color: var(--ink); background: transparent; border: 1px solid var(--line); box-shadow: none; }
+  .btn.ghost:hover { border-color: rgba(242,232,201,.4); }
+  .btn:disabled { cursor: not-allowed; color: var(--muted); background: rgba(255,255,255,.06); box-shadow: none; filter: none; transform: none; }
+
+  .hint { margin-top: 12px; font-size: 12px; color: var(--muted); }
+
+  /* Step 2 */
+  .plant-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 28px; align-items: stretch; }
+
+  .panel {
+    border: 1px solid var(--line); border-radius: 20px;
+    background: var(--panel); backdrop-filter: blur(14px);
+    padding: 24px;
+  }
+
+  .panel h2 { font-family: "STKaiti", "KaiTi", serif; font-weight: 500; font-size: 28px; color: var(--moon); margin-bottom: 8px; }
+  .panel .sub { color: var(--muted); font-size: 13px; line-height: 1.8; margin-bottom: 22px; }
+
+  .colors { display: flex; gap: 12px; margin-bottom: 26px; }
+  .swatch {
+    width: 42px; height: 42px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent; outline: 1px solid var(--line); outline-offset: 3px;
+    transition: transform .2s ease, border-color .2s ease;
+  }
+  .swatch:hover { transform: scale(1.08); }
+  .swatch[aria-pressed="true"] { border-color: var(--moon); transform: scale(1.08); }
+  .swatch[data-color="white"] { background: #f5efe4; }
+  .swatch[data-color="red"] { background: #d9646f; }
+  .swatch[data-color="yellow"] { background: #e8c25c; }
+
+  .checklist { display: grid; gap: 10px; }
+  .check {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 13px; border-radius: 12px;
+    border: 1px solid var(--line); font-size: 13px; color: var(--muted);
+  }
+  .check .dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.18); flex: none; }
+  .check.done { color: var(--ink); border-color: rgba(127,174,159,.4); }
+  .check.done .dot { background: var(--thorn); box-shadow: 0 0 12px var(--thorn); }
+
+  .stage-wrap { position: relative; min-height: 520px; border: 1px solid var(--line); border-radius: 20px; overflow: hidden; background: radial-gradient(circle at 50% 40%, rgba(242,232,201,.07), transparent 55%), rgba(6,11,9,.6); }
+  .stage-hint { position: absolute; left: 20px; top: 18px; font-size: 12px; color: var(--muted); z-index: 3; }
+
+  #roseStage { position: absolute; inset: 0; touch-action: none; cursor: grab; display: grid; place-items: center; }
+  #roseStage.dragging { cursor: grabbing; }
+  .rose-art { width: min(88%, 420px); transform: translate(var(--dx, 0px), var(--dy, 0px)); transition: filter .3s ease; filter: drop-shadow(0 22px 28px rgba(0,0,0,.45)); user-select: none; }
+  .rose-art svg { width: 100%; height: auto; overflow: visible; }
+
+  .petal-fill { fill: var(--petal); transition: fill .35s ease; }
+  .petal-dark { fill: var(--petal-dark); transition: fill .35s ease; }
+  .bud-fill { fill: var(--bud-fill); transition: fill .35s ease; }
+  .leaf-fill { fill: #5f7d63; }
+  .stem { stroke: #6f936f; stroke-width: 7; fill: none; stroke-linecap: round; }
+  .thorn-line { stroke: #8a6b5b; stroke-width: 3; fill: none; stroke-linecap: round; }
+
+  .hotspot { cursor: pointer; }
+  .hotspot .halo { fill: rgba(255,255,255,.08); stroke: rgba(255,255,255,.85); stroke-width: 1.4; animation: pulse 2.4s ease-in-out infinite; }
+  .hotspot .core { fill: #fff7df; filter: drop-shadow(0 0 8px #fff3cf); }
+  .hotspot.filled .core { fill: var(--thorn); }
+  .hotspot text { font-size: 11px; fill: #fff3d5; opacity: 0; transition: opacity .2s ease; pointer-events: none; }
+  .hotspot:hover text, .hotspot:focus text { opacity: 1; }
+  @keyframes pulse { 0%,100% { opacity: .5; stroke-width: 1.2; } 50% { opacity: 1; stroke-width: 2.2; } }
+
+  .stage-actions { position: absolute; right: 22px; bottom: 22px; z-index: 4; text-align: right; }
+  .stage-actions .micro { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+
+  /* Dialog */
+  .overlay {
+    position: fixed; inset: 0; z-index: 50;
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; background: rgba(2,5,4,.78); backdrop-filter: blur(8px);
+  }
+  .overlay.open { display: flex; }
+  .dialog {
+    width: min(500px, 100%); border-radius: 20px; padding: 26px;
+    border: 1px solid rgba(242,232,201,.2); background: #101813;
+    box-shadow: 0 30px 90px rgba(0,0,0,.6);
+  }
+  .dialog h3 { font-family: "STKaiti", "KaiTi", serif; font-size: 26px; font-weight: 500; color: var(--moon); margin-bottom: 6px; }
+  .dialog .role { font-size: 12px; letter-spacing: .16em; color: var(--c); margin-bottom: 18px; }
+  .field { position: relative; }
+  .placeholder-ghost { position: absolute; left: 14px; top: 14px; color: #6f7d74; font-size: 14px; pointer-events: none; transition: opacity .18s ease; }
+  .field.has-value .placeholder-ghost { opacity: 0; }
+  textarea {
+    width: 100%; min-height: 150px; resize: vertical;
+    border-radius: 14px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.03); color: var(--ink);
+    padding: 14px; font: inherit; font-size: 15px; line-height: 1.8;
+    outline: none;
+  }
+  textarea:focus { border-color: rgba(242,232,201,.45); box-shadow: 0 0 0 3px rgba(242,232,201,.06); }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+  /* Step 3 */
+  .garden { position: relative; min-height: 520px; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(circle at 50% 70%, rgba(127,174,159,.12), transparent 55%), linear-gradient(180deg, #0a120f, #070c0a); }
+  .garden .moon { position: absolute; right: 12%; top: 12%; width: 66px; height: 66px; border-radius: 50%; background: #f2e8c9; filter: blur(.3px); box-shadow: 0 0 60px rgba(242,232,201,.45); opacity: .85; }
+  .soil { position: absolute; left: 0; right: 0; bottom: 0; height: 34%; background: linear-gradient(180deg, rgba(42,61,47,.35), rgba(13,22,17,.9)); border-top: 1px solid rgba(127,174,159,.22); }
+  .garden-row { position: absolute; left: 6%; right: 6%; bottom: 22%; display: flex; justify-content: space-around; align-items: flex-end; gap: 8px; }
+  .mini {
+    width: 62px; opacity: 0; transform: translateY(26px) scale(.7);
+    animation: sprout .8s cubic-bezier(.2,.9,.25,1.2) forwards;
+  }
+  .mini svg { width: 100%; height: auto; }
+  @keyframes sprout { to { opacity: .92; transform: none; } }
+
+  .hero-plant { position: absolute; left: 50%; bottom: 15%; width: 180px; transform: translateX(-50%) scale(.1); transform-origin: bottom center; opacity: 0; animation: plantIn 1.1s .35s cubic-bezier(.2,.9,.25,1.2) forwards; }
+  .hero-plant svg { width: 100%; height: auto; }
+  @keyframes plantIn { to { opacity: 1; transform: translateX(-50%) scale(1); } }
+
+  .thanks {
+    position: absolute; left: 0; right: 0; top: 18%; text-align: center;
+    font-family: "STKaiti", "KaiTi", serif; font-size: clamp(24px, 4vw, 38px);
+    color: var(--moon); letter-spacing: .12em; opacity: 0;
+    animation: fadeText 1.2s 1.1s ease forwards;
+    text-shadow: 0 0 30px rgba(242,232,201,.25);
+  }
+  @keyframes fadeText { to { opacity: 1; } }
+
+  .garden-actions { display: flex; justify-content: center; gap: 12px; margin-top: 24px; }
+
+  .lightbox {
+    position: fixed; inset: 0; z-index: 80; display: none;
+    align-items: center; justify-content: center; padding: 24px;
+    background: rgba(2,5,4,.88);
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: min(760px, 100%); max-height: 86vh; border-radius: 16px; background: #fff; }
+
+  footer { margin-top: 42px; text-align: center; font-size: 12px; color: #66756c; }
+
+  @media (max-width: 860px) {
+    .cards { grid-template-columns: 1fr; }
+    .plant-grid { grid-template-columns: 1fr; }
+    .stage-wrap { min-height: 460px; }
+    .checklist { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (max-width: 520px) {
+    .shell { padding: 20px 16px 48px; }
+    header { margin-bottom: 24px; }
+    .brand span { display: none; }
+    .checklist { grid-template-columns: 1fr; }
+    .stage-wrap { min-height: 420px; }
+    .rose-art { width: 94%; }
+    .garden-row .mini:nth-child(n+5) { display: none; }
+    .hero-plant { width: 140px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brand"><b>Roselet</b><span>为社区种一朵玫瑰吧</span></div>
+    <div class="progress" aria-label="演示进度">
+      <i id="bar"></i><span>STEP</span><b id="stepNum">01</b><span>/ 03</span>
+    </div>
+  </header>
+
+  <!-- Step 1 -->
+  <section class="step active" id="step1" aria-labelledby="s1title">
+    <span class="eyebrow">Rose · Thorn · Bud Check-in</span>
+    <h1 id="s1title">一起来种一个<br />玫瑰花圃吧</h1>
+    <p class="lead">灵感来自经典的 <em>Rose, Bud, Thorn</em> 破冰游戏。三种花，三个问题，让每个人都能在安静的夜晚安全地表达情绪。</p>
+
+    <div class="cards">
+      <article class="card rose">
+        <div class="icon" aria-hidden="true">🌹</div>
+        <h3>玫瑰 · Rose</h3>
+        <p>在社区的这一周，一件让你感到幸福或感恩的事情是什么？</p>
+      </article>
+      <article class="card thorn">
+        <div class="icon" aria-hidden="true">🌵</div>
+        <h3>尖刺 · Thorn</h3>
+        <p>现在有什么让你感到焦虑或者需要帮助的事情吗？</p>
+      </article>
+      <article class="card bud">
+        <div class="icon" aria-hidden="true">🌱</div>
+        <h3>花苞 · Bud</h3>
+        <p>你现在有什么期待的事情吗？这周有什么新灵感想要实现呢？</p>
+      </article>
+    </div>
+
+    <div class="reference">
+      <span>灵感参考</span>
+      <img src="assets/rose-bud-thorn-handdrawn.jpg" alt="手绘版 Rose Thorn Bud 检查图" data-zoom />
+      <img src="assets/rose-bud-thorn-minimal.jpg" alt="简约版 Rose Bud Thorn 检查图" data-zoom />
+      <span>点开可放大</span>
+    </div>
+
+    <button class="btn" id="toPlant">种一朵玫瑰 →</button>
+    <p class="hint">扫码 / 链接 / 小程序进入后，第一屏就是这段规则介绍。</p>
+  </section>
+
+  <!-- Step 2 -->
+  <section class="step" id="step2" aria-labelledby="s2title">
+    <div class="plant-grid">
+      <aside class="panel">
+        <span class="eyebrow">STEP 02</span>
+        <h2 id="s2title">种下你的玫瑰</h2>
+        <p class="sub">先选颜色，再拖动玫瑰；花瓣、花苞、尖刺上各有一个闪亮的光点，点进去写下你的回答。</p>
+
+        <div class="colors" role="group" aria-label="选择玫瑰颜色">
+          <button class="swatch" type="button" data-color="white" aria-label="白色玫瑰" aria-pressed="false"></button>
+          <button class="swatch" type="button" data-color="red" aria-label="红色玫瑰" aria-pressed="true"></button>
+          <button class="swatch" type="button" data-color="yellow" aria-label="黄色玫瑰" aria-pressed="false"></button>
+        </div>
+
+        <div class="checklist">
+          <div class="check" id="check-rose"><span class="dot"></span>玫瑰 · 感恩的事</div>
+          <div class="check" id="check-thorn"><span class="dot"></span>尖刺 · 焦虑 / 求助</div>
+          <div class="check" id="check-bud"><span class="dot"></span>花苞 · 期待 / 灵感</div>
+        </div>
+
+        <p class="hint" style="margin-top:20px">填写完三个光点，右下角的按钮才会亮起。</p>
+      </aside>
+
+      <div class="stage-wrap" id="stageWrap">
+        <div class="stage-hint">拖动玫瑰 · 点击发光点填写</div>
+        <div id="roseStage" role="application" aria-label="可拖动的玫瑰，点击光点填写">
+          <div class="rose-art" id="roseArt">
+            <svg viewBox="0 0 360 440" role="img" aria-label="一朵带花瓣、花苞和尖刺的玫瑰">
+              <path class="stem" d="M178 414 C 170 330, 196 270, 186 190" />
+              <path class="leaf-fill" d="M184 320 C 128 292, 106 324, 132 350 C 158 370, 182 348, 184 320 Z" />
+              <path class="leaf-fill" d="M187 276 C 232 248, 256 274, 236 300 C 214 322, 190 302, 187 276 Z" />
+              <path class="thorn-line" d="M174 356 l -18 -14 M181 330 l 20 -12 M190 232 l 18 -10" />
+              <path class="petal-dark" d="M138 118 C 132 62, 232 56, 236 120 C 240 178, 196 204, 174 190 C 146 172, 142 148, 138 118 Z" />
+              <path class="petal-fill" d="M148 116 C 148 76, 214 70, 224 112 C 234 156, 202 180, 180 176 C 158 172, 148 148, 148 116 Z" />
+              <path class="petal-dark" d="M166 120 C 166 92, 206 90, 208 120 C 210 148, 188 160, 178 154 C 168 148, 166 136, 166 120 Z" />
+              <path class="petal-fill" d="M176 122 C 176 106, 198 104, 198 122 C 198 138, 186 144, 182 140 C 178 136, 176 130, 176 122 Z" />
+              <path class="bud-fill" d="M228 212 C 228 184, 270 178, 278 208 C 284 232, 262 252, 246 246 C 234 242, 228 230, 228 212 Z" />
+              <path class="leaf-fill" d="M226 232 C 212 222, 206 238, 220 248 Z" />
+              <g class="hotspot" data-part="rose" role="button" tabindex="0" aria-label="填写玫瑰：感恩的事">
+                <circle class="halo" cx="184" cy="122" r="20" />
+                <circle class="core" cx="184" cy="122" r="5" />
+                <text x="210" y="118">玫瑰</text>
+              </g>
+              <g class="hotspot" data-part="bud" role="button" tabindex="0" aria-label="填写花苞：期待与灵感">
+                <circle class="halo" cx="253" cy="216" r="18" />
+                <circle class="core" cx="253" cy="216" r="5" />
+                <text x="278" y="212">花苞</text>
+              </g>
+              <g class="hotspot" data-part="thorn" role="button" tabindex="0" aria-label="填写尖刺：焦虑与求助">
+                <circle class="halo" cx="176" cy="340" r="18" />
+                <circle class="core" cx="176" cy="340" r="5" />
+                <text x="200" y="344">尖刺</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+
+        <div class="stage-actions">
+          <div class="micro" id="readyHint">还差 3 个光点</div>
+          <button class="btn" id="toGarden" disabled>种下玫瑰吧</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 3 -->
+  <section class="step" id="step3" aria-labelledby="s3title">
+    <span class="eyebrow">STEP 03</span>
+    <h1 id="s3title">它长在花圃里了</h1>
+    <p class="lead">各色玫瑰在同一片月光下安静生长。这里没有点赞数，也没有排行榜。</p>
+
+    <div class="garden" aria-live="polite">
+      <div class="moon" aria-hidden="true"></div>
+      <div class="soil" aria-hidden="true"></div>
+      <div class="garden-row" id="gardenRow" aria-hidden="true"></div>
+      <div class="hero-plant" id="heroPlant" aria-hidden="true"></div>
+      <div class="thanks">谢谢你在社区种下的玫瑰</div>
+    </div>
+
+    <div class="garden-actions">
+      <button class="btn ghost" id="restart">再种一朵 ↺</button>
+      <a class="btn ghost" href="https://roselet.47.131.238.0.sslip.io" target="_blank" rel="noopener">打开真实花圃 ↗</a>
+    </div>
+  </section>
+
+  <footer>Roselet · Rose, Bud, Thorn Check-in · 本地交互演示页</footer>
+</div>
+
+<!-- Dialog -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+  <div class="dialog">
+    <span class="role" id="dlgRole">ROSE</span>
+    <h3 id="dlgTitle">写下一件感恩的事</h3>
+    <div class="field" id="fieldWrap">
+      <div class="placeholder-ghost" id="ghost">一件让你感恩的事……</div>
+      <textarea id="answer" aria-label="写下你的回答"></textarea>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn ghost" type="button" id="dlgCancel">先不填</button>
+      <button class="btn" type="button" id="dlgSave">记下来了</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image zoom -->
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="放大参考图">
+  <img id="lightboxImg" src="" alt="" />
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var parts = {
+    rose: { name: "玫瑰", role: "ROSE", title: "写下一件感恩的事", ghost: "在社区的这一周，一件让你感到幸福或感恩的事情是什么？" },
+    thorn: { name: "尖刺", role: "THORN", title: "写下一件需要帮助的事", ghost: "现在有什么让你感到焦虑或者需要帮助的事情吗？" },
+    bud: { name: "花苞", role: "BUD", title: "写下一个期待", ghost: "你现在有什么期待的事情吗？这周有什么新灵感想要实现呢？" }
+  };
+
+  var answers = { rose: "", thorn: "", bud: "" };
+  var currentPart = null;
+  var color = "red";
+
+  var palettes = {
+    white: { petal: "#f5efe4", dark: "#cfc6b6", bud: "#efe5c8" },
+    red: { petal: "#d9646f", dark: "#a84555", bud: "#e3a06b" },
+    yellow: { petal: "#e8c25c", dark: "#bd9236", bud: "#f0d98a" }
+  };
+
+  var stepEls = [document.getElementById("step1"), document.getElementById("step2"), document.getElementById("step3")];
+  var bar = document.getElementById("bar");
+  var stepNum = document.getElementById("stepNum");
+  var overlay = document.getElementById("overlay");
+  var answer = document.getElementById("answer");
+  var ghost = document.getElementById("ghost");
+  var fieldWrap = document.getElementById("fieldWrap");
+  var toGarden = document.getElementById("toGarden");
+  var readyHint = document.getElementById("readyHint");
+  var stage = document.getElementById("roseStage");
+  var roseArt = document.getElementById("roseArt");
+
+  function go(step) {
+    stepEls.forEach(function (el, i) { el.classList.toggle("active", i === step); });
+    stepNum.textContent = "0" + (step + 1);
+    bar.style.setProperty("--p", ((step + 1) / 3).toString());
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (step === 2) buildGarden();
+  }
+
+  function countDone() {
+    return Object.keys(answers).filter(function (k) { return answers[k].trim().length > 0; }).length;
+  }
+
+  function refreshChecks() {
+    Object.keys(answers).forEach(function (key) {
+      document.getElementById("check-" + key).classList.toggle("done", Boolean(answers[key].trim()));
+      document.querySelector('.hotspot[data-part="' + key + '"]').classList.toggle("filled", Boolean(answers[key].trim()));
+    });
+    var n = countDone();
+    toGarden.disabled = n !== 3;
+    readyHint.textContent = n === 3 ? "可以种下了" : "还差 " + (3 - n) + " 个光点";
+  }
+
+  function openPart(key) {
+    currentPart = key;
+    var meta = parts[key];
+    document.getElementById("dlgRole").textContent = meta.role;
+    document.getElementById("dlgRole").style.color = key === "rose" ? "#e88aa0" : key === "thorn" ? "#7fae9f" : "#e6c15c";
+    document.getElementById("dlgTitle").textContent = meta.title;
+    ghost.textContent = meta.ghost;
+    answer.value = answers[key];
+    fieldWrap.classList.toggle("has-value", Boolean(answer.value));
+    overlay.classList.add("open");
+    setTimeout(function () { answer.focus(); }, 30);
+  }
+
+  function closeDialog() {
+    if (currentPart) answers[currentPart] = answer.value;
+    currentPart = null;
+    overlay.classList.remove("open");
+    refreshChecks();
+  }
+
+  document.getElementById("toPlant").addEventListener("click", function () { go(1); });
+  toGarden.addEventListener("click", function () { if (countDone() === 3) go(2); });
+  document.getElementById("restart").addEventListener("click", function () {
+    answers = { rose: "", thorn: "", bud: "" };
+    refreshChecks();
+    go(0);
+  });
+
+  document.querySelectorAll(".swatch").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      color = btn.getAttribute("data-color");
+      document.querySelectorAll(".swatch").forEach(function (b) { b.setAttribute("aria-pressed", String(b === btn)); });
+      var p = palettes[color];
+      document.documentElement.style.setProperty("--petal", p.petal);
+      document.documentElement.style.setProperty("--petal-dark", p.dark);
+      document.documentElement.style.setProperty("--bud-fill", p.bud);
+    });
+  });
+
+  // Hotspot click / keyboard, separated from drag.
+  document.querySelectorAll(".hotspot").forEach(function (spot) {
+    spot.addEventListener("click", function (event) {
+      event.stopPropagation();
+      if (!stage.dataset.wasDrag) openPart(spot.getAttribute("data-part"));
+    });
+    spot.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openPart(spot.getAttribute("data-part"));
+      }
+    });
+  });
+
+  var drag = null;
+  stage.addEventListener("pointerdown", function (event) {
+    if (event.target.closest(".stage-actions") || event.target.closest(".hotspot")) return;
+    drag = { x: event.clientX, y: event.clientY, dx: parseFloat(roseArt.style.getPropertyValue("--dx")) || 0, dy: parseFloat(roseArt.style.getPropertyValue("--dy")) || 0, moved: false };
+    stage.setPointerCapture(event.pointerId);
+  });
+  stage.addEventListener("pointermove", function (event) {
+    if (!drag) return;
+    var mx = event.clientX - drag.x;
+    var my = event.clientY - drag.y;
+    if (Math.abs(mx) > 5 || Math.abs(my) > 5) {
+      drag.moved = true;
+      stage.classList.add("dragging");
+      var maxX = Math.max(60, (stage.clientWidth - roseArt.clientWidth) / 2);
+      var maxY = Math.max(60, (stage.clientHeight - roseArt.clientHeight) / 2);
+      var nx = Math.max(-maxX, Math.min(maxX, drag.dx + mx));
+      var ny = Math.max(-maxY, Math.min(maxY, drag.dy + my));
+      roseArt.style.setProperty("--dx", nx + "px");
+      roseArt.style.setProperty("--dy", ny + "px");
+    }
+  });
+  stage.addEventListener("pointerup", function (event) {
+    if (!drag) return;
+    stage.dataset.wasDrag = drag.moved ? "1" : "";
+    stage.classList.remove("dragging");
+    drag = null;
+    if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+    setTimeout(function () { stage.dataset.wasDrag = ""; }, 60);
+  });
+  stage.addEventListener("pointercancel", function () { drag = null; stage.classList.remove("dragging"); });
+
+  answer.addEventListener("input", function () { fieldWrap.classList.toggle("has-value", Boolean(answer.value)); });
+  document.getElementById("dlgSave").addEventListener("click", closeDialog);
+  document.getElementById("dlgCancel").addEventListener("click", closeDialog);
+  overlay.addEventListener("click", function (event) { if (event.target === overlay) closeDialog(); });
+  document.addEventListener("keydown", function (event) { if (event.key === "Escape" && overlay.classList.contains("open")) closeDialog(); });
+
+  // Lightbox
+  var lightbox = document.getElementById("lightbox");
+  var lightboxImg = document.getElementById("lightboxImg");
+  document.querySelectorAll("[data-zoom]").forEach(function (img) {
+    img.addEventListener("click", function () {
+      lightboxImg.src = img.src;
+      lightboxImg.alt = img.alt;
+      lightbox.classList.add("open");
+    });
+  });
+  lightbox.addEventListener("click", function () { lightbox.classList.remove("open"); });
+  document.addEventListener("keydown", function (event) { if (event.key === "Escape") lightbox.classList.remove("open"); });
+
+  // Garden
+  function miniSvg(petal, dark) {
+    return '<svg viewBox="0 0 60 90" aria-hidden="true">' +
+      '<path d="M30 86 C28 66,34 52,30 36" stroke="#6f936f" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+      '<path d="M29 62 C18 56,13 64,20 69 C26 73,30 68,29 62Z" fill="#5f7d63"/>' +
+      '<path d="M31 54 C40 48,45 55,39 60 C34 64,31 60,31 54Z" fill="#5f7d63"/>' +
+      '<circle cx="30" cy="28" r="16" fill="' + petal + '"/>' +
+      '<circle cx="30" cy="28" r="9" fill="' + dark + '"/>' +
+      '<circle cx="30" cy="28" r="4" fill="' + petal + '"/>' +
+      '</svg>';
+  }
+
+  function buildGarden() {
+    var palette = palettes[color];
+    var row = document.getElementById("gardenRow");
+    var others = [
+      ["#e88aa0", "#b85e73"], ["#f5efe4", "#cfc6b6"], ["#e8c25c", "#bd9236"],
+      ["#d9646f", "#a84555"], ["#f0d98a", "#c9a543"], ["#f5efe4", "#cfc6b6"]
+    ];
+    row.innerHTML = others.map(function (p, i) {
+      return '<div class="mini" style="animation-delay:' + (0.12 * i + 0.1).toFixed(2) + 's">' + miniSvg(p[0], p[1]) + '</div>';
+    }).join("");
+    document.getElementById("heroPlant").innerHTML = miniSvg(palette.petal, palette.dark).replace('viewBox="0 0 60 90"', 'viewBox="0 0 60 90" style="filter:drop-shadow(0 0 20px ' + palette.petal + ')"');
+  }
+
+  refreshChecks();
+})();
+</script>
+</body>
+</html>
