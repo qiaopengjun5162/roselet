@@ -1,0 +1,59 @@
+<Slide style={{ width: 1280, height: 720, padding: 60, background: '#F4ECD8', position: 'relative' }}>
+  <Box style={{ position: 'absolute', left: 60, top: 60, width: 400, height: 600, gap: 24 }}>
+    <Text style={{ fontSize: 16, color: '#E07A5F', letterSpacing: 3, fontWeight: 'bold' }}>STEP 02</Text>
+    <Text style={{ fontSize: 36, lineHeight: 1.25, fontWeight: 'bold', color: '#3D405B', fontFamily: 'Noto Serif SC, serif' }}>第二屏 · 点亮三个光点</Text>
+    <Text style={{ fontSize: 18, lineHeight: 1.6, color: '#6B6472' }}>先选白 / 红 / 黄，再拖动玫瑰。花瓣、花苞、尖刺上各有一个闪亮的光点，点进去写下回答。</Text>
+
+    <Box style={{ gap: 14 }}>
+      <Box style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+        <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#C9584C', fontFamily: 'Playfair Display, serif' }}>01</Text>
+        <Text style={{ fontSize: 18, color: '#6B6472' }}>选颜色</Text>
+      </Box>
+      <Box style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+        <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#81B29A', fontFamily: 'Playfair Display, serif' }}>02</Text>
+        <Text style={{ fontSize: 18, color: '#6B6472' }}>点光点，淡色提示在打字时消失</Text>
+      </Box>
+      <Box style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+        <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#B08A3E', fontFamily: 'Playfair Display, serif' }}>03</Text>
+        <Text style={{ fontSize: 18, color: '#6B6472' }}>三个都填完，按钮才亮起</Text>
+      </Box>
+    </Box>
+
+    <Box style={{ marginTop: 'auto', width: 220, height: 190, padding: 14, background: '#FFFDF7', border: '1px solid #D9CEBA', borderRadius: 8, transform: 'rotate(3deg)', alignItems: 'center' }}>
+      <Image src="assets/rose_crop.png" style={{ width: 190, height: 150, objectFit: 'contain' }} />
+    </Box>
+  </Box>
+
+  <Box style={{ position: 'absolute', right: 60, top: 60, width: 720, height: 600, padding: 24, background: '#FFFDF7', border: '1px solid #D9CEBA', borderRadius: 8, gap: 14 }}>
+    <Text style={{ fontSize: 16, color: '#948C82' }}>选颜色 · 可拖拽 · 点光点填写</Text>
+    <Box style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+      <Box style={{ width: 32, height: 32, borderRadius: 16, background: '#F5EFE4', border: '1px solid #D9CEBA' }} />
+      <Box style={{ width: 32, height: 32, borderRadius: 16, background: '#D9646F', border: '2px solid #E07A5F' }} />
+      <Box style={{ width: 32, height: 32, borderRadius: 16, background: '#E8C25C', border: '1px solid #D9CEBA' }} />
+      <Text style={{ fontSize: 16, color: '#948C82' }}>白 / 红 / 黄</Text>
+    </Box>
+
+    <Box style={{ width: 360, height: 250, alignItems: 'center' }}>
+      <svg width={360} height={250} viewBox='0 0 360 250'>
+        <path d='M178 240 C 170 180 196 140 186 80' fill='none' stroke='#6F936F' strokeWidth='7' strokeLinecap='round' />
+        <path d='M184 180 C 138 160 120 186 145 204 C 166 218 184 204 184 180Z' fill='#81B29A' />
+        <path d='M188 150 C 226 130 244 152 226 172 C 208 188 190 174 188 150Z' fill='#81B29A' />
+        <circle cx='184' cy='64' r='42' fill='#D9646F' />
+        <circle cx='184' cy='64' r='26' fill='#A84555' />
+        <circle cx='184' cy='64' r='12' fill='#D9646F' />
+        <circle cx='250' cy='118' r='22' fill='#E8C25C' />
+        <circle cx='184' cy='64' r='11' fill='none' stroke='#FFFDF7' strokeWidth='2' />
+        <circle cx='250' cy='118' r='10' fill='none' stroke='#FFFDF7' strokeWidth='2' />
+        <circle cx='178' cy='196' r='10' fill='none' stroke='#FFFDF7' strokeWidth='2' />
+        <text x='204' y='60' fontSize='14' fill='#3D405B'>玫瑰</text>
+        <text x='268' y='114' fontSize='14' fill='#3D405B'>花苞</text>
+        <text x='194' y='200' fontSize='14' fill='#3D405B'>尖刺</text>
+      </svg>
+    </Box>
+
+    <Box style={{ width: 600, height: 92, padding: 14, border: '1px solid #D9CEBA', borderRadius: 8 }}>
+      <Text style={{ fontSize: 16, color: '#948C82' }}>在社区的这一周，一件让你感到幸福或感恩的事情是什么？</Text>
+      <Text style={{ fontSize: 16, color: '#E07A5F', fontWeight: 'bold', marginTop: 12 }}>三个都填完 → 种下玫瑰吧</Text>
+    </Box>
+  </Box>
+</Slide>

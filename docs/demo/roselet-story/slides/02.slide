@@ -1,0 +1,28 @@
+<Slide style={{ width: 1280, height: 720, padding: 60, background: '#F4ECD8', position: 'relative' }}>
+  <Box style={{ position: 'absolute', left: 60, top: 80, width: 480, height: 480, padding: 16, background: '#FFFDF7', border: '1px solid #D9CEBA', borderRadius: 8, transform: 'rotate(-2deg)' }}>
+    <Image src="assets/ref_handdrawn.jpg" style={{ width: 448, height: 448, objectFit: 'contain' }} />
+  </Box>
+  <Box style={{ position: 'absolute', left: 560, top: 300, width: 200, height: 200, padding: 10, background: '#FFFDF7', border: '1px solid #D9CEBA', borderRadius: 8, transform: 'rotate(4deg)' }}>
+    <Image src="assets/ref_minimal.jpg" style={{ width: 180, height: 180, objectFit: 'contain' }} />
+  </Box>
+
+  <Box style={{ position: 'absolute', right: 60, top: 80, width: 400, gap: 24 }}>
+    <Text style={{ fontSize: 16, color: '#E07A5F', letterSpacing: 3, fontWeight: 'bold' }}>INSPIRATION</Text>
+    <Text style={{ fontSize: 36, lineHeight: 1.25, fontWeight: 'bold', color: '#3D405B', fontFamily: 'Noto Serif SC, serif' }}>灵感来自一个经典的破冰游戏</Text>
+
+    <Box style={{ gap: 16 }}>
+      <Box style={{ borderBottom: '1px solid #D9CEBA', paddingBottom: 14, gap: 6 }}>
+        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#C9584C' }}>玫瑰 · Rose</Text>
+        <Text style={{ fontSize: 18, lineHeight: 1.5, color: '#6B6472' }}>在社区的这一周，一件让你感到幸福或感恩的事情是什么？</Text>
+      </Box>
+      <Box style={{ borderBottom: '1px solid #D9CEBA', paddingBottom: 14, gap: 6 }}>
+        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#81B29A' }}>尖刺 · Thorn</Text>
+        <Text style={{ fontSize: 18, lineHeight: 1.5, color: '#6B6472' }}>现在有什么让你感到焦虑或者需要帮助的事情吗？</Text>
+      </Box>
+      <Box style={{ borderBottom: '1px solid #D9CEBA', paddingBottom: 14, gap: 6 }}>
+        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#B08A3E' }}>花苞 · Bud</Text>
+        <Text style={{ fontSize: 18, lineHeight: 1.5, color: '#6B6472' }}>你现在有什么期待的事情吗？这周有什么新灵感想要实现呢？</Text>
+      </Box>
+    </Box>
+  </Box>
+</Slide>

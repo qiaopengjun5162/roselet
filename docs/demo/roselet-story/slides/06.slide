@@ -1,0 +1,9 @@
+<Slide style={{ width: 1280, height: 720, padding: 60, background: '#F4ECD8' }}>
+  <Box style={{ width: 1160, height: 600, justifyContent: 'center', gap: 28 }}>
+    <Text style={{ fontSize: 16, color: '#E07A5F', letterSpacing: 3, fontWeight: 'bold' }}>ROSELET · COMMUNITY CHECK-IN</Text>
+    <Text style={{ fontSize: 88, lineHeight: 1.15, fontWeight: 'bold', color: '#3D405B', fontFamily: 'Noto Serif SC, serif' }}>为社区种一朵玫瑰吧</Text>
+    <Text style={{ fontSize: 24, lineHeight: 1.6, color: '#6B6472' }}>三种花，三个问题，一座会慢慢生长的花圃。</Text>
+    <Box style={{ width: 520, height: 2, background: '#D9CEBA', marginTop: 16 }} />
+    <Text style={{ fontSize: 22, color: '#E07A5F', fontWeight: 'bold' }}>roselet.47.131.238.0.sslip.io</Text>
+  </Box>
+</Slide>

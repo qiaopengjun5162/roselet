@@ -1,0 +1,50 @@
+<Slide style={{ width: 1280, height: 720, padding: 60, background: '#2F3B34', gap: 24 }}>
+  <Text style={{ fontSize: 16, color: '#F2CC8F', letterSpacing: 3, fontWeight: 'bold' }}>STEP 03</Text>
+  <Text style={{ fontSize: 40, lineHeight: 1.25, fontWeight: 'bold', color: '#F4ECD8', fontFamily: 'Noto Serif SC, serif' }}>第三屏 · 它长在花圃里了</Text>
+
+  <Box style={{ width: 1040, height: 330, alignItems: 'center' }}>
+    <svg width={1040} height={330} viewBox='0 0 1040 330'>
+      <circle cx='900' cy='58' r='42' fill='#F2CC8F' opacity='0.9' />
+      <path d='M0 282 L1040 282' stroke='#81B29A' strokeWidth='2' opacity='0.35' />
+      <g transform='translate(120 0)'>
+        <path d='M0 282 C -4 220 10 190 0 150' stroke='#81B29A' strokeWidth='5' fill='none' strokeLinecap='round' />
+        <path d='M-2 210 C -34 194 -46 216 -24 228 C -8 236 -2 226 -2 210Z' fill='#5F7D63' />
+        <circle cx='0' cy='126' r='30' fill='#E88AA0' />
+        <circle cx='0' cy='126' r='17' fill='#B85E73' />
+        <circle cx='0' cy='126' r='7' fill='#E88AA0' />
+      </g>
+      <g transform='translate(300 0)'>
+        <path d='M0 282 C 4 220 -10 190 0 150' stroke='#81B29A' strokeWidth='5' fill='none' strokeLinecap='round' />
+        <path d='M2 210 C 34 194 46 216 24 228 C 8 236 2 226 2 210Z' fill='#5F7D63' />
+        <circle cx='0' cy='126' r='30' fill='#F5EFE4' />
+        <circle cx='0' cy='126' r='17' fill='#CFC6B6' />
+        <circle cx='0' cy='126' r='7' fill='#F5EFE4' />
+      </g>
+      <g transform='translate(480 0)'>
+        <path d='M0 282 C -4 220 10 190 0 150' stroke='#81B29A' strokeWidth='5' fill='none' strokeLinecap='round' />
+        <path d='M-2 210 C -34 194 -46 216 -24 228 C -8 236 -2 226 -2 210Z' fill='#5F7D63' />
+        <circle cx='0' cy='126' r='30' fill='#E8C25C' />
+        <circle cx='0' cy='126' r='17' fill='#BD9236' />
+        <circle cx='0' cy='126' r='7' fill='#E8C25C' />
+      </g>
+      <g transform='translate(660 0)'>
+        <path d='M0 282 C 4 220 -10 190 0 150' stroke='#81B29A' strokeWidth='5' fill='none' strokeLinecap='round' />
+        <path d='M2 210 C 34 194 46 216 24 228 C 8 236 2 226 2 210Z' fill='#5F7D63' />
+        <circle cx='0' cy='126' r='30' fill='#D9646F' />
+        <circle cx='0' cy='126' r='17' fill='#A84555' />
+        <circle cx='0' cy='126' r='7' fill='#D9646F' />
+      </g>
+      <g transform='translate(840 0)'>
+        <path d='M0 282 C -4 220 10 190 0 150' stroke='#81B29A' strokeWidth='5' fill='none' strokeLinecap='round' />
+        <path d='M-2 210 C -34 194 -46 216 -24 228 C -8 236 -2 226 -2 210Z' fill='#5F7D63' />
+        <circle cx='0' cy='126' r='30' fill='#F0D98A' />
+        <circle cx='0' cy='126' r='17' fill='#C9A543' />
+        <circle cx='0' cy='126' r='7' fill='#F0D98A' />
+      </g>
+    </svg>
+  </Box>
+
+  <Box style={{ width: 1040, height: 72, background: '#E07A5F', borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
+    <Text style={{ fontSize: 26, fontWeight: 'bold', color: '#FFFDF7', letterSpacing: 2 }}>谢谢你在社区种下的玫瑰</Text>
+  </Box>
+</Slide>

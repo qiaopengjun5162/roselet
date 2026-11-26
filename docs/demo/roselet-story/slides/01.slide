@@ -1,0 +1,18 @@
+<Slide style={{ width: 1280, height: 720, padding: 60, background: '#F4ECD8', position: 'relative' }}>
+  <Box style={{ width: 660, gap: 24, position: 'relative', zIndex: 2 }}>
+    <Text style={{ fontSize: 16, color: '#E07A5F', letterSpacing: 3, fontWeight: 'bold' }}>ROSE · THORN · BUD CHECK-IN</Text>
+    <Text style={{ fontSize: 88, lineHeight: 1.15, fontWeight: 'bold', color: '#3D405B', fontFamily: 'Noto Serif SC, serif' }}>
+      一起来种一个<br />玫瑰花圃吧
+    </Text>
+    <Text style={{ fontSize: 24, color: '#6B6472', letterSpacing: 1 }}>Rose · Thorn · Bud Check-in</Text>
+    <Text style={{ fontSize: 20, color: '#6B6472', lineHeight: 1.6 }}>
+      三种花，三个问题。让每个人都能在安静的夜晚，<br />安全地表达情绪。
+    </Text>
+    <Text style={{ fontSize: 18, color: '#E07A5F', fontWeight: 'bold' }}>为社区种一朵玫瑰吧</Text>
+  </Box>
+
+  <Box style={{ position: 'absolute', right: 60, top: 92, width: 420, height: 380, padding: 24, background: '#FFFDF7', border: '1px solid #D9CEBA', borderRadius: 8, transform: 'rotate(-3deg)', alignItems: 'center', gap: 16 }}>
+    <Image src="assets/rose_crop.png" style={{ width: 340, height: 286, objectFit: 'contain' }} />
+    <Text style={{ fontSize: 16, color: '#948C82', letterSpacing: 2 }}>ROSE · BUD · THORN</Text>
+  </Box>
+</Slide>
