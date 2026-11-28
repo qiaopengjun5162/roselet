@@ -6333,3 +6333,11 @@ PR #14 合并（`bb27283`），CI 七项全绿（含 `pnpm audit` 门禁），De
 1. **假 502**：真实浏览器里 `/login` 约一半请求 502、页面无 React；同一时刻 `curl --noproxy '*'` 30/30 全 200。原因是 Chromium 继承了 shell 的 `HTTP_PROXY=http://127.0.0.1:57430`（沙盒代理），该代理对这个裸 IP 间歇 502；`--no-proxy-server` 不足以覆盖。用 `env -u HTTP_PROXY -u HTTPS_PROXY ...` 启动脚本后 6/6 正常。**排查口诀**：浏览器失败而 curl 成功时，先怀疑代理，别怀疑部署。
 2. **`role="tab"` 不是 button**：登录页两个模式是 tablist，按 `getByRole("button")` 找不到。
 3. **HTTP 页面没有 `crypto.subtle`**：假钱包原本用 WebCrypto 签 ed25519，但生产是裸 IP 的 HTTP，非安全上下文里 `crypto.subtle` 为 `undefined`。真实钱包在扩展内部签名不受影响，但这也说明上线 HTTPS 不只是面子问题。脚本改为把签名通过 `exposeFunction` 交给 Node 完成。
+
+## 五十一、收尾复核：一次全绿，以及一个被误读成回归的测试陷阱
+
+2026-11-28 做交付前复核，本地从零跑全套测试：**984 passed**（Rust 359：backend 187 + recommend 172；Web 495 / 68 suites；小程序 71；Agent API 39；Worker 20），无失败，另有 1 个 `#[ignore]`。线上 `/health`、`/api/garden`、`/login`、`/` 全 200，`/api/stats` 401 是管理员白名单的预期行为。
+
+**踩到的坑**：第一次直接 `cargo test --workspace`，`api_test` 出现 **53 failed**，全是 500/401 断言失败。差点当成回归去找业务 bug。真实原因是 `crates/backend/tests/api_test.rs` 每个用例开头都 `TRUNCATE ... RESTART IDENTITY CASCADE` 同一个 `roselet_test` 库，默认并行时用例互相清空数据。CI 一直用 `cargo nextest run --workspace --all-features -j1` 才没暴露。本地加 `-- --test-threads=1` 重跑 → **93 passed / 0 failed**，全部恢复。已把「必须单并发 + 现象 + 命令」写进 `CLAUDE.md` 开发规范，避免下次再排查一遍。
+
+**顺手清理**：GitHub 上两个 7 月遗留的开放 PR（#5 Aleo private vault、#6 Solana + GOAT x402）经 `git merge-base --is-ancestor` 确认分支已完整进入 main，直接关闭并留说明，避免重复审阅；`.gitignore` 的 PPT 缓存规则改成任意层级匹配（`.cache/` / `.slidep/`），根目录生成的 `.slidep/` 不再显示为未跟踪；`PROGRESS.md` 待办里「部署上线」打勾，其余项标注真实卡点（小程序凭证 / 真机 / 真实用户 / testnet 资金），测试数字从 938 更新为实测 984。

@@ -311,11 +311,11 @@
 
 ## 待办
 
-- [ ] **部署上线**：选 VPS / Cloudflare Tunnel 方案，Web 端先上
-- [ ] **小程序微信登录**：`wx.login()` → `/api/auth/wechat-login`，零成本
-- [ ] **真机联调**：AppID 已有，拉起后端验证双令牌 + WASM 花瓣
-- [ ] **找 5 个真实用户试用**
-- [ ] **多语言 Spike**：若试用反馈需要英文，再按 `docs/I18N_STRATEGY.md` 从 Rust `Locale` + WASM 文案映射开始
+- [x] **部署上线**：已用 AWS Lightsail + Caddy HTTPS 同源上线，唯一入口 `https://roselet.47.131.238.0.sslip.io`（2026-11-28 复核 `/health`、`/api/garden`、`/login` 均 200）
+- [ ] **小程序微信登录**：`wx.login()` → `/api/auth/wechat-login`，零成本 —— 卡在小程序 appid/secret 配置，代码侧已就绪
+- [ ] **真机联调**：AppID 已有，拉起后端验证双令牌 + WASM 花瓣 —— 需要真机和微信开发者工具
+- [ ] **找 5 个真实用户试用**：目前唯一真正的产品验证动作，用 `/stats` 看数据（跑过冒烟的账号已注销）
+- [ ] **多语言 Spike**：若试用反馈需要英文，再按 `docs/I18N_STRATEGY.md` 从 Rust `Locale` + WASM 文案映射开始（按需，不预设）
 - [ ] Web3 / Grant 功能（Base、Aleo、Solana 本地闭环已实现，待真实 testnet 结算）
   - 已实现：公开玫瑰的 ERC-721 链上纪念版、交易回执验证、详情页钱包入口
   - 已实现：Aleo `PrivateRose` / `RoseShare` record、浏览器 Rust WASM 承诺、Leo Wallet Testnet 交易入口 `/private-vault`

@@ -49,11 +49,12 @@ Web + 小程序：401 → 静默刷新（Promise 复用锁防并发）→ 原请
 > 以下数值随提交变化，可能滞后；**以 CI 最新执行为准**，跨文件（PROGRESS.md）若与此冲突以此处为权威。
 ```
 Rust backend:   187 passed (94 unit + 93 integration)
-Rust WASM:      153 passed
-Web frontend:   493 passed (68 suites)
-Miniprogram:     66 passed
+Rust WASM:      172 passed
+Web frontend:   495 passed (68 suites)
+Miniprogram:     71 passed
 Agent API:       39 passed
-Total:          938 passed
+Worker API:      20 passed
+Total:          984 passed
 
 llvm-cov (workspace): 90.37% 行覆盖 / 88.41% region
   100%: flowers, petal, sky, keywords, pagination, user, docs, state
@@ -221,7 +222,7 @@ POST   /api/feedback       # 提交反馈（可选 JWT，匿名/登录均可）
 
 ## 开发规范
 - 每次修改都要 commit 和 push（Conventional Commits）
-- 测试运行器：cargo-nextest（不是 cargo test）
+- 测试运行器：cargo-nextest（不是 cargo test）。**必须单并发**：CI 用 `cargo nextest run --workspace --all-features -j1`；本地若用 `cargo test`，要加 `-- --test-threads=1`。原因：`crates/backend/tests/api_test.rs` 每个用例都会 `TRUNCATE ... RESTART IDENTITY CASCADE` 同一个 `roselet_test` 库，并行执行时互相清空数据，会出现几十个莫名的 500 / 401（2026-11-28 实测：默认并行 53 failed，串行 93 passed）。这不是代码回归，别去改断言。
 - 测试覆盖率尽可能 100%
 - 代码模块化，附必要注释
 - 遇到问题先解决，并在 `DEVLOG.md` 记录问题、原因、处理方式、验证命令；可复用经验同步到 `docs/RUST_DEV_WORKFLOW_EXPERIENCE.md`
